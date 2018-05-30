@@ -133,7 +133,10 @@ struct scallout {
 
 static char sco_layout[] = "issu[ccui][ccui][ccui][ccui]";
 
-struct savedata {
+class savedata {
+public:
+    savedata() : alist(0) { }
+
     Uint narr;				/* # of arrays */
     Uint nstr;				/* # of strings */
     Uint arrsize;			/* # of array elements */
@@ -1117,8 +1120,7 @@ static Array *d_get_array(Dataspace *data, Uint idx)
 	    get_arrays(data, sw_readv);
 	}
 
-	arr = arr_alloc(data->sarrays[idx].size);
-	arr->ref = 0;
+	arr = Array::alloc(data->sarrays[idx].size);
 	arr->tag = data->sarrays[idx].tag;
 	p = data->plane;
 
@@ -1131,7 +1133,8 @@ static Array *d_get_array(Dataspace *data, Uint idx)
 		}
 	    }
 	    a = &p->arrays[idx];
-	    arr_ref(a->arr = arr);
+	    a->arr = arr;
+	    a->arr->ref();
 	    a->plane = &data->base;
 	    a->data = data;
 	    a->state = AR_UNCHANGED;
@@ -1180,7 +1183,8 @@ static void d_get_values(Dataspace *data, svalue *sv, Value *v, int n)
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
-	    arr_ref(v->u.array = d_get_array(data, sv->u.array));
+	    v->u.array = d_get_array(data, sv->u.array);
+	    v->u.array->ref();
 	    break;
 	}
 	sv++;
@@ -1637,15 +1641,15 @@ static void d_count(savedata *save, Value *v, Uint n)
 	    break;
 
 	case T_ARRAY:
-	    if (arr_put(v->u.array, save->narr) == save->narr) {
+	    if (v->u.array->put(save->narr) == save->narr) {
 		d_arrcount(save, v->u.array);
 	    }
 	    break;
 
 	case T_MAPPING:
-	    if (arr_put(v->u.array, save->narr) == save->narr) {
+	    if (v->u.array->put(save->narr) == save->narr) {
 		if (v->u.array->hashmod) {
-		    map_compact(v->u.array->primary->data, v->u.array);
+		    v->u.array->mapCompact(v->u.array->primary->data);
 		}
 		d_arrcount(save, v->u.array);
 	    }
@@ -1661,14 +1665,14 @@ static void d_count(savedata *save, Value *v, Uint n)
 		    elts[1].type = T_FLOAT;
 		    elts[1].oindex = FALSE;
 		}
-		if (arr_put(v->u.array, save->narr) == save->narr) {
+		if (v->u.array->put(save->narr) == save->narr) {
 		    if (elts->u.objcnt == count &&
 			elts[1].u.objcnt != obj->update) {
 			d_upgrade_lwobj(v->u.array, obj);
 		    }
 		    d_arrcount(save, v->u.array);
 		}
-	    } else if (arr_put(v->u.array, save->narr) == save->narr) {
+	    } else if (v->u.array->put(save->narr) == save->narr) {
 		d_arrcount(save, v->u.array);
 	    }
 	    break;
@@ -1722,7 +1726,7 @@ static void d_save(savedata *save, svalue *sv, Value *v, unsigned short n)
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
-	    i = arr_put(v->u.array, save->narr);
+	    i = v->u.array->put(save->narr);
 	    sv->oindex = 0;
 	    sv->u.array = i;
 	    if (save->sarrays[i].ref++ == 0) {
@@ -1838,7 +1842,7 @@ static void d_free_values(Dataspace *data)
 
 	for (i = data->narrays, a = data->base.arrays; i > 0; --i, a++) {
 	    if (a->arr != (Array *) NULL) {
-		arr_del(a->arr);
+		a->arr->del();
 	    }
 	}
 
@@ -1865,7 +1869,7 @@ static void d_free_values(Dataspace *data)
     if (data->alist.next != &data->alist) {
 	data->alist.prev->next = data->alist.next;
 	data->alist.next->prev = data->alist.prev;
-	arr_freelist(data->alist.next);
+	data->alist.next->freelist();
 	data->alist.prev = data->alist.next = &data->alist;
     }
 }
@@ -2029,7 +2033,7 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	/*
 	 * count the number and sizes of strings and arrays
 	 */
-	arr_merge();
+	Array::merge();
 	String::merge();
 	save.narr = 0;
 	save.nstr = 0;
@@ -2154,7 +2158,7 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	}
 
 	/* clear merge tables */
-	arr_clear();
+	Array::clear();
 	String::clear();
 
 	if (swap) {

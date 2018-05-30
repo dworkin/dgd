@@ -45,7 +45,7 @@ static void kf_op_unary(register Frame *f, int kfun)
 	      kftab[kfun].name);
     }
 
-    arr_del(f->sp[1].u.array);
+    f->sp[1].u.array->del();
     f->sp[1] = f->sp[0];
     f->sp++;
 }
@@ -69,7 +69,7 @@ static void kf_op_binary(register Frame *f, int kfun)
 	      kftab[kfun].name);
     }
 
-    arr_del(f->sp[1].u.array);
+    f->sp[1].u.array->del();
     f->sp[1] = f->sp[0];
     f->sp++;
 }
@@ -93,7 +93,7 @@ static void kf_op_compare(register Frame *f, int kfun)
 	      kftab[kfun].name);
     }
 
-    arr_del(f->sp[1].u.array);
+    f->sp[1].u.array->del();
     f->sp[1] = f->sp[0];
     f->sp++;
 }
@@ -113,7 +113,7 @@ static void kf_op_ternary(register Frame *f, int kfun)
 	      kftab[kfun].name);
     }
 
-    arr_del(f->sp[1].u.array);
+    f->sp[1].u.array->del();
     f->sp[1] = f->sp[0];
     f->sp++;
 }
@@ -252,10 +252,10 @@ int kf_add(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = arr_add(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    a = f->sp[1].u.array->add(f->data, f->sp->u.array);
+	    f->sp->u.array->del();
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    f->sp->u.array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -264,10 +264,10 @@ int kf_add(Frame *f, int n, kfunc *kf)
     case T_MAPPING:
 	if (f->sp->type == T_MAPPING) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = map_add(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    a = f->sp[1].u.array->mapAdd(f->data, f->sp->u.array);
+	    f->sp->u.array->del();
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    f->sp->u.array->del();
 	    PUT_MAP(f->sp, a);
 	    return 0;
 	}
@@ -393,10 +393,10 @@ int kf_and(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = arr_intersect(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    a = f->sp[1].u.array->intersect(f->data, f->sp->u.array);
+	    f->sp->u.array->del();
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    f->sp->u.array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -405,8 +405,8 @@ int kf_and(Frame *f, int n, kfunc *kf)
     case T_MAPPING:
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = map_intersect(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    a = f->sp[1].u.array->mapIntersect(f->data, f->sp->u.array);
+	    f->sp->u.array->del();
 	    f->sp++;
 	    PUT_MAP(f->sp, a);
 	    return 0;
@@ -596,9 +596,9 @@ int kf_eq(Frame *f, int n, kfunc *kf)
     case T_MAPPING:
     case T_LWOBJECT:
 	flag = (f->sp[1].u.array == f->sp->u.array);
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	f->sp++;
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_INTVAL(f->sp, flag);
 	break;
     }
@@ -1236,9 +1236,9 @@ int kf_ne(Frame *f, int n, kfunc *kf)
     case T_MAPPING:
     case T_LWOBJECT:
 	flag = (f->sp[1].u.array != f->sp->u.array);
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	f->sp++;
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_INTVAL(f->sp, flag);
 	break;
     }
@@ -1351,7 +1351,7 @@ int kf_not(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	break;
     }
 
@@ -1407,10 +1407,10 @@ int kf_or(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = arr_setadd(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    a = f->sp[1].u.array->setadd(f->data, f->sp->u.array);
+	    f->sp->u.array->del();
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    f->sp->u.array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -1471,11 +1471,11 @@ int kf_rangeft(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[2].type == T_MAPPING) {
-	a = map_range(f->data, f->sp[2].u.array, &f->sp[1], f->sp);
+	a = f->sp[2].u.array->mapRange(f->data, &f->sp[1], f->sp);
 	i_del_value(f->sp++);
 	i_del_value(f->sp++);
 	i_add_ticks(f, f->sp->u.array->size);
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_ARR(f->sp, a);
 
 	return 0;
@@ -1515,11 +1515,11 @@ int kf_rangeft(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_RANGEFT, 3);
 	}
-	a = arr_range(f->data, f->sp[2].u.array, (long) f->sp[1].u.number,
-		      (long) f->sp->u.number);
+	a = f->sp[2].u.array->range(f->data, f->sp[1].u.number,
+				    f->sp->u.number);
 	i_add_ticks(f, a->size);
 	f->sp += 2;
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_ARR(f->sp, a);
 	break;
 
@@ -1550,10 +1550,10 @@ int kf_rangef(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[1].type == T_MAPPING) {
-	a = map_range(f->data, f->sp[1].u.array, f->sp, (Value *) NULL);
+	a = f->sp[1].u.array->mapRange(f->data, f->sp, (Value *) NULL);
 	i_del_value(f->sp++);
 	i_add_ticks(f, f->sp->u.array->size);
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_MAP(f->sp, a);
 
 	return 0;
@@ -1586,11 +1586,11 @@ int kf_rangef(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_RANGEF, 2);
 	}
-	a = arr_range(f->data, f->sp[1].u.array, (long) f->sp->u.number,
-		      f->sp[1].u.array->size - 1L);
+	a = f->sp[1].u.array->range(f->data, f->sp->u.number,
+				    f->sp[1].u.array->size - 1);
 	i_add_ticks(f, a->size);
 	f->sp++;
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_ARR(f->sp, a);
 	break;
 
@@ -1621,10 +1621,10 @@ int kf_ranget(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[1].type == T_MAPPING) {
-	a = map_range(f->data, f->sp[1].u.array, (Value *) NULL, f->sp);
+	a = f->sp[1].u.array->mapRange(f->data, (Value *) NULL, f->sp);
 	i_del_value(f->sp++);
 	i_add_ticks(f, f->sp->u.array->size);
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_MAP(f->sp, a);
 
 	return 0;
@@ -1658,10 +1658,10 @@ int kf_ranget(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_RANGET, 2);
 	}
-	a = arr_range(f->data, f->sp[1].u.array, 0L, (long) f->sp->u.number);
+	a = f->sp[1].u.array->range(f->data, 0, f->sp->u.number);
 	i_add_ticks(f, a->size);
 	f->sp++;
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_ARR(f->sp, a);
 	break;
 
@@ -1692,9 +1692,9 @@ int kf_range(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_MAPPING) {
-	a = map_range(f->data, f->sp->u.array, (Value *) NULL, (Value *) NULL);
+	a = f->sp->u.array->mapRange(f->data, (Value *) NULL, (Value *) NULL);
 	i_add_ticks(f, f->sp->u.array->size);
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_MAP(f->sp, a);
 
 	return 0;
@@ -1717,9 +1717,9 @@ int kf_range(Frame *f, int n, kfunc *kf)
 	break;
 
     case T_ARRAY:
-	a = arr_range(f->data, f->sp->u.array, 0L, f->sp->u.array->size - 1L);
+	a = f->sp->u.array->range(f->data, 0, f->sp->u.array->size - 1);
 	i_add_ticks(f, a->size);
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_ARR(f->sp, a);
 	break;
 
@@ -1841,10 +1841,10 @@ int kf_sub(Frame *f, int n, kfunc *kf)
 	    Array *a;
 
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = arr_sub(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    a = f->sp[1].u.array->sub(f->data, f->sp->u.array);
+	    f->sp->u.array->del();
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    f->sp->u.array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -1855,10 +1855,10 @@ int kf_sub(Frame *f, int n, kfunc *kf)
 	    Array *a;
 
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = map_sub(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    a = f->sp[1].u.array->mapSub(f->data, f->sp->u.array);
+	    f->sp->u.array->del();
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    f->sp->u.array->del();
 	    PUT_MAP(f->sp, a);
 	    return 0;
 	}
@@ -2079,7 +2079,7 @@ int kf_tst(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	break;
     }
 
@@ -2199,10 +2199,10 @@ int kf_xor(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = arr_setxadd(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    a = f->sp[1].u.array->setxadd(f->data, f->sp->u.array);
+	    f->sp->u.array->del();
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    f->sp->u.array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -2309,8 +2309,7 @@ int kf_ckrangeft(Frame *f, int n, kfunc *kf)
     if (f->sp[2].type == T_STRING) {
 	f->sp[2].u.string->checkRange(f->sp[1].u.number, f->sp->u.number);
     } else if (f->sp[2].type == T_ARRAY) {
-	arr_ckrange(f->sp[2].u.array, (long) f->sp[1].u.number,
-		    (long) f->sp->u.number);
+	f->sp[2].u.array->checkRange(f->sp[1].u.number, f->sp->u.number);
     } else {
 	kf_argerror(KF_CKRANGEFT, 1);
     }
@@ -2344,8 +2343,7 @@ int kf_ckrangef(Frame *f, int n, kfunc *kf)
     } else if (f->sp[1].type == T_ARRAY) {
 	(--f->sp)->type = T_INT;
 	f->sp->u.number = (Int) f->sp[2].u.array->size - 1;
-	arr_ckrange(f->sp[2].u.array, (long) f->sp[1].u.number,
-		    (long) f->sp->u.number);
+	f->sp[2].u.array->checkRange(f->sp[1].u.number, f->sp->u.number);
     } else {
 	kf_argerror(KF_CKRANGEF, 1);
     }
@@ -2375,7 +2373,7 @@ int kf_ckranget(Frame *f, int n, kfunc *kf)
     if (f->sp[1].type == T_STRING) {
 	f->sp[1].u.string->checkRange(0, f->sp->u.number);
     } else if (f->sp[1].type == T_ARRAY) {
-	arr_ckrange(f->sp[1].u.array, 0L, (long) f->sp->u.number);
+	f->sp[1].u.array->checkRange(0, f->sp->u.number);
     } else {
 	kf_argerror(KF_CKRANGET, 1);
     }
@@ -2471,7 +2469,7 @@ int kf_statuso_idx(Frame *f, int nargs, kfunc *kf)
     case T_LWOBJECT:
 	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
 	    n = f->sp[1].u.array->elts[0].oindex;
-	    arr_del(f->sp[1].u.array);
+	    f->sp[1].u.array->del();
 	    f->sp[1] = nil_value;
 	} else {
 	    /* no user-visible parts within (right?) */
@@ -3489,7 +3487,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	f->sp = v - 1;
 	PUT_STRVAL(f->sp, s);
     } else if (type == T_ARRAY) {
-	a = arr_new(f->data, size);
+	a = Array::create(f->data, size);
 	e1 = a->elts + size;
 	for (v = f->sp, i = nargs; --i >= 0; v++) {
 	    switch (v->u.number) {
@@ -3539,7 +3537,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 
 	    e1 -= len;
 	    i_copy(e1, e2 - len, len);
-	    arr_del(v->u.array);
+	    v->u.array->del();
 	    size -= len;
 	}
 

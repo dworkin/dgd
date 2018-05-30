@@ -99,7 +99,7 @@ int kf_query_editor(Frame *f, int n, kfunc *kf)
 	    return 0;
 	}
     } else {
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
     }
 
     *f->sp = nil_value;
@@ -199,7 +199,7 @@ static void save_array(savecontext *x, Array *a)
     Value *v;
     Float flt;
 
-    i = arr_put(a, x->narrays);
+    i = a->put(x->narrays);
     if (i < x->narrays) {
 	/* same as some previous array */
 	sprintf(buf, "#%lu", (unsigned long) i);
@@ -267,7 +267,7 @@ static void save_mapping(savecontext *x, Array *a)
     Value *v;
     Float flt;
 
-    i = arr_put(a, x->narrays);
+    i = a->put(x->narrays);
     if (i < x->narrays) {
 	/* same as some previous mapping */
 	sprintf(buf, "@%lu", (unsigned long) i);
@@ -275,7 +275,7 @@ static void save_mapping(savecontext *x, Array *a)
 	return;
     }
     x->narrays++;
-    map_compact(a->primary->data, a);
+    a->mapCompact(a->primary->data);
 
     /*
      * skip index/value pairs of which either is an object
@@ -415,7 +415,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
     x.bufsz = 0;
 
     ctrl = f->ctrl;
-    arr_merge();
+    Array::merge();
     x.narrays = 0;
     if (f->lwobj != (Array *) NULL) {
 	var = &f->lwobj->elts[2];
@@ -479,7 +479,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
 	}
     }
 
-    arr_clear();
+    Array::clear();
     if (x.bufsz > 0 && P_write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
 	P_close(x.fd);
 	AFREE(x.buffer);
@@ -732,7 +732,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 	restore_error(x, "'|' expected");
     }
 
-    ac_put(x, T_ARRAY, a = arr_new(x->f->data, (long) val->u.number));
+    ac_put(x, T_ARRAY, a = Array::create(x->f->data, val->u.number));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	*v++ = nil_value;
     }
@@ -755,8 +755,8 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 	}
 	ec_pop();
     } catch (...) {
-	arr_ref(a);
-	arr_del(a);
+	a->ref();
+	a->del();
 	error((char *) NULL);	/* pass on the error */
     }
 
@@ -784,7 +784,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	restore_error(x, "'|' expected");
     }
 
-    ac_put(x, T_MAPPING, a = map_new(x->f->data, (long) val->u.number << 1));
+    ac_put(x, T_MAPPING, a = Array::mapCreate(x->f->data, val->u.number << 1));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	*v++ = nil_value;
     }
@@ -810,11 +810,11 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	if (*buf++ != ']' || *buf++ != ')') {
 	    restore_error(x, "'])' expected");
 	}
-	map_sort(a);
+	a->mapSort();
 	ec_pop();
     } catch (...) {
-	arr_ref(a);
-	arr_del(a);
+	a->ref();
+	a->del();
 	error((char *) NULL);	/* pass on the error */
     }
 
@@ -1644,10 +1644,10 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
 
     /* prepare return value */
     f->sp->u.string->del();
-    PUT_ARRVAL(f->sp, a = arr_new(f->data, 3L));
-    PUT_ARRVAL(&a->elts[0], arr_new(f->data, (long) nfiles));
-    PUT_ARRVAL(&a->elts[1], arr_new(f->data, (long) nfiles));
-    PUT_ARRVAL(&a->elts[2], arr_new(f->data, (long) nfiles));
+    PUT_ARRVAL(f->sp, a = Array::create(f->data, 3));
+    PUT_ARRVAL(&a->elts[0], Array::create(f->data, nfiles));
+    PUT_ARRVAL(&a->elts[1], Array::create(f->data, nfiles));
+    PUT_ARRVAL(&a->elts[2], Array::create(f->data, nfiles));
 
     i_add_ticks(f, 1000 + 5 * nfiles);
 

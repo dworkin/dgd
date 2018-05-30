@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -140,15 +140,12 @@
 				 (v)->u.objcnt = (fl).low)
 # define GET_FLT(v, fl)		((fl).high = (v)->oindex,		\
 				 (fl).low = (v)->u.objcnt)
-# define PUSH_STRVAL(f, s)	((--(f)->sp)->u.string = (s),		\
-				 (f)->sp->u.string->ref(),		\
+# define PUSH_STRVAL(f, s)	(((--(f)->sp)->u.string = (s))->ref(),	\
 				 (f)->sp->type = T_STRING)
-# define PUT_STRVAL(v, s)	((v)->u.string = (s),			\
-				 (v)->u.string->ref(),			\
+# define PUT_STRVAL(v, s)	(((v)->u.string = (s))->ref(),		\
 				 (v)->type = T_STRING)
 # define PUT_STRVAL_NOREF(v, s)	((v)->u.string = (s), (v)->type = T_STRING)
-# define PUT_STR(v, s)		((v)->u.string = (s),			\
-				 (v)->u.string->ref())
+# define PUT_STR(v, s)		(((v)->u.string = (s))->ref())
 # define PUSH_OBJVAL(f, o)	((--(f)->sp)->oindex = (o)->index,	\
 				 (f)->sp->u.objcnt = (o)->count,	\
 				 (f)->sp->type = T_OBJECT)
@@ -157,24 +154,24 @@
 				 (v)->type = T_OBJECT)
 # define PUT_OBJ(v, o)		((v)->oindex = (o)->index,		\
 				 (v)->u.objcnt = (o)->count)
-# define PUSH_ARRVAL(f, a)	(arr_ref((--(f)->sp)->u.array = (a)),	\
+# define PUSH_ARRVAL(f, a)	(((--(f)->sp)->u.array = (a))->ref(),	\
 				 (f)->sp->type = T_ARRAY)
-# define PUT_ARRVAL(v, a)	(arr_ref((v)->u.array = (a)),		\
+# define PUT_ARRVAL(v, a)	(((v)->u.array = (a))->ref(),		\
 				 (v)->type = T_ARRAY)
 # define PUT_ARRVAL_NOREF(v, a)	((v)->u.array = (a), (v)->type = T_ARRAY)
-# define PUT_ARR(v, a)		(arr_ref((v)->u.array = (a)))
-# define PUSH_MAPVAL(f, m)	(arr_ref((--(f)->sp)->u.array = (m)),	\
+# define PUT_ARR(v, a)		(((v)->u.array = (a))->ref())
+# define PUSH_MAPVAL(f, m)	(((--(f)->sp)->u.array = (m))->ref(),	\
 				 (f)->sp->type = T_MAPPING)
-# define PUT_MAPVAL(v, m)	(arr_ref((v)->u.array = (m)),		\
+# define PUT_MAPVAL(v, m)	(((v)->u.array = (m))->ref(),		\
 				 (v)->type = T_MAPPING)
 # define PUT_MAPVAL_NOREF(v, m)	((v)->u.array = (m), (v)->type = T_MAPPING)
-# define PUT_MAP(v, m)		(arr_ref((v)->u.array = (m)))
-# define PUSH_LWOVAL(f, o)	(arr_ref((--(f)->sp)->u.array = (o)),	\
+# define PUT_MAP(v, m)		(((v)->u.array = (m))->ref())
+# define PUSH_LWOVAL(f, o)	(((--(f)->sp)->u.array = (o))->ref(),	\
 				 (f)->sp->type = T_LWOBJECT)
-# define PUT_LWOVAL(v, o)	(arr_ref((v)->u.array = (o)),		\
+# define PUT_LWOVAL(v, o)	(((v)->u.array = (o))->ref(),		\
 				 (v)->type = T_LWOBJECT)
 # define PUT_LWOVAL_NOREF(v, o)	((v)->u.array = (o), (v)->type = T_LWOBJECT)
-# define PUT_LWO(v, o)		(arr_ref((v)->u.array = (o)))
+# define PUT_LWO(v, o)		(((v)->u.array = (o))->ref())
 
 # define VFLT_ISZERO(v)	FLOAT_ISZERO((v)->oindex, (v)->u.objcnt)
 # define VFLT_ISONE(v)	FLOAT_ISONE((v)->oindex, (v)->u.objcnt)

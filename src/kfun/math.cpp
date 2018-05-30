@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -147,7 +147,7 @@ int kf_frexp(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, 2);
     GET_FLT(f->sp, flt);
     num = flt.frexp();
-    a = arr_new(f->data, 2L);
+    a = Array::create(f->data, 2);
     PUT_FLTVAL(&a->elts[0], flt);
     PUT_INTVAL(&a->elts[1], num);
     PUT_ARRVAL(f->sp, a);
@@ -205,7 +205,7 @@ int kf_modf(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, 2);
     GET_FLT(f->sp, f1);
     f1.modf(&f2);
-    a = arr_new(f->data, 2L);
+    a = Array::create(f->data, 2);
     PUT_FLTVAL(&a->elts[0], f1);
     PUT_FLTVAL(&a->elts[1], f2);
     PUT_ARRVAL(f->sp, a);

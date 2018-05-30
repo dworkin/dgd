@@ -199,7 +199,7 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
 			(*str++)->ref();
 		    } while (--i != 0);
 		    *strs = str;
-		    arr_del((f->sp++)->u.array);
+		    (f->sp++)->u.array->del();
 
 		    /* return the untranslated path, as well */
 		    return path_from(buf, from, file);

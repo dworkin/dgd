@@ -1496,7 +1496,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     }
 
     /* initialize arrays */
-    arr_init((int) conf[ARRAY_SIZE].u.num);
+    Array::init((int) conf[ARRAY_SIZE].u.num);
 
     /* initialize objects */
     Object::init((uindex) conf[OBJECTS].u.num,
@@ -1618,7 +1618,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	arr_freeall();
+	Array::freeall();
 	m_finish();
 	return FALSE;
     }
@@ -1824,7 +1824,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 24:	/* ST_DATAGRAMPORTS */
-	a = arr_new(f->data, (long) ndports);
+	a = Array::create(f->data, ndports);
 	PUT_ARRVAL(v, a);
 	for (i = 0, v = a->elts; i < ndports; i++, v++) {
 	    PUT_INTVAL(v, dports[i]);
@@ -1832,7 +1832,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 25:	/* ST_TELNETPORTS */
-	a = arr_new(f->data, (long) ntports);
+	a = Array::create(f->data, ntports);
 	PUT_ARRVAL(v, a);
 	for (i = 0, v = a->elts; i < ntports; i++, v++) {
 	    PUT_INTVAL(v, tports[i]);
@@ -1840,7 +1840,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 26:	/* ST_BINARYPORTS */
-	a = arr_new(f->data, (long) nbports);
+	a = Array::create(f->data, nbports);
 	PUT_ARRVAL(v, a);
 	for (i = 0, v = a->elts; i < nbports; i++, v++) {
 	    PUT_INTVAL(v, bports[i]);
@@ -1866,14 +1866,14 @@ Array *conf_status(Frame *f)
 
     try {
 	ec_push((ec_ftn) NULL);
-	a = arr_ext_new(f->data, 27L);
+	a = Array::createNil(f->data, 27);
 	for (i = 0, v = a->elts; i < 27; i++, v++) {
 	    conf_statusi(f, i, v);
 	}
 	ec_pop();
     } catch (...) {
-	arr_ref(a);
-	arr_del(a);
+	a->ref();
+	a->del();
 	error((char *) NULL);
     }
 
@@ -1922,7 +1922,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 		*v = nil_value;
 	    }
 	} else {
-	    PUT_ARRVAL(v, arr_new(data, 0L));
+	    PUT_ARRVAL(v, Array::create(data, 0));
 	}
 	break;
 
@@ -1956,7 +1956,7 @@ Array *conf_object(Dataspace *data, Object *obj)
     Int i;
     Array *a;
 
-    a = arr_ext_new(data, 7L);
+    a = Array::createNil(data, 7);
     try {
 	ec_push((ec_ftn) NULL);
 	for (i = 0, v = a->elts; i < 7; i++, v++) {
@@ -1964,8 +1964,8 @@ Array *conf_object(Dataspace *data, Object *obj)
 	}
 	ec_pop();
     } catch (...) {
-	arr_ref(a);
-	arr_del(a);
+	a->ref();
+	a->del();
 	error((char *) NULL);
     }
 

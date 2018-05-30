@@ -86,7 +86,7 @@ void i_ref_value(Value *v)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr_ref(v->u.array);
+	v->u.array->ref();
 	break;
     }
 }
@@ -105,7 +105,7 @@ void i_del_value(Value *v)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr_del(v->u.array);
+	v->u.array->del();
 	break;
     }
 }
@@ -142,7 +142,7 @@ void i_copy(Value *v, Value *w, unsigned int len)
 	    /* fall through */
 	case T_ARRAY:
 	case T_MAPPING:
-	    arr_ref(w->u.array);
+	    w->u.array->ref();
 	    break;
 	}
 	*v++ = *w++;
@@ -226,7 +226,7 @@ void i_push_value(Frame *f, Value *v)
 	/* fall through */
     case T_ARRAY:
     case T_MAPPING:
-	arr_ref(v->u.array);
+	v->u.array->ref();
 	break;
     }
 }
@@ -248,7 +248,7 @@ void i_pop(Frame *f, int n)
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
-	    arr_del(v->u.array);
+	    v->u.array->del();
 	    break;
 	}
     }
@@ -282,7 +282,7 @@ void i_odest(Frame *prev, Object *obj)
 	    case T_LWOBJECT:
 		if (v->u.array->elts[0].type == T_OBJECT &&
 		    v->u.array->elts[0].oindex == index) {
-		    arr_del(v->u.array);
+		    v->u.array->del();
 		    *v = nil_value;
 		}
 		break;
@@ -308,7 +308,7 @@ void i_odest(Frame *prev, Object *obj)
 		case T_LWOBJECT:
 		    if (v->u.array->elts[0].type == T_OBJECT &&
 			v->u.array->elts[0].oindex == index) {
-			arr_del(v->u.array);
+			v->u.array->del();
 			*v = nil_value;
 		    }
 		    break;
@@ -337,12 +337,12 @@ void i_aggregate(Frame *f, unsigned int size)
     Array *a;
 
     if (size == 0) {
-	a = arr_new(f->data, 0L);
+	a = Array::create(f->data, 0);
     } else {
 	Value *v, *elts;
 
 	i_add_ticks(f, size);
-	a = arr_new(f->data, (long) size);
+	a = Array::create(f->data, size);
 	elts = a->elts + size;
 	v = f->sp;
 	do {
@@ -363,12 +363,12 @@ void i_map_aggregate(Frame *f, unsigned int size)
     Array *a;
 
     if (size == 0) {
-	a = map_new(f->data, 0L);
+	a = Array::mapCreate(f->data, 0);
     } else {
 	Value *v, *elts;
 
 	i_add_ticks(f, size);
-	a = map_new(f->data, (long) size);
+	a = Array::mapCreate(f->data, size);
 	elts = a->elts + size;
 	v = f->sp;
 	do {
@@ -377,12 +377,12 @@ void i_map_aggregate(Frame *f, unsigned int size)
 	f->sp = v;
 	try {
 	    ec_push((ec_ftn) NULL);
-	    map_sort(a);
+	    a->mapSort();
 	    ec_pop();
 	} catch (...) {
 	    /* error in sorting, delete mapping and pass on error */
-	    arr_ref(a);
-	    arr_del(a);
+	    a->ref();
+	    a->del();
 	    error((char *) NULL);
 	}
 	d_ref_imports(a);
@@ -415,7 +415,7 @@ int i_spread(Frame *f, int n)
 	for (i = 0, v = d_get_elts(a); i < n; i++, v++) {
 	    i_push_value(f, v);
 	}
-	arr_del(a);
+	a->del();
 
 	return n - 1;
     } else {
@@ -495,12 +495,11 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	if (ival->type != T_INT) {
 	    error("Non-numeric array index");
 	}
-	*val = d_get_elts(aval->u.array)[arr_index(aval->u.array,
-						   ival->u.number)];
+	*val = d_get_elts(aval->u.array)[aval->u.array->index(ival->u.number)];
 	break;
 
     case T_MAPPING:
-	*val = *map_index(f->data, aval->u.array, ival, NULL, NULL);
+	*val = *aval->u.array->mapIndex(f->data, ival, NULL, NULL);
 	if (!keep) {
 	    i_del_value(ival);
 	}
@@ -510,7 +509,7 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	i_operator(f, aval->u.array, "[]", 1, val, ival, (Value *) NULL);
 	if (!keep) {
 	    i_del_value(ival);
-	    arr_del(aval->u.array);
+	    aval->u.array->del();
 	}
 	return;
 
@@ -538,12 +537,12 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	/* fall through */
     case T_ARRAY:
     case T_MAPPING:
-	arr_ref(val->u.array);
+	val->u.array->ref();
 	break;
     }
 
     if (!keep) {
-	arr_del(aval->u.array);
+	aval->u.array->del();
     }
 }
 
@@ -756,12 +755,12 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	    error("Non-numeric array index");
 	}
 	arr = aval->u.array;
-	aval = &d_get_elts(arr)[arr_index(arr, ival->u.number)];
+	aval = &d_get_elts(arr)[arr->index(ival->u.number)];
 	if (var->type != T_STRING ||
 	    (aval->type == T_STRING && var->u.string == aval->u.string)) {
 	    d_assign_elt(f->data, arr, aval, val);
 	}
-	arr_del(arr);
+	arr->del();
 	break;
 
     case T_MAPPING:
@@ -769,9 +768,9 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	if (var->type != T_STRING) {
 	    var = NULL;
 	}
-	map_index(f->data, arr, ival, val, var);
+	arr->mapIndex(f->data, ival, val, var);
 	i_del_value(ival);
-	arr_del(arr);
+	arr->del();
 	break;
 
     case T_LWOBJECT:
@@ -779,7 +778,7 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	i_operator(f, arr, "[]=", 2, var, ival, val);
 	i_del_value(var);
 	i_del_value(ival);
-	arr_del(arr);
+	arr->del();
 	break;
 
     default:
@@ -990,7 +989,7 @@ static void i_stores(Frame *f, int skip, int assign)
     }
 
     if (instr & I_POP_BIT) {
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	f->sp++;
     }
 
@@ -1053,7 +1052,7 @@ void i_lvalues(Frame *f)
 		}
 	    }
 
-	    arr_del(f->sp[1].u.array);
+	    f->sp[1].u.array->del();
 	    f->sp[1] = f->sp[0];
 	    f->sp++;
 	}
@@ -1216,14 +1215,14 @@ Frame *i_set_sp(Frame *ftop, Value *sp)
 	    case T_ARRAY:
 	    case T_MAPPING:
 	    case T_LWOBJECT:
-		arr_del(v->u.array);
+		v->u.array->del();
 		break;
 	    }
 	    v++;
 	}
 
 	if (f->lwobj != (Array *) NULL) {
-	    arr_del(f->lwobj);
+	    f->lwobj->del();
 	}
 	if (f->sos) {
 	    /* stack on stack */
@@ -1708,7 +1707,7 @@ static void i_interpret(Frame *f, char *pc)
 		} else {
 		    instance = i_instanceof(f, f->sp->u.array->elts->oindex, l);
 		}
-		arr_del(f->sp->u.array);
+		f->sp->u.array->del();
 		break;
 
 	    default:
@@ -2177,7 +2176,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 	    nargs++;
 	}
 	if (ellipsis) {
-	    PUSH_ARRVAL(prev_f, arr_new(f.data, 0));
+	    PUSH_ARRVAL(prev_f, Array::create(f.data, 0));
 	    nargs++;
 	    if ((FETCH1U(pc) & T_TYPE) == T_CLASS) {
 		pc += 3;
@@ -2189,7 +2188,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 
 	/* put additional arguments in array */
 	nargs -= n - 1;
-	a = arr_new(f.data, nargs);
+	a = Array::create(f.data, nargs);
 	v = a->elts + nargs;
 	do {
 	    *--v = *prev_f->sp++;
@@ -2216,7 +2215,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     f.nargs = nargs;
     cframe = &f;
     if (f.lwobj != (Array *) NULL) {
-	arr_ref(f.lwobj);
+	f.lwobj->ref();
     }
 
     /* deal with atomic functions */
@@ -2277,7 +2276,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     }
 
     if (f.lwobj != (Array *) NULL) {
-	arr_del(f.lwobj);
+	f.lwobj->del();
     }
     cframe = prev_f;
     i_pop(prev_f, f.nargs);
@@ -2579,7 +2578,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
 	/* unlikely, but possible */
 	n = max_args;
     }
-    a = arr_new(data, n + 5L);
+    a = Array::create(data, n + 5L);
     v = a->elts;
 
     /* object name */
@@ -2658,7 +2657,7 @@ Array *i_call_trace(Frame *ftop)
     Array *a;
 
     for (f = ftop, n = 0; f->oindex != OBJ_NONE; f = f->prev, n++) ;
-    a = arr_new(ftop->data, (long) n);
+    a = Array::create(ftop->data, n);
     i_add_ticks(ftop, 10 * n);
     for (f = ftop, v = a->elts + n; f->oindex != OBJ_NONE; f = f->prev) {
 	--v;

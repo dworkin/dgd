@@ -218,7 +218,7 @@ public:
      * DESCRIPTION:	dereference arrays when iterating through items
      */
     virtual bool item(arrptr *arr) {
-	arr_del(arr->arr);
+	arr->arr->del();
 	return TRUE;
     }
 };
@@ -233,7 +233,8 @@ static void ac_add(arrpchunk **c, Array *arr)
 	*c = new arrpchunk;
     }
 
-    arr_ref((chunknew (**c) arrptr)->arr = arr);
+    (chunknew (**c) arrptr)->arr = arr;
+    arr->ref();
 }
 
 
@@ -628,7 +629,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		/*
 		 * call LPC function to process subtree
 		 */
-		a = arr_new(ps->data, (long) len);
+		a = Array::create(ps->data, len);
 		if (len != 0) {
 		    ps_flatten(pn, next, a->elts + len);
 		    d_ref_imports(a);
@@ -671,7 +672,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 
 		pn->symbol = PN_ARRAY;
 		ac_add(&ps->arrc, pn->u.arr = (ps->frame->sp++)->u.array);
-		arr_del(pn->u.arr);
+		pn->u.arr->del();
 		pn->len = pn->u.arr->size;
 	    }
 	    return pn->len;
@@ -696,7 +697,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 
 	    /* pass 2: create branch arrays */
 	    if (n != 1) {
-		ac_add(&ps->arrc, a = arr_new(ps->data, (long) n));
+		ac_add(&ps->arrc, a = Array::create(ps->data, n));
 		v = a->elts;
 		memset(v, '\0', n * sizeof(Value));
 	    }
@@ -712,7 +713,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 			if (sub->symbol == PN_ARRAY) {
 			    PUT_ARRVAL(v, sub->u.arr);
 			} else {
-			    PUT_ARRVAL(v, arr_new(ps->data, (long) sub->len));
+			    PUT_ARRVAL(v, Array::create(ps->data, sub->len));
 			    if (sub->len != 0) {
 				ps_flatten(sub, next,
 					   v->u.array->elts + sub->len);
@@ -832,7 +833,7 @@ void ps_save(parser *ps)
 	data = ps->data;
 	fasize = 1 + (falen - 1) / USHRT_MAX;
 	lrsize = 1 + (lrlen - 1) / USHRT_MAX;
-	PUT_ARRVAL_NOREF(&val, arr_new(data, 3L + fasize + lrsize));
+	PUT_ARRVAL_NOREF(&val, Array::create(data, 3L + fasize + lrsize));
 
 	/* grammar */
 	v = val.u.array->elts;
@@ -939,7 +940,7 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	     */
 	    len = ps_traverse(ps, pn, pn->next);
 	    if (len >= 0) {
-		a = arr_new(data, (long) len);
+		a = Array::create(data, len);
 		ps_flatten(pn, pn->next, a->elts + len);
 		d_ref_imports(a);
 	    }

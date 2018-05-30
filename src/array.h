@@ -17,59 +17,67 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-struct Array : public ChunkAllocated {
+class Array : public ChunkAllocated {
+public:
+    class Backup;			/* array backup chunk */
+
+    Array(unsigned short size);
+    ~Array();
+
+    void ref() {
+	refCount++;
+    }
+    void del();
+    void freelist();
+    Uint put(Uint idx);
+    void backup(Backup **ac);
+    Array *add(Dataspace *data, Array *a2);
+    Array *sub(Dataspace *data, Array *a2);
+    Array *intersect(Dataspace *data, Array *a2);
+    Array *setadd(Dataspace *data, Array *a2);
+    Array *setxadd(Dataspace *data, Array *a2);
+    unsigned short index(long l);
+    void checkRange(long l1, long l2);
+    Array *range(Dataspace *data, long l1, long l2);
+
+    void mapSort();
+    void mapRemoveHash();
+    void mapCompact(Dataspace *data);
+    unsigned short mapSize(Dataspace *data);
+    Array *mapAdd(Dataspace *data, Array *m2);
+    Array *mapSub(Dataspace *data, Array *a2);
+    Array *mapIntersect(Dataspace *data, Array *a2);
+    Value *mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify);
+    Array *mapRange(Dataspace *data, Value *v1, Value *v2);
+    Array *mapIndices(Dataspace *data);
+    Array *mapValues(Dataspace *data);
+
+    Array *lwoCopy(Dataspace *data);
+
+    static void init(unsigned int size);
+    static Array *alloc(unsigned int size);
+    static Array *create(Dataspace *data, long size);
+    static Array *createNil(Dataspace *data, long size);
+    static void freeall();
+    static void merge();
+    static void clear();
+    static void commit(Backup **ac, Dataplane *plane, bool merge);
+    static void discard(Backup **ac);
+
+    static Array *mapCreate(Dataspace *data, long size);
+
+    static Array *lwoCreate(Dataspace *data, Object *obj);
+
     unsigned short size;		/* number of elements */
     bool hashmod;			/* hashed part contains new elements */
-    Uint ref;				/* number of references */
+    Uint refCount;			/* number of references */
     Uint tag;				/* used in sorting */
     Uint odcount;			/* last destructed object count */
     Value *elts;			/* elements */
-    struct maphash *hashed;		/* hashed mapping elements */
+    class MapHash *hashed;		/* hashed mapping elements */
     struct arrref *primary;		/* primary reference */
     Array *prev, *next;			/* per-object linked list */
+
+private:
+    void mapDehash(Dataspace *data, bool clean);
 };
-
-class abchunk;				/* array backup chunk */
-
-extern void		arr_init	(unsigned int);
-extern Array	       *arr_alloc	(unsigned int);
-extern Array	       *arr_new		(Dataspace*, long);
-extern Array	       *arr_ext_new	(Dataspace*, long);
-# define arr_ref(a)	((a)->ref++)
-extern void		arr_del		(Array*);
-extern void		arr_freelist	(Array*);
-extern void		arr_freeall	();
-
-extern void		arr_merge	();
-extern Uint		arr_put		(Array*, Uint);
-extern void		arr_clear	();
-
-extern void		arr_backup	(abchunk**, Array*);
-extern void		arr_commit	(abchunk**, Dataplane*, bool);
-extern void		arr_discard	(abchunk**);
-
-extern Array	       *arr_add		(Dataspace*, Array*, Array*);
-extern Array	       *arr_sub		(Dataspace*, Array*, Array*);
-extern Array	       *arr_intersect	(Dataspace*, Array*, Array*);
-extern Array	       *arr_setadd	(Dataspace*, Array*, Array*);
-extern Array	       *arr_setxadd	(Dataspace*, Array*, Array*);
-extern unsigned short	arr_index	(Array*, long);
-extern void		arr_ckrange	(Array*, long, long);
-extern Array	       *arr_range	(Dataspace*, Array*, long, long);
-
-extern Array	       *map_new		(Dataspace*, long);
-extern void		map_sort	(Array*);
-extern void		map_rmhash	(Array*);
-extern void		map_compact	(Dataspace*, Array*);
-extern unsigned short	map_size	(Dataspace*, Array*);
-extern Array	       *map_add		(Dataspace*, Array*, Array*);
-extern Array	       *map_sub		(Dataspace*, Array*, Array*);
-extern Array	       *map_intersect	(Dataspace*, Array*, Array*);
-extern Value	       *map_index	(Dataspace*, Array*, Value*, Value*,
-					 Value*);
-extern Array	       *map_range	(Dataspace*, Array*, Value*, Value*);
-extern Array	       *map_indices	(Dataspace*, Array*);
-extern Array	       *map_values	(Dataspace*, Array*);
-
-extern Array	       *lwo_new		(Dataspace*, Object*);
-extern Array	       *lwo_copy	(Dataspace*, Array*);

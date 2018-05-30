@@ -196,7 +196,7 @@ int kf_call_touch(Frame *f, int n, kfunc *kf)
 	flt.high = TRUE;
 	PUT_FLTVAL(&val, flt);
 	d_assign_elt(f->data, f->sp->u.array, &elts[1], &val);
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	PUT_INTVAL(f->sp, TRUE);
     } else {
 	obj = OBJW(f->sp->oindex);
@@ -435,14 +435,14 @@ int kf_new_object(Frame *f, int n, kfunc *kf)
 	    error("Creating new instance from a non-master object");
 	}
 
-	PUT_LWOVAL(f->sp, lwo_new(f->data, obj));
+	PUT_LWOVAL(f->sp, Array::lwoCreate(f->data, obj));
 	if (i_call(f, (Object *) NULL, f->sp->u.array, (char *) NULL, 0, TRUE,
 		   0)) {
 	    i_del_value(f->sp++);
 	}
     } else {
-	a = lwo_copy(f->data, f->sp->u.array);
-	arr_del(f->sp->u.array);
+	a = f->sp->u.array->lwoCopy(f->data);
+	f->sp->u.array->del();
 	PUT_LWOVAL(f->sp, a);
     }
     return 0;
@@ -478,7 +478,7 @@ int kf_instanceof(register Frame *f, int nargs, kfunc *kf)
 	builtin = Object::builtinName(f->sp[1].u.array->elts[0].u.number);
     } else {
 	oindex = f->sp[1].u.array->elts[0].oindex;
-	arr_del(f->sp[1].u.array);
+	f->sp[1].u.array->del();
     }
     if (f->lwobj == (Array *) NULL) {
 	name = OBJR(f->oindex)->objName(buffer);
@@ -540,7 +540,7 @@ int kf_object_name(Frame *f, int nargs, kfunc *kf)
 	if (f->sp->u.array->elts[0].type == T_OBJECT) {
 	    /* ordinary light-weight object */
 	    n = f->sp->u.array->elts[0].oindex;
-	    arr_del(f->sp->u.array);
+	    f->sp->u.array->del();
 	    name = OBJR(n)->objName(buffer);
 	} else {
 	    /* builtin type */
@@ -622,11 +622,11 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
     } else if (f->sp->u.array->elts[0].type == T_OBJECT) {
 	n = f->sp->u.array->elts[0].oindex;
 	callable = (f->lwobj == f->sp->u.array);
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
 	obj = OBJR(n);
     } else {
 	/* no user-probeable functions within (right?) */
-	arr_del((f->sp++)->u.array);
+	(f->sp++)->u.array->del();
 	f->sp->u.string->del();
 	*f->sp = nil_value;
 	return 0;
@@ -710,7 +710,7 @@ int kf_query_ip_number(Frame *f, int n, kfunc *kf)
 	    return 0;
 	}
     } else {
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
     }
 
     *f->sp = nil_value;
@@ -743,7 +743,7 @@ int kf_query_ip_name(Frame *f, int n, kfunc *kf)
 	    return 0;
 	}
     } else {
-	arr_del(f->sp->u.array);
+	f->sp->u.array->del();
     }
 
     *f->sp = nil_value;
@@ -819,7 +819,7 @@ int kf_allocate(Frame *f, int n, kfunc *kf)
 	return 1;
     }
     i_add_ticks(f, f->sp->u.number);
-    PUT_ARRVAL(f->sp, arr_new(f->data, (long) f->sp->u.number));
+    PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->u.number));
     for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
 	*v = nil_value;
     }
@@ -850,7 +850,7 @@ int kf_allocate_int(Frame *f, int n, kfunc *kf)
 	return 1;
     }
     i_add_ticks(f, f->sp->u.number);
-    PUT_ARRVAL(f->sp, arr_new(f->data, (long) f->sp->u.number));
+    PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->u.number));
     for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
 	*v = zero_int;
     }
@@ -881,7 +881,7 @@ int kf_allocate_float(Frame *f, int n, kfunc *kf)
 	return 1;
     }
     i_add_ticks(f, f->sp->u.number);
-    PUT_ARRVAL(f->sp, arr_new(f->data, (long) f->sp->u.number));
+    PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->u.number));
     for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
 	*v = zero_float;
     }
@@ -908,7 +908,7 @@ int kf_sizeof(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     size = f->sp->u.array->size;
-    arr_del(f->sp->u.array);
+    f->sp->u.array->del();
     PUT_INTVAL(f->sp, size);
     return 0;
 }
@@ -932,9 +932,9 @@ int kf_map_indices(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    a = map_indices(f->data, f->sp->u.array);
+    a = f->sp->u.array->mapIndices(f->data);
     i_add_ticks(f, f->sp->u.array->size);
-    arr_del(f->sp->u.array);
+    f->sp->u.array->del();
     PUT_ARRVAL(f->sp, a);
     return 0;
 }
@@ -958,9 +958,9 @@ int kf_map_values(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    a = map_values(f->data, f->sp->u.array);
+    a = f->sp->u.array->mapValues(f->data);
     i_add_ticks(f, f->sp->u.array->size);
-    arr_del(f->sp->u.array);
+    f->sp->u.array->del();
     PUT_ARRVAL(f->sp, a);
     return 0;
 }
@@ -985,8 +985,8 @@ int kf_map_sizeof(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, f->sp->u.array->size);
-    size = map_size(f->data, f->sp->u.array);
-    arr_del(f->sp->u.array);
+    size = f->sp->u.array->mapSize(f->data);
+    f->sp->u.array->del();
     PUT_INTVAL(f->sp, size);
     return 0;
 }
@@ -1208,7 +1208,7 @@ int kf_millitime(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    a = arr_new(f->data, 2L);
+    a = Array::create(f->data, 2);
     PUT_INTVAL(&a->elts[0], P_mtime(&milli));
     Float::itof((Int) milli, &flt);
     flt.mult(thousandth);
@@ -1488,7 +1488,7 @@ int kf_status(Frame *f, int nargs, kfunc *kf)
 
 	case T_LWOBJECT:
 	    n = f->sp->u.array->elts[0].oindex;
-	    arr_del(f->sp->u.array);
+	    f->sp->u.array->del();
 	    a = conf_object(f->data, OBJR(n));
 	    break;
 
@@ -1522,7 +1522,7 @@ int kf_new_function(Frame *f, int nargs, kfunc *kf)
 
     UNREFERENCED_PARAMETER(kf);
 
-    a = arr_new(f->data, 4 + nargs);
+    a = Array::create(f->data, 4 + nargs);
     elts = a->elts;
 
     /* these two fields are required for builtin types */
@@ -1589,7 +1589,7 @@ int kf_extend_function(Frame *f, int nargs, kfunc *kf)
 	 * add arguments to function
 	 */
 	n = a->size;
-	a = arr_new(f->data, n + nargs);
+	a = Array::create(f->data, n + nargs);
 	i_copy(a->elts, elts, n);
 
 	v = f->sp;
@@ -1597,8 +1597,9 @@ int kf_extend_function(Frame *f, int nargs, kfunc *kf)
 	do {
 	    *--elts = *v++;
 	} while (--nargs != 0);
-	arr_del(v->u.array);
-	arr_ref(v->u.array = a);
+	v->u.array->del();
+	v->u.array = a;
+	v->u.array->ref();
 	f->sp = v;
     }
 
@@ -1677,7 +1678,7 @@ int kf_call_function(Frame *f, int nargs, kfunc *kf)
 	error("Function not found");
     }
 
-    arr_del(a);
+    a->del();
     f->sp[1] = f->sp[0];
     f->sp++;
     return 0;

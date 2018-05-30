@@ -2254,7 +2254,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
     m = (Array *) NULL;
     try {
 	ec_push((ec_ftn) NULL);
-	m = map_new(data, size);
+	m = Array::mapCreate(data, size);
 	memset(m->elts, '\0', size * sizeof(Value));
 	for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
 	    obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
@@ -2272,7 +2272,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 		    str->text[0] = '/';
 		    memcpy(str->text + 1, obj->name, len);
 		    PUT_STRVAL(v, str);
-		    PUT_ARRVAL(v + 1, arr_ext_new(data, (long) u->count));
+		    PUT_ARRVAL(v + 1, Array::createNil(data, u->count));
 		    u->count = 0;
 		}
 		v = &v[1].u.array->elts[u->count++];
@@ -2283,14 +2283,14 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
     } catch (...) {
 	if (m != (Array *) NULL) {
 	    /* discard mapping */
-	    arr_ref(m);
-	    arr_del(m);
+	    m->ref();
+	    m->del();
 	}
 	AFREE(list);
 	error((char *) NULL);	/* pass on error */
     }
     AFREE(list);
 
-    map_sort(m);
+    m->mapSort();
     return m;
 }

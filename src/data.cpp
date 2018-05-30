@@ -165,7 +165,7 @@ static void del_lhs(Dataspace *data, Value *lhs)
 		    d_get_elts(arr);
 		    arr->primary->arr = (Array *) NULL;
 		    arr->primary = &arr->primary->plane->alocal;
-		    arr_del(arr);
+		    arr->del();
 		    data->plane->achange++;
 		}
 	    } else {
@@ -474,7 +474,7 @@ void d_new_plane(Dataspace *data, Int level)
 	    if (b->arr != (Array *) NULL) {
 		*a = *b;
 		a->arr->primary = a;
-		arr_ref(a->arr);
+		a->arr->ref();
 	    } else {
 		a->arr = (Array *) NULL;
 	    }
@@ -482,7 +482,7 @@ void d_new_plane(Dataspace *data, Int level)
     } else {
 	p->arrays = (arrref *) NULL;
     }
-    p->achunk = (abchunk *) NULL;
+    p->achunk = (Array::Backup *) NULL;
 
     if (data->plane->strings != (strref *) NULL) {
 	strref *s, *t;
@@ -521,7 +521,7 @@ static void commit_values(Value *v, unsigned int n, Int level)
 	    if (arr->primary->arr == (Array *) NULL &&
 		arr->primary->plane->level > level) {
 		if (arr->hashmod) {
-		    map_compact(arr->primary->data, arr);
+		    arr->mapCompact(arr->primary->data);
 		}
 		arr->primary = &arr->primary->plane->prev->alocal;
 		commit_values(arr->elts, arr->size, level);
@@ -742,7 +742,7 @@ void d_commit_plane(Int level, Value *retval)
 	    }
 	}
 
-	arr_commit(&p->achunk, p->prev, (p->flags & PLANE_MERGE) != 0);
+	Array::commit(&p->achunk, p->prev, (p->flags & PLANE_MERGE) != 0);
 	if (p->flags & PLANE_MERGE) {
 	    if (p->arrays != (arrref *) NULL) {
 		arrref *a;
@@ -753,7 +753,7 @@ void d_commit_plane(Int level, Value *retval)
 			if (a->arr->primary == &p->alocal) {
 			    a->arr->primary = &p->prev->alocal;
 			}
-			arr_del(a->arr);
+			a->arr->del();
 		    }
 		}
 		FREE(p->prev->arrays);
@@ -872,14 +872,14 @@ void d_discard_plane(Int level)
 	    }
 	}
 
-	arr_discard(&p->achunk);
+	Array::discard(&p->achunk);
 	if (p->arrays != (arrref *) NULL) {
 	    arrref *a;
 
 	    /* delete new array refs */
 	    for (a = p->arrays, i = data->narrays; i != 0; a++, --i) {
 		if (a->arr != (Array *) NULL) {
-		    arr_del(a->arr);
+		    a->arr->del();
 		}
 	    }
 	    FREE(p->arrays);
@@ -920,11 +920,11 @@ void d_discard_plane(Int level)
  * NAME:	data->commit_arr()
  * DESCRIPTION:	commit array to previous plane
  */
-abchunk **d_commit_arr(Array *arr, Dataplane *prev, Dataplane *old)
+Array::Backup **d_commit_arr(Array *arr, Dataplane *prev, Dataplane *old)
 {
     if (arr->primary->plane != prev) {
 	if (arr->hashmod) {
-	    map_compact(arr->primary->data, arr);
+	    arr->mapCompact(arr->primary->data);
 	}
 
 	if (arr->primary->arr == (Array *) NULL) {
@@ -935,7 +935,7 @@ abchunk **d_commit_arr(Array *arr, Dataplane *prev, Dataplane *old)
 	commit_values(arr->elts, arr->size, prev->level);
     }
 
-    return (prev == old) ? (abchunk **) NULL : &prev->achunk;
+    return (prev == old) ? (Array::Backup **) NULL : &prev->achunk;
 }
 
 /*
@@ -1057,7 +1057,7 @@ void d_assign_elt(Dataspace *data, Array *arr, Value *elt, Value *val)
 	/*
 	 * backup array's current elements
 	 */
-	arr_backup(&data->plane->achunk, arr);
+	arr->backup(&data->plane->achunk);
 	if (arr->primary->arr != (Array *) NULL) {
 	    arr->primary->plane = data->plane;
 	} else {
@@ -1151,7 +1151,7 @@ uindex d_new_call_out(Dataspace *data, String *func, Int delay,
     default:
 	v[1] = f->sp[0];
 	v[2] = f->sp[1];
-	PUT_ARRVAL(&v[3], arr_new(data, nargs - 2L));
+	PUT_ARRVAL(&v[3], Array::create(data, nargs - 2));
 	memcpy(v[3].u.array->elts, f->sp + 2, (nargs - 2) * sizeof(Value));
 	d_ref_imports(v[3].u.array);
 	break;
@@ -1317,7 +1317,7 @@ String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
 	del_lhs(data, &v[3]);
 	FREE(v[3].u.array->elts);
 	v[3].u.array->elts = (Value *) NULL;
-	arr_del(v[3].u.array);
+	v[3].u.array->del();
 	del_lhs(data, &v[2]);
 	*--f->sp = v[2];
 	del_lhs(data, &v[1]);
@@ -1337,7 +1337,7 @@ String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
 	case T_LWOBJECT:
 	    o = d_get_elts(v->u.array);
 	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
-		arr_del(v->u.array);
+		v->u.array->del();
 		*v = nil_value;
 	    }
 	    break;
@@ -1370,7 +1370,7 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
     Float flt;
 
     if (data->ncallouts == 0) {
-	return arr_new(host, 0L);
+	return Array::create(host, 0);
     }
     if (data->callouts == (dcallout *) NULL) {
 	d_get_callouts(data);
@@ -1385,7 +1385,7 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
 	return (Array *) NULL;
     }
 
-    list = arr_new(host, (long) count);
+    list = Array::create(host, count);
     elts = list->elts;
     max_args = conf_array_size() - 3;
 
@@ -1396,7 +1396,7 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
 		/* unlikely, but possible */
 		size = max_args;
 	    }
-	    a = arr_new(host, size + 3L);
+	    a = Array::create(host, size + 3L);
 	    v = a->elts;
 
 	    /* handle */
@@ -1699,18 +1699,18 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 		    /*
 		     * imported array
 		     */
-		    i = arr_put(a, imp->narr);
+		    i = a->put(imp->narr);
 		    if (i == imp->narr) {
 			/*
 			 * first time encountered
 			 */
 			imp->narr++;
 
-			if (a->hashed != (struct maphash *) NULL) {
-			    map_rmhash(a);
+			if (a->hashed != (struct MapHash *) NULL) {
+			    a->mapRemoveHash();
 			}
 
-			if (a->ref == 2) {	/* + 1 for array merge table */
+			if (a->refCount == 2) {	/* + 1 for array merge table */
 			    /*
 			     * move array to new dataspace
 			     */
@@ -1720,7 +1720,7 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 			    /*
 			     * make new array
 			     */
-			    a = arr_alloc(a->size);
+			    a = Array::alloc(a->size);
 			    a->tag = val->u.array->tag;
 			    a->odcount = val->u.array->odcount;
 
@@ -1735,8 +1735,9 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 			    /*
 			     * replace
 			     */
-			    arr_del(val->u.array);
-			    arr_ref(val->u.array = a);
+			    val->u.array->del();
+			    val->u.array = a;
+			    val->u.array->ref();
 
 			    /*
 			     * store in itab
@@ -1750,7 +1751,8 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 						    imp->itabsz, j);
 				imp->itabsz = j;
 			    }
-			    arr_put(imp->itab[i] = a, imp->narr++);
+			    imp->itab[i] = a;
+			    a->put(imp->narr++);
 			}
 
 			a->primary = &data->base.alocal;
@@ -1773,17 +1775,18 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 			/*
 			 * array was previously replaced
 			 */
-			arr_ref(a = imp->itab[i]);
-			arr_del(val->u.array);
+			a = imp->itab[i];
+			a->ref();
+			val->u.array->del();
 			val->u.array = a;
 		    }
-		} else if (arr_put(a, imp->narr) == imp->narr) {
+		} else if (a->put(imp->narr) == imp->narr) {
 		    /*
 		     * not previously encountered mapping or array
 		     */
 		    imp->narr++;
-		    if (a->hashed != (struct maphash *) NULL) {
-			map_rmhash(a);
+		    if (a->hashed != (struct MapHash *) NULL) {
+			a->mapRemoveHash();
 			a->prev->next = a->next;
 			a->next->prev = a->prev;
 			a->next = import;
@@ -1835,7 +1838,7 @@ void d_export()
 	for (data = ifirst; data != (Dataspace *) NULL; data = data->inext) {
 	    if (data->base.imports != 0) {
 		data->base.imports = 0;
-		arr_merge();
+		Array::merge();
 		imp.narr = 0;
 
 		if (data->variables != (Value *) NULL) {
@@ -1847,9 +1850,9 @@ void d_export()
 		    for (n = data->narrays, a = data->base.arrays; n > 0;
 			 --n, a++) {
 			if (a->arr != (Array *) NULL) {
-			    if (a->arr->hashed != (struct maphash *) NULL) {
+			    if (a->arr->hashed != (struct MapHash *) NULL) {
 				/* mapping */
-				map_rmhash(a->arr);
+				a->arr->mapRemoveHash();
 				d_import(&imp, data, a->arr->elts,
 					 a->arr->size);
 			    } else if (a->arr->elts != (Value *) NULL) {
@@ -1871,7 +1874,7 @@ void d_export()
 			co++;
 		    }
 		}
-		arr_clear();	/* clear merge table */
+		Array::clear();	/* clear merge table */
 	    }
 	    data->iprev = (Dataspace *) NULL;
 	}

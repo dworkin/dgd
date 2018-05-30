@@ -174,7 +174,8 @@ static void addtoflush(user *usr, Array *arr)
     usr->flags |= CF_FLUSH;
     usr->flush = flush;
     flush = usr;
-    arr_ref(usr->extra = arr);
+    usr->extra = arr;
+    usr->extra->ref();
 
     /* remember initial buffer */
     if (d_get_elts(arr)[1].type == T_STRING) {
@@ -204,7 +205,7 @@ static Array *comm_setup(user *usr, Frame *f, Object *obj)
     }
 
     d_wipe_extravar(data = obj->dataspace());
-    arr = arr_new(data, 3L);
+    arr = Array::create(data, 3);
     arr->elts[0] = zero_int;
     arr->elts[1] = arr->elts[2] = nil_value;
     PUT_ARRVAL_NOREF(&val, arr);
@@ -311,7 +312,7 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned char protocol,
 	    /*
 	     * a previous outbound connection was undone, reuse it
 	     */
-	    arr_del(usr->extra);
+	    usr->extra->del();
 	    arr = comm_setup(usr, f, obj);
 	    break;
 	}
@@ -320,7 +321,8 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned char protocol,
     PUT_STRVAL_NOREF(&val, String::create((char *) host, len));
     d_assign_elt(obj->data, arr, &arr->elts[1], &val);
     usr->flags |= CF_FLUSH;
-    arr_ref(usr->extra = arr);
+    usr->extra = arr;
+    usr->extra->ref();
     usr->flags |= CF_OPENDING;
 }
 
@@ -692,7 +694,7 @@ void comm_flush()
 	    }
 
 	    d_assign_elt(obj->data, arr, &arr->elts[1], &nil_value);
-	    arr_del(arr);
+	    arr->del();
 	    usr->flags &= ~CF_FLUSH;
 	} else {
 	    /* discard */
@@ -787,7 +789,7 @@ void comm_flush()
 	    --nusers;
 	}
 
-	arr_del(arr);
+	arr->del();
 	usr->flags &= ~CF_FLUSH;
     }
 }
@@ -1441,7 +1443,7 @@ Array *comm_users(Dataspace *data)
 	}
     }
 
-    a = arr_new(data, (long) n);
+    a = Array::create(data, n);
     v = a->elts;
     for (usr = users; n > 0; usr++) {
 	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0) {

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -171,7 +171,7 @@ struct Dataplane {
     Value *original;		/* original variables */
     arrref alocal;		/* primary of new local arrays */
     arrref *arrays;		/* i/o? arrays */
-    abchunk *achunk;		/* chunk of array backup info */
+    Array::Backup *achunk;	/* chunk of array backup info */
     strref *strings;		/* i/o? string constant table */
     class coptable *coptab;	/* callout patch table */
 
@@ -270,7 +270,7 @@ extern void		d_free_dataspace (Dataspace*);
 extern void		d_new_plane	(Dataspace*, Int);
 extern void		d_commit_plane	(Int, Value*);
 extern void		d_discard_plane	(Int);
-extern abchunk	      **d_commit_arr	(Array*, Dataplane*, Dataplane*);
+extern Array::Backup  **d_commit_arr	(Array*, Dataplane*, Dataplane*);
 extern void		d_discard_arr	(Array*, Dataplane*);
 
 extern void		d_ref_imports	(Array*);

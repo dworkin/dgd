@@ -101,7 +101,7 @@ void endtask()
 	 * swap out everything and possibly extend the static memory area
 	 */
 	d_swapout(1);
-	arr_freeall();
+	Array::freeall();
 	String::clean();
 	m_purge();
 	Object::swap = FALSE;
@@ -134,7 +134,7 @@ void endtask()
 	}
 
 	comm_finish();
-	arr_freeall();
+	Array::freeall();
 	m_finish();
 	exit(Object::boot);
     }

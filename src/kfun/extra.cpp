@@ -160,12 +160,12 @@ int kf_explode(Frame *f, int n, kfunc *kf)
 	/*
 	 * exploding "" always gives an empty array
 	 */
-	a = arr_new(f->data, 0L);
+	a = Array::create(f->data, 0);
     } else if (slen == 0) {
 	/*
 	 * the sepatator is ""; split string into single characters
 	 */
-	a = arr_new(f->data, (long) len);
+	a = Array::create(f->data, len);
 	for (v = a->elts; len > 0; v++, --len) {
 	    PUT_STRVAL(v, String::create(p, 1));
 	    p++;
@@ -193,7 +193,7 @@ int kf_explode(Frame *f, int n, kfunc *kf)
 	    }
 	}
 
-	a = arr_new(f->data, (long) size);
+	a = Array::create(f->data, size);
 	v = a->elts;
 
 	p = f->sp[1].u.string->text;
@@ -294,7 +294,7 @@ int kf_implode(Frame *f, int n, kfunc *kf)
     }
 
     (f->sp++)->u.string->del();
-    arr_del(f->sp->u.array);
+    f->sp->u.array->del();
     PUT_STRVAL(f->sp, str);
     return 0;
 }
@@ -636,7 +636,7 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
     }
 
 no_match:
-    a = arr_new(f->data, nargs);
+    a = Array::create(f->data, nargs);
     for (elts = a->elts, size = 0; size < nargs; elts++, size++) {
 	switch (results[size].type) {
 	case T_INT:
@@ -663,7 +663,7 @@ no_match:
 
     PUT_ARRVAL(f->sp, a);
     i_lvalues(f);
-    arr_del(a);
+    a->del();
 
     PUT_INTVAL(f->sp, matches);
     return 0;

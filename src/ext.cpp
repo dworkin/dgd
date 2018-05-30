@@ -318,7 +318,7 @@ static void ext_array_putval(Value *val, Array *a)
  */
 static Array *ext_array_new(Dataspace *data, int size)
 {
-    return arr_ext_new(data, size);
+    return Array::createNil(data, size);
 }
 
 /*
@@ -363,7 +363,7 @@ static void ext_mapping_putval(Value *val, Array *m)
  */
 static Array *ext_mapping_new(Dataspace *data)
 {
-    return map_new(data, 0);
+    return Array::mapCreate(data, 0);
 }
 
 /*
@@ -372,7 +372,7 @@ static Array *ext_mapping_new(Dataspace *data)
  */
 static Value *ext_mapping_index(Array *m, Value *idx)
 {
-    return map_index(m->primary->data, m, idx, (Value *) NULL, (Value *) NULL);
+    return m->mapIndex(m->primary->data, idx, (Value *) NULL, (Value *) NULL);
 }
 
 /*
@@ -382,7 +382,7 @@ static Value *ext_mapping_index(Array *m, Value *idx)
 static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
 			       Value *val)
 {
-    map_index(data, m, idx, val, (Value *) NULL);
+    m->mapIndex(data, idx, val, (Value *) NULL);
 }
 
 /*
@@ -391,7 +391,7 @@ static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
  */
 static Value *ext_mapping_enum(Array *m, int i)
 {
-    map_compact(m->primary->data, m);
+    m->mapCompact(m->primary->data);
     return &d_get_elts(m)[i];
 }
 
@@ -401,7 +401,7 @@ static Value *ext_mapping_enum(Array *m, int i)
  */
 static int ext_mapping_size(Array *m)
 {
-    return map_size(m->primary->data, m);
+    return m->mapSize(m->primary->data);
 }
 
 /*
