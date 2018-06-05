@@ -75,51 +75,43 @@ public:
 
 class ChunkAllocator {
 public:
+    struct Header {
+	union {
+	    ChunkAllocator *chunk;	/* chunk handler */
+	    Header *list;		/* next in free list */
+	};
+    };
+
     virtual ~ChunkAllocator() { }
 
 private:
-    virtual void *alloc() = 0;
-    virtual void del(void *ptr) = 0;
+    virtual Header *alloc() = 0;
+    virtual void del(Header *ptr) = 0;
 
     friend class ChunkAllocated;
 };
 
 /*
- * Inherited by classes that are allocated in chunks. Such classes should not
- * have a virtual destructor.
+ * Inherited by classes that are allocated in chunks.
  */
 class ChunkAllocated {
 public:
     static void *operator new(size_t size, ChunkAllocator &chunk) {
-	ChunkAllocated *item;
+	ChunkAllocator::Header *item;
 
 	/* ask chunk allocator for memory */
-	item = (ChunkAllocated *) chunk.alloc();
-	item->setChunk(&chunk);
-	return item;
+	item = chunk.alloc();
+	item->chunk = &chunk;
+	return item + 1;
     }
 
     static void operator delete(void *ptr) {
 	/* let the chunk allocator reuse this memory */
-	((ChunkAllocated *) ptr)->chunk()->del(ptr);
-    }
+	ChunkAllocator::Header *item;
 
-private:
-    /*
-     * save chunk allocator in instance (pre-constructor)
-     */
-    void setChunk(ChunkAllocator *c) {
-	allocator = c;
+	item = (ChunkAllocator::Header *) ptr - 1;
+	item->chunk->del(item);
     }
-
-    /*
-     * get chunk allocator from instance (post-destructor)
-     */
-    ChunkAllocator *chunk() {
-	return allocator;
-    }
-
-    ChunkAllocator *allocator;	/* chunk allocator for this instance */
 };
 
 # ifdef DEBUG
@@ -188,10 +180,18 @@ public:
     }
 
 private:
+    struct Titem : public ChunkAllocator::Header {
+	T item;			/* item */
+    };
+    struct Tchunk {
+	Tchunk *prev;		/* previous chunk of items */
+	Titem items[CHUNK];	/* array of allocated items */
+    };
+
     /*
      * add new item to chunk
      */
-    virtual void *alloc() {
+    virtual Header *alloc() {
 	if (flist == NULL) {
 	    if (chunk == NULL || chunksize == 0) {
 		Tchunk *b;
@@ -201,35 +201,26 @@ private:
 		chunk = b;
 		chunksize = CHUNK;
 	    }
-	    return &chunk->items[--chunksize].item;
+	    return &chunk->items[--chunksize];
 	} else {
 	    Titem *item;
 
 	    item = flist;
-	    flist = item->list;
-	    return &item->item;
+	    flist = (Titem *) item->list;
+	    return item;
 	}
     }
 
     /*
      * remove item from chunk
      */
-    virtual void del(void *ptr) {
+    virtual void del(Header *ptr) {
 	Titem *item;
 
 	item = (Titem *) ptr;
 	item->list = flist;
 	flist = item;
     }
-
-    struct Titem {
-	T item;			/* item */
-	Titem *list;		/* next in the free list */
-    };
-    struct Tchunk {
-	Titem items[CHUNK];	/* array of allocated items */
-	Tchunk *prev;		/* previous chunk of items */
-    };
 
     Tchunk *chunk;		/* chunk of items */
     Titem *flist;		/* list of free items */
