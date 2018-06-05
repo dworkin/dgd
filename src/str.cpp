@@ -25,13 +25,13 @@
 
 # define STR_CHUNK	128
 
-struct strh : public Hashtab::Entry, public ChunkAllocated {
+struct StrHash : public Hashtab::Entry, public ChunkAllocated {
     String *str;		/* string entry */
     Uint index;			/* building index */
 };
 
 static Chunk<String, STR_CHUNK> schunk;
-static Chunk<strh, STR_CHUNK> hchunk;
+static Chunk<StrHash, STR_CHUNK> hchunk;
 
 static Hashtab *sht;		/* string merge table */
 
@@ -105,22 +105,22 @@ void String::merge()
  */
 Uint String::put(Uint n)
 {
-    strh **h;
+    StrHash **h;
 
-    h = (strh **) sht->lookup(text, FALSE);
+    h = (StrHash **) sht->lookup(text, FALSE);
     for (;;) {
 	/*
 	 * The hasher doesn't handle \0 in strings, and so may not have
 	 * found the proper string. Follow the hash table chain until
 	 * the end is reached, or until a match is found using cmp().
 	 */
-	if (*h == (strh *) NULL) {
-	    strh *s;
+	if (*h == (StrHash *) NULL) {
+	    StrHash *s;
 
 	    /*
 	     * Not in the hash table. Make a new entry.
 	     */
-	    s = *h = chunknew (hchunk) strh;
+	    s = *h = chunknew (hchunk) StrHash;
 	    s->next = (Hashtab::Entry *) NULL;
 	    s->name = text;
 	    s->str = this;
@@ -131,7 +131,7 @@ Uint String::put(Uint n)
 	    /* already in the hash table */
 	    return (*h)->index;
 	}
-	h = (strh **) &(*h)->next;
+	h = (StrHash **) &(*h)->next;
     }
 }
 

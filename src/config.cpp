@@ -1619,6 +1619,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    P_close(fd);
 	}
 	Array::freeall();
+	String::clean();
 	m_finish();
 	return FALSE;
     }

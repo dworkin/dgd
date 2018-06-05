@@ -135,6 +135,7 @@ void endtask()
 
 	comm_finish();
 	Array::freeall();
+	String::clean();
 	m_finish();
 	exit(Object::boot);
     }
