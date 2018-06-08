@@ -99,6 +99,8 @@ public:
     static void *operator new(size_t size, ChunkAllocator &chunk) {
 	ChunkAllocator::Header *item;
 
+	UNREFERENCED_PARAMETER(size);
+
 	/* ask chunk allocator for memory */
 	item = chunk.alloc();
 	item->chunk = &chunk;

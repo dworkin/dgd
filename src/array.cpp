@@ -405,7 +405,7 @@ public:
 	    /*
 	     * commit
 	     */
-	    ac = d_commit_arr(ab->arr, plane, ab->plane);
+	    ac = (Backup **) d_commit_arr(ab->arr, plane, ab->plane);
 	    if (merge) {
 		if (ac != (Backup **) NULL) {
 		    /* backup on previous plane */
@@ -1338,7 +1338,6 @@ void Array::mapDehash(Dataspace *data, bool clean)
 {
     unsigned short sz, i, j;
     Value *v1, *v2, *v3;
-    MapElt *e, **t, **p;
 
     if (clean && size != 0) {
 	/*

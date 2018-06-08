@@ -1556,9 +1556,9 @@ void d_upgrade_data(Dataspace *data, unsigned int nvar, unsigned short *vmap,
 
     data->base.flags |= MOD_VARIABLE;
     if (data->nvariables != nvar) {
-	if (data->svariables != (svalue *) NULL) {
+	if (data->svariables != (struct svalue *) NULL) {
 	    FREE(data->svariables);
-	    data->svariables = (svalue *) NULL;
+	    data->svariables = (struct svalue *) NULL;
 	}
 	data->nvariables = nvar;
 	data->base.achange++;	/* force rebuild on swapout */
@@ -1706,7 +1706,7 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 			 */
 			imp->narr++;
 
-			if (a->hashed != (struct MapHash *) NULL) {
+			if (a->hashed != (MapHash *) NULL) {
 			    a->mapRemoveHash();
 			}
 
@@ -1785,7 +1785,7 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 		     * not previously encountered mapping or array
 		     */
 		    imp->narr++;
-		    if (a->hashed != (struct MapHash *) NULL) {
+		    if (a->hashed != (MapHash *) NULL) {
 			a->mapRemoveHash();
 			a->prev->next = a->next;
 			a->next->prev = a->prev;
@@ -1850,7 +1850,7 @@ void d_export()
 		    for (n = data->narrays, a = data->base.arrays; n > 0;
 			 --n, a++) {
 			if (a->arr != (Array *) NULL) {
-			    if (a->arr->hashed != (struct MapHash *) NULL) {
+			    if (a->arr->hashed != (MapHash *) NULL) {
 				/* mapping */
 				a->arr->mapRemoveHash();
 				d_import(&imp, data, a->arr->elts,
