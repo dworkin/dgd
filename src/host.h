@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -136,6 +136,10 @@ typedef int (__stdcall _voidf_)();
 
 # ifdef GENERIC_BSD
 
+# ifdef DEBUG
+# define MEMDEBUG
+# endif
+
 typedef int Int;
 typedef unsigned int Uint;
 
@@ -173,6 +177,10 @@ typedef unsigned int Uint;
 
 
 # ifdef GENERIC_SYSV
+
+# ifdef DEBUG
+# define MEMDEBUG
+# endif
 
 typedef int Int;
 typedef unsigned int Uint;

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-# ifdef DEBUG
+# ifdef MEMDEBUG
 
 # define ALLOC(type, size)						      \
 			((type *) (m_alloc(sizeof(type) * (size_t) (size),    \
@@ -58,7 +58,7 @@ extern void  m_finish	();
  */
 class Allocated {
 public:
-# ifdef DEBUG
+# ifdef MEMDEBUG
     static void *operator new(size_t size, const char *file, int line) {
 	return m_alloc(size, file, line);
     }
@@ -116,7 +116,7 @@ public:
     }
 };
 
-# ifdef DEBUG
+# ifdef MEMDEBUG
 # define _N_		new
 # define new_F_		new
 # define _N__F_(b, c)	new

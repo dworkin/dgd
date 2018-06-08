@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -44,8 +44,10 @@ struct header {
     size_t size;	/* size of chunk */
     header *prev;	/* previous in list */
     header *next;	/* next in list */
+# ifdef MEMDEBUG
     const char *file;	/* file it was allocated from */
     int line;		/* line it was allocated from */
+# endif
 };
 # endif
 
@@ -711,7 +713,7 @@ static header *hlist;			/* list of all dynamic memory chunks */
  * NAME:	mem->alloc()
  * DESCRIPTION:	allocate memory
  */
-# ifdef DEBUG
+# ifdef MEMDEBUG
 char *m_alloc(size_t size, const char *file, int line)
 # else
 char *m_alloc(size_t size)
@@ -750,7 +752,7 @@ char *m_alloc(size_t size)
 	hlist = (header *) c;
 # endif
     }
-# ifdef DEBUG
+# ifdef MEMDEBUG
     ((header *) c)->file = file;
     ((header *) c)->line = line;
 # endif
@@ -793,7 +795,7 @@ void m_free(char *mem)
  * NAME:	mem->realloc()
  * DESCRIPTION:	reallocate memory
  */
-# ifdef DEBUG
+# ifdef MEMDEBUG
 char *m_realloc(char *mem, size_t size1, size_t size2, const char *file, int line)
 # else
 char *m_realloc(char *mem, size_t size1, size_t size2)
@@ -805,7 +807,7 @@ char *m_realloc(char *mem, size_t size1, size_t size2)
 	if (size2 == 0) {
 	    return (char *) NULL;
 	}
-# ifdef DEBUG
+# ifdef MEMDEBUG
 	return m_alloc(size2, file, line);
 # else
 	return m_alloc(size2);
@@ -873,7 +875,7 @@ char *m_realloc(char *mem, size_t size1, size_t size2)
     } else {
 	fatal("bad pointer in m_realloc");
     }
-# ifdef DEBUG
+# ifdef MEMDEBUG
     ((header *) c1)->file = file;
     ((header *) c1)->line = line;
 # endif
@@ -911,9 +913,14 @@ void m_purge()
 	if (n >= DLIMIT) {
 	    n -= SIZETSIZE;
 	}
+# ifdef MEMDEBUG
 	sprintf(buf, "FREE(%08lx/%u), %s line %u:\012", /* LF */
 		(unsigned long) (hlist + 1), (unsigned int) n, hlist->file,
 		hlist->line);
+# else
+	sprintf(buf, "FREE(%08lx/%u):\012", /* LF */
+		(unsigned long) (hlist + 1), (unsigned int) n);
+# endif
 	if (n > 26) {
 	    n = 26;
 	}
