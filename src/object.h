@@ -20,6 +20,9 @@
 # include "hash.h"
 # include "swap.h"
 
+# define OACC_READ		0x00	/* read access */
+# define OACC_MODIFY		0x01	/* write access */
+
 class Object : public Hashtab::Entry {
 public:
     char flags;			/* object status */
@@ -53,8 +56,12 @@ public:
     static void	commitPlane();
     static void	discardPlane();
 
-    static Object *oread(unsigned int);
-    static Object *owrite(unsigned int);
+    static Object *oread(unsigned int index) {
+	return (BTST(ocmap, index)) ? access(index, OACC_READ) : &otable[index];
+    }
+    static Object *owrite(unsigned int index) {
+	return (!obase) ? access(index, OACC_MODIFY) : &otable[index];
+    }
     static Object *create(char*, Control*);
     static const char *builtinName(Int);
     static Object *find(char*, int);
@@ -72,14 +79,21 @@ public:
     static void finish(bool);
 
     static Object *otable;
-    static Uint *ocmap;
     static bool obase, swap, dump, incr, stop, boot;
     static Uint odcount;
 
 private:
+    void remove(Frame *f);
+    void restoreObject(bool cactive, bool dactive);
+    bool purgeUpgrades();
+
     static Object *access(unsigned int, int);
+    static Object *alloc();
     static void sweep(uindex);
     static Uint recount(uindex);
+    static void cleanUpgrades();
+
+    static Uint *ocmap;
 };
 
 # define O_MASTER		0x01
@@ -95,16 +109,13 @@ private:
 # define OBJ_LAYOUT		"xceuuuiiippdd"
 
 # define OBJ(i)			(&Object::otable[i])
-# define OBJR(i)		((BTST(Object::ocmap, (i))) ? Object::oread((i)) : &Object::otable[i])
-# define OBJW(i)		((!Object::obase) ? Object::owrite((i)) : &Object::otable[i])
+# define OBJR(i)		(Object::oread((i)))
+# define OBJW(i)		(Object::owrite((i)))
 
 # define O_UPGRADING(o)		((o)->cref > (o)->ref)
 # define O_INHERITED(o)		((o)->ref - 1 != (o)->cref)
 # define O_HASDATA(o)		((o)->data != (Dataspace *) NULL || \
 				 (o)->dfirst != SW_UNUSED)
-
-# define OACC_READ		0x00	/* read access */
-# define OACC_MODIFY		0x01	/* write access */
 
 # define OBJ_NONE		UINDEX_MAX
 
