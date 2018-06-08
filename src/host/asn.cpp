@@ -1697,7 +1697,7 @@ String *asn_pow(Frame *f, String *s1, String *s2, String *s3)
     } else {
 	asn_power(c, t, a, b, mod, sizea, sizeb, sizemod);
     }
-    str = asi_numtostr(c, sizemod, minusa & b[0]);
+    str = asi_numtostr(c, sizemod, minusa & (Uint) b[0]);
     AFREE(t);
     AFREE(c);
 
