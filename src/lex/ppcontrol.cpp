@@ -677,7 +677,7 @@ static void do_define()
 	AFREE(args[i]);
     }
     i = s->len;
-    pps_del(s);
+    delete s;
 
     if (errcount == 0) {
 	if (i < 0) {
@@ -899,7 +899,7 @@ int pp_gettok()
 			} else {
 			    error("#error:%s", buf);
 			}
-			pps_del(s);
+			delete s;
 		    } else {
 			tk_skiptonl(FALSE);
 		    }

@@ -34,8 +34,8 @@ public:
     Array *add(Dataspace *data, Array *a2);
     Array *sub(Dataspace *data, Array *a2);
     Array *intersect(Dataspace *data, Array *a2);
-    Array *setadd(Dataspace *data, Array *a2);
-    Array *setxadd(Dataspace *data, Array *a2);
+    Array *setAdd(Dataspace *data, Array *a2);
+    Array *setXAdd(Dataspace *data, Array *a2);
     unsigned short index(long l);
     void checkRange(long l1, long l2);
     Array *range(Dataspace *data, long l1, long l2);
@@ -72,7 +72,7 @@ public:
     bool hashmod;			/* hashed part contains new elements */
     Uint refCount;			/* number of references */
     Uint tag;				/* used in sorting */
-    Uint odcount;			/* last destructed object count */
+    Uint objDestrCount;			/* last destructed object count */
     Value *elts;			/* elements */
     class MapHash *hashed;		/* hashed mapping elements */
     struct arrref *primary;		/* primary reference */
@@ -80,4 +80,7 @@ public:
 
 private:
     void mapDehash(Dataspace *data, bool clean);
+
+    static unsigned long max_size;	/* max. size of array and mapping */
+    static Uint atag;			/* current array tag */
 };

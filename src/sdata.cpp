@@ -2699,12 +2699,11 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
     }
 
     if (header.ncallouts != 0) {
-	scallout *sco;
 	unsigned short dummy;
 
 	/* callouts */
 	co_time(&dummy);
-	sco = data->scallouts = ALLOC(scallout, header.ncallouts);
+	data->scallouts = ALLOC(scallout, header.ncallouts);
 	d_conv((char *) data->scallouts, data->sectors, sco_layout,
 	       (Uint) header.ncallouts, size, readv);
     }

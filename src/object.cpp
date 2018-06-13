@@ -57,7 +57,6 @@ public:
      */
     ObjPatch *patch(unsigned int index, int access, class ObjPlane *plane) {
 	ObjPatch **oo, *o;
-	Object *obj;
 
 	oo = &op[index % OBJPATCHHTABSZ];
 	for (o = *oo; o->obj.index != index; o = o->next) ;
@@ -153,33 +152,33 @@ public:
     ObjPlane *prev;		/* previous object plane */
 };
 
-Object *Object::otable;		/* object table */
+Object *Object::objTable;	/* object table */
 Uint *Object::ocmap;		/* object change map */
-bool Object::obase;		/* object base plane flag */
+bool Object::base;		/* object base plane flag */
 bool Object::swap, Object::dump, Object::incr, Object::stop, Object::boot;
 				/* global state vars */
-static bool rcount;		/* object counts recalculated? */
-static uindex otabsize;		/* size of object table */
-static uindex uobjects;		/* objects to check for upgrades */
+bool Object::rcount;		/* object counts recalculated? */
+uindex Object::otabsize;	/* size of object table */
+uindex Object::uobjects;	/* objects to check for upgrades */
 static ObjPlane baseplane(NULL);/* base object plane */
 static ObjPlane *oplane;	/* current object plane */
-static Uint *omap;		/* object dump bitmap */
-static Uint *counttab;		/* object count table */
-static Object *upgradeList;	/* list of upgraded objects */
-static uindex ndobject, dobject;/* objects to copy */
-static uindex mobjects;		/* max objects to copy */
-static uindex dchunksz;		/* copy chunk size */
-static Uint dinterval;		/* copy interval */
-static Uint dtime;		/* time copying started */
-Uint Object::odcount;		/* objects destructed count */
+Uint *Object::omap;		/* object dump bitmap */
+Uint *Object::counttab;		/* object count table */
+Object *Object::upgradeList;	/* list of upgraded objects */
+uindex Object::ndobject, Object::dobject; /* objects to copy */
+uindex Object::mobjects;	/* max objects to copy */
+uindex Object::dchunksz;	/* copy chunk size */
+Uint Object::dinterval;		/* copy interval */
+Uint Object::dtime;		/* time copying started */
+Uint Object::objDestrCount;	/* objects destructed count */
 
 /*
  * initialize the object tables
  */
 void Object::init(unsigned int n, Uint interval)
 {
-    otable = ALLOC(Object, otabsize = n);
-    memset(otable, '\0', n * sizeof(Object));
+    objTable = ALLOC(Object, otabsize = n);
+    memset(objTable, '\0', n * sizeof(Object));
     ocmap = ALLOC(Uint, BMAP(n));
     memset(ocmap, '\0', BMAP(n) * sizeof(Uint));
     for (n = 4; n < otabsize; n <<= 1) ;
@@ -198,8 +197,8 @@ void Object::init(unsigned int n, Uint interval)
     upgradeList = (Object *) NULL;
     uobjects = ndobject = mobjects = 0;
     dinterval = ((interval + 1) * 19) / 20;
-    odcount = 1;
-    obase = TRUE;
+    objDestrCount = 1;
+    base = TRUE;
     rcount = TRUE;
 }
 
@@ -297,7 +296,7 @@ Object *Object::alloc()
 void Object::newPlane()
 {
     oplane = new ObjPlane(oplane);
-    obase = FALSE;
+    base = FALSE;
 }
 
 /*
@@ -409,7 +408,7 @@ void Object::commitPlane()
     delete oplane;
     oplane = prev;
 
-    obase = (prev == &baseplane);
+    base = (prev == &baseplane);
 }
 
 /*
@@ -510,7 +509,7 @@ void Object::discardPlane()
     oplane = p->prev;
     delete p;
 
-    obase = (oplane == &baseplane);
+    base = (oplane == &baseplane);
 }
 
 
@@ -528,11 +527,11 @@ Object *Object::create(char *name, Control *ctrl)
     o = alloc();
 
     /* put object in object name hash table */
-    if (obase) {
+    if (base) {
 	m_static();
     }
     o->name = strcpy(ALLOC(char, strlen(name) + 1), name);
-    if (obase) {
+    if (base) {
 	m_dynamic();
     } else if (oplane->htab == (Hashtab *) NULL) {
 	oplane->htab = Hashtab::create(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
@@ -598,7 +597,7 @@ void Object::remove(Frame *f)
     int i;
     Object *o;
 
-    ctrl = (O_UPGRADING(o)) ? OBJR(prev)->ctrl : control();
+    ctrl = (O_UPGRADING(this)) ? OBJR(prev)->ctrl : control();
 
     /* put in deleted list */
     cref = oplane->destruct;
@@ -699,7 +698,7 @@ void Object::del(Frame *f)
 	dataspace();	/* load dataspace now */
     }
     count = 0;
-    odcount++;
+    objDestrCount++;
 
     if (flags & O_MASTER) {
 	/* remove from object name hash table */
@@ -1155,7 +1154,7 @@ void Object::sweep(uindex n)
 
     uobjects = n;
     dobject = 0;
-    for (obj = otable; n > 0; obj++, --n) {
+    for (obj = objTable; n > 0; obj++, --n) {
 	if (obj->count != 0) {
 	    if (obj->cfirst != SW_UNUSED || obj->dfirst != SW_UNUSED) {
 		BSET(omap, obj->index);
@@ -1179,7 +1178,7 @@ Uint Object::recount(uindex n)
     Object *obj;
 
     count = 3;
-    for (obj = otable, ct = counttab; n > 0; obj++, ct++, --n) {
+    for (obj = objTable, ct = counttab; n > 0; obj++, ct++, --n) {
 	if (obj->count != 0) {
 	    *ct = obj->count;
 	    obj->count = count++;
@@ -1188,7 +1187,7 @@ Uint Object::recount(uindex n)
 	}
     }
 
-    odcount = 1;
+    objDestrCount = 1;
     rcount = TRUE;
     return count;
 }
@@ -1210,7 +1209,7 @@ bool Object::save(int fd, bool incr)
     dh.nobjects = baseplane.nobjects;
     dh.nfreeobjs = baseplane.nfreeobjs;
     dh.onamelen = 0;
-    for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
+    for (i = baseplane.nobjects, o = objTable; i > 0; --i, o++) {
 	if (o->name != (char *) NULL) {
 	    dh.onamelen += strlen(o->name) + 1;
 	}
@@ -1218,13 +1217,13 @@ bool Object::save(int fd, bool incr)
 
     /* write header and objects */
     if (!sw_write(fd, &dh, sizeof(ObjectHeader)) ||
-	!sw_write(fd, otable, baseplane.nobjects * sizeof(Object))) {
+	!sw_write(fd, objTable, baseplane.nobjects * sizeof(Object))) {
 	return FALSE;
     }
 
     /* write object names */
     buflen = 0;
-    for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
+    for (i = baseplane.nobjects, o = objTable; i > 0; --i, o++) {
 	if (o->name != (char *) NULL) {
 	    len = strlen(o->name) + 1;
 	    if (buflen + len > CHUNKSZ) {
@@ -1293,14 +1292,14 @@ void Object::restore(int fd, bool part)
 	error("Too many objects in restore file (%u)", dh.nobjects);
     }
 
-    conf_dread(fd, (char *) otable, OBJ_LAYOUT, (Uint) dh.nobjects);
+    conf_dread(fd, (char *) objTable, OBJ_LAYOUT, (Uint) dh.nobjects);
     baseplane.free = dh.free;
     baseplane.nobjects = dh.nobjects;
     baseplane.nfreeobjs = dh.nfreeobjs;
 
     /* read object names */
     buflen = 0;
-    for (i = 0, o = otable; i < baseplane.nobjects; i++, o++) {
+    for (i = 0, o = objTable; i < baseplane.nobjects; i++, o++) {
 	if (o->name != (char *) NULL) {
 	    /*
 	     * restore name
@@ -1483,7 +1482,7 @@ bool Object::copy(Uint time)
     }
 
     if (ndobject == 0) {
-	for (n = uobjects, obj = otable; n > 0; --n, obj++) {
+	for (n = uobjects, obj = objTable; n > 0; --n, obj++) {
 	    if (obj->count != 0 && (obj->flags & O_LWOBJ)) {
 		for (tmpl = obj; tmpl->prev != OBJ_NONE; tmpl = OBJ(tmpl->prev))
 		{

@@ -159,7 +159,6 @@ void i_grow_stack(Frame *f, int size)
     if (f->sp < f->stack + size + MIN_STACK) {
 	int spsize;
 	Value *v, *stk;
-	intptr_t offset;
 
 	/*
 	 * extend the local stack
@@ -167,7 +166,6 @@ void i_grow_stack(Frame *f, int size)
 	spsize = f->fp - f->sp;
 	size = ALGN(spsize + size + MIN_STACK, 8);
 	stk = ALLOC(Value, size);
-	offset = (intptr_t) (stk + size) - (intptr_t) f->fp;
 
 	/* move stack values */
 	v = stk + size;

@@ -133,15 +133,6 @@ static snode *sn_add(snlist *list, snode *sn, pnode *pn, snode *slist)
 }
 
 /*
- * NAME:	snode->del()
- * DESCRIPTION:	put an existing node in the free list
- */
-static void sn_del(snlist *list, snode *sn)
-{
-    delete sn;
-}
-
-/*
  * NAME:	snode->clear()
  * DESCRIPTION:	free all snodes in memory
  */
@@ -412,7 +403,7 @@ static void ps_shift(parser *ps, snode *sn, short token, char *text, ssizet len)
     }
 
     /* no shift: add node to free list */
-    sn_del(&ps->list, sn);
+    delete sn;
 }
 
 /*

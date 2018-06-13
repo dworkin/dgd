@@ -63,15 +63,6 @@ str *pps_new(char *buf, int sz)
 }
 
 /*
- * NAME:	str->del()
- * DESCRIPTION:	delete a string
- */
-void pps_del(str *sb)
-{
-    delete sb;
-}
-
-/*
  * NAME:	str->scat()
  * DESCRIPTION:	append a string. The length becomes -1 if the result is too long
  */

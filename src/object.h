@@ -57,10 +57,10 @@ public:
     static void	discardPlane();
 
     static Object *oread(unsigned int index) {
-	return (BTST(ocmap, index)) ? access(index, OACC_READ) : &otable[index];
+	return (BTST(ocmap, index)) ? access(index, OACC_READ) : &objTable[index];
     }
     static Object *owrite(unsigned int index) {
-	return (!obase) ? access(index, OACC_MODIFY) : &otable[index];
+	return (!base) ? access(index, OACC_MODIFY) : &objTable[index];
     }
     static Object *create(char*, Control*);
     static const char *builtinName(Int);
@@ -78,9 +78,9 @@ public:
     static void	dumpState(bool);
     static void finish(bool);
 
-    static Object *otable;
-    static bool obase, swap, dump, incr, stop, boot;
-    static Uint odcount;
+    static Object *objTable;
+    static bool swap, dump, incr, stop, boot;
+    static Uint objDestrCount;
 
 private:
     void remove(Frame *f);
@@ -94,6 +94,18 @@ private:
     static void cleanUpgrades();
 
     static Uint *ocmap;
+    static bool base;
+    static bool rcount;
+    static uindex otabsize;
+    static uindex uobjects;
+    static Uint *omap;
+    static Uint *counttab;
+    static Object *upgradeList;
+    static uindex ndobject, dobject;
+    static uindex mobjects;
+    static uindex dchunksz;
+    static Uint dinterval;
+    static Uint dtime;
 };
 
 # define O_MASTER		0x01
@@ -108,7 +120,7 @@ private:
 
 # define OBJ_LAYOUT		"xceuuuiiippdd"
 
-# define OBJ(i)			(&Object::otable[i])
+# define OBJ(i)			(&Object::objTable[i])
 # define OBJR(i)		(Object::oread((i)))
 # define OBJW(i)		(Object::owrite((i)))
 

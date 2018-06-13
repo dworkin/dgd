@@ -197,8 +197,6 @@ static bool ipa_init(int maxusers)
  */
 static void ipa_finish()
 {
-    int status;
-
     close(out);
     close(in);
 }

@@ -386,13 +386,11 @@ public:
      */
     static void backup(Backup **ac, Array *a, Value *elts, unsigned int size,
 		       Dataplane *plane) {
-	ArrBak *ab;
-
 	if (*ac == (Backup *) NULL) {
 	    *ac = new Backup;
 	}
 
-	ab = chunknew (**ac) ArrBak(a, elts, size, plane);
+	chunknew (**ac) ArrBak(a, elts, size, plane);
     }
 
     /*
@@ -448,8 +446,8 @@ private:
 };
 
 static Chunk<Array, ARR_CHUNK> achunk;
-static unsigned long max_size;		/* max. size of array and mapping */
-static Uint atag;			/* current array tag */
+unsigned long Array::max_size;		/* max. size of array and mapping */
+Uint Array::atag;			/* current array tag */
 static ArrHash *aht[ARRMERGETABSZ];	/* array merge table */
 
 /*
@@ -467,7 +465,7 @@ Array::Array(unsigned short size)
     hashmod = FALSE;
     elts = (Value *) NULL;
     refCount = 0;
-    odcount = 0;		/* if swapped in, check objects */
+    objDestrCount = 0;		/* if swapped in, check objects */
     hashed = (MapHash *) NULL;	/* only used for mappings */
 }
 
@@ -511,7 +509,7 @@ Array *Array::create(Dataspace *data, long size)
 	a->elts = ALLOC(Value, size);
     }
     a->tag = atag++;
-    a->odcount = Object::odcount;
+    a->objDestrCount = Object::objDestrCount;
     a->primary = &data->plane->alocal;
     a->prev = &data->alist;
     a->next = data->alist.next;
@@ -723,7 +721,7 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
     unsigned short n;
 
     v2 = d_get_elts(a);
-    if (a->odcount == Object::odcount) {
+    if (a->objDestrCount == Object::objDestrCount) {
 	/*
 	 * no need to check for destructed objects
 	 */
@@ -733,7 +731,7 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
 	 * Copy and check for destructed objects.  If destructed objects are
 	 * found, they will be replaced by nil in the original array.
 	 */
-	a->odcount = Object::odcount;
+	a->objDestrCount = Object::objDestrCount;
 	for (n = a->size; n != 0; --n) {
 	    switch (v2->type) {
 	    case T_OBJECT:
@@ -927,7 +925,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 
     v1 = d_get_elts(this);
     v3 = a3->elts;
-    if (odcount == Object::odcount) {
+    if (objDestrCount == Object::objDestrCount) {
 	for (n = size; n > 0; --n) {
 	    if (search(v1, v2, a2->size, 1, FALSE) < 0) {
 		/*
@@ -939,7 +937,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 	    v1++;
 	}
     } else {
-	odcount = Object::odcount;
+	objDestrCount = Object::objDestrCount;
 	for (n = size; n > 0; --n) {
 	    switch (v1->type) {
 	    case T_OBJECT:
@@ -1002,7 +1000,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 
     v1 = d_get_elts(this);
     v3 = a3->elts;
-    if (odcount == Object::odcount) {
+    if (objDestrCount == Object::objDestrCount) {
 	for (n = size; n > 0; --n) {
 	    if (search(v1, v2, a2->size, 1, FALSE) >= 0) {
 		/*
@@ -1014,7 +1012,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 	    v1++;
 	}
     } else {
-	odcount = Object::odcount;
+	objDestrCount = Object::objDestrCount;
 	for (n = size; n > 0; --n) {
 	    switch (v1->type) {
 	    case T_OBJECT:
@@ -1057,7 +1055,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 /*
  * A + (B - A).  If A and B are sets, the result is a set also.
  */
-Array *Array::setadd(Dataspace *data, Array *a2)
+Array *Array::setAdd(Dataspace *data, Array *a2)
 {
     Value *v, *v1, *v2, *o;
     Value *v3;
@@ -1088,7 +1086,7 @@ Array *Array::setadd(Dataspace *data, Array *a2)
 
     v = v3;
     v2 = d_get_elts(a2);
-    if (a2->odcount == Object::odcount) {
+    if (a2->objDestrCount == Object::objDestrCount) {
 	for (n = a2->size; n > 0; --n) {
 	    if (search(v2, v1, size, 1, FALSE) < 0) {
 		/*
@@ -1099,7 +1097,7 @@ Array *Array::setadd(Dataspace *data, Array *a2)
 	    v2++;
 	}
     } else {
-	a2->odcount = Object::odcount;
+	a2->objDestrCount = Object::objDestrCount;
 	for (n = a2->size; n > 0; --n) {
 	    switch (v2->type) {
 	    case T_OBJECT:
@@ -1146,7 +1144,7 @@ Array *Array::setadd(Dataspace *data, Array *a2)
 /*
  * (A - B) + (B - A).  If A and B are sets, the result is a set	also.
  */
-Array *Array::setxadd(Dataspace *data, Array *a2)
+Array *Array::setXAdd(Dataspace *data, Array *a2)
 {
     Value *v, *w, *v1, *v2;
     Value *v3;
@@ -1286,7 +1284,7 @@ Array *Array::mapCreate(Dataspace *data, long size)
 	m->elts = ALLOC(Value, size);
     }
     m->tag = atag++;
-    m->odcount = Object::odcount;
+    m->objDestrCount = Object::objDestrCount;
     m->primary = &data->plane->alocal;
     m->prev = &data->alist;
     m->next = data->alist.next;
@@ -1484,14 +1482,14 @@ void Array::mapRemoveHash()
  */
 void Array::mapCompact(Dataspace *data)
 {
-    if (hashmod || odcount != Object::odcount) {
+    if (hashmod || objDestrCount != Object::objDestrCount) {
 	if (hashmod && (!THISPLANE(primary) || !SAMEPLANE(data, primary->data)))
 	{
 	    mapDehash(data, FALSE);
 	}
 
 	mapDehash(data, TRUE);
-	odcount = Object::odcount;
+	objDestrCount = Object::objDestrCount;
     }
 }
 
@@ -2048,7 +2046,7 @@ Array *Array::lwoCreate(Dataspace *data, Object *obj)
     PUT_FLTVAL(&a->elts[1], flt);
     d_new_variables(ctrl, a->elts + 2);
     a->tag = atag++;
-    a->odcount = Object::odcount;
+    a->objDestrCount = Object::objDestrCount;
     a->primary = &data->plane->alocal;
     a->prev = &data->alist;
     a->next = data->alist.next;
@@ -2067,7 +2065,7 @@ Array *Array::lwoCopy(Dataspace *data)
     copy = alloc(size);
     i_copy(copy->elts = ALLOC(Value, size), elts, size);
     copy->tag = atag++;
-    copy->odcount = Object::odcount;
+    copy->objDestrCount = Object::objDestrCount;
     copy->primary = &data->plane->alocal;
     copy->prev = &data->alist;
     copy->next = data->alist.next;

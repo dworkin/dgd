@@ -1722,7 +1722,7 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 			     */
 			    a = Array::alloc(a->size);
 			    a->tag = val->u.array->tag;
-			    a->odcount = val->u.array->odcount;
+			    a->objDestrCount = val->u.array->objDestrCount;
 
 			    if (a->size > 0) {
 				/*

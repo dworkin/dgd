@@ -1407,7 +1407,7 @@ int kf_or(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->setadd(f->data, f->sp->u.array);
+	    a = f->sp[1].u.array->setAdd(f->data, f->sp->u.array);
 	    f->sp->u.array->del();
 	    f->sp++;
 	    f->sp->u.array->del();
@@ -2199,7 +2199,7 @@ int kf_xor(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->setxadd(f->data, f->sp->u.array);
+	    a = f->sp[1].u.array->setXAdd(f->data, f->sp->u.array);
 	    f->sp->u.array->del();
 	    f->sp++;
 	    f->sp->u.array->del();

@@ -26,6 +26,5 @@ struct str : public ChunkAllocated {
 extern void pps_init	();
 extern void pps_clear	();
 extern str *pps_new	(char*, int);
-extern void pps_del	(str*);
 extern int  pps_scat	(str*, const char*);
 extern int  pps_ccat	(str*, int);

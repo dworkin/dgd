@@ -1234,7 +1234,7 @@ int tk_expand(macro *mc)
 		--narg;
 		AFREE(args[narg]);
 	    }
-	    pps_del(s);
+	    delete s;
 	    return 1;	/* skip this macro */
 	}
 
@@ -1339,7 +1339,7 @@ int tk_expand(macro *mc)
 	    } while (narg > 0);
 
 	    narg = s->len;	/* so s can be deleted before the push */
-	    pps_del(s);
+	    delete s;
 	    if (narg < 0) {
 		error("macro expansion too large");
 	    } else {
