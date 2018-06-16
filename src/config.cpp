@@ -775,7 +775,9 @@ void conf_dread(int fd, char *buf, const char *layout, Uint n)
 # define MAX_STRINGS	32
 
 static char *hotboot[MAX_STRINGS], *dirs[MAX_STRINGS];
-static char *modules[MAX_STRINGS], *modconf[MAX_STRINGS];
+static char *modules[MAX_STRINGS + 1], *modconf[MAX_STRINGS + 1];
+static void (*mfdlist[MAX_STRINGS + 1])(int*, int);
+static void (*mfinish[MAX_STRINGS + 1])();
 static char *bhosts[MAX_PORTS], *dhosts[MAX_PORTS], *thosts[MAX_PORTS];
 static unsigned short bports[MAX_PORTS], dports[MAX_PORTS], tports[MAX_PORTS];
 static bool attach[MAX_PORTS];
@@ -1111,6 +1113,46 @@ static bool conf_config()
     return TRUE;
 }
 
+/*
+ * NAME:	config->fdlist()
+ * DESCRIPTION:	pass fdlist on to loaded modules
+ */
+static void conf_fdlist()
+{
+    register int i, size, *list;
+
+    size = conn_fdcount();
+    if (size != 0) {
+	list = ALLOCA(int, size);
+	conn_fdlist(list);
+    }
+
+    for (i = 0; modules[i] != NULL; i++) {
+	if (mfdlist[i] != NULL) {
+	    (*mfdlist[i])(list, size);
+	}
+    }
+
+    if (size != 0) {
+	AFREE(list);
+    }
+}
+
+/*
+ * NAME:	config->mod_finish()
+ * DESCRIPTION:	call finish for loaded modules
+ */
+void conf_mod_finish()
+{
+    register int i;
+
+    for (i = 0; modules[i] != NULL; i++) {
+	if (mfinish[i] != NULL) {
+	    (*mfinish[i])();
+	}
+    }
+}
+
 static int fd;			/* file descriptor */
 static char *obuf;		/* output buffer */
 static unsigned int bufsz;	/* buffer size */
@@ -1374,7 +1416,7 @@ static bool conf_includes()
 }
 
 
-extern bool ext_dgd (char*, char*);
+extern bool ext_dgd (char*, char*, void (**)(int*, int), void (**)());
 
 /*
  * NAME:	config->init()
@@ -1433,8 +1475,10 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     /* remove previously added kfuns */
     kf_clear();
 
+    memset(mfdlist, '\0', MAX_STRINGS * sizeof(void (*)(int*, int)));
+    memset(mfinish, '\0', MAX_STRINGS * sizeof(void (*)()));
     for (i = 0; modules[i] != NULL; i++) {
-	if (!ext_dgd(modules[i], modconf[i])) {
+	if (!ext_dgd(modules[i], modconf[i], &mfdlist[i], &mfinish[i])) {
 	    message("Config error: cannot load runtime extension \"%s\"\012",
 		    modules[i]);
 	    if (snapshot2 != (char *) NULL) {
@@ -1443,11 +1487,13 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    if (snapshot != (char *) NULL) {
 		P_close(fd);
 	    }
+	    conf_mod_finish();
 	    m_finish();
 	    return FALSE;
 	}
     }
-    if (module != (char *) NULL && !ext_dgd(module, NULL)) {
+    if (module != (char *) NULL &&
+	!ext_dgd(modules[i] = module, NULL, &mfdlist[i], &mfinish[i])) {
 	message("Config error: cannot load runtime extension \"%s\"\012",/* LF*/
 		module);
 	if (snapshot2 != (char *) NULL) {
@@ -1456,6 +1502,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
+	conf_mod_finish();
 	m_finish();
 	return FALSE;
     }
@@ -1473,6 +1520,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
+	conf_mod_finish();
 	m_finish();
 	return FALSE;
     }
@@ -1491,6 +1539,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
+	conf_mod_finish();
 	m_finish();
 	return FALSE;
     }
@@ -1526,6 +1575,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
+	conf_mod_finish();
 	m_finish();
 	return FALSE;
     }
@@ -1559,6 +1609,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
+	conf_mod_finish();
 	m_finish();
 	return FALSE;
     }
@@ -1620,6 +1671,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	}
 	Array::freeall();
 	String::clean();
+	conf_mod_finish();
 	m_finish();
 	return FALSE;
     }
@@ -1627,7 +1679,11 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     endtask();
     ec_pop();				/* remove guard */
 
-    kf_jit();				/* prepare JIT compiler */
+    /* inform extension modules about restored connections */
+    conf_fdlist();
+
+    /* prepare JIT compiler */
+    kf_jit();
 
     /* start accepting connections */
     comm_listen();

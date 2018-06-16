@@ -980,10 +980,8 @@ void kf_xcrypt(Frame *f, int nargs, Value *val)
  * DESCRIPTION:	MD5 message digest.  See "Applied Cryptography" by Bruce
  *		Schneier, Second Edition, p. 436-441.
  */
-static Int hash_md5_start(Frame *f, int nargs, Uint *digest)
+void hash_md5_start(Uint *digest)
 {
-    Int cost;
-
     /*
      * These constants must apparently be little-endianized, though AC2 does
      * not explicitly say so.
@@ -992,19 +990,13 @@ static Int hash_md5_start(Frame *f, int nargs, Uint *digest)
     digest[1] = 0xefcdab89L;
     digest[2] = 0x98badcfeL;
     digest[3] = 0x10325476L;
-
-    cost = 3 * nargs + 64;
-    while (--nargs >= 0) {
-	cost += f->sp[nargs].u.string->len;
-    }
-    return cost;
 }
 
 /*
  * NAME:	hash->md5_block()
  * DESCRIPTION:	add another 512 bit block to the message digest
  */
-static void hash_md5_block(Uint *ABCD, char *block)
+void hash_md5_block(Uint *ABCD, char *block)
 {
     Uint M[16];
     int i, j;
@@ -1099,7 +1091,8 @@ static void hash_md5_block(Uint *ABCD, char *block)
  * NAME:	hash->md5_end()
  * DESCRIPTION:	finish up MD5 hash
  */
-static String *hash_md5_end(Uint *digest, char *buffer, unsigned int bufsz, Uint length)
+void hash_md5_end(char *hash, Uint *digest, char *buffer, unsigned int bufsz,
+		  Uint length)
 {
     int i;
 
@@ -1118,13 +1111,12 @@ static String *hash_md5_end(Uint *digest, char *buffer, unsigned int bufsz, Uint
     buffer[60] = length >> 29;
     hash_md5_block(digest, buffer);
 
-    for (bufsz = i = 0; i < 4; bufsz += 4, i++) {
-	buffer[bufsz + 0] = digest[i];
-	buffer[bufsz + 1] = digest[i] >> 8;
-	buffer[bufsz + 2] = digest[i] >> 16;
-	buffer[bufsz + 3] = digest[i] >> 24;
+    for (i = 0; i < 4; hash += 4, i++) {
+	hash[0] = digest[i];
+	hash[1] = digest[i] >> 8;
+	hash[2] = digest[i] >> 16;
+	hash[3] = digest[i] >> 24;
     }
-    return String::create(buffer, 16);
 }
 
 /*
@@ -1320,15 +1312,20 @@ void kf_md5(Frame *f, int nargs, Value *val)
     unsigned short bufsz;
     String *str;
 
-    cost = hash_md5_start(f, nargs, digest);
+    cost = 3 * nargs + 64;
+    while (--nargs >= 0) {
+	cost += f->sp[nargs].u.string->len;
+    }
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
 	error("Out of ticks");
     }
     i_add_ticks(f, cost);
 
+    hash_md5_start(digest);
     length = hash_blocks(f, nargs, digest, buffer, &bufsz, 64, &hash_md5_block);
-    str = hash_md5_end(digest, buffer, bufsz, length);
+    hash_md5_end(buffer, digest, buffer, bufsz, length);
+    str = String::create(buffer, 16);
     PUT_STRVAL_NOREF(val, str);
 }
 

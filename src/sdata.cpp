@@ -208,6 +208,7 @@ Control *d_new_control()
     ctrl->nsectors = 0;		/* nothing on swap device yet */
     ctrl->sectors = (sector *) NULL;
     ctrl->oindex = UINDEX_MAX;
+    ctrl->instance = 0;
     ctrl->ninherits = 0;
     ctrl->inherits = (dinherit *) NULL;
     ctrl->imapsz = 0;
@@ -348,7 +349,8 @@ Dataspace *d_new_dataspace(Object *obj)
  * NAME:	load_control()
  * DESCRIPTION:	load a control block
  */
-static Control *load_control(Object *obj, void (*readv) (char*, sector*, Uint, Uint))
+static Control *load_control(Object *obj, Uint instance,
+			     void (*readv) (char*, sector*, Uint, Uint))
 {
     Control *ctrl;
     scontrol header;
@@ -356,6 +358,7 @@ static Control *load_control(Object *obj, void (*readv) (char*, sector*, Uint, U
 
     ctrl = d_new_control();
     ctrl->oindex = obj->index;
+    ctrl->instance = instance;
 
     /* header */
     (*readv)((char *) &header, &obj->cfirst, (Uint) sizeof(scontrol), (Uint) 0);
@@ -458,9 +461,9 @@ static Control *load_control(Object *obj, void (*readv) (char*, sector*, Uint, U
  * NAME:	data->load_control()
  * DESCRIPTION:	load a control block from the swap device
  */
-Control *d_load_control(Object *obj)
+Control *d_load_control(Object *obj, Uint instance)
 {
-    return load_control(obj, sw_readv);
+    return load_control(obj, instance, sw_readv);
 }
 
 /*
@@ -2375,7 +2378,7 @@ static Uint d_conv(char *m, sector *vec, const char *layout, Uint n, Uint idx,
  * NAME:	data->conv_control()
  * DESCRIPTION:	convert control block
  */
-static Control *d_conv_control(Object *obj,
+static Control *d_conv_control(Object *obj, Uint instance,
 			       void (*readv) (char*, sector*, Uint, Uint))
 {
     scontrol header;
@@ -2385,6 +2388,7 @@ static Control *d_conv_control(Object *obj,
 
     ctrl = d_new_control();
     ctrl->oindex = obj->index;
+    ctrl->instance = instance;
 
     /*
      * restore from snapshot
@@ -2718,16 +2722,17 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
  * NAME:	data->restore_ctrl()
  * DESCRIPTION:	restore a control block
  */
-Control *d_restore_ctrl(Object *obj, void (*readv) (char*, sector*, Uint, Uint))
+Control *d_restore_ctrl(Object *obj, Uint instance,
+			void (*readv) (char*, sector*, Uint, Uint))
 {
     Control *ctrl;
 
     ctrl = (Control *) NULL;
     if (obj->cfirst != SW_UNUSED) {
 	if (!converted) {
-	    ctrl = d_conv_control(obj, readv);
+	    ctrl = d_conv_control(obj, instance, readv);
 	} else {
-	    ctrl = load_control(obj, readv);
+	    ctrl = load_control(obj, instance, readv);
 	    if (ctrl->vmapsize == 0) {
 		get_prog(ctrl, readv);
 		get_strconsts(ctrl, readv);
@@ -2786,16 +2791,17 @@ Dataspace *d_restore_data(Object *obj, Uint *counttab,
  * NAME:	data->restore_obj()
  * DESCRIPTION:	restore an object
  */
-void d_restore_obj(Object *obj, Uint *counttab, bool cactive, bool dactive)
+void d_restore_obj(Object *obj, Uint instance, Uint *counttab, bool cactive,
+		   bool dactive)
 {
     Control *ctrl;
     Dataspace *data;
 
     if (!converted) {
-	ctrl = d_restore_ctrl(obj, sw_conv);
+	ctrl = d_restore_ctrl(obj, instance, sw_conv);
 	data = d_restore_data(obj, counttab, sw_conv);
     } else {
-	ctrl = d_restore_ctrl(obj, sw_dreadv);
+	ctrl = d_restore_ctrl(obj, instance, sw_dreadv);
 	data = d_restore_data(obj, counttab, sw_dreadv);
     }
 

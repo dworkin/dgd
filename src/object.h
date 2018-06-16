@@ -100,6 +100,7 @@ private:
     static uindex uobjects;
     static Uint *omap;
     static Uint *counttab;
+    static Uint *insttab;
     static Object *upgradeList;
     static uindex ndobject, dobject;
     static uindex mobjects;

@@ -145,3 +145,7 @@ extern void kf_restore	(int);
 # define SUM_ALLOCATE_INT	-4
 # define SUM_ALLOCATE_FLT	-5
 # define SUM_AGGREGATE		-6
+
+extern void hash_md5_start (Uint*);
+extern void hash_md5_block (Uint*, char*);
+extern void hash_md5_end   (char*, Uint*, char*, unsigned int, Uint);

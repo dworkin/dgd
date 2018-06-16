@@ -24,13 +24,14 @@
 # include "xfloat.h"
 # include "data.h"
 # include "interpret.h"
+# include "comm.h"
 # include "control.h"
 # include "table.h"
 # include <float.h>
 # include <math.h>
 
 # define EXTENSION_MAJOR	0
-# define EXTENSION_MINOR	9
+# define EXTENSION_MINOR	10
 
 
 /*
@@ -414,69 +415,132 @@ static void ext_runtime_error(Frame *f, char *mesg)
     error(mesg);
 }
 
-static int (*jit)(int, int, size_t, size_t, uint16_t*, int, uint8_t*, int);
-static void (*compile)(uint64_t, uint64_t, int, uint8_t*, int, uint8_t*,
-                       uint8_t*);
+static void (*mod_fdlist)(int*, int);
+static void (*mod_finish)();
+
+/*
+ * NAME:	ext->spawn()
+ * DESCRIPTION:	supply function to pass open descriptors to, after a
+ *		subprocess has been spawned
+ */
+static void ext_spawn(void (*fdlist)(int*, int), void (*finish)())
+{
+    /* close channels with other modules */
+    conf_mod_finish();
+
+    mod_fdlist = fdlist;
+    mod_finish = finish;
+}
+
+static int (*jit_init)(int, int, size_t, size_t, uint16_t*, int, uint8_t*,
+		       size_t, int);
+static void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
+			   uint8_t*, size_t, uint8_t*, size_t);
+static int (*jit_execute)(uint64_t, uint64_t, int, Value*);
 
 /*
  * NAME:        ext->jit()
  * DESCRIPTION: initialize JIT extension
  */
-static void ext_jit(int (*jit_init)(int, int, size_t, size_t, uint16_t*, int,
-                                    uint8_t*, int),
-                    void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, int,
-                                        uint8_t*, uint8_t*))
+static void ext_jit(int (*init)(int, int, size_t, size_t, uint16_t*, int,
+                                uint8_t*, size_t, int),
+                    void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
+                                    int, uint8_t*, size_t, uint8_t*, size_t),
+                    int (*execute)(uint64_t, uint64_t, int, Value*))
 {
-    jit = jit_init;
-    compile = jit_compile;
+    jit_init = init;
+    jit_compile = compile;
+    jit_execute = execute;
 }
 
 /*
  * NAME:        ext->kfuns()
  * DESCRIPTION: pass kernel function prototypes to the JIT extension
  */
-void ext_kfuns(kfindex *map, char *protos, int nkfun)
+void ext_kfuns(kfindex *map, char *protos, int size, int nkfun)
 {
-    if (compile != NULL && !(*jit)(VERSION_VM_MAJOR, VERSION_VM_MINOR,
-                                   sizeof(Int), sizeof(char),
-                                   (uint16_t *) map, nkfun + 128 - KF_BUILTINS,
-                                   (uint8_t *) protos, nkfun))
-    {
-        compile = NULL;
+    if (jit_compile != NULL && !(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR,
+					    sizeof(Int), 1, (uint16_t *) map,
+					    nkfun + 128 - KF_BUILTINS,
+					    (uint8_t *) protos, size, nkfun)) {
+	jit_compile = NULL;
     }
 }
 
 /*
- * NAME:        ext->compile()
- * DESCRIPTION: JIT compile an object
+ * NAME:	ext->execute()
+ * DESCRIPTION:	JIT-compile and execute a function
  */
-void ext_compile(Object *obj, char *ftypes, char *vtypes)
+bool ext_execute(register const Frame *f, int func, Value *val)
 {
-    if (compile != NULL) {
-        Control *ctrl;
+    register Control *ctrl;
+    register int i, j, nftypes;
+    register const dinherit *inh;
+    register char *ft, *vt;
+    register const dfuncdef *fdef;
+    register const dvardef *vdef;
+    int result;
 
-        ctrl = obj->ctrl;
-        (*compile)(obj->index, obj->count, ctrl->ninherits,
-		   (uint8_t *) ctrl->prog, ctrl->nfuncdefs, (uint8_t *) ftypes,
-		   (uint8_t *) vtypes);
+    if (jit_compile == NULL) {
+	return FALSE;
     }
-}
+    ctrl = f->p_ctrl;
+    if (ctrl->instance == 0) {
+	return FALSE;
+    }
+    result = (*jit_execute)(ctrl->oindex, ctrl->instance, func, val);
+    if (result < 0) {
+	/*
+	 * compile new program
+	 */
+	/* count function types & variable types */
+	nftypes = 0;
+	for (inh = ctrl->inherits, i = ctrl->ninherits; i > 0; inh++, --i) {
+	    nftypes += OBJR(inh->oindex)->control()->nfuncdefs;
+	}
 
-/*
- * NAME:        ext->compiled()
- * DESCRIPTION: object was JIT compiled
- */
-static void ext_compiled(uint64_t oindex, uint64_t ocount, char *shared)
-{
+	char ftypes[ctrl->ninherits + nftypes];
+	char vtypes[ctrl->ninherits + ctrl->nvariables];
+
+	/* collect function types & variable types */
+	ft = ftypes;
+	vt = vtypes;
+	for (inh = ctrl->inherits, i = ctrl->ninherits; i > 0; inh++, --i) {
+	    ctrl = OBJR(inh->oindex)->ctrl;
+	    d_get_prog(ctrl);
+	    *ft++ = ctrl->nfuncdefs;
+	    for (fdef = d_get_funcdefs(ctrl), j = ctrl->nfuncdefs; j > 0;
+		 fdef++, --j) {
+		*ft++ = PROTO_FTYPE(ctrl->prog + fdef->offset);
+	    }
+	    *vt++ = ctrl->nvardefs;
+	    for (vdef = d_get_vardefs(ctrl), j = ctrl->nvardefs; j > 0;
+		 vdef++, --j) {
+		*vt++ = vdef->type;
+	    }
+	}
+
+	/* start JIT compiler */
+	ctrl = f->p_ctrl;
+	(*jit_compile)(ctrl->oindex, ctrl->instance, ctrl->ninherits,
+		       (uint8_t *) ctrl->prog, ctrl->progsize, ctrl->nfuncdefs,
+		       (uint8_t *) ftypes, ctrl->ninherits + nftypes,
+		       (uint8_t *) vtypes, ctrl->ninherits + ctrl->nvariables);
+
+	return FALSE;
+    } else {
+	return (bool) result;
+    }
 }
 
 /*
  * NAME:	ext->dgd()
  * DESCRIPTION:	initialize extension interface
  */
-bool ext_dgd(char *module, char *config)
+bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
+	     void (**finish)())
 {
-    voidf *ext_ext[4];
+    voidf *ext_ext[5];
     voidf *ext_frame[4];
     voidf *ext_data[2];
     voidf *ext_value[4];
@@ -486,7 +550,7 @@ bool ext_dgd(char *module, char *config)
     voidf *ext_object[6];
     voidf *ext_array[6];
     voidf *ext_mapping[7];
-    voidf *ext_runtime[1];
+    voidf *ext_runtime[4];
     voidf **ftabs[11];
     int sizes[11];
     int (*init) (int, int, voidf**[], int[], const char*);
@@ -497,10 +561,14 @@ bool ext_dgd(char *module, char *config)
 	return FALSE;
     }
 
+    mod_fdlist = NULL;
+    mod_finish = NULL;
+
     ext_ext[0] = (voidf *) &kf_ext_kfun;
     ext_ext[1] = (voidf *) NULL;
-    ext_ext[2] = (voidf *) &ext_jit;
-    ext_ext[3] = (voidf *) &ext_compiled;
+    ext_ext[2] = (voidf *) &ext_spawn;
+    ext_ext[3] = (voidf *) &conn_fdclose;
+    ext_ext[4] = (voidf *) &ext_jit;
     ext_frame[0] = (voidf *) &ext_frame_object;
     ext_frame[1] = (voidf *) &ext_frame_dataspace;
     ext_frame[2] = (voidf *) &ext_frame_arg;
@@ -545,8 +613,11 @@ bool ext_dgd(char *module, char *config)
     ext_mapping[5] = (voidf *) &ext_mapping_enum;
     ext_mapping[6] = (voidf *) &ext_mapping_size;
     ext_runtime[0] = (voidf *) &ext_runtime_error;
+    ext_runtime[1] = (voidf *) hash_md5_start;
+    ext_runtime[2] = (voidf *) hash_md5_block;
+    ext_runtime[3] = (voidf *) hash_md5_end;
 
-    ftabs[ 0] = ext_ext;	sizes[ 0] = 4;
+    ftabs[ 0] = ext_ext;	sizes[ 0] = 5;
     ftabs[ 1] = ext_frame;	sizes[ 1] = 4;
     ftabs[ 2] = ext_data;	sizes[ 2] = 2;
     ftabs[ 3] = ext_value;	sizes[ 3] = 4;
@@ -556,10 +627,12 @@ bool ext_dgd(char *module, char *config)
     ftabs[ 7] = ext_object;	sizes[ 7] = 6;
     ftabs[ 8] = ext_array;	sizes[ 8] = 6;
     ftabs[ 9] = ext_mapping;	sizes[ 9] = 7;
-    ftabs[10] = ext_runtime;	sizes[10] = 1;
+    ftabs[10] = ext_runtime;	sizes[10] = 4;
 
     if (!init(EXTENSION_MAJOR, EXTENSION_MINOR, ftabs, sizes, config)) {
 	fatal("incompatible runtime extension");
     }
+    *fdlist = mod_fdlist;
+    *finish = mod_finish;
     return TRUE;
 }

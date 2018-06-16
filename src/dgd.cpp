@@ -121,6 +121,7 @@ void endtask()
 
     if (Object::stop) {
 	sw_finish();
+	conf_mod_finish();
 
 	if (Object::boot) {
 	    char **hotboot;

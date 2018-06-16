@@ -2146,3 +2146,48 @@ connection *conn_import(int fd, char *addr, unsigned short port, short at,
 
     return conn;
 }
+
+/*
+ * NAME:	conn->fdcount()
+ * DESCRIPTION:	return the number of restored connections
+ */
+int conn_fdcount()
+{
+    int count, n;
+    connection *conn;
+
+    count = 0;
+    for (conn = connections, n = nusers; n > 0; conn++, --n) {
+	if (conn->fd >= 0) {
+	    count++;
+	}
+    }
+    return count;
+}
+
+/*
+ * NAME:	conn->fdlist()
+ * DESCRIPTION:	pass on a list of connection descriptors
+ */
+void conn_fdlist(int *list)
+{
+    int n;
+    connection *conn;
+
+    for (conn = connections, n = nusers; n > 0; conn++, --n) {
+	if (conn->fd >= 0) {
+	    *list++ = conn->fd;
+	}
+    }
+}
+
+/*
+ * NAME:	conn->fdclose()
+ * DESCRIPTION:	close a list of connection descriptors
+ */
+void conn_fdclose(int *list, int n)
+{
+    while (n > 0) {
+	close(list[--n]);
+    }
+}

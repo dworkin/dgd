@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -55,6 +55,9 @@ extern bool	   conn_export	 (connection*, int*, char*, unsigned short*,
 				  short*, int*, int*, char**, char*);
 extern connection *conn_import	 (int, char*, unsigned short, short, int, int,
 				  char*, char, bool);
+extern int	   conn_fdcount	 ();
+extern void	   conn_fdlist	 (int*);
+extern void	   conn_fdclose	 (int*, int);
 
 extern bool	comm_init	(int, int, char**, char**, char**,
 				   unsigned short*, unsigned short*,

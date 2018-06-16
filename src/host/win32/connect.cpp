@@ -1917,3 +1917,28 @@ connection *conn_import(int fd, char *addr, unsigned short port, short at,
     UNREFERENCED_PARAMETER(telnet);
     return (connection *) NULL;
 }
+
+/*
+ * NAME:	conn->fdcount()
+ * DESCRIPTION:	return the number of restored connections
+ */
+int conn_fdcount()
+{
+    return 0;
+}
+
+/*
+ * NAME:	conn->fdlist()
+ * DESCRIPTION:	pass on a list of connection descriptors
+ */
+void conn_fdlist(int *list)
+{
+}
+
+/*
+ * NAME:	Connection->fdclose()
+ * DESCRIPTION:	close a list of connection descriptors
+ */
+void conn_fdclose(int *list, int n)
+{
+}

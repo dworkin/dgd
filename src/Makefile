@@ -142,5 +142,5 @@ hash.o: hash.h
 swap.o: swap.h
 editor.o config.o dgd.o: editor.h
 data.o sdata.o call_out.o config.o dgd.o: call_out.h
-error.o comm.o config.o dgd.o: comm.h
+error.o comm.o config.o ext.o dgd.o: comm.h
 comm.o config.o: version.h

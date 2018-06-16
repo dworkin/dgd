@@ -68,6 +68,7 @@ struct Control {
     sector *sectors;		/* o vector with sectors */
 
     uindex oindex;		/* i object */
+    Uint instance;		/* i instance */
 
     short flags;		/* various bitflags */
 
@@ -235,7 +236,7 @@ extern void		d_init_conv	 (bool);
 
 extern Control	       *d_new_control	 ();
 extern Dataspace       *d_new_dataspace  (Object*);
-extern Control	       *d_load_control	 (Object*);
+extern Control	       *d_load_control	 (Object*, Uint);
 extern Dataspace       *d_load_dataspace (Object*);
 extern void		d_ref_control	 (Control*);
 extern void		d_ref_dataspace  (Dataspace*);
@@ -255,11 +256,11 @@ extern void		d_get_callouts	 (Dataspace*);
 
 extern sector		d_swapout	 (unsigned int);
 extern void		d_upgrade_mem	 (Object*, Object*);
-extern Control	       *d_restore_ctrl	 (Object*,
+extern Control	       *d_restore_ctrl	 (Object*, Uint,
 					  void(*)(char*, sector*, Uint, Uint));
 extern Dataspace       *d_restore_data	 (Object*, Uint*,
 					  void(*)(char*, sector*, Uint, Uint));
-extern void		d_restore_obj	 (Object*, Uint*, bool, bool);
+extern void		d_restore_obj	 (Object*, Uint, Uint*, bool, bool);
 extern void		d_converted	 ();
 
 extern void		d_free_control	 (Control*);

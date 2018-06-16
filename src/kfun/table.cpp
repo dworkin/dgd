@@ -236,7 +236,7 @@ void kf_init()
     }
 }
 
-extern void ext_kfuns(kfindex*, char*, int);
+extern void ext_kfuns(kfindex*, char*, int, int);
 
 /*
  * NAME:	kfun->jit()
@@ -266,7 +266,7 @@ void kf_jit()
     }
 
     protos -= size;
-    ext_kfuns(kfind, protos, nkfun);
+    ext_kfuns(kfind, protos, size, nkfun);
     AFREE(protos);
 }
 

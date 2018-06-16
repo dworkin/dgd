@@ -2042,6 +2042,8 @@ static void i_interpret(Frame *f, char *pc)
     }
 }
 
+extern bool ext_execute(const Frame*, int, Value*);
+
 /*
  * NAME:	interpret->funcall()
  * DESCRIPTION:	Call a function in an object. The arguments must be on the
@@ -2253,12 +2255,14 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     }
 
     /* execute code */
-    d_get_funcalls(f.ctrl);	/* make sure they are available */
-    f.prog = pc += 2;
-    i_interpret(&f, pc);
+    if (!ext_execute(&f, funci, &val)) {
+	d_get_funcalls(f.ctrl);	/* make sure they are available */
+	f.prog = pc += 2;
+	i_interpret(&f, pc);
+	val = *f.sp++;
+    }
 
     /* clean up stack, move return value to outer stackframe */
-    val = *f.sp++;
 # ifdef DEBUG
     if (f.sp != f.fp - nargs) {
 	fatal("bad stack pointer after function call");

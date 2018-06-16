@@ -164,6 +164,7 @@ static ObjPlane baseplane(NULL);/* base object plane */
 static ObjPlane *oplane;	/* current object plane */
 Uint *Object::omap;		/* object dump bitmap */
 Uint *Object::counttab;		/* object count table */
+Uint *Object::insttab;		/* object instance table */
 Object *Object::upgradeList;	/* list of upgraded objects */
 uindex Object::ndobject, Object::dobject; /* objects to copy */
 uindex Object::mobjects;	/* max objects to copy */
@@ -194,6 +195,10 @@ void Object::init(unsigned int n, Uint interval)
     omap = ALLOC(Uint, BMAP(n));
     memset(omap, '\0', BMAP(n) * sizeof(Uint));
     counttab = ALLOC(Uint, n);
+    insttab = ALLOC(Uint, n);
+    do {
+	insttab[--n] = 1;
+    } while (n != 0);
     upgradeList = (Object *) NULL;
     uobjects = ndobject = mobjects = 0;
     dinterval = ((interval + 1) * 19) / 20;
@@ -853,7 +858,8 @@ void Object::restoreObject(bool cactive, bool dactive)
 {
     BCLR(omap, index);
     --ndobject;
-    d_restore_obj(this, (rcount) ? counttab : (Uint *) NULL, cactive, dactive);
+    d_restore_obj(this, insttab[index], (rcount) ? counttab : (Uint *) NULL,
+		  cactive, dactive);
 }
 
 /*
@@ -872,7 +878,7 @@ Control *Object::control()
 	if (BTST(omap, o->index)) {
 	    o->restoreObject(TRUE, FALSE);
 	} else {
-	    o->ctrl = d_load_control(o);
+	    o->ctrl = d_load_control(o, insttab[o->index]);
 	}
     } else {
 	d_ref_control(o->ctrl);
@@ -1056,6 +1062,7 @@ void Object::clean()
 	    /* swap control blocks */
 	    up->ctrl = o->ctrl;
 	    up->ctrl->oindex = up->index;
+	    up->ctrl->instance = ++insttab[up->index];
 	    o->ctrl = ctrl;
 	    ctrl->oindex = o->index;
 	    o->cfirst = up->cfirst;
@@ -1092,6 +1099,7 @@ void Object::clean()
 	    o->name = (char *) NULL;
 	}
 	o->ref = 0;
+	insttab[o->index]++;
 
 	/* put object in free list */
 	o->prev = baseplane.free;
@@ -1394,7 +1402,7 @@ void Object::restore(int fd, bool part)
 		    BCLR(omap, i);
 		    --ndobject;
 		}
-		d_restore_ctrl(o, &sw_conv2);
+		d_restore_ctrl(o, insttab[o->index], &sw_conv2);
 		d_swapout(1);
 	    }
 	    i++;
