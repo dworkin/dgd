@@ -1592,19 +1592,23 @@ static void i_interpret(Frame *f, char *pc)
     size = 0;
     l = 0;
 
+# define CHECK_LOOP_TICKS()						\
+    do {								\
+	if ((f->rlim->ticks -= 5) <= 0) {				\
+	    if (f->rlim->noticks) {					\
+		f->rlim->ticks = 0x7fffffff;				\
+	    } else {							\
+		error("Out of ticks");					\
+	    }								\
+	}								\
+    } while (FALSE)
+
     for (;;) {
 # ifdef DEBUG
 	if (f->sp < f->stack + MIN_STACK) {
 	    fatal("out of value stack");
 	}
 # endif
-	if (--f->rlim->ticks <= 0) {
-	    if (f->rlim->noticks) {
-		f->rlim->ticks = 0x7fffffff;
-	    } else {
-		error("Out of ticks");
-	    }
-	}
 	instr = FETCH1U(pc);
 	f->pc = pc;
 
@@ -1816,6 +1820,9 @@ static void i_interpret(Frame *f, char *pc)
 	case I_JUMP_ZERO:
 	    p = f->prog + FETCH2U(pc, u);
 	    if (!VAL_TRUE(f->sp)) {
+		if (p < pc) {
+		    CHECK_LOOP_TICKS();
+		}
 		pc = p;
 	    }
 	    i_del_value(f->sp++);
@@ -1824,6 +1831,9 @@ static void i_interpret(Frame *f, char *pc)
 	case I_JUMP_NONZERO:
 	    p = f->prog + FETCH2U(pc, u);
 	    if (VAL_TRUE(f->sp)) {
+		if (p < pc) {
+		    CHECK_LOOP_TICKS();
+		}
 		pc = p;
 	    }
 	    i_del_value(f->sp++);
@@ -1831,23 +1841,30 @@ static void i_interpret(Frame *f, char *pc)
 
 	case I_JUMP:
 	    p = f->prog + FETCH2U(pc, u);
+	    if (p < pc) {
+		CHECK_LOOP_TICKS();
+	    }
 	    pc = p;
 	    continue;
 
 	case I_SWITCH:
 	    switch (FETCH1U(pc)) {
 	    case SWITCH_INT:
-		pc = f->prog + i_switch_int(f, pc);
+		p = f->prog + i_switch_int(f, pc);
 		break;
 
 	    case SWITCH_RANGE:
-		pc = f->prog + i_switch_range(f, pc);
+		p = f->prog + i_switch_range(f, pc);
 		break;
 
 	    case SWITCH_STRING:
-		pc = f->prog + i_switch_str(f, pc);
+		p = f->prog + i_switch_str(f, pc);
 		break;
 	    }
+	    if (p < pc) {
+		CHECK_LOOP_TICKS();
+	    }
+	    pc = p;
 	    i_del_value(f->sp++);
 	    continue;
 
@@ -1998,6 +2015,9 @@ static void i_interpret(Frame *f, char *pc)
 		*--f->sp = nil_value;
 	    } catch (...) {
 		/* error */
+		if (p < pc) {
+		    CHECK_LOOP_TICKS();
+		}
 		f->pc = pc = p;
 		PUSH_STRVAL(f, errorstr());
 	    }
