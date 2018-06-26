@@ -460,7 +460,7 @@ char pt_instanceof[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT,
  * NAME:	kfun->instanceof()
  * DESCRIPTION:	check whether an object is an instance of a type
  */
-int kf_instanceof(register Frame *f, int nargs, kfunc *kf)
+int kf_instanceof(Frame *f, int nargs, kfunc *kf)
 {
     char buffer[STRINGSZ + 12];
     uindex oindex;

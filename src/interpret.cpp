@@ -2015,10 +2015,11 @@ static void i_interpret(Frame *f, char *pc)
 		*--f->sp = nil_value;
 	    } catch (...) {
 		/* error */
+		f->pc = p;
 		if (p < pc) {
 		    CHECK_LOOP_TICKS();
 		}
-		f->pc = pc = p;
+		pc = p;
 		PUSH_STRVAL(f, errorstr());
 	    }
 	    f->atomic = atomic;

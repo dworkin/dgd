@@ -34,7 +34,7 @@ static void kf_argerror(int kfun, int n)
  * NAME:	kfun->op_unary()
  * DESCRIPTION:	handle unary operator
  */
-static void kf_op_unary(register Frame *f, int kfun)
+static void kf_op_unary(Frame *f, int kfun)
 {
     if (!i_call(f, (Object *) NULL, f->sp->u.array, kftab[kfun].name,
 		strlen(kftab[kfun].name), TRUE, 0)) {
@@ -54,7 +54,7 @@ static void kf_op_unary(register Frame *f, int kfun)
  * NAME:	kfun->op_binary()
  * DESCRIPTION:	handle binary operator
  */
-static void kf_op_binary(register Frame *f, int kfun)
+static void kf_op_binary(Frame *f, int kfun)
 {
     if (VAL_NIL(f->sp)) {
 	kf_argerror(kfun, 2);
@@ -78,7 +78,7 @@ static void kf_op_binary(register Frame *f, int kfun)
  * NAME:	kfun->op_compare()
  * DESCRIPTION:	handle compare operator
  */
-static void kf_op_compare(register Frame *f, int kfun)
+static void kf_op_compare(Frame *f, int kfun)
 {
     if (VAL_NIL(f->sp)) {
 	kf_argerror(kfun, 2);
@@ -102,7 +102,7 @@ static void kf_op_compare(register Frame *f, int kfun)
  * NAME:	kfun->op_ternary()
  * DESCRIPTION:	handle ternary operator
  */
-static void kf_op_ternary(register Frame *f, int kfun)
+static void kf_op_ternary(Frame *f, int kfun)
 {
     if (!i_call(f, (Object *) NULL, f->sp[2].u.array, kftab[kfun].name,
 		strlen(kftab[kfun].name), TRUE, 2)) {

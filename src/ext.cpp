@@ -471,14 +471,14 @@ void ext_kfuns(kfindex *map, char *protos, int size, int nkfun)
  * NAME:	ext->execute()
  * DESCRIPTION:	JIT-compile and execute a function
  */
-bool ext_execute(register const Frame *f, int func, Value *val)
+bool ext_execute(const Frame *f, int func, Value *val)
 {
-    register Control *ctrl;
-    register int i, j, nftypes;
-    register const dinherit *inh;
-    register char *ft, *vt;
-    register const dfuncdef *fdef;
-    register const dvardef *vdef;
+    Control *ctrl;
+    int i, j, nftypes;
+    const dinherit *inh;
+    char *ft, *vt;
+    const dfuncdef *fdef;
+    const dvardef *vdef;
     int result;
 
     if (jit_compile == NULL) {
@@ -499,8 +499,8 @@ bool ext_execute(register const Frame *f, int func, Value *val)
 	    nftypes += OBJR(inh->oindex)->control()->nfuncdefs;
 	}
 
-	char ftypes[ctrl->ninherits + nftypes];
-	char vtypes[ctrl->ninherits + ctrl->nvariables];
+	char *ftypes = ALLOCA(char, ctrl->ninherits + nftypes);
+	char *vtypes = ALLOCA(char, ctrl->ninherits + ctrl->nvariables);
 
 	/* collect function types & variable types */
 	ft = ftypes;
@@ -526,6 +526,9 @@ bool ext_execute(register const Frame *f, int func, Value *val)
 		       (uint8_t *) ctrl->prog, ctrl->progsize, ctrl->nfuncdefs,
 		       (uint8_t *) ftypes, ctrl->ninherits + nftypes,
 		       (uint8_t *) vtypes, ctrl->ninherits + ctrl->nvariables);
+
+	AFREE(ftypes);
+	AFREE(vtypes);
 
 	return FALSE;
     } else {

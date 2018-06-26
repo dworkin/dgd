@@ -1119,7 +1119,7 @@ static bool conf_config()
  */
 static void conf_fdlist()
 {
-    register int i, size, *list;
+    int i, size, *list;
 
     size = conn_fdcount();
     if (size != 0) {
@@ -1144,7 +1144,7 @@ static void conf_fdlist()
  */
 void conf_mod_finish()
 {
-    register int i;
+    int i;
 
     for (i = 0; modules[i] != NULL; i++) {
 	if (mfinish[i] != NULL) {
