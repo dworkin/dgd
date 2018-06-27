@@ -47,12 +47,12 @@ typedef unsigned short kfindex;
 # define MAX_LINE_SIZE	4096	/* max. line size in ed and lex (power of 2) */
 # define STRINGSZ	256	/* general (internal) string size */
 # define STRMAPHASHSZ	20	/* # characters to hash of map string indices */
-# define STRMERGETABSZ	4096	/* general string merge table size */
+# define STRMERGETABSZ	1024	/* general string merge table size */
 # define STRMERGEHASHSZ	20	/* # characters in merge strings to hash */
 # define ARRMERGETABSZ	1024	/* general array merge table size */
 # define OBJHASHSZ	256	/* # characters in object names to hash */
 # define COPATCHHTABSZ	1024	/* callout patch hash table size */
-# define OBJPATCHHTABSZ	1024	/* object patch hash table size */
+# define OBJPATCHHTABSZ	256	/* object patch hash table size */
 # define CMPLIMIT	2048	/* compress strings if >= CMPLIMIT */
 # define SWAPCHUNKSZ	10	/* # objects reconstructed in main loop */
 
