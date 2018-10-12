@@ -96,14 +96,14 @@ void endtask()
 # endif
     }
 
-    if (Object::swap || !m_check()) {
+    if (Object::swap || !Alloc::check()) {
 	/*
 	 * swap out everything and possibly extend the static memory area
 	 */
 	d_swapout(1);
 	Array::freeall();
 	String::clean();
-	m_purge();
+	Alloc::purge();
 	Object::swap = FALSE;
     }
 
@@ -137,7 +137,7 @@ void endtask()
 	comm_finish();
 	Array::freeall();
 	String::clean();
-	m_finish();
+	Alloc::finish();
 	exit(Object::boot);
     }
 }

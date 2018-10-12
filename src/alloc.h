@@ -17,41 +17,59 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+class Alloc {
+public:
+    struct Info {
+	size_t smemsize;	/* static memory size */
+	size_t smemused;	/* static memory used */
+	size_t dmemsize;	/* dynamic memory used */
+	size_t dmemused;	/* dynamic memory used */
+    };
+
+    static void init(size_t staticSize, size_t dynamicSize);
+    static void finish();
+
 # ifdef MEMDEBUG
 
 # define ALLOC(type, size)						      \
-			((type *) (m_alloc(sizeof(type) * (size_t) (size),    \
-					   __FILE__, __LINE__)))
+			((type *) (Alloc::alloc(sizeof(type) * (size_t) (size),\
+						__FILE__, __LINE__)))
 # define REALLOC(mem, type, size1, size2)				      \
-			((type *) (m_realloc((char *) (mem),		      \
+			((type *) (Alloc::realloc((char *) (mem),	      \
 					     sizeof(type) * (size_t) (size1), \
 					     sizeof(type) * (size_t) (size2), \
 					     __FILE__, __LINE__)))
-extern char *m_alloc	(size_t, const char*, int);
-extern char *m_realloc	(char*, size_t, size_t, const char*, int);
+    static char *alloc(size_t size, const char *file, int line);
+    static char *realloc(char *mem, size_t size1, size_t size2,
+			 const char *file, int line);
 
 # else
 
 # define ALLOC(type, size)						      \
-			((type *) (m_alloc(sizeof(type) * (size_t) (size))))
+			((type *) (Alloc::alloc(sizeof(type) * (size_t)(size))))
 # define REALLOC(mem, type, size1, size2)				      \
-			((type *) (m_realloc((char *) (mem),		      \
+			((type *) (Alloc::realloc((char *) (mem),	      \
 					     sizeof(type) * (size_t) (size1), \
 					     sizeof(type) * (size_t) (size2))))
-extern char *m_alloc	(size_t);
-extern char *m_realloc	(char*, size_t, size_t);
+    static char *alloc(size_t size);
+    static char *realloc(char *mem, size_t size1, size_t size2);
 
 # endif
 
-# define FREE(mem)	m_free((char *) (mem))
+# define FREE(mem)	Alloc::free((char *) (mem))
 
-extern void  m_init	(size_t, size_t);
-extern void  m_free	(char*);
-extern void  m_dynamic	();
-extern void  m_static	();
-extern bool  m_check	();
-extern void  m_purge	();
-extern void  m_finish	();
+    static void free(char *mem);
+
+    static void dynamicMode();
+    static void staticMode();
+
+    static Info *info();
+    static bool check();
+    static void purge();
+
+private:
+    static int sLevel;			/* static level */
+};
 
 /*
  * inherit from this to use DGD's memory manager
@@ -60,16 +78,16 @@ class Allocated {
 public:
 # ifdef MEMDEBUG
     static void *operator new(size_t size, const char *file, int line) {
-	return m_alloc(size, file, line);
+	return Alloc::alloc(size, file, line);
     }
 # else
     static void *operator new(size_t size) {
-	return m_alloc(size);
+	return Alloc::alloc(size);
     }
 # endif
 
     static void operator delete(void *ptr) {
-	m_free((char *) ptr);
+	Alloc::free((char *) ptr);
     }
 };
 
@@ -228,12 +246,3 @@ private:
     Titem *flist;		/* list of free items */
     int chunksize;		/* size of chunk */
 };
-
-struct allocinfo {
-    size_t smemsize;	/* static memory size */
-    size_t smemused;	/* static memory used */
-    size_t dmemsize;	/* dynamic memory used */
-    size_t dmemused;	/* dynamic memory used */
-};
-
-extern allocinfo *m_info ();

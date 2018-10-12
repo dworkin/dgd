@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -241,9 +241,9 @@ static ipaddr *ipa_new(in46addr *ipnum)
 	/*
 	 * allocate new ipaddr
 	 */
-	m_static();
+	Alloc::staticMode();
 	ipa = ALLOC(ipaddr, 1);
-	m_dynamic();
+	Alloc::dynamicMode();
 
 	/* put in hash table */
 	ipa->link = *hash;
@@ -1211,9 +1211,9 @@ static connection *conn_udpaccept(int port)
     conn = flist;
     flist = (connection *) conn->next;
     conn->name = (char *) NULL;
-    m_static();
+    Alloc::staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    m_dynamic();
+    Alloc::dynamicMode();
     hash = &udphtab[udescs[port].hashval];
     EnterCriticalSection(&udpmutex);
     conn->next = *hash;
@@ -1361,9 +1361,9 @@ bool conn_udp(connection *conn, char *challenge,
     conn->next = *hash;
     *hash = conn;
     conn->npkts = 0;
-    m_static();
+    Alloc::staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    m_dynamic();
+    Alloc::dynamicMode();
     memset(conn->udpbuf, '\0', UDPHASHSZ);
     conn->name = (const char *) memcpy(conn->udpbuf, challenge, conn->bufsz = len);
     LeaveCriticalSection(&udpmutex);

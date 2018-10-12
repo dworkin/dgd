@@ -313,9 +313,9 @@ static ipaddr *ipa_new(in46addr *ipnum)
 	/*
 	 * allocate new ipaddr
 	 */
-	m_static();
+	Alloc::staticMode();
 	ipa = ALLOC(ipaddr, 1);
-	m_dynamic();
+	Alloc::dynamicMode();
 
 	/* put in hash table */
 	ipa->link = *hash;
@@ -1327,9 +1327,9 @@ static connection *conn_udpaccept(int port)
     conn = flist;
     flist = (connection *) conn->next;
     conn->name = (char *) NULL;
-    m_static();
+    Alloc::staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    m_dynamic();
+    Alloc::dynamicMode();
     hash = &udphtab[udescs[port].hashval];
     pthread_mutex_lock(&udpmutex);
     conn->next = *hash;
@@ -1481,9 +1481,9 @@ bool conn_udp(connection *conn, char *challenge, unsigned int len)
     conn->next = *hash;
     *hash = conn;
     conn->npkts = 0;
-    m_static();
+    Alloc::staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    m_dynamic();
+    Alloc::dynamicMode();
     memset(conn->udpbuf, '\0', UDPHASHSZ);
     conn->name = (const char *) memcpy(conn->udpbuf, challenge, conn->bufsz = len);
     pthread_mutex_unlock(&udpmutex);
@@ -2122,9 +2122,9 @@ connection *conn_import(int fd, char *addr, unsigned short port, short at,
 		connection **hash;
 
 		conn->bufsz = bufsz;
-		m_static();
+		Alloc::staticMode();
 		conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-		m_dynamic();
+		Alloc::dynamicMode();
 		memcpy(conn->udpbuf, buf, bufsz);
 # ifdef INET6
 		if (inaddr.ipv6) {

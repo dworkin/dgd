@@ -47,7 +47,7 @@ typedef unsigned int Uint;
 # include "host\telnet.h"
 # endif
 
-# include <stdlib.h>
+# include <cstdlib>
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>
@@ -161,7 +161,7 @@ typedef unsigned int Uint;
 # include "host/telnet.h"
 # endif
 
-# include <stdlib.h>
+# include <cstdlib>
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>
@@ -206,7 +206,7 @@ typedef unsigned int Uint;
 # include "host/telnet.h"
 # endif
 
-# include <stdlib.h>
+# include <cstdlib>
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>

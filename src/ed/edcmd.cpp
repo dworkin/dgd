@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -67,13 +67,13 @@ cmdbuf *cb_new(char *tmpfile)
 {
     cmdbuf *cb;
 
-    m_static();
+    Alloc::staticMode();
     cb = ALLOC(cmdbuf, 1);
     memset(cb, '\0', sizeof(cmdbuf));
     cb->edbuf = eb_new(tmpfile);
     cb->regexp = rx_new();
     cb->vars = va_new();
-    m_dynamic();
+    Alloc::dynamicMode();
 
     cb->cthis = 0;
     cb->undo = (block) -1;	/* not 0! */

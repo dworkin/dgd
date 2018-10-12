@@ -28,54 +28,67 @@
 
 # define SIZETSIZE	ALGN(sizeof(size_t), STRUCT_AL)
 
+
+class MemChunk {
+public:
+    /*
+     * allocate a chunk (low-level)
+     */
+    static MemChunk *alloc(size_t size, MemChunk **list) {
+	MemChunk *mem;
+
+	if (list != (MemChunk **) NULL) {
+	    size += ALGN(sizeof(MemChunk *), STRUCT_AL);
+	}
+	mem = (MemChunk *) malloc(size);
+	if (mem == (MemChunk *) NULL) {
+	    fatal("out of memory");
+	}
+	if (list != (MemChunk **) NULL) {
+	    *((MemChunk **) mem) = *list;
+	    *list = mem;
+	    mem = (MemChunk *) ((char *) mem +
+				ALGN(sizeof(MemChunk *), STRUCT_AL));
+	}
+	return mem;
+    }
+
+    /*
+     * free a chunk (low-level)
+     */
+    static MemChunk *free(MemChunk *mem) {
+	MemChunk *next;
+
+	next = *(MemChunk **) mem;
+	std::free(mem);
+	return next;
+    }
+
+    size_t size;			/* size of chunk */
+    union {
+	MemChunk *next;			/* next chunk */
+	class SplayNode *parent;	/* parent node in splay tree */
+    };
+};
+
 # ifdef DEBUG
-# define MOFFSET	ALGN(sizeof(header), STRUCT_AL)
+/*
+ * debug extension of chunk
+ */
+class MemHeader : public MemChunk {
+public:
+    MemHeader *prev;		/* previous in list */
+# ifdef MEMDEBUG
+    const char *file;		/* file it was allocated from */
+    int line;			/* line it was allocated from */
+# endif
+};
+
+# define MOFFSET	ALGN(sizeof(MemHeader), STRUCT_AL)
 # else
 # define MOFFSET	SIZETSIZE
 # endif
 
-struct chunk {
-    size_t size;	/* size of chunk */
-    chunk *next;	/* next chunk */
-};
-
-# ifdef DEBUG
-struct header {
-    size_t size;	/* size of chunk */
-    header *prev;	/* previous in list */
-    header *next;	/* next in list */
-# ifdef MEMDEBUG
-    const char *file;	/* file it was allocated from */
-    int line;		/* line it was allocated from */
-# endif
-};
-# endif
-
-
-static allocinfo mstat;		/* memory statistics */
-
-/*
- * NAME:	newmem()
- * DESCRIPTION:	allocate new memory
- */
-static char *newmem(size_t size, char **list)
-{
-    char *mem;
-
-    if (list != (char **) NULL) {
-	size += ALGN(sizeof(char *), STRUCT_AL);
-    }
-    mem = (char *) malloc(size);
-    if (mem == (char *) NULL) {
-	fatal("out of memory");
-    }
-    if (list != (char **) NULL) {
-	*((char **) mem) = *list;
-	*list = mem;
-	mem += ALGN(sizeof(char *), STRUCT_AL);
-    }
-    return mem;
-}
 
 /*
  * static memory manager
@@ -87,312 +100,350 @@ static char *newmem(size_t size, char **list)
 # define SCHUNKS	(STRINGSZ / STRUCT_AL - 1)
 # define LCHUNKS	32
 
-struct clist {
-    size_t size;		/* size of chunks in list */
-    chunk *list;		/* list of chunks (possibly empty) */
+class ChunkList {
+public:
+    static void finish() {
+	memset(lists, '\0', sizeof(lists));
+	nLists = 0;
+    }
+
+    static MemChunk **largeList(size_t size, bool add) {
+	unsigned int h, l, m;
+
+	l = m = 0;
+	h = nLists;
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    if (lists[m].size == size) {
+		return &lists[m].list;		/* found */
+	    } else if (lists[m].size > size) {
+		h = m;				/* search in lower half */
+	    } else {
+		l = ++m;			/* search in upper half */
+	    }
+	}
+
+	if (!add) {
+	    return (MemChunk **) NULL;		/* not found */
+	}
+	/* make a new list */
+	if (nLists == LCHUNKS) {
+	    fatal("too many different large static chunks");
+	}
+	for (l = nLists++; l > m; --l) {
+	    lists[l] = lists[l - 1];
+	}
+	lists[m].size = size;
+	lists[m].list = (MemChunk *) NULL;
+	return &lists[m].list;
+    }
+
+    size_t size;			/* size of chunks in list */
+    MemChunk *list;			/* list of chunks (possibly empty) */
+
+private:
+    static ChunkList lists[LCHUNKS];
+    static unsigned int nLists;		/* # elements in large chunk list */
 };
 
-static char *slist;			/* list of static chunks */
-static chunk *schunk;			/* current chunk */
-static size_t schunksz;			/* size of current chunk */
-static chunk *schunks[SCHUNKS];		/* lists of small free chunks */
-static clist lchunks[LCHUNKS];		/* lists of large free chunks */
-static unsigned int nlc;		/* # elements in large chunk list */
-static chunk *sflist;			/* list of small unused chunks */
-static int slevel;			/* static level */
-static bool dmem;			/* any dynamic memory allocated? */
+ChunkList ChunkList::lists[LCHUNKS];
+unsigned int ChunkList::nLists;
 
-/*
- * NAME:	lchunk()
- * DESCRIPTION:	get the address of a list of large chunks
- */
-static chunk **lchunk(size_t size, bool alloc)
-{
-    unsigned int h, l, m;
 
-    l = m = 0;
-    h = nlc;
-    while (l < h) {
-	m = (l + h) >> 1;
-	if (lchunks[m].size == size) {
-	    return &lchunks[m].list;	/* found */
-	} else if (lchunks[m].size > size) {
-	    h = m;			/* search in lower half */
-	} else {
-	    l = ++m;			/* search in upper half */
+class StaticMem {
+public:
+    static void init(size_t size) {
+	schunksz = ALGN(size, STRUCT_AL);
+	if (schunksz != 0) {
+	    if (schunk != (MemChunk *) NULL) {
+		schunk->next = sflist;
+		sflist = schunk;
+	    }
+	    schunk = MemChunk::alloc(schunksz, &slist);
+	    memSize += schunk->size = schunksz;
 	}
+	dmem = FALSE;
     }
 
-    if (!alloc) {
-	return (chunk **) NULL;		/* not found */
-    }
-    /* make a new list */
-    if (nlc == LCHUNKS) {
-	fatal("too many different large static chunks");
-    }
-    for (l = nlc++; l > m; --l) {
-	lchunks[l] = lchunks[l - 1];
-    }
-    lchunks[m].size = size;
-    lchunks[m].list = (chunk *) NULL;
-    return &lchunks[m].list;
-}
+    static void finish() {
+	ChunkList::finish();
 
-/*
- * NAME:	salloc()
- * DESCRIPTION:	allocate static memory
- */
-static chunk *salloc(size_t size)
-{
-    chunk *c;
+	while (slist != (MemChunk *) NULL) {
+	    slist = MemChunk::free(slist);
+	}
+	schunksz = 0;
+	memset(schunks, '\0', sizeof(schunks));
+	schunk = (MemChunk *) NULL;
+	sflist = (MemChunk *) NULL;
+	memSize = memUsed = 0;
+    }
 
-    /* try lists of free chunks */
-    if (size >= SLIMIT) {
-	chunk **lc;
+    /*
+     * allocate static memory
+     */
+    static MemChunk *alloc(size_t size) {
+	MemChunk *c;
 
-	lc = lchunk(size, FALSE);
-	if (lc != (chunk **) NULL && *lc != (chunk *) NULL) {
-	    /* large chunk */
-	    c = *lc;
-	    *lc = c->next;
+	/* try lists of free chunks */
+	if (size >= SLIMIT) {
+	    MemChunk **lc;
+
+	    lc = ChunkList::largeList(size, FALSE);
+	    if (lc != (MemChunk **) NULL && *lc != (MemChunk *) NULL) {
+		/* large chunk */
+		c = *lc;
+		*lc = c->next;
+		return c;
+	    }
+	} else if ((c=schunks[(size - MOFFSET) / STRUCT_AL - 1]) !=
+							    (MemChunk *) NULL) {
+	    /* small chunk */
+	    schunks[(size - MOFFSET) / STRUCT_AL - 1] = c->next;
 	    return c;
 	}
-    } else if ((c=schunks[(size - MOFFSET) / STRUCT_AL - 1]) != (chunk *) NULL)
-    {
-	/* small chunk */
-	schunks[(size - MOFFSET) / STRUCT_AL - 1] = c->next;
-	return c;
-    }
 
-    /* try unused chunk list */
-    if (sflist != (chunk *) NULL && sflist->size >= size) {
-	if (sflist->size - size <= MOFFSET) {
-	    /* remainder is too small to put in free list */
-	    c = sflist;
-	    sflist = c->next;
-	} else {
-	    chunk *n;
-
-	    /* split the chunk in two */
-	    c = sflist;
-	    n = (chunk *) ((char *) sflist + size);
-	    n->size = c->size - size;
-	    if (n->size <= SSMALL) {
-		/* small chunk */
-		n->next = schunks[(n->size - MOFFSET) / STRUCT_AL - 1];
-		schunks[(n->size - MOFFSET) / STRUCT_AL - 1] = n;
+	/* try unused chunk list */
+	if (sflist != (MemChunk *) NULL && sflist->size >= size) {
+	    if (sflist->size - size <= MOFFSET) {
+		/* remainder is too small to put in free list */
+		c = sflist;
 		sflist = c->next;
 	    } else {
-		/* large enough chunk */
-		n->next = c->next;
-		sflist = n;
+		MemChunk *n;
+
+		/* split the chunk in two */
+		c = sflist;
+		n = (MemChunk *) ((char *) sflist + size);
+		n->size = c->size - size;
+		if (n->size <= SSMALL) {
+		    /* small chunk */
+		    n->next = schunks[(n->size - MOFFSET) / STRUCT_AL - 1];
+		    schunks[(n->size - MOFFSET) / STRUCT_AL - 1] = n;
+		    sflist = c->next;
+		} else {
+		    /* large enough chunk */
+		    n->next = c->next;
+		    sflist = n;
+		}
+		c->size = size;
+	    }
+	    return c;
+	}
+
+	/* try current chunk */
+	if (schunk == (MemChunk *) NULL || schunk->size < size) {
+	    size_t chunksz;
+
+	    /*
+	     * allocate static memory block
+	     */
+	    if (schunk != (MemChunk *) NULL) {
+		schunk->next = sflist;
+		sflist = schunk;
+	    }
+	    chunksz = (size < INIT_MEM) ? INIT_MEM : size;
+	    schunk = MemChunk::alloc(chunksz, &slist);
+	    memSize += schunk->size = chunksz;
+	    if (schunksz != 0 && dmem) {
+		/* fragmentation matters */
+		P_message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
+	    }
+	}
+	if (schunk->size - size <= MOFFSET) {
+	    /* remainder is too small */
+	    c = schunk;
+	    schunk = (MemChunk *) NULL;
+	} else {
+	    c = schunk;
+	    schunk = (MemChunk *) ((char *) schunk + size);
+	    if ((schunk->size=c->size - size) <= SSMALL) {
+		/* small chunk */
+		schunk->next = schunks[(schunk->size - MOFFSET) / STRUCT_AL -1];
+		schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1] = schunk;
+		schunk = (MemChunk *) NULL;
 	    }
 	    c->size = size;
 	}
+
+	if (c->size > SIZE_MASK) {
+	    fatal("static memory chunk too large");
+	}
 	return c;
     }
 
-    /* try current chunk */
-    if (schunk == (chunk *) NULL || schunk->size < size) {
-	size_t chunksz;
-
-	/*
-	 * allocate static memory block
-	 */
-	if (schunk != (chunk *) NULL) {
-	    schunk->next = sflist;
-	    sflist = schunk;
-	}
-	chunksz = (size < INIT_MEM) ? INIT_MEM : size;
-	schunk = (chunk *) newmem(chunksz, &slist);
-	mstat.smemsize += schunk->size = chunksz;
-	if (schunksz != 0 && dmem) {
-	    /* fragmentation matters */
-	    P_message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
-	}
-    }
-    if (schunk->size - size <= MOFFSET) {
-	/* remainder is too small */
-	c = schunk;
-	schunk = (chunk *) NULL;
-    } else {
-	c = schunk;
-	schunk = (chunk *) ((char *) schunk + size);
-	if ((schunk->size=c->size - size) <= SSMALL) {
+    /*
+     * free static memory
+     */
+    static void free(MemChunk *c) {
+	if (c->size < SLIMIT) {
 	    /* small chunk */
-	    schunk->next = schunks[(schunk->size - MOFFSET) / STRUCT_AL -1];
-	    schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1] = schunk;
-	    schunk = (chunk *) NULL;
+	    c->next = schunks[(c->size - MOFFSET) / STRUCT_AL - 1];
+	    schunks[(c->size - MOFFSET) / STRUCT_AL - 1] = c;
+	} else {
+	    MemChunk **lc;
+
+	    /* large chunk */
+	    lc = ChunkList::largeList(c->size, TRUE);
+	    c->next = *lc;
+	    *lc = c;
 	}
-	c->size = size;
     }
 
-    if (c->size > SIZE_MASK) {
-	fatal("static memory chunk too large");
+    static bool check() {
+	if (schunk == (MemChunk *) NULL) {
+	    return FALSE;
+	} else {
+	    return (schunksz == 0 || schunk->size >= schunksz);
+	}
     }
-    return c;
-}
 
-/*
- * NAME:	sfree()
- * DESCRIPTION:	free static memory
- */
-static void sfree(chunk *c)
-{
-    if (c->size < SLIMIT) {
-	/* small chunk */
-	c->next = schunks[(c->size - MOFFSET) / STRUCT_AL - 1];
-	schunks[(c->size - MOFFSET) / STRUCT_AL - 1] = c;
-    } else {
-	chunk **lc;
+    static void expand() {
+	dmem = FALSE;
 
-	/* large chunk */
-	lc = lchunk(c->size, TRUE);
-	c->next = *lc;
-	*lc = c;
+	if (schunksz != 0 &&
+	    (schunk == (MemChunk *) NULL || schunk->size < schunksz ||
+	     (memSize - memUsed) * 2 < schunksz * 3)) {
+	    /* expand static memory */
+	    if (schunk != (MemChunk *) NULL) {
+		schunk->next = sflist;
+		sflist = schunk;
+	    }
+	    schunk = MemChunk::alloc(schunksz, &slist);
+	    memSize += schunk->size = schunksz;
+	}
     }
-}
 
-/*
- * NAME:	mstatic()
- * DESCRIPTION:	enter static mode
- */
-void m_static()
-{
-    slevel++;
-}
+    static bool dmem;			/* any dynamic memory allocated? */
+    static size_t memSize;		/* static memory allocated */
+    static size_t memUsed;		/* static memory used */
 
-/*
- * NAME:	mdynamic()
- * DESCRIPTION:	reenter dynamic mode
- */
-void m_dynamic()
-{
-    --slevel;
-}
+private:
+    static MemChunk *slist;		/* list of static chunks */
+    static MemChunk *schunk;		/* current chunk */
+    static size_t schunksz;		/* size of current chunk */
+    static MemChunk *schunks[SCHUNKS];	/* lists of small free chunks */
+    static MemChunk *sflist;		/* list of small unused chunks */
+};
+
+bool StaticMem::dmem;
+size_t StaticMem::memSize;
+size_t StaticMem::memUsed;
+MemChunk *StaticMem::slist;
+MemChunk *StaticMem::schunk;
+size_t StaticMem::schunksz;
+MemChunk *StaticMem::schunks[SCHUNKS];
+MemChunk *StaticMem::sflist;
 
 
 /*
  * dynamic memory manager
  */
 
-struct spnode {
-    size_t size;		/* size of chunk */
-    spnode *parent;		/* parent node */
-    spnode *left;		/* left child node */
-    spnode *right;		/* right child node */
-};
+class SplayNode : public MemChunk {
+public:
+    /*
+     * insert a node in a splay tree
+     */
+    static void insert(SplayNode *&tree, SplayNode *t) {
+	SplayNode *n, *l, *r;
+	size_t size;
 
-static size_t dchunksz;		/* dynamic chunk size */
-static spnode *dtree;		/* splay tree of large dynamic free chunks */
+	n = tree;
+	tree = t;
+	t->parent = (SplayNode *) NULL;
 
-/*
- * NAME:	insert()
- * DESCRIPTION:	insert a chunk in the splay tree
- */
-static void insert(chunk *c)
-{
-    spnode *n, *t;
-    spnode *l, *r;
-    size_t size;
+	if (n == (SplayNode *) NULL) {
+	    /* first in splay tree */
+	    t->left = (SplayNode *) NULL;
+	    t->right = (SplayNode *) NULL;
+	} else {
+	    size = t->size;
+	    l = r = t;
 
-    n = dtree;
-    dtree = t = (spnode *) c;
-    t->parent = (spnode *) NULL;
-
-    if (n == (spnode *) NULL) {
-	/* first in splay tree */
-	t->left = (spnode *) NULL;
-	t->right = (spnode *) NULL;
-    } else {
-	size = t->size;
-	l = r = t;
-
-	for (;;) {
-	    if (n->size < size) {
-		if ((t=n->right) == (spnode *) NULL) {
-		    l->right = n; n->parent = l;
-		    r->left = (spnode *) NULL;
-		    break;	/* finished */
-		}
-		if (t->size >= size) {
-		    l->right = n; n->parent = l;
-		    l = n;
-		    n = t;
-		} else {
-		    /* rotate */
-		    if ((n->right=t->left) != (spnode *) NULL) {
-			t->left->parent = n;
-		    }
-		    t->left = n; n->parent = t;
-		    l->right = t; t->parent = l;
-		    if ((n=t->right) == (spnode *) NULL) {
-			r->left = (spnode *) NULL;
+	    for (;;) {
+		if (n->size < size) {
+		    if ((t=n->right) == (SplayNode *) NULL) {
+			l->right = n; n->parent = l;
+			r->left = (SplayNode *) NULL;
 			break;	/* finished */
 		    }
-		    l = t;
-		}
-	    } else {
-		if ((t=n->left) == (spnode *) NULL) {
-		    r->left = n; n->parent = r;
-		    l->right = (spnode *) NULL;
-		    break;	/* finished */
-		}
-		if (t->size < size) {
-		    r->left = n; n->parent = r;
-		    r = n;
-		    n = t;
-		} else {
-		    /* rotate */
-		    if ((n->left=t->right) != (spnode *) NULL) {
-			t->right->parent = n;
+		    if (t->size >= size) {
+			l->right = n; n->parent = l;
+			l = n;
+			n = t;
+		    } else {
+			/* rotate */
+			if ((n->right=t->left) != (SplayNode *) NULL) {
+			    t->left->parent = n;
+			}
+			t->left = n; n->parent = t;
+			l->right = t; t->parent = l;
+			if ((n=t->right) == (SplayNode *) NULL) {
+			    r->left = (SplayNode *) NULL;
+			    break;	/* finished */
+			}
+			l = t;
 		    }
-		    t->right = n; n->parent = t;
-		    r->left = t; t->parent = r;
-		    if ((n=t->left) == (spnode *) NULL) {
-			l->right = (spnode *) NULL;
+		} else {
+		    if ((t=n->left) == (SplayNode *) NULL) {
+			r->left = n; n->parent = r;
+			l->right = (SplayNode *) NULL;
 			break;	/* finished */
 		    }
-		    r = t;
+		    if (t->size < size) {
+			r->left = n; n->parent = r;
+			r = n;
+			n = t;
+		    } else {
+			/* rotate */
+			if ((n->left=t->right) != (SplayNode *) NULL) {
+			    t->right->parent = n;
+			}
+			t->right = n; n->parent = t;
+			r->left = t; t->parent = r;
+			if ((n=t->left) == (SplayNode *) NULL) {
+			    l->right = (SplayNode *) NULL;
+			    break;	/* finished */
+			}
+			r = t;
+		    }
 		}
 	    }
+
+	    /* exchange left and right subtree */
+	    n = tree;
+	    t = n->left;
+	    n->left = n->right;
+	    n->right = t;
+	}
+    }
+
+    /*
+     * find a node of the proper size in the splay tree
+     */
+    static SplayNode *seek(SplayNode *&tree, size_t size) {
+	SplayNode dummy;
+	SplayNode *n, *t, *l, *r;
+
+	n = tree;
+	if (n == (SplayNode *) NULL) {
+	    /* empty splay tree */
+	    return (SplayNode *) NULL;
 	}
 
-	/* exchange left and right subtree */
-	n = dtree;
-	t = n->left;
-	n->left = n->right;
-	n->right = t;
-    }
-}
-
-/*
- * NAME:	seek()
- * DESCRIPTION:	find a chunk of the proper size in the splay tree
- */
-static chunk *seek(size_t size)
-{
-    spnode dummy;
-    spnode *n, *t;
-    spnode *l, *r;
-
-    if ((n=dtree) == (spnode *) NULL) {
-	/* empty splay tree */
-	return (chunk *) NULL;
-    } else {
 	l = r = &dummy;
 
 	for (;;) {
 	    if (n->size < size) {
-		if ((t=n->right) == (spnode *) NULL) {
+		if ((t=n->right) == (SplayNode *) NULL) {
 		    l->right = n; n->parent = l;
 		    if (r == &dummy) {
 			/* all chunks are too small */
-			dtree = dummy.right;
-			dtree->parent = (spnode *) NULL;
-			return (chunk *) NULL;
+			tree = dummy.right;
+			tree->parent = (SplayNode *) NULL;
+			return (SplayNode *) NULL;
 		    }
-		    if ((r->parent->left=r->right) != (spnode *) NULL) {
+		    if ((r->parent->left=r->right) != (SplayNode *) NULL) {
 			r->right->parent = r->parent;
 		    }
 		    n = r;
@@ -404,19 +455,19 @@ static chunk *seek(size_t size)
 		    n = t;
 		} else {
 		    /* rotate */
-		    if ((n->right=t->left) != (spnode *) NULL) {
+		    if ((n->right=t->left) != (SplayNode *) NULL) {
 			t->left->parent = n;
 		    }
 		    t->left = n; n->parent = t;
 		    l->right = t; t->parent = l;
-		    if ((n=t->right) == (spnode *) NULL) {
+		    if ((n=t->right) == (SplayNode *) NULL) {
 			if (r == &dummy) {
 			    /* all chunks are too small */
-			    dtree = dummy.right;
-			    dtree->parent = (spnode *) NULL;
-			    return (chunk *) NULL;
+			    tree = dummy.right;
+			    tree->parent = (SplayNode *) NULL;
+			    return (SplayNode *) NULL;
 			}
-			if ((r->parent->left=r->right) != (spnode *) NULL) {
+			if ((r->parent->left=r->right) != (SplayNode *) NULL) {
 			    r->right->parent = r->parent;
 			}
 			n = r;
@@ -425,11 +476,11 @@ static chunk *seek(size_t size)
 		    l = t;
 		}
 	    } else {
-		if ((t=n->left) == (spnode *) NULL) {
-		    if ((r->left=n->right) != (spnode *) NULL) {
+		if ((t=n->left) == (SplayNode *) NULL) {
+		    if ((r->left=n->right) != (SplayNode *) NULL) {
 			n->right->parent = r;
 		    }
-		    l->right = (spnode *) NULL;
+		    l->right = (SplayNode *) NULL;
 		    break;	/* finished */
 		}
 		if (t->size < size) {
@@ -438,12 +489,12 @@ static chunk *seek(size_t size)
 		    n = t;
 		} else {
 		    /* rotate */
-		    if ((n->left=t->right) != (spnode *) NULL) {
+		    if ((n->left=t->right) != (SplayNode *) NULL) {
 			t->right->parent = n;
 		    }
-		    if (t->left == (spnode *) NULL) {
+		    if (t->left == (SplayNode *) NULL) {
 			r->left = n; n->parent = r;
-			l->right = (spnode *) NULL;
+			l->right = (SplayNode *) NULL;
 			n = t;
 			break;	/* finished */
 		    }
@@ -455,376 +506,414 @@ static chunk *seek(size_t size)
 	    }
 	}
 
-	n->parent = (spnode *) NULL;
-	if ((n->right=dummy.left) != (spnode *) NULL) {
+	n->parent = (SplayNode *) NULL;
+	if ((n->right=dummy.left) != (SplayNode *) NULL) {
 	    dummy.left->parent = n;
 	}
-	if ((n->left=dummy.right) != (spnode *) NULL) {
+	if ((n->left=dummy.right) != (SplayNode *) NULL) {
 	    dummy.right->parent = n;
 	}
 
-	return (chunk *) (dtree = n);
+	return tree = n;
     }
-}
 
-/*
- * NAME:	del()
- * DESCRIPTION:	delete a chunk from the splay tree
- */
-static void del(chunk *c)
-{
-    spnode *t, *r;
-    spnode *p, *n;
+    /*
+     * delete a node from the splay tree
+     */
+    static void del(SplayNode *&tree, SplayNode *n) {
+	SplayNode *t, *r, *p;
 
-    n = (spnode *) c;
-    p = n->parent;
+	p = n->parent;
 
-    if (n->left == (spnode *) NULL) {
-	/* there is no left subtree */
-	if (p == (spnode *) NULL) {
-	    if ((dtree=n->right) != (spnode *) NULL) {
-		dtree->parent = (spnode *) NULL;
+	if (n->left == (SplayNode *) NULL) {
+	    /* there is no left subtree */
+	    if (p == (SplayNode *) NULL) {
+		if ((tree=n->right) != (SplayNode *) NULL) {
+		    tree->parent = (SplayNode *) NULL;
+		}
+	    } else if (n == p->left) {
+		if ((p->left=n->right) != (SplayNode *) NULL) {
+		    p->left->parent = p;
+		}
+	    } else if ((p->right=n->right) != (SplayNode *) NULL) {
+		p->right->parent = p;
 	    }
-	} else if (n == p->left) {
-	    if ((p->left=n->right) != (spnode *) NULL) {
-		p->left->parent = p;
-	    }
-	} else if ((p->right=n->right) != (spnode *) NULL) {
-	    p->right->parent = p;
-	}
-    } else {
-	t = n->left;
-
-	/* walk to the right in the left subtree */
-	while ((r=t->right) != (spnode *) NULL) {
-	    if ((t->right=r->left) != (spnode *) NULL) {
-		r->left->parent = t;
-	    }
-	    r->left = t; t->parent = r;
-	    t = r;
-	}
-
-	if (p == (spnode *) NULL) {
-	    dtree = t;
-	} else if (n == p->left) {
-	    p->left = t;
 	} else {
-	    p->right = t;
-	}
-	t->parent = p;
-	if ((t->right=n->right) != (spnode *) NULL) {
-	    t->right->parent = t;
+	    t = n->left;
+
+	    /* walk to the right in the left subtree */
+	    while ((r=t->right) != (SplayNode *) NULL) {
+		if ((t->right=r->left) != (SplayNode *) NULL) {
+		    r->left->parent = t;
+		}
+		r->left = t; t->parent = r;
+		t = r;
+	    }
+
+	    if (p == (SplayNode *) NULL) {
+		tree = t;
+	    } else if (n == p->left) {
+		p->left = t;
+	    } else {
+		p->right = t;
+	    }
+	    t->parent = p;
+	    if ((t->right=n->right) != (SplayNode *) NULL) {
+		t->right->parent = t;
+	    }
 	}
     }
-}
+
+    SplayNode *left;		/* left child node */
+    SplayNode *right;		/* right child node */
+};
+
 
 # define DSMALL		64
 # define DLIMIT		(DSMALL + MOFFSET)
 # define DCHUNKS	(DSMALL / STRUCT_AL - 1)
 # define DCHUNKSZ	32768
 
-static char *dlist;		/* list of dynamic memory chunks */
-static chunk *dchunks[DCHUNKS];	/* list of free small chunks */
-static chunk *dchunk;		/* chunk of small chunks */
-
-/*
- * NAME:	dalloc()
- * DESCRIPTION:	allocate dynamic memory
- */
-static chunk *dalloc(size_t size)
-{
-    chunk *c;
-    char *p;
-    size_t sz;
-
-    if (dchunksz == 0) {
-	/*
-	 * memory manager hasn't been initialized yet
-	 */
-	c = (chunk *) newmem(size, (char **) NULL);
-	c->size = size;
-	return c;
+class DynamicMem {
+public:
+    static void init(size_t size) {
+	dchunksz = ALGN(size, STRUCT_AL);
     }
-    dmem = TRUE;
 
-    if (size < DLIMIT) {
-	/*
-	 * small chunk
-	 */
-	if ((c=dchunks[(size - MOFFSET) / STRUCT_AL - 1]) != (chunk *) NULL) {
-	    /* small chunk from free list */
-	    dchunks[(size - MOFFSET) / STRUCT_AL - 1] = c->next;
+    static void purge() {
+	/* purge dynamic memory */
+	while (dlist != (MemChunk *) NULL) {
+	    dlist = MemChunk::free(dlist);
+	}
+	memset(dchunks, '\0', sizeof(dchunks));
+	dchunk = (MemChunk *) NULL;
+	dtree = (SplayNode *) NULL;
+	memSize = memUsed = 0;
+    }
+
+    static void finish() {
+	dchunksz = 0;
+    }
+
+    /*
+     * allocate dynamic memory
+     */
+    static MemChunk *alloc(size_t size) {
+	MemChunk *c;
+	char *p;
+	size_t sz;
+
+	if (dchunksz == 0) {
+	    /*
+	     * memory manager hasn't been initialized yet
+	     */
+	    c = MemChunk::alloc(size, (MemChunk **) NULL);
+	    c->size = size;
 	    return c;
 	}
-	if (dchunk == (chunk *) NULL) {
-	    /* get new chunks chunk */
-	    dchunk = dalloc(DCHUNKSZ);	/* cannot use alloc() here */
-	    p = (char *) dchunk + SIZETSIZE;
-	    ((chunk *) p)->size = dchunk->size - SIZETSIZE - SIZETSIZE;
-	    dchunk->size |= DM_MAGIC;
-	    dchunk = (chunk *) p;
+	StaticMem::dmem = TRUE;
+
+	if (size < DLIMIT) {
+	    /*
+	     * small chunk
+	     */
+	    if ((c=dchunks[(size - MOFFSET) / STRUCT_AL - 1]) !=
+							    (MemChunk *) NULL) {
+		/* small chunk from free list */
+		dchunks[(size - MOFFSET) / STRUCT_AL - 1] = c->next;
+		return c;
+	    }
+	    if (dchunk == (MemChunk *) NULL) {
+		/* get new chunks chunk */
+		dchunk = alloc(DCHUNKSZ);
+		p = (char *) dchunk + SIZETSIZE;
+		((MemChunk *) p)->size = dchunk->size - SIZETSIZE - SIZETSIZE;
+		dchunk->size |= DM_MAGIC;
+		dchunk = (MemChunk *) p;
+	    }
+	    sz = dchunk->size - size;
+	    c = dchunk;
+	    c->size = size;
+	    if (sz >= DLIMIT - STRUCT_AL) {
+		/* enough is left for another small chunk */
+		dchunk = (MemChunk *) ((char *) c + size);
+		dchunk->size = sz;
+	    } else {
+		/* waste sz bytes of memory */
+		dchunk = (MemChunk *) NULL;
+	    }
+	    return c;
 	}
-	sz = dchunk->size - size;
-	c = dchunk;
-	c->size = size;
-	if (sz >= DLIMIT - STRUCT_AL) {
-	    /* enough is left for another small chunk */
-	    dchunk = (chunk *) ((char *) c + size);
-	    dchunk->size = sz;
+
+	size += SIZETSIZE;
+	c = SplayNode::seek(dtree, size);
+	if (c != (MemChunk *) NULL) {
+	    /*
+	     * remove from free list
+	     */
+	    SplayNode::del(dtree, (SplayNode *) c);
 	} else {
-	    /* waste sz bytes of memory */
-	    dchunk = (chunk *) NULL;
+	    /*
+	     * get new dynamic chunk
+	     */
+	    for (sz = dchunksz; sz < size + SIZETSIZE + SIZETSIZE;
+		 sz += dchunksz) ;
+	    p = (char *) MemChunk::alloc(sz, &dlist);
+	    memSize += sz;
+
+	    /* no previous chunk */
+	    *(size_t *) p = 0;
+	    c = (MemChunk *) (p + SIZETSIZE);
+	    /* initialize chunk */
+	    c->size = sz - SIZETSIZE - SIZETSIZE;
+	    p += c->size;
+	    *(size_t *) p = c->size;
+	    /* no following chunk */
+	    p += SIZETSIZE;
+	    ((MemChunk *) p)->size = 0;
+	}
+
+	if ((sz=c->size - size) >= DLIMIT + SIZETSIZE) {
+	    /*
+	     * split block, put second part in free list
+	     */
+	    c->size = size;
+	    p = (char *) c + size - SIZETSIZE;
+	    *(size_t *) p = size;
+	    p += SIZETSIZE;
+	    ((MemChunk *) p)->size = sz;
+	    *((size_t *) (p + sz - SIZETSIZE)) = sz;
+	    SplayNode::insert(dtree, (SplayNode *) p);	/* add to free list */
+	}
+
+	if (c->size > SIZE_MASK) {
+	    fatal("dynamic memory chunk too large");
 	}
 	return c;
     }
 
-    size += SIZETSIZE;
-    c = seek(size);
-    if (c != (chunk *) NULL) {
-	/*
-	 * remove from free list
-	 */
-	del(c);
-    } else {
-	/*
-	 * get new dynamic chunk
-	 */
-	for (sz = dchunksz; sz < size + SIZETSIZE + SIZETSIZE; sz += dchunksz) ;
-	p = newmem(sz, &dlist);
-	mstat.dmemsize += sz;
+    /*
+     * free dynamic memory
+     */
+    static void free(MemChunk *c) {
+	char *p;
 
-	/* no previous chunk */
-	*(size_t *) p = 0;
-	c = (chunk *) (p + SIZETSIZE);
-	/* initialize chunk */
-	c->size = sz - SIZETSIZE - SIZETSIZE;
-	p += c->size;
-	*(size_t *) p = c->size;
-	/* no following chunk */
-	p += SIZETSIZE;
-	((chunk *) p)->size = 0;
-    }
-
-    if ((sz=c->size - size) >= DLIMIT + SIZETSIZE) {
-	/*
-	 * split block, put second part in free list
-	 */
-	c->size = size;
-	p = (char *) c + size - SIZETSIZE;
-	*(size_t *) p = size;
-	p += SIZETSIZE;
-	((chunk *) p)->size = sz;
-	*((size_t *) (p + sz - SIZETSIZE)) = sz;
-	insert((chunk *) p);	/* add to free list */
-    }
-
-    if (c->size > SIZE_MASK) {
-	fatal("dynamic memory chunk too large");
-    }
-    return c;
-}
-
-/*
- * NAME:	dfree()
- * DESCRIPTION:	free dynamic memory
- */
-static void dfree(chunk *c)
-{
-    char *p;
-
-    if (dchunksz == 0) {
-	/*
-	 * memory manager not yet initialized
-	 */
-	free((char *) c);
-	return;
-    }
-
-    if (c->size < DLIMIT) {
-	/* small chunk */
-	c->next = dchunks[(c->size - MOFFSET) / STRUCT_AL - 1];
-	dchunks[(c->size - MOFFSET) / STRUCT_AL - 1] = c;
-	return;
-    }
-
-    p = (char *) c - SIZETSIZE;
-    if (*(size_t *) p != 0) {
-	p -= *(size_t *) p - SIZETSIZE;
-	if ((((chunk *) p)->size & MAGIC_MASK) == 0) {
+	if (dchunksz == 0) {
 	    /*
-	     * merge with previous block
+	     * memory manager not yet initialized
+	     */
+	    MemChunk::free(c);
+	    return;
+	}
+
+	if (c->size < DLIMIT) {
+	    /* small chunk */
+	    c->next = dchunks[(c->size - MOFFSET) / STRUCT_AL - 1];
+	    dchunks[(c->size - MOFFSET) / STRUCT_AL - 1] = c;
+	    return;
+	}
+
+	p = (char *) c - SIZETSIZE;
+	if (*(size_t *) p != 0) {
+	    p -= *(size_t *) p - SIZETSIZE;
+	    if ((((MemChunk *) p)->size & MAGIC_MASK) == 0) {
+		/*
+		 * merge with previous block
+		 */
+# ifdef DEBUG
+		if (((MemChunk *) p)->size !=
+					*(size_t *) ((char *) c - SIZETSIZE)) {
+		    fatal("corrupted memory chunk");
+		}
+# endif
+		SplayNode::del(dtree, (SplayNode *) p);
+		((MemChunk *) p)->size += c->size;
+		c = (MemChunk *) p;
+		*((size_t *) (p + c->size - SIZETSIZE)) = c->size;
+	    }
+	}
+	p = (char*) c + c->size;
+	if (((MemChunk *) p)->size != 0 &&
+	    (((MemChunk *) p)->size & MAGIC_MASK) == 0) {
+	    /*
+	     * merge with next block
 	     */
 # ifdef DEBUG
-	    if (((chunk *) p)->size != *(size_t *) ((char *) c - SIZETSIZE)) {
+	    if (((MemChunk *) p)->size !=
+			*(size_t *) (p + ((MemChunk *) p)->size - SIZETSIZE)) {
 		fatal("corrupted memory chunk");
 	    }
 # endif
-	    del((chunk *) p);
-	    ((chunk *) p)->size += c->size;
-	    c = (chunk *) p;
-	    *((size_t *) (p + c->size - SIZETSIZE)) = c->size;
+	    SplayNode::del(dtree, (SplayNode *) p);
+	    c->size += ((MemChunk *) p)->size;
+	    *((size_t *) ((char *) c + c->size - SIZETSIZE)) = c->size;
 	}
+
+	SplayNode::insert(dtree, (SplayNode *) c);	/* add to free list */
     }
-    p = (char*) c + c->size;
-    if (((chunk *) p)->size != 0 && (((chunk *) p)->size & MAGIC_MASK) == 0) {
-	/*
-	 * merge with next block
-	 */
+
+    static SplayNode *dtree;	/* splay tree of large dynamic free chunks */
+    static MemChunk *dlist;		/* list of dynamic memory chunks */
+    static MemChunk *dchunks[DCHUNKS];	/* list of free small chunks */
+    static MemChunk *dchunk;		/* chunk of small chunks */
+    static size_t dchunksz;		/* dynamic chunk size */
+    static size_t memSize;		/* dynamic memory size */
+    static size_t memUsed;		/* dynamic memory used */
+};
+
+SplayNode *DynamicMem::dtree;		/* large dynamic free chunks */
+MemChunk *DynamicMem::dlist;		/* list of dynamic memory chunks */
+MemChunk *DynamicMem::dchunks[DCHUNKS];	/* list of free small chunks */
+MemChunk *DynamicMem::dchunk;		/* chunk of small chunks */
+size_t DynamicMem::dchunksz;		/* dynamic chunk size */
+size_t DynamicMem::memSize;		/* dynamic memory size */
+size_t DynamicMem::memUsed;		/* dynamic memory used */
+
+
 # ifdef DEBUG
-	if (((chunk *) p)->size !=
-			    *(size_t *) (p + ((chunk *) p)->size - SIZETSIZE)) {
-	    fatal("corrupted memory chunk");
-	}
+static MemHeader *hlist;	/* list of all dynamic memory chunks */
 # endif
-	del((chunk *) p);
-	c->size += ((chunk *) p)->size;
-	*((size_t *) ((char *) c + c->size - SIZETSIZE)) = c->size;
-    }
 
-    insert(c);	/* add to free list */
-}
-
+int Alloc::sLevel;
 
 /*
- * NAME:	mem->init()
- * DESCRIPTION:	initialize memory manager
+ * initialize memory manager
  */
-void m_init(size_t ssz, size_t dsz)
+void Alloc::init(size_t ssz, size_t dsz)
 {
-    schunksz = ALGN(ssz, STRUCT_AL);
-    dchunksz = ALGN(dsz, STRUCT_AL);
-    if (schunksz != 0) {
-	if (schunk != (chunk *) NULL) {
-	    schunk->next = sflist;
-	    sflist = schunk;
-	}
-	schunk = (chunk *) newmem(schunksz, &slist);
-	mstat.smemsize += schunk->size = schunksz;
-    }
-    dmem = FALSE;
+    StaticMem::init(ssz);
+    DynamicMem::init(dsz);
 }
 
-
-# ifdef DEBUG
-static header *hlist;			/* list of all dynamic memory chunks */
-# endif
+/*
+ * enter static mode
+ */
+void Alloc::staticMode()
+{
+    sLevel++;
+}
 
 /*
- * NAME:	mem->alloc()
- * DESCRIPTION:	allocate memory
+ * reenter dynamic mode
+ */
+void Alloc::dynamicMode()
+{
+    --sLevel;
+}
+
+/*
+ * allocate memory
  */
 # ifdef MEMDEBUG
-char *m_alloc(size_t size, const char *file, int line)
+char *Alloc::alloc(size_t size, const char *file, int line)
 # else
-char *m_alloc(size_t size)
+char *Alloc::alloc(size_t size)
 # endif
 {
-    chunk *c;
+    MemChunk *c;
 
 # ifdef DEBUG
     if (size == 0) {
-	fatal("m_alloc(0)");
+	fatal("alloc(0)");
     }
 # endif
     size = ALGN(size + MOFFSET, STRUCT_AL);
 # ifndef DEBUG
-    if (size < ALGN(sizeof(chunk), STRUCT_AL)) {
-	size = ALGN(sizeof(chunk), STRUCT_AL);
+    if (size < ALGN(sizeof(MemChunk), STRUCT_AL)) {
+	size = ALGN(sizeof(MemChunk), STRUCT_AL);
     }
 # endif
     if (size > SIZE_MASK) {
-	fatal("size too big in m_alloc");
+	fatal("size too big in alloc");
     }
-    if (slevel > 0) {
-	c = salloc(size);
-	mstat.smemused += c->size;
+    if (sLevel > 0) {
+	c = StaticMem::alloc(size);
+	StaticMem::memUsed += c->size;
 	c->size |= SM_MAGIC;
     } else {
-	c = dalloc(size);
-	mstat.dmemused += c->size;
+	c = DynamicMem::alloc(size);
+	DynamicMem::memUsed += c->size;
 	c->size |= DM_MAGIC;
 # ifdef DEBUG
-	((header *) c)->prev = (header *) NULL;
-	((header *) c)->next = hlist;
-	if (hlist != (header *) NULL) {
-	    hlist->prev = (header *) c;
+	((MemHeader *) c)->prev = (MemHeader *) NULL;
+	c->next = hlist;
+	if (hlist != (MemHeader *) NULL) {
+	    hlist->prev = (MemHeader *) c;
 	}
-	hlist = (header *) c;
+	hlist = (MemHeader *) c;
 # endif
     }
 # ifdef MEMDEBUG
-    ((header *) c)->file = file;
-    ((header *) c)->line = line;
+    ((MemHeader *) c)->file = file;
+    ((MemHeader *) c)->line = line;
 # endif
     return (char *) c + MOFFSET;
 }
 
 /*
- * NAME:	mem->free()
- * DESCRIPTION:	free memory
+ * free memory
  */
-void m_free(char *mem)
+void Alloc::free(char *mem)
 {
-    chunk *c;
+    MemChunk *c;
 
-    c = (chunk *) (mem - MOFFSET);
+    c = (MemChunk *) (mem - MOFFSET);
     if ((c->size & MAGIC_MASK) == SM_MAGIC) {
 	c->size &= SIZE_MASK;
-	mstat.smemused -= c->size;
-	sfree(c);
+	StaticMem::memUsed -= c->size;
+	StaticMem::free(c);
     } else if ((c->size & MAGIC_MASK) == DM_MAGIC) {
 	c->size &= SIZE_MASK;
-	mstat.dmemused -= c->size;
+	DynamicMem::memUsed -= c->size;
 # ifdef DEBUG
-	if (((header *) c)->next != (header *) NULL) {
-	    ((header *) c)->next->prev = ((header *) c)->prev;
+	if (c->next != (MemChunk *) NULL) {
+	    ((MemHeader *) c->next)->prev = ((MemHeader *) c)->prev;
 	}
-	if (((header *) c) == hlist) {
-	    hlist = ((header *) c)->next;
+	if ((MemHeader *) c == hlist) {
+	    hlist = (MemHeader *) c->next;
 	} else {
-	    ((header *) c)->prev->next = ((header *) c)->next;
+	    ((MemHeader *) c)->prev->next = c->next;
 	}
 # endif
-	dfree(c);
+	DynamicMem::free(c);
     } else {
-	fatal("bad pointer in m_free");
+	fatal("bad pointer in free");
     }
 }
 
 /*
- * NAME:	mem->realloc()
- * DESCRIPTION:	reallocate memory
+ * reallocate memory
  */
 # ifdef MEMDEBUG
-char *m_realloc(char *mem, size_t size1, size_t size2, const char *file, int line)
+char *Alloc::realloc(char *mem, size_t size1, size_t size2, const char *file, int line)
 # else
-char *m_realloc(char *mem, size_t size1, size_t size2)
+char *Alloc::realloc(char *mem, size_t size1, size_t size2)
 # endif
 {
-    chunk *c1, *c2;
+    MemChunk *c1, *c2;
 
     if (mem == (char *) NULL) {
 	if (size2 == 0) {
 	    return (char *) NULL;
 	}
 # ifdef MEMDEBUG
-	return m_alloc(size2, file, line);
+	return alloc(size2, file, line);
 # else
-	return m_alloc(size2);
+	return alloc(size2);
 # endif
     }
     if (size2 == 0) {
-	m_free(mem);
+	free(mem);
 	return (char *) NULL;
     }
 
     size2 = ALGN(size2 + MOFFSET, STRUCT_AL);
 # ifndef DEBUG
-    if (size2 < ALGN(sizeof(chunk), STRUCT_AL)) {
-	size2 = ALGN(sizeof(chunk), STRUCT_AL);
+    if (size2 < ALGN(sizeof(MemChunk), STRUCT_AL)) {
+	size2 = ALGN(sizeof(MemChunk), STRUCT_AL);
     }
 # endif
-    c1 = (chunk *) (mem - MOFFSET);
+    c1 = (MemChunk *) (mem - MOFFSET);
     if ((c1->size & MAGIC_MASK) == SM_MAGIC) {
 # ifdef DEBUG
 	if (size1 > (c1->size & SIZE_MASK)) {
@@ -832,14 +921,14 @@ char *m_realloc(char *mem, size_t size1, size_t size2)
 	}
 # endif
 	if ((c1->size & SIZE_MASK) < size2) {
-	    c2 = salloc(size2);
+	    c2 = StaticMem::alloc(size2);
 	    if (size1 != 0) {
 		memcpy((char *) c2 + MOFFSET, mem, size1);
 	    }
 	    c1->size &= SIZE_MASK;
-	    mstat.smemused += c2->size - c1->size;
+	    StaticMem::memUsed += c2->size - c1->size;
 	    c2->size |= SM_MAGIC;
-	    sfree(c1);
+	    StaticMem::free(c1);
 	    c1 = c2;
 	}
     } else if ((c1->size & MAGIC_MASK) == DM_MAGIC) {
@@ -850,62 +939,55 @@ char *m_realloc(char *mem, size_t size1, size_t size2)
 # endif
 	if ((c1->size & SIZE_MASK) < ((size2 < DLIMIT) ?
 				       size2 : size2 + SIZETSIZE)) {
-	    c2 = dalloc(size2);
+	    c2 = DynamicMem::alloc(size2);
 	    if (size1 != 0) {
 		memcpy((char *) c2 + MOFFSET, mem, size1);
 	    }
 	    c1->size &= SIZE_MASK;
-	    mstat.dmemused += c2->size - c1->size;
+	    DynamicMem::memUsed += c2->size - c1->size;
 	    c2->size |= DM_MAGIC;
 # ifdef DEBUG
-	    ((header *) c2)->next = ((header *) c1)->next;
-	    if (((header *) c1)->next != (header *) NULL) {
-		((header *) c2)->next->prev = (header *) c2;
+	    c2->next = c1->next;
+	    if (c1->next != (MemChunk *) NULL) {
+		((MemHeader *) c2->next)->prev = (MemHeader *) c2;
 	    }
-	    ((header *) c2)->prev = ((header *) c1)->prev;
-	    if (((header *) c1) == hlist) {
-		hlist = (header *) c2;
+	    ((MemHeader *) c2)->prev = ((MemHeader *) c1)->prev;
+	    if ((MemHeader *) c1 == hlist) {
+		hlist = (MemHeader *) c2;
 	    } else {
-		((header *) c2)->prev->next = (header *) c2;
+		((MemHeader *) c2)->prev->next = c2;
 	    }
 # endif
-	    dfree(c1);
+	    DynamicMem::free(c1);
 	    c1 = c2;
 	}
     } else {
 	fatal("bad pointer in m_realloc");
     }
 # ifdef MEMDEBUG
-    ((header *) c1)->file = file;
-    ((header *) c1)->line = line;
+    ((MemHeader *) c1)->file = file;
+    ((MemHeader *) c1)->line = line;
 # endif
     return (char *) c1 + MOFFSET;
 }
 
 /*
- * NAME:	mem->check()
- * DESCRIPTION:	return TRUE if there is enough static memory left, or FALSE
- *		otherwise
+ * return TRUE if there is enough static memory left, or FALSE otherwise
  */
-bool m_check()
+bool Alloc::check()
 {
-    if (schunk == (chunk *) NULL) {
-	return FALSE;
-    } else {
-	return (schunksz == 0 || schunk->size >= schunksz);
-    }
+    return StaticMem::check();
 }
 
 /*
- * NAME:	mem->purge()
- * DESCRIPTION:	purge dynamic memory
+ * purge dynamic memory
  */
-void m_purge()
+void Alloc::purge()
 {
+# ifdef DEBUG
     char *p;
 
-# ifdef DEBUG
-    while (hlist != (header *) NULL) {
+    while (hlist != (MemHeader *) NULL) {
 	char buf[160];
 	size_t n;
 
@@ -933,73 +1015,41 @@ void m_purge()
 	}
 	strcat(buf, "\012");	/* LF */
 	P_message(buf);
-	m_free((char *) (hlist + 1));
+	MemChunk::free(hlist + 1);
     }
 # endif
 
-    /* purge dynamic memory */
-    while (dlist != (char *) NULL) {
-	p = dlist;
-	dlist = *(char **) p;
-	free(p);
-    }
-    memset(dchunks, '\0', sizeof(dchunks));
-    dchunk = (chunk *) NULL;
-    dtree = (spnode *) NULL;
-    mstat.dmemsize = mstat.dmemused = 0;
-    dmem = FALSE;
-
-    if (schunksz != 0 &&
-	(schunk == (chunk *) NULL || schunk->size < schunksz ||
-	 (mstat.smemsize - mstat.smemused) * 2 < schunksz * 3)) {
-	/* expand static memory */
-	if (schunk != (chunk *) NULL) {
-	    schunk->next = sflist;
-	    sflist = schunk;
-	}
-	schunk = (chunk *) newmem(schunksz, &slist);
-	mstat.smemsize += schunk->size = schunksz;
-    }
+    DynamicMem::purge();
+    StaticMem::expand();
 }
 
 /*
- * NAME:	mem->info()
- * DESCRIPTION:	return information about memory usage
+ * return information about memory usage
  */
-allocinfo *m_info()
+Alloc::Info *Alloc::info()
 {
+    static Info mstat;
+
+    mstat.smemsize = StaticMem::memSize;
+    mstat.smemused = StaticMem::memUsed;
+    mstat.dmemsize = DynamicMem::memSize;
+    mstat.dmemused = DynamicMem::memUsed;
     return &mstat;
 }
 
-
 /*
- * NAME:	mem->finish()
- * DESCRIPTION:	finish up memory manager
+ * finish up memory manager
  */
-void m_finish()
+void Alloc::finish()
 {
     char *p;
 
-    schunksz = 0;
-    dchunksz = 0;
-
     /* purge dynamic memory */
 # ifdef DEBUG
-    hlist = (header *) NULL;
+    hlist = (MemHeader *) NULL;
 # endif
-    m_purge();
+    purge();
 
-    /* purge static memory */
-    while (slist != (char *) NULL) {
-	p = slist;
-	slist = *(char **) p;
-	free(p);
-    }
-    memset(schunks, '\0', sizeof(schunks));
-    memset(lchunks, '\0', sizeof(lchunks));
-    nlc = 0;
-    schunk = (chunk *) NULL;
-    sflist = (chunk *) NULL;
-    slevel = 0;
-    mstat.smemsize = mstat.smemused = 0;
+    StaticMem::finish();
+    DynamicMem::finish();
 }
