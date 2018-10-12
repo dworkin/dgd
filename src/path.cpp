@@ -122,8 +122,8 @@ char *path_ed_read(char *buf, char *file)
 	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
-	path_resolve(buf, f->sp->u.string->text);
-	(f->sp++)->u.string->del();
+	path_resolve(buf, f->sp->string->text);
+	(f->sp++)->string->del();
 	return buf;
     }
 }
@@ -146,8 +146,8 @@ char *path_ed_write(char *buf, char *file)
 	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
-	path_resolve(buf, f->sp->u.string->text);
-	(f->sp++)->u.string->del();
+	path_resolve(buf, f->sp->string->text);
+	(f->sp++)->string->del();
 	return buf;
     }
 }
@@ -179,27 +179,27 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
 
     if (f->sp->type == T_STRING) {
 	/* simple path */
-	path_resolve(buf, f->sp->u.string->text);
-	(f->sp++)->u.string->del();
+	path_resolve(buf, f->sp->string->text);
+	(f->sp++)->string->del();
 	return buf;
     } else if (f->sp->type == T_ARRAY) {
 	/*
 	 * Array of strings.  Check that the array does indeed contain only
 	 * strings, then return it.
 	 */
-	i = f->sp->u.array->size;
+	i = f->sp->array->size;
 	if (i != 0) {
-	    v = d_get_elts(f->sp->u.array);
+	    v = d_get_elts(f->sp->array);
 	    while ((v++)->type == T_STRING) {
 		if (--i == 0) {
-		    *nstr = i = f->sp->u.array->size;
+		    *nstr = i = f->sp->array->size;
 		    str = ALLOC(String*, i);
 		    do {
-			*str = (--v)->u.string;
+			*str = (--v)->string;
 			(*str++)->ref();
 		    } while (--i != 0);
 		    *strs = str;
-		    (f->sp++)->u.array->del();
+		    (f->sp++)->array->del();
 
 		    /* return the untranslated path, as well */
 		    return path_from(buf, from, file);

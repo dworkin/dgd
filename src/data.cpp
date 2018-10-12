@@ -82,7 +82,7 @@ static void ref_rhs(Dataspace *data, Value *rhs)
 
     switch (rhs->type) {
     case T_STRING:
-	str = rhs->u.string;
+	str = rhs->string;
 	if (str->primary != (strref *) NULL && str->primary->data == data) {
 	    /* in this object */
 	    str->primary->ref++;
@@ -96,7 +96,7 @@ static void ref_rhs(Dataspace *data, Value *rhs)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr = rhs->u.array;
+	arr = rhs->array;
 	if (arr->primary->data == data) {
 	    /* in this object */
 	    if (arr->primary->arr != (Array *) NULL) {
@@ -136,7 +136,7 @@ static void del_lhs(Dataspace *data, Value *lhs)
 
     switch (lhs->type) {
     case T_STRING:
-	str = lhs->u.string;
+	str = lhs->string;
 	if (str->primary != (strref *) NULL && str->primary->data == data) {
 	    /* in this object */
 	    if (--(str->primary->ref) == 0) {
@@ -155,7 +155,7 @@ static void del_lhs(Dataspace *data, Value *lhs)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr = lhs->u.array;
+	arr = lhs->array;
 	if (arr->primary->data == data) {
 	    /* in this object */
 	    if (arr->primary->arr != (Array *) NULL) {
@@ -298,7 +298,7 @@ static void d_free_call_out(Dataspace *data, unsigned int handle)
 	/* fall through */
     case 0:
 	del_lhs(data, &v[0]);
-	v[0].u.string->del();
+	v[0].string->del();
 	break;
     }
     v[0] = nil_value;
@@ -517,7 +517,7 @@ static void commit_values(Value *v, unsigned int n, Int level)
 
     while (n != 0) {
 	if (T_INDEXED(v->type)) {
-	    arr = v->u.array;
+	    arr = v->array;
 	    if (arr->primary->arr == (Array *) NULL &&
 		arr->primary->plane->level > level) {
 		if (arr->hashmod) {
@@ -961,7 +961,7 @@ void d_ref_imports(Array *arr)
 
     data = arr->primary->data;
     for (n = arr->size, v = arr->elts; n > 0; --n, v++) {
-	if (T_INDEXED(v->type) && data != v->u.array->primary->data) {
+	if (T_INDEXED(v->type) && data != v->array->primary->data) {
 	    /* mark as imported */
 	    if (data->plane->imports++ == 0 && ifirst != data &&
 		data->iprev == (Dataspace *) NULL) {
@@ -1076,7 +1076,7 @@ void d_assign_elt(Dataspace *data, Array *arr, Value *elt, Value *val)
 	ref_rhs(data, val);
 	del_lhs(data, elt);
     } else {
-	if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
+	if (T_INDEXED(val->type) && data != val->array->primary->data) {
 	    /* mark as imported */
 	    if (data->plane->imports++ == 0 && ifirst != data &&
 		data->iprev == (Dataspace *) NULL) {
@@ -1089,7 +1089,7 @@ void d_assign_elt(Dataspace *data, Array *arr, Value *elt, Value *val)
 		ifirst = data;
 	    }
 	}
-	if (T_INDEXED(elt->type) && data != elt->u.array->primary->data) {
+	if (T_INDEXED(elt->type) && data != elt->array->primary->data) {
 	    /* mark as unimported */
 	    data->plane->imports--;
 	}
@@ -1152,8 +1152,8 @@ uindex d_new_call_out(Dataspace *data, String *func, Int delay,
 	v[1] = f->sp[0];
 	v[2] = f->sp[1];
 	PUT_ARRVAL(&v[3], Array::create(data, nargs - 2));
-	memcpy(v[3].u.array->elts, f->sp + 2, (nargs - 2) * sizeof(Value));
-	d_ref_imports(v[3].u.array);
+	memcpy(v[3].array->elts, f->sp + 2, (nargs - 2) * sizeof(Value));
+	d_ref_imports(v[3].array);
 	break;
     }
     f->sp += nargs;
@@ -1292,7 +1292,7 @@ String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
     co = &data->callouts[handle - 1];
     v = co->val;
     del_lhs(data, &v[0]);
-    str = v[0].u.string;
+    str = v[0].string;
 
     i_grow_stack(f, (*nargs = co->nargs) + 1);
     *--f->sp = v[0];
@@ -1313,11 +1313,11 @@ String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
     default:
 	n = co->nargs - 2;
 	f->sp -= n;
-	memcpy(f->sp, d_get_elts(v[3].u.array), n * sizeof(Value));
+	memcpy(f->sp, d_get_elts(v[3].array), n * sizeof(Value));
 	del_lhs(data, &v[3]);
-	FREE(v[3].u.array->elts);
-	v[3].u.array->elts = (Value *) NULL;
-	v[3].u.array->del();
+	FREE(v[3].array->elts);
+	v[3].array->elts = (Value *) NULL;
+	v[3].array->del();
 	del_lhs(data, &v[2]);
 	*--f->sp = v[2];
 	del_lhs(data, &v[1]);
@@ -1335,9 +1335,9 @@ String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
 	    break;
 
 	case T_LWOBJECT:
-	    o = d_get_elts(v->u.array);
+	    o = d_get_elts(v->array);
 	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
-		v->u.array->del();
+		v->array->del();
 		*v = nil_value;
 	    }
 	    break;
@@ -1403,7 +1403,7 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
 	    PUT_INTVAL(v, co - data->callouts + 1);
 	    v++;
 	    /* function */
-	    PUT_STRVAL(v, co->val[0].u.string);
+	    PUT_STRVAL(v, co->val[0].string);
 	    v++;
 	    /* time */
 	    if (co->mtime == 0xffff) {
@@ -1428,7 +1428,7 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
 
 	    default:
 		n = size - 2;
-		for (v2 = d_get_elts(co->val[3].u.array) + n; n > 0; --n) {
+		for (v2 = d_get_elts(co->val[3].array) + n; n > 0; --n) {
 		    *v++ = *--v2;
 		}
 		*v++ = co->val[2];
@@ -1605,14 +1605,14 @@ Object *d_upgrade_lwobj(Array *lwobj, Object *obj)
 
     a = lwobj->primary;
     update = obj->update;
-    vmap = d_get_varmap(&obj, (Uint) lwobj->elts[1].u.number, &nvar);
+    vmap = d_get_varmap(&obj, (Uint) lwobj->elts[1].number, &nvar);
     --nvar;
 
     /* map variables */
     v = ALLOC(Value, nvar + 2);
     *v++ = lwobj->elts[0];
     *v = lwobj->elts[1];
-    (v++)->u.objcnt = update;
+    (v++)->objcnt = update;
 
     vars = lwobj->elts + 2;
     for (n = nvar; n > 0; --n) {
@@ -1694,7 +1694,7 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 	    if (T_INDEXED(val->type)) {
 		Uint i, j;
 
-		a = val->u.array;
+		a = val->array;
 		if (a->primary->data != data) {
 		    /*
 		     * imported array
@@ -1721,23 +1721,23 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 			     * make new array
 			     */
 			    a = Array::alloc(a->size);
-			    a->tag = val->u.array->tag;
-			    a->objDestrCount = val->u.array->objDestrCount;
+			    a->tag = val->array->tag;
+			    a->objDestrCount = val->array->objDestrCount;
 
 			    if (a->size > 0) {
 				/*
 				 * copy elements
 				 */
 				i_copy(a->elts = ALLOC(Value, a->size),
-				       d_get_elts(val->u.array), a->size);
+				       d_get_elts(val->array), a->size);
 			    }
 
 			    /*
 			     * replace
 			     */
-			    val->u.array->del();
-			    val->u.array = a;
-			    val->u.array->ref();
+			    val->array->del();
+			    val->array = a;
+			    val->array->ref();
 
 			    /*
 			     * store in itab
@@ -1777,8 +1777,8 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 			 */
 			a = imp->itab[i];
 			a->ref();
-			val->u.array->del();
-			val->u.array = a;
+			val->array->del();
+			val->array = a;
 		    }
 		} else if (a->put(imp->narr) == imp->narr) {
 		    /*

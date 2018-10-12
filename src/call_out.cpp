@@ -550,9 +550,9 @@ void co_list(Array *a)
     Float flt1, flt2;
 
     for (i = a->size, v = a->elts; i != 0; --i, v++) {
-	w = &v->u.array->elts[2];
+	w = &v->array->elts[2];
 	if (w->type == T_INT) {
-	    t = w->u.number;
+	    t = w->number;
 	    m = 0xffff;
 	} else {
 	    GET_FLT(w, flt1);
@@ -704,7 +704,7 @@ void co_call(Frame *f)
 		    /* function exists */
 		    i_del_value(f->sp++);
 		}
-		(f->sp++)->u.string->del();
+		(f->sp++)->string->del();
 		ec_pop();
 	    } catch (...) { }
 	    endtask();

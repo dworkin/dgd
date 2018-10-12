@@ -153,7 +153,7 @@ struct srpstate {
     union {
 	char e[4];		/* 1 */
 	char *a;		/* > 1 */
-    } reds;			/* reductions */
+    };				/* reductions */
     unsigned short nitem;	/* # items */
     short nred;			/* # reductions, -1 if unexpanded */
     Int shoffset;		/* offset for shifts */
@@ -163,8 +163,7 @@ struct srpstate {
     bool alloc;			/* reductions allocated? */
 };
 
-# define REDA(state)   (((state)->nred == 1) ? \
-			(state)->reds.e : (state)->reds.a)
+# define REDA(state)   (((state)->nred == 1) ? (state)->e : (state)->a)
 # define UNEXPANDED	-1
 # define NOSHIFT	((Int) 0xff800000L)
 
@@ -232,9 +231,9 @@ static char *ss_load(char *buf, char **rbuf, srpstate *state)
 
     if (state->nred > 0) {
 	if (state->nred == 1) {
-	    memcpy(state->reds.e, *rbuf, 4);
+	    memcpy(state->e, *rbuf, 4);
 	} else {
-	    state->reds.a = *rbuf;
+	    state->a = *rbuf;
 	}
 	*rbuf += 4 * state->nred;
     }
@@ -450,7 +449,7 @@ void srp_del(srp *lr)
     }
     for (i = lr->nstates, state = lr->states; i > 0; --i, state++) {
 	if (state->alloc) {
-	    FREE(state->reds.a);
+	    FREE(state->a);
 	}
     }
     FREE(lr->states);
@@ -916,7 +915,7 @@ static srpstate *srp_expand(srp *lr, srpstate *state)
     state->nred = nred;
     if (nred != 0) {
 	if (nred > 1) {
-	    state->reds.a = ALLOC(char, (Uint) nred << 2);
+	    state->a = ALLOC(char, (Uint) nred << 2);
 	    state->alloc = TRUE;
 	}
 	lr->nred += nred;

@@ -50,7 +50,7 @@ struct config {
     union {
 	long num;	/* numeric value */
 	char *str;	/* string value */
-    } u;
+    };
 };
 
 static config conf[] = {
@@ -230,9 +230,9 @@ static void conf_dumpinit()
     header[DUMP_VALID] = TRUE;			/* valid dump flag */
     header[DUMP_VERSION] = FORMAT_VERSION;	/* snapshot version number */
     header[DUMP_MODEL] = 0;			/* vanilla DGD */
-    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
-    header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].u.num >> 8;
-    header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].u.num;
+    header[DUMP_TYPECHECK] = conf[TYPECHECKING].num;
+    header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].num >> 8;
+    header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].num;
     strcpy(header + DUMP_VSTRING, VERSION);
 
     starttime = boottime = P_time();
@@ -275,7 +275,7 @@ void conf_dump(bool incr, bool boot)
     Uint etime;
 
     header[DUMP_VERSION] = FORMAT_VERSION;
-    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
+    header[DUMP_TYPECHECK] = conf[TYPECHECKING].num;
     header[DUMP_STARTTIME + 0] = starttime >> 24;
     header[DUMP_STARTTIME + 1] = starttime >> 16;
     header[DUMP_STARTTIME + 2] = starttime >> 8;
@@ -298,7 +298,7 @@ void conf_dump(bool incr, bool boot)
     if (Object::dobjects() > 0) {
 	dflags |= FLAGS_PARTIAL;
     }
-    fd = sw_dump(conf[DUMP_FILE].u.str, dflags & FLAGS_PARTIAL);
+    fd = sw_dump(conf[DUMP_FILE].str, dflags & FLAGS_PARTIAL);
     if (!kf_dump(fd)) {
 	fatal("failed to dump kfun table");
     }
@@ -805,7 +805,7 @@ static bool conf_config()
     unsigned short *ports;
 
     for (h = NR_OPTIONS; h > 0; ) {
-	conf[--h].u.num = 0;
+	conf[--h].num = 0;
 	conf[h].set = FALSE;
     }
     memset(dirs, '\0', sizeof(dirs));
@@ -882,7 +882,7 @@ static bool conf_config()
 		break;
 
 	    default:
-		conf[m].u.num = yylval.number;
+		conf[m].num = yylval.number;
 		break;
 	    }
 	    break;
@@ -895,7 +895,7 @@ static bool conf_config()
 		p[l] = '\0';
 	    }
 	    m_static();
-	    conf[m].u.str = strcpy(ALLOC(char, l + 1), p);
+	    conf[m].str = strcpy(ALLOC(char, l + 1), p);
 	    m_dynamic();
 	    break;
 
@@ -1093,11 +1093,11 @@ static bool conf_config()
 	}
     }
 
-    if (conf[USERS].u.num + conf[DATAGRAM_USERS].u.num == 0) {
+    if (conf[USERS].num + conf[DATAGRAM_USERS].num == 0) {
 	conferr("no users");
 	return FALSE;
     }
-    if (conf[USERS].u.num + conf[DATAGRAM_USERS].u.num > EINDEX_MAX) {
+    if (conf[USERS].num + conf[DATAGRAM_USERS].num > EINDEX_MAX) {
 	conferr("total number of users too high");
 	return FALSE;
     }
@@ -1511,9 +1511,9 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     kf_init();
 
     /* change directory */
-    if (P_chdir(path_native(buf, conf[DIRECTORY].u.str)) < 0) {
+    if (P_chdir(path_native(buf, conf[DIRECTORY].str)) < 0) {
 	message("Config error: bad base directory \"%s\"\012",	/* LF */
-		conf[DIRECTORY].u.str);
+		conf[DIRECTORY].str);
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
 	}
@@ -1526,8 +1526,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     }
 
     /* initialize communications */
-    if (!comm_init((int) conf[USERS].u.num,
-		   (int) conf[DATAGRAM_USERS].u.num,
+    if (!comm_init((int) conf[USERS].num,
+		   (int) conf[DATAGRAM_USERS].num,
 		   thosts, bhosts, dhosts,
 		   tports, bports, dports,
 		   ntports, nbports, ndports)) {
@@ -1545,27 +1545,27 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     }
 
     /* initialize arrays */
-    Array::init((int) conf[ARRAY_SIZE].u.num);
+    Array::init((int) conf[ARRAY_SIZE].num);
 
     /* initialize objects */
-    Object::init((uindex) conf[OBJECTS].u.num,
-		 (Uint) conf[DUMP_INTERVAL].u.num);
+    Object::init((uindex) conf[OBJECTS].num,
+		 (Uint) conf[DUMP_INTERVAL].num);
 
     /* initialize swap device */
-    cache = (sector) ((conf[CACHE_SIZE].set) ? conf[CACHE_SIZE].u.num : 100);
-    sw_init(conf[SWAP_FILE].u.str, (sector) conf[SWAP_SIZE].u.num, cache,
-	    (unsigned int) conf[SECTOR_SIZE].u.num);
+    cache = (sector) ((conf[CACHE_SIZE].set) ? conf[CACHE_SIZE].num : 100);
+    sw_init(conf[SWAP_FILE].str, (sector) conf[SWAP_SIZE].num, cache,
+	    (unsigned int) conf[SECTOR_SIZE].num);
 
     /* initialize swapped data handler */
     d_init();
-    *fragment = conf[SWAP_FRAGMENT].u.num;
+    *fragment = conf[SWAP_FRAGMENT].num;
 
     /* initalize editor */
-    ed_init(conf[ED_TMPFILE].u.str,
-	    (int) conf[EDITORS].u.num);
+    ed_init(conf[ED_TMPFILE].str,
+	    (int) conf[EDITORS].num);
 
     /* initialize call_outs */
-    if (!co_init((uindex) conf[CALL_OUTS].u.num)) {
+    if (!co_init((uindex) conf[CALL_OUTS].num)) {
 	sw_finish();
 	comm_clear();
 	comm_finish();
@@ -1581,20 +1581,20 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     }
 
     /* initialize interpreter */
-    i_init(conf[CREATE].u.str, conf[TYPECHECKING].u.num == 2);
+    i_init(conf[CREATE].str, conf[TYPECHECKING].num == 2);
 
     /* initialize compiler */
-    c_init(conf[AUTO_OBJECT].u.str,
-	   conf[DRIVER_OBJECT].u.str,
-	   conf[INCLUDE_FILE].u.str,
+    c_init(conf[AUTO_OBJECT].str,
+	   conf[DRIVER_OBJECT].str,
+	   conf[INCLUDE_FILE].str,
 	   dirs,
-	   (int) conf[TYPECHECKING].u.num);
+	   (int) conf[TYPECHECKING].num);
 
     m_dynamic();
 
     /* initialize memory manager */
-    m_init((size_t) conf[STATIC_CHUNK].u.num,
-	   (size_t) conf[DYNAMIC_CHUNK].u.num);
+    m_init((size_t) conf[STATIC_CHUNK].num,
+	   (size_t) conf[DYNAMIC_CHUNK].num);
 
     /*
      * create include files
@@ -1696,7 +1696,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
  */
 char *conf_base_dir()
 {
-    return conf[DIRECTORY].u.str;
+    return conf[DIRECTORY].str;
 }
 
 /*
@@ -1705,7 +1705,7 @@ char *conf_base_dir()
  */
 char *conf_driver()
 {
-    return conf[DRIVER_OBJECT].u.str;
+    return conf[DRIVER_OBJECT].str;
 }
 
 /*
@@ -1723,7 +1723,7 @@ char **conf_hotboot()
  */
 int conf_typechecking()
 {
-    return conf[TYPECHECKING].u.num;
+    return conf[TYPECHECKING].num;
 }
 
 /*
@@ -1742,7 +1742,7 @@ bool conf_attach(int port)
  */
 unsigned short conf_array_size()
 {
-    return conf[ARRAY_SIZE].u.num;
+    return conf[ARRAY_SIZE].num;
 }
 
 /*
@@ -1799,7 +1799,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 4:	/* ST_SWAPSIZE */
-	PUT_INTVAL(v, conf[SWAP_SIZE].u.num);
+	PUT_INTVAL(v, conf[SWAP_SIZE].num);
 	break;
 
     case 5:	/* ST_SWAPUSED */
@@ -1807,7 +1807,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 6:	/* ST_SECTORSIZE */
-	PUT_INTVAL(v, conf[SECTOR_SIZE].u.num);
+	PUT_INTVAL(v, conf[SECTOR_SIZE].num);
 	break;
 
     case 7:	/* ST_SWAPRATE1 */
@@ -1835,7 +1835,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 13:	/* ST_OTABSIZE */
-	PUT_INTVAL(v, conf[OBJECTS].u.num);
+	PUT_INTVAL(v, conf[OBJECTS].num);
 	break;
 
     case 14:	/* ST_NOBJECTS */
@@ -1843,7 +1843,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 15:	/* ST_COTABSIZE */
-	PUT_INTVAL(v, conf[CALL_OUTS].u.num);
+	PUT_INTVAL(v, conf[CALL_OUTS].num);
 	break;
 
     case 16:	/* ST_NCOSHORT */
@@ -1857,11 +1857,11 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 18:	/* ST_UTABSIZE */
-	PUT_INTVAL(v, conf[USERS].u.num + conf[DATAGRAM_USERS].u.num);
+	PUT_INTVAL(v, conf[USERS].num + conf[DATAGRAM_USERS].num);
 	break;
 
     case 19:	/* ST_ETABSIZE */
-	PUT_INTVAL(v, conf[EDITORS].u.num);
+	PUT_INTVAL(v, conf[EDITORS].num);
 	break;
 
     case 20:	/* ST_STRSIZE */
@@ -1869,7 +1869,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 21:	/* ST_ARRAYSIZE */
-	PUT_INTVAL(v, conf[ARRAY_SIZE].u.num);
+	PUT_INTVAL(v, conf[ARRAY_SIZE].num);
 	break;
 
     case 22:	/* ST_STACKDEPTH */
@@ -1966,7 +1966,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
     case 3:	/* O_NSECTORS */
 	PUT_INTVAL(v, (O_HASDATA(obj)) ?  obj->dataspace()->nsectors : 0);
 	if (obj->flags & O_MASTER) {
-	    v->u.number += ctrl->nsectors;
+	    v->number += ctrl->nsectors;
 	}
 	break;
 

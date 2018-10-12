@@ -610,8 +610,8 @@ void Object::remove(Frame *f)
 
     /* callback to the system */
     PUSH_STRVAL(f, String::create(NULL, strlen(name) + 1L));
-    f->sp->u.string->text[0] = '/';
-    strcpy(f->sp->u.string->text + 1, name);
+    f->sp->string->text[0] = '/';
+    strcpy(f->sp->string->text + 1, name);
     PUSH_INTVAL(f, ctrl->compiled);
     PUSH_INTVAL(f, index);
     if (i_call_critical(f, "remove_program", 3, TRUE)) {

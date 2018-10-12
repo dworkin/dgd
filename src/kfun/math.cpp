@@ -176,7 +176,7 @@ int kf_ldexp(Frame *f, int n, kfunc *kf)
 
     i_add_ticks(f, 1);
     GET_FLT(f->sp + 1, flt);
-    flt.ldexp(f->sp->u.number);
+    flt.ldexp(f->sp->number);
     f->sp++;
     PUT_FLT(f->sp, flt);
     return 0;

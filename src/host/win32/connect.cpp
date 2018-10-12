@@ -34,7 +34,7 @@ struct in46addr {
     union {
 	struct in6_addr addr6;		/* IPv6 addr */
 	struct in_addr addr;		/* IPv4 addr */
-    } in;
+    };
     bool ipv6;				/* IPv6? */
 };
 
@@ -151,15 +151,15 @@ static ipaddr *ipa_new(in46addr *ipnum)
 	hash = &ipahtab[Hashtab::hashmem((char *) ipnum,
 					 sizeof(struct in6_addr)) % ipahtabsz];
     } else {
-	hash = &ipahtab[(Uint) ipnum->in.addr.s_addr % ipahtabsz];
+	hash = &ipahtab[(Uint) ipnum->addr.s_addr % ipahtabsz];
     }
     while (*hash != (ipaddr *) NULL) {
 	ipa = *hash;
 	if (ipnum->ipv6 == ipa->ipnum.ipv6 &&
 	    ((ipnum->ipv6) ?
-	      memcmp(&ipnum->in.addr6, &ipa->ipnum.in.addr6,
+	      memcmp(&ipnum->addr6, &ipa->ipnum.addr6,
 		     sizeof(struct in6_addr)) == 0 :
-	      ipnum->in.addr.s_addr == ipa->ipnum.in.addr.s_addr)) {
+	      ipnum->addr.s_addr == ipa->ipnum.addr.s_addr)) {
 	    /*
 	     * found it
 	     */
@@ -226,7 +226,7 @@ static ipaddr *ipa_new(in46addr *ipnum)
 								    ipahtabsz];
 	    } else
 	    {
-		h = &ipahtab[(Uint) ipa->ipnum.in.addr.s_addr % ipahtabsz];
+		h = &ipahtab[(Uint) ipa->ipnum.addr.s_addr % ipahtabsz];
 	    }
 	    while (*h != ipa) {
 		h = &(*h)->link;
@@ -415,7 +415,7 @@ static void udp_recv6(int n)
 	if (conn == (connection *) NULL) {
 	    if (!conf_attach(n)) {
 		if (!udescs[n].accept) {
-		    udescs[n].addr.in.addr6 = from.sin6_addr;
+		    udescs[n].addr.addr6 = from.sin6_addr;
 		    udescs[n].addr.ipv6 = TRUE;
 		    udescs[n].port = from.sin6_port;
 		    udescs[n].hashval = hashval;
@@ -508,7 +508,7 @@ static void udp_recv(int n)
 	if (conn == (connection *) NULL) {
 	    if (!conf_attach(n)) {
 		if (!udescs[n].accept) {
-		    udescs[n].addr.in.addr = from.sin_addr;
+		    udescs[n].addr.addr = from.sin_addr;
 		    udescs[n].addr.ipv6 = FALSE;
 		    udescs[n].port = from.sin_port;
 		    udescs[n].hashval = hashval;
@@ -529,7 +529,7 @@ static void udp_recv(int n)
 		if (conn->bufsz == size &&
 		    memcmp(conn->udpbuf, buffer, size) == 0 &&
 		    !conn->addr->ipnum.ipv6 &&
-		    conn->addr->ipnum.in.addr.s_addr == from.sin_addr.s_addr) {
+		    conn->addr->ipnum.addr.s_addr == from.sin_addr.s_addr) {
 		    /*
 		     * attach new UDP channel
 		     */
@@ -549,7 +549,7 @@ static void udp_recv(int n)
 	}
 
 	if (conn->at == n &&
-	    conn->addr->ipnum.in.addr.s_addr == from.sin_addr.s_addr &&
+	    conn->addr->ipnum.addr.s_addr == from.sin_addr.s_addr &&
 	    conn->port == from.sin_port) {
 	    /*
 	     * packet from known correspondent
@@ -1145,7 +1145,7 @@ static connection *conn_accept6(SOCKET portfd, int port)
     conn->fd = fd;
     conn->udp = FALSE;
     conn->udpbuf = (char *) NULL;
-    addr.in.addr6 = sin6.sin6_addr;
+    addr.addr6 = sin6.sin6_addr;
     addr.ipv6 = TRUE;
     conn->addr = ipa_new(&addr);
     conn->at = port;
@@ -1188,7 +1188,7 @@ static connection *conn_accept(SOCKET portfd, int port)
     conn->fd = fd;
     conn->udp = FALSE;
     conn->udpbuf = (char *) NULL;
-    addr.in.addr = sin.sin_addr;
+    addr.addr = sin.sin_addr;
     addr.ipv6 = FALSE;
     conn->addr = ipa_new(&addr);
     conn->at = port;
@@ -1397,7 +1397,7 @@ void conn_del(connection *conn)
 	    hash = &udphtab[(Hashtab::hashmem((char *) &conn->addr->ipnum,
 			    sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
 	} else {
-	    hash = &udphtab[((Uint) conn->addr->ipnum.in.addr.s_addr ^
+	    hash = &udphtab[((Uint) conn->addr->ipnum.addr.s_addr ^
 						    conn->port) % udphtabsz];
 	}
 	while (*hash != conn) {
@@ -1625,7 +1625,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 
 	    memset(&to, '\0', sizeof(struct sockaddr_in6));
 	    to.sin6_family = AF_INET6;
-	    memcpy(&to.sin6_addr, &conn->addr->ipnum.in.addr6,
+	    memcpy(&to.sin6_addr, &conn->addr->ipnum.addr6,
 		   sizeof(struct in6_addr));
 	    to.sin6_port = conn->port;
 	    return sendto(udescs[conn->at].fd.in6, buf, len, 0,
@@ -1634,7 +1634,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 	    struct sockaddr_in to;
 
 	    to.sin_family = AF_INET;
-	    to.sin_addr.s_addr = conn->addr->ipnum.in.addr.s_addr;
+	    to.sin_addr.s_addr = conn->addr->ipnum.addr.s_addr;
 	    to.sin_port = conn->port;
 	    return sendto(udescs[conn->at].fd.in4, buf, len, 0,
 			  (struct sockaddr *) &to, sizeof(struct sockaddr_in));
@@ -1672,12 +1672,12 @@ void conn_ipnum(connection *conn, char *buf)
 	memset(&sin6, '\0', sizeof(struct sockaddr_in6));
 	sin6.sin6_family = AF_INET6;
 	length = 40;
-	sin6.sin6_addr = conn->addr->ipnum.in.addr6;
+	sin6.sin6_addr = conn->addr->ipnum.addr6;
 	WSAAddressToString((struct sockaddr *) &sin6,
 			   sizeof(struct sockaddr_in6),
 			   (LPWSAPROTOCOL_INFO) NULL, buf, &length);
     } else {
-	strcpy(buf, inet_ntoa(conn->addr->ipnum.in.addr));
+	strcpy(buf, inet_ntoa(conn->addr->ipnum.addr));
     }
 }
 
@@ -1867,10 +1867,10 @@ int conn_check_connected(connection *conn, int *errcode)
 	getpeername(conn->fd, (struct sockaddr *) &sin, &len);
 	inaddr.ipv6 = FALSE;
 	if (sin.sin6_family == AF_INET6) {
-	    inaddr.in.addr6 = sin.sin6_addr;
+	    inaddr.addr6 = sin.sin6_addr;
 	    inaddr.ipv6 = TRUE;
 	} else {
-	    inaddr.in.addr = ((struct sockaddr_in *) &sin)->sin_addr;
+	    inaddr.addr = ((struct sockaddr_in *) &sin)->sin_addr;
 	}
 	conn->addr = ipa_new(&inaddr);
 	errno = 0;

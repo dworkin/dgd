@@ -466,7 +466,7 @@ struct rule : public Hashtab::Entry, public ChunkAllocated {
     union {
 	String *rgx;		/* regular expression */
 	rulesym *syms;		/* linked list of rule elements */
-    } u;
+    };
     String *func;		/* optional LPC function */
     rule *alt, **last;		/* first and last in alternatives list */
     rule *list;			/* next in linked list */
@@ -500,8 +500,8 @@ public:
 	if (rl->symb != (String *) NULL) {
 	    rl->symb->del();
 	}
-	if (rl->type == RULE_REGEXP && rl->u.rgx != (String *) NULL) {
-	    rl->u.rgx->del();
+	if (rl->type == RULE_REGEXP && rl->rgx != (String *) NULL) {
+	    rl->rgx->del();
 	}
 	if (rl->func != (String *) NULL) {
 	    rl->func->del();
@@ -544,7 +544,7 @@ static rule *rl_new(rlchunk **c, int type)
     rl->type = type;
     rl->num = 0;
     rl->len = 0;
-    rl->u.syms = (rulesym *) NULL;
+    rl->syms = (rulesym *) NULL;
     rl->func = (String *) NULL;
     rl->alt = rl->list = (rule *) NULL;
     rl->last = &rl->alt;
@@ -667,10 +667,10 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 	rl->num = --n;
 	p += 2;
 	for (r = rl; r != (rule *) NULL; r = r->alt) {
-	    if (r->u.rgx != (String *) NULL) {
-		*p++ = r->u.rgx->len;
-		memcpy(p, r->u.rgx->text, r->u.rgx->len);
-		p += r->u.rgx->len;
+	    if (r->rgx != (String *) NULL) {
+		*p++ = r->rgx->len;
+		memcpy(p, r->rgx->text, r->rgx->len);
+		p += r->rgx->len;
 		nrgx++;
 	    } else {
 		/* nomatch */
@@ -692,7 +692,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 	for (r = rl; r != (rule *) NULL; r = r->alt) {
 	    p = q + 2;
 	    n = 0;
-	    for (rs = r->u.syms; rs != (rulesym *) NULL; rs = rs->next) {
+	    for (rs = r->syms; rs != (rulesym *) NULL; rs = rs->next) {
 		STORE2(p, rs->rule->num); p += 2;
 		n++;
 	    }
@@ -815,8 +815,8 @@ String *parse_grammar(String *gram)
 
 	    switch (gramtok(gram, &glen, buffer, &buflen)) {
 	    case TOK_REGEXP:
-		rl->u.rgx = String::create(buffer, buflen);
-		rl->u.rgx->ref();
+		rl->rgx = String::create(buffer, buflen);
+		rl->rgx->ref();
 		(*r)->num++;
 		(*r)->len += buflen;
 		size += buflen + 1;
@@ -839,7 +839,7 @@ String *parse_grammar(String *gram)
 			goto err;
 		    }
 		    nomatch = TRUE;
-		    rl->u.rgx = (String *) NULL;
+		    rl->rgx = (String *) NULL;
 		    break;
 		}
 		/* fall through */
@@ -904,7 +904,7 @@ String *parse_grammar(String *gram)
 
 	    rr = *r;
 	    rrl = rl;
-	    rs = &rl->u.syms;
+	    rs = &rl->syms;
 	    len = 0;
 	    for (;;) {
 		switch (token = gramtok(gram, &glen, buffer, &buflen)) {

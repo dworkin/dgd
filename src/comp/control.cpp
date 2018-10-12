@@ -681,7 +681,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 		 */
 		(--f->sp)->type = T_OBJECT;
 		f->sp->oindex = obj->index;
-		f->sp->u.objcnt = ocount = obj->count;
+		f->sp->objcnt = ocount = obj->count;
 		call_driver_object(f, "recompile", 1);
 		i_del_value(f->sp++);
 		obj = OBJR(obj->index);
@@ -2263,7 +2263,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 	    if (f->sclass & C_UNDEFINED) {
 		u = &list[UCHAR(symb->inherit)];
 		v = &m->elts[u->index];
-		if (v->u.string == (String *) NULL) {
+		if (v->string == (String *) NULL) {
 		    String *str;
 		    unsigned short len;
 
@@ -2275,7 +2275,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 		    PUT_ARRVAL(v + 1, Array::createNil(data, u->count));
 		    u->count = 0;
 		}
-		v = &v[1].u.array->elts[u->count++];
+		v = &v[1].array->elts[u->count++];
 		PUT_STRVAL(v, d_get_strconst(ctrl, f->inherit, f->index));
 	    }
 	}

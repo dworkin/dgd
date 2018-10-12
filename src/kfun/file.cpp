@@ -60,8 +60,8 @@ int kf_editor(Frame *f, int nargs, kfunc *kf)
     if (nargs == 0) {
 	*--f->sp = nil_value;
     } else {
-	str = ed_command(obj, f->sp->u.string->text);
-	f->sp->u.string->del();
+	str = ed_command(obj, f->sp->string->text);
+	f->sp->string->del();
 	if (str != (String *) NULL) {
 	    PUT_STR(f->sp, str);
 	} else {
@@ -99,7 +99,7 @@ int kf_query_editor(Frame *f, int n, kfunc *kf)
 	    return 0;
 	}
     } else {
-	f->sp->u.array->del();
+	f->sp->array->del();
     }
 
     *f->sp = nil_value;
@@ -217,7 +217,7 @@ static void save_array(savecontext *x, Array *a)
 	    break;
 
 	case T_INT:
-	    sprintf(buf, "%ld", (long) v->u.number);
+	    sprintf(buf, "%ld", (long) v->number);
 	    put(x, buf, strlen(buf));
 	    break;
 
@@ -230,7 +230,7 @@ static void save_array(savecontext *x, Array *a)
 	    break;
 
 	case T_STRING:
-	    save_string(x, v->u.string);
+	    save_string(x, v->string);
 	    break;
 
 	case T_OBJECT:
@@ -243,11 +243,11 @@ static void save_array(savecontext *x, Array *a)
 	    break;
 
 	case T_ARRAY:
-	    save_array(x, v->u.array);
+	    save_array(x, v->array);
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(x, v->u.array);
+	    save_mapping(x, v->array);
 	    break;
 	}
 	put(x, ",", 1);
@@ -309,7 +309,7 @@ static void save_mapping(savecontext *x, Array *a)
 	    break;
 
 	case T_INT:
-	    sprintf(buf, "%ld", (long) v->u.number);
+	    sprintf(buf, "%ld", (long) v->number);
 	    put(x, buf, strlen(buf));
 	    break;
 
@@ -322,22 +322,22 @@ static void save_mapping(savecontext *x, Array *a)
 	    break;
 
 	case T_STRING:
-	    save_string(x, v->u.string);
+	    save_string(x, v->string);
 	    break;
 
 	case T_ARRAY:
-	    save_array(x, v->u.array);
+	    save_array(x, v->array);
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(x, v->u.array);
+	    save_mapping(x, v->array);
 	    break;
 	}
 	put(x, ":", 1);
 	v++;
 	switch (v->type) {
 	case T_INT:
-	    sprintf(buf, "%ld", (long) v->u.number);
+	    sprintf(buf, "%ld", (long) v->number);
 	    put(x, buf, strlen(buf));
 	    break;
 
@@ -350,15 +350,15 @@ static void save_mapping(savecontext *x, Array *a)
 	    break;
 
 	case T_STRING:
-	    save_string(x, v->u.string);
+	    save_string(x, v->string);
 	    break;
 
 	case T_ARRAY:
-	    save_array(x, v->u.array);
+	    save_array(x, v->array);
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(x, v->u.array);
+	    save_mapping(x, v->array);
 	    break;
 	}
 	put(x, ",", 1);
@@ -390,8 +390,8 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(file, f->sp->u.string->text,
-		    f->sp->u.string->len) == (char *) NULL) {
+    if (path_string(file, f->sp->string->text,
+		    f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
@@ -447,7 +447,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
 		    put(&x, " ", 1);
 		    switch (var->type) {
 		    case T_INT:
-			sprintf(buf, "%ld", (long) var->u.number);
+			sprintf(buf, "%ld", (long) var->number);
 			put(&x, buf, strlen(buf));
 			break;
 
@@ -460,15 +460,15 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
 			break;
 
 		    case T_STRING:
-			save_string(&x, var->u.string);
+			save_string(&x, var->string);
 			break;
 
 		    case T_ARRAY:
-			save_array(&x, var->u.array);
+			save_array(&x, var->array);
 			break;
 
 		    case T_MAPPING:
-			save_mapping(&x, var->u.array);
+			save_mapping(&x, var->array);
 			break;
 		    }
 		    put(&x, "\012", 1);	/* LF */
@@ -495,7 +495,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
 	error("Cannot rename temporary save file to \"/%s\"", file);
     }
 
-    f->sp->u.string->del();
+    f->sp->string->del();
     *f->sp = nil_value;
     return 0;
 }
@@ -558,7 +558,7 @@ static void ac_put(restcontext *x, short type, Array *a)
 
     v = &(chunknew (x->alist) saveval)->val;
     v->type = type;
-    v->u.array = a;
+    v->array = a;
     x->narrays++;
 }
 
@@ -732,7 +732,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 	restore_error(x, "'|' expected");
     }
 
-    ac_put(x, T_ARRAY, a = Array::create(x->f->data, val->u.number));
+    ac_put(x, T_ARRAY, a = Array::create(x->f->data, val->number));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	*v++ = nil_value;
     }
@@ -784,7 +784,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	restore_error(x, "'|' expected");
     }
 
-    ac_put(x, T_MAPPING, a = Array::mapCreate(x->f->data, val->u.number << 1));
+    ac_put(x, T_MAPPING, a = Array::mapCreate(x->f->data, val->number << 1));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	*v++ = nil_value;
     }
@@ -849,10 +849,10 @@ static char *restore_value(restcontext *x, char *buf, Value *val)
 
     case '#':
 	buf = restore_int(x, buf + 1, val);
-	if ((Uint) val->u.number >= x->narrays) {
+	if ((Uint) val->number >= x->narrays) {
 	    restore_error(x, "bad array reference");
 	}
-	*val = *ac_get(x, (Uint) val->u.number);
+	*val = *ac_get(x, (Uint) val->number);
 	if (val->type != T_ARRAY) {
 	    restore_error(x, "bad array reference");
 	}
@@ -860,10 +860,10 @@ static char *restore_value(restcontext *x, char *buf, Value *val)
 
     case '@':
 	buf = restore_int(x, buf + 1, val);
-	if ((Uint) val->u.number >= x->narrays) {
+	if ((Uint) val->number >= x->narrays) {
 	    restore_error(x, "bad mapping reference");
 	}
-	*val = *ac_get(x, (Uint) val->u.number);
+	*val = *ac_get(x, (Uint) val->number);
 	if (val->type != T_MAPPING) {
 	    restore_error(x, "bad mapping reference");
 	}
@@ -902,13 +902,13 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     obj = OBJR(f->oindex);
-    if (path_string(x.file, f->sp->u.string->text,
-		    f->sp->u.string->len) == (char *) NULL) {
+    if (path_string(x.file, f->sp->string->text,
+		    f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
 
     i_add_ticks(f, 2000);	/* arbitrary */
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, 0);
     fd = P_open(x.file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
@@ -1095,7 +1095,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 			} else {
 			    FREE(buffer);
 			}
-			f->sp->u.number = 1;
+			f->sp->number = 1;
 			ec_pop();
 			return 0;
 		    }
@@ -1137,22 +1137,22 @@ int kf_write_file(Frame *f, int nargs, kfunc *kf)
 
     UNREFERENCED_PARAMETER(kf);
 
-    l = (nargs < 3) ? 0 : (f->sp++)->u.number;
-    if (path_string(file, f->sp[1].u.string->text,
-		    f->sp[1].u.string->len) == (char *) NULL) {
+    l = (nargs < 3) ? 0 : (f->sp++)->number;
+    if (path_string(file, f->sp[1].string->text,
+		    f->sp[1].string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
 	error("write_file() within atomic function");
     }
 
-    i_add_ticks(f, 1000 + (Int) 2 * f->sp->u.string->len);
-    f->sp[1].u.string->del();
+    i_add_ticks(f, 1000 + (Int) 2 * f->sp->string->len);
+    f->sp[1].string->del();
     PUT_INTVAL(&f->sp[1], 0);
 
     fd = P_open(file, O_CREAT | O_WRONLY | O_BINARY, 0664);
     if (fd < 0) {
-	(f->sp++)->u.string->del();
+	(f->sp++)->string->del();
 	return 0;
     }
 
@@ -1170,14 +1170,14 @@ int kf_write_file(Frame *f, int nargs, kfunc *kf)
 	return 3;
     }
 
-    if (P_write(fd, f->sp->u.string->text, f->sp->u.string->len) ==
-							f->sp->u.string->len) {
+    if (P_write(fd, f->sp->string->text, f->sp->string->len) ==
+							f->sp->string->len) {
 	/* succesful write */
 	PUT_INT(&f->sp[1], 1);
     }
     P_close(fd);
 
-    (f->sp++)->u.string->del();
+    (f->sp++)->string->del();
     return 0;
 }
 # endif
@@ -1207,17 +1207,17 @@ int kf_read_file(Frame *f, int nargs, kfunc *kf)
     size = 0;
     switch (nargs) {
     case 3:
-	size = (f->sp++)->u.number;
+	size = (f->sp++)->number;
     case 2:
-	l = (f->sp++)->u.number;	/* offset in file */
+	l = (f->sp++)->number;	/* offset in file */
 	break;
     }
-    if (path_string(file, f->sp->u.string->text,
-		    f->sp->u.string->len) == (char *) NULL) {
+    if (path_string(file, f->sp->string->text,
+		    f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
 
-    f->sp->u.string->del();
+    f->sp->string->del();
     *f->sp = nil_value;
 
     if (size < 0) {
@@ -1300,18 +1300,18 @@ int kf_rename_file(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(from, f->sp[1].u.string->text,
-		    f->sp[1].u.string->len) == (char *) NULL) {
+    if (path_string(from, f->sp[1].string->text,
+		    f->sp[1].string->len) == (char *) NULL) {
 	return 1;
     }
-    if (path_string(to, f->sp->u.string->text,
-		    f->sp->u.string->len) == (char *) NULL) {
+    if (path_string(to, f->sp->string->text,
+		    f->sp->string->len) == (char *) NULL) {
 	return 2;
     }
 
     i_add_ticks(f, 1000);
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, (P_access(from, W_OK) >= 0 && P_access(to, F_OK) < 0 &&
 		       P_rename(from, to) >= 0));
     return 0;
@@ -1336,8 +1336,8 @@ int kf_remove_file(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(file, f->sp->u.string->text,
-		    f->sp->u.string->len) == (char *) NULL) {
+    if (path_string(file, f->sp->string->text,
+		    f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
@@ -1345,7 +1345,7 @@ int kf_remove_file(Frame *f, int n, kfunc *kf)
     }
 
     i_add_ticks(f, 1000);
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, (P_access(file, W_OK) >= 0 && P_unlink(file) >= 0));
     return 0;
 }
@@ -1368,8 +1368,8 @@ int kf_make_dir(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(file, f->sp->u.string->text,
-		    f->sp->u.string->len) == (char *) NULL) {
+    if (path_string(file, f->sp->string->text,
+		    f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
@@ -1377,7 +1377,7 @@ int kf_make_dir(Frame *f, int n, kfunc *kf)
     }
 
     i_add_ticks(f, 1000);
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, (P_mkdir(file, 0775) >= 0));
     return 0;
 }
@@ -1401,8 +1401,8 @@ int kf_remove_dir(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(file, f->sp->u.string->text,
-		    f->sp->u.string->len) == (char *) NULL) {
+    if (path_string(file, f->sp->string->text,
+		    f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
@@ -1410,7 +1410,7 @@ int kf_remove_dir(Frame *f, int n, kfunc *kf)
     }
 
     i_add_ticks(f, 1000);
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, (P_rmdir(file) >= 0));
     return 0;
 }
@@ -1588,7 +1588,7 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
     UNREFERENCED_PARAMETER(nargs);
     UNREFERENCED_PARAMETER(kf);
 
-    file = path_string(buf, f->sp->u.string->text, f->sp->u.string->len);
+    file = path_string(buf, f->sp->string->text, f->sp->string->len);
     if (file == (char *) NULL) {
 	return 1;
     }
@@ -1643,7 +1643,7 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
     }
 
     /* prepare return value */
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_ARRVAL(f->sp, a = Array::create(f->data, 3));
     PUT_ARRVAL(&a->elts[0], Array::create(f->data, nfiles));
     PUT_ARRVAL(&a->elts[1], Array::create(f->data, nfiles));
@@ -1655,9 +1655,9 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
 	Value *n, *s, *t;
 
 	qsort(ftable, nfiles, sizeof(fileinfo), cmp);
-	n = a->elts[0].u.array->elts;
-	s = a->elts[1].u.array->elts;
-	t = a->elts[2].u.array->elts;
+	n = a->elts[0].array->elts;
+	s = a->elts[1].array->elts;
+	t = a->elts[2].array->elts;
 	for (i = nfiles; i > 0; --i, ftable++) {
 	    PUT_STRVAL_NOREF(n, ftable->name);
 	    PUT_INTVAL(s, ftable->size);

@@ -147,8 +147,7 @@ struct Value {
 	Uint objcnt;		/* object creation count */
 	String *string;		/* string */
 	Array *array;		/* array or mapping */
-	Value *lval;		/* lvalue: variable */
-    } u;
+    };
 };
 
 struct dcallout {

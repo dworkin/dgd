@@ -80,13 +80,13 @@ void i_ref_value(Value *v)
 {
     switch (v->type) {
     case T_STRING:
-	v->u.string->ref();
+	v->string->ref();
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	v->u.array->ref();
+	v->array->ref();
 	break;
     }
 }
@@ -99,13 +99,13 @@ void i_del_value(Value *v)
 {
     switch (v->type) {
     case T_STRING:
-	v->u.string->del();
+	v->string->del();
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	v->u.array->del();
+	v->array->del();
 	break;
     }
 }
@@ -121,7 +121,7 @@ void i_copy(Value *v, Value *w, unsigned int len)
     for ( ; len != 0; --len) {
 	switch (w->type) {
 	case T_STRING:
-	    w->u.string->ref();
+	    w->string->ref();
 	    break;
 
 	case T_OBJECT:
@@ -133,7 +133,7 @@ void i_copy(Value *v, Value *w, unsigned int len)
 	    break;
 
 	case T_LWOBJECT:
-	    o = d_get_elts(w->u.array);
+	    o = d_get_elts(w->array);
 	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		*v++ = nil_value;
 		w++;
@@ -142,7 +142,7 @@ void i_copy(Value *v, Value *w, unsigned int len)
 	    /* fall through */
 	case T_ARRAY:
 	case T_MAPPING:
-	    w->u.array->ref();
+	    w->array->ref();
 	    break;
 	}
 	*v++ = *w++;
@@ -198,7 +198,7 @@ void i_push_value(Frame *f, Value *v)
     *--f->sp = *v;
     switch (v->type) {
     case T_STRING:
-	v->u.string->ref();
+	v->string->ref();
 	break;
 
     case T_OBJECT:
@@ -212,7 +212,7 @@ void i_push_value(Frame *f, Value *v)
 	break;
 
     case T_LWOBJECT:
-	o = d_get_elts(v->u.array);
+	o = d_get_elts(v->array);
 	if (o->type == T_OBJECT && DESTRUCTED(o)) {
 	    /*
 	     * can't wipe out the original, since it may be a value from a
@@ -224,7 +224,7 @@ void i_push_value(Frame *f, Value *v)
 	/* fall through */
     case T_ARRAY:
     case T_MAPPING:
-	v->u.array->ref();
+	v->array->ref();
 	break;
     }
 }
@@ -240,13 +240,13 @@ void i_pop(Frame *f, int n)
     for (v = f->sp; --n >= 0; v++) {
 	switch (v->type) {
 	case T_STRING:
-	    v->u.string->del();
+	    v->string->del();
 	    break;
 
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
-	    v->u.array->del();
+	    v->array->del();
 	    break;
 	}
     }
@@ -278,9 +278,9 @@ void i_odest(Frame *prev, Object *obj)
 		break;
 
 	    case T_LWOBJECT:
-		if (v->u.array->elts[0].type == T_OBJECT &&
-		    v->u.array->elts[0].oindex == index) {
-		    v->u.array->del();
+		if (v->array->elts[0].type == T_OBJECT &&
+		    v->array->elts[0].oindex == index) {
+		    v->array->del();
 		    *v = nil_value;
 		}
 		break;
@@ -304,9 +304,9 @@ void i_odest(Frame *prev, Object *obj)
 		    break;
 
 		case T_LWOBJECT:
-		    if (v->u.array->elts[0].type == T_OBJECT &&
-			v->u.array->elts[0].oindex == index) {
-			v->u.array->del();
+		    if (v->array->elts[0].type == T_OBJECT &&
+			v->array->elts[0].oindex == index) {
+			v->array->del();
 			*v = nil_value;
 		    }
 		    break;
@@ -402,7 +402,7 @@ int i_spread(Frame *f, int n)
     if (f->sp->type != T_ARRAY) {
 	error("Spread of non-array");
     }
-    a = f->sp->u.array;
+    a = f->sp->array;
 
     if (n < 0) {
 	/* no lvalues */
@@ -482,9 +482,9 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	if (ival->type != T_INT) {
 	    error("Non-numeric string index");
 	}
-	i = UCHAR(aval->u.string->text[aval->u.string->index(ival->u.number)]);
+	i = UCHAR(aval->string->text[aval->string->index(ival->number)]);
 	if (!keep) {
-	    aval->u.string->del();
+	    aval->string->del();
 	}
 	PUT_INTVAL(val, i);
 	return;
@@ -493,21 +493,21 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	if (ival->type != T_INT) {
 	    error("Non-numeric array index");
 	}
-	*val = d_get_elts(aval->u.array)[aval->u.array->index(ival->u.number)];
+	*val = d_get_elts(aval->array)[aval->array->index(ival->number)];
 	break;
 
     case T_MAPPING:
-	*val = *aval->u.array->mapIndex(f->data, ival, NULL, NULL);
+	*val = *aval->array->mapIndex(f->data, ival, NULL, NULL);
 	if (!keep) {
 	    i_del_value(ival);
 	}
 	break;
 
     case T_LWOBJECT:
-	i_operator(f, aval->u.array, "[]", 1, val, ival, (Value *) NULL);
+	i_operator(f, aval->array, "[]", 1, val, ival, (Value *) NULL);
 	if (!keep) {
 	    i_del_value(ival);
-	    aval->u.array->del();
+	    aval->array->del();
 	}
 	return;
 
@@ -517,7 +517,7 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 
     switch (val->type) {
     case T_STRING:
-	val->u.string->ref();
+	val->string->ref();
 	break;
 
     case T_OBJECT:
@@ -527,7 +527,7 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	break;
 
     case T_LWOBJECT:
-	ival = d_get_elts(val->u.array);
+	ival = d_get_elts(val->array);
 	if (ival->type == T_OBJECT && DESTRUCTED(ival)) {
 	    *val = nil_value;
 	    break;
@@ -535,12 +535,12 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	/* fall through */
     case T_ARRAY:
     case T_MAPPING:
-	val->u.array->ref();
+	val->array->ref();
 	break;
     }
 
     if (!keep) {
-	aval->u.array->del();
+	aval->array->del();
     }
 }
 
@@ -652,13 +652,13 @@ void i_cast(Frame *f, Value *val, unsigned int type, Uint sclass)
 	    }
 	    return;
 	} else if (val->type == T_LWOBJECT) {
-	    elts = d_get_elts(val->u.array);
+	    elts = d_get_elts(val->array);
 	    if (elts->type == T_OBJECT) {
 		if (!i_instanceof(f, elts->oindex, sclass)) {
 		    error("Value is not of object type /%s",
 			  i_classname(f, sclass));
 		}
-	    } else if (strcmp(Object::builtinName(elts->u.number),
+	    } else if (strcmp(Object::builtinName(elts->number),
 			      i_classname(f, sclass)) != 0) {
 		/*
 		 * builtin types can only be cast to their own type
@@ -691,7 +691,7 @@ static void i_store_local(Frame *f, int local, Value *val, Value *verify)
     i_add_ticks(f, 1);
     var = (local < 0) ? f->fp + local : f->argp + local;
     if (verify == NULL ||
-	(var->type == T_STRING && var->u.string == verify->u.string)) {
+	(var->type == T_STRING && var->string == verify->string)) {
 	d_assign_var(f->data, var, val);
     }
 }
@@ -711,13 +711,13 @@ void i_store_global(Frame *f, int inherit, int index, Value *val, Value *verify)
     if (f->lwobj == NULL) {
 	var = d_get_variable(f->data, offset);
 	if (verify == NULL ||
-	    (var->type == T_STRING && var->u.string == verify->u.string)) {
+	    (var->type == T_STRING && var->string == verify->string)) {
 	    d_assign_var(f->data, var, val);
 	}
     } else {
 	var = &f->lwobj->elts[2 + offset];
 	if (verify == NULL ||
-	    (var->type == T_STRING && var->u.string == verify->u.string)) {
+	    (var->type == T_STRING && var->string == verify->string)) {
 	    d_assign_elt(f->data, f->lwobj, var, val);
 	}
     }
@@ -742,9 +742,9 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	if (val->type != T_INT) {
 	    error("Non-numeric value in indexed string assignment");
 	}
-	i = aval->u.string->index(ival->u.number);
-	str = String::create(aval->u.string->text, aval->u.string->len);
-	str->text[i] = val->u.number;
+	i = aval->string->index(ival->number);
+	str = String::create(aval->string->text, aval->string->len);
+	str->text[i] = val->number;
 	PUT_STRVAL(var, str);
 	return TRUE;
 
@@ -752,17 +752,17 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	if (ival->type != T_INT) {
 	    error("Non-numeric array index");
 	}
-	arr = aval->u.array;
-	aval = &d_get_elts(arr)[arr->index(ival->u.number)];
+	arr = aval->array;
+	aval = &d_get_elts(arr)[arr->index(ival->number)];
 	if (var->type != T_STRING ||
-	    (aval->type == T_STRING && var->u.string == aval->u.string)) {
+	    (aval->type == T_STRING && var->string == aval->string)) {
 	    d_assign_elt(f->data, arr, aval, val);
 	}
 	arr->del();
 	break;
 
     case T_MAPPING:
-	arr = aval->u.array;
+	arr = aval->array;
 	if (var->type != T_STRING) {
 	    var = NULL;
 	}
@@ -772,7 +772,7 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	break;
 
     case T_LWOBJECT:
-	arr = aval->u.array;
+	arr = aval->array;
 	i_operator(f, arr, "[]=", 2, var, ival, val);
 	i_del_value(var);
 	i_del_value(ival);
@@ -884,35 +884,35 @@ static void i_stores(Frame *f, int skip, int assign)
 	    if (u == T_CLASS) {
 		FETCH3U(pc, sclass);
 	    }
-	    i_cast(f, &f->sp->u.array->elts[assign - 1], u, sclass);
+	    i_cast(f, &f->sp->array->elts[assign - 1], u, sclass);
 	    continue;
 
 	case I_STORE_LOCAL:
 	case I_STORE_LOCAL | I_POP_BIT:
-	    i_store_local(f, FETCH1S(pc), &f->sp->u.array->elts[assign - 1],
+	    i_store_local(f, FETCH1S(pc), &f->sp->array->elts[assign - 1],
 			  (Value *) NULL);
 	    break;
 
 	case I_STORE_GLOBAL:
 	case I_STORE_GLOBAL | I_POP_BIT:
 	    i_store_global(f, f->p_ctrl->ninherits - 1, FETCH1U(pc),
-			   &f->sp->u.array->elts[assign - 1], (Value *) NULL);
+			   &f->sp->array->elts[assign - 1], (Value *) NULL);
 	    break;
 
 	case I_STORE_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL | I_POP_BIT:
 	    u = FETCH1U(pc);
 	    i_store_global(f, u, FETCH1U(pc),
-			   &f->sp->u.array->elts[assign - 1], (Value *) NULL);
+			   &f->sp->array->elts[assign - 1], (Value *) NULL);
 	    break;
 
 	case I_STORE_INDEX:
 	case I_STORE_INDEX | I_POP_BIT:
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
-			      &f->sp->u.array->elts[assign - 1])) {
-		f->sp[2].u.string->del();
-		val.u.string->del();
+			      &f->sp->array->elts[assign - 1])) {
+		f->sp[2].string->del();
+		val.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -923,10 +923,10 @@ static void i_stores(Frame *f, int skip, int assign)
 	    u = FETCH1S(pc);
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
-			      &f->sp->u.array->elts[assign - 1])) {
+			      &f->sp->array->elts[assign - 1])) {
 		i_store_local(f, (short) u, &val, &f->sp[2]);
-		f->sp[2].u.string->del();
-		val.u.string->del();
+		f->sp[2].string->del();
+		val.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -937,10 +937,10 @@ static void i_stores(Frame *f, int skip, int assign)
 	    u = FETCH1U(pc);
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
-			      &f->sp->u.array->elts[assign - 1])) {
+			      &f->sp->array->elts[assign - 1])) {
 		i_store_global(f, f->p_ctrl->ninherits - 1, u, &val, &f->sp[2]);
-		f->sp[2].u.string->del();
-		val.u.string->del();
+		f->sp[2].string->del();
+		val.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -952,10 +952,10 @@ static void i_stores(Frame *f, int skip, int assign)
 	    u2 = FETCH1U(pc);
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
-			      &f->sp->u.array->elts[assign - 1])) {
+			      &f->sp->array->elts[assign - 1])) {
 		i_store_global(f, u, u2, &val, &f->sp[2]);
-		f->sp[2].u.string->del();
-		val.u.string->del();
+		f->sp[2].string->del();
+		val.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -965,11 +965,11 @@ static void i_stores(Frame *f, int skip, int assign)
 	case I_STORE_INDEX_INDEX | I_POP_BIT:
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
-			      &f->sp->u.array->elts[assign - 1])) {
+			      &f->sp->array->elts[assign - 1])) {
 		f->sp[1] = val;
 		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, f->sp + 1);
-		f->sp[1].u.string->del();
-		f->sp[2].u.string->del();
+		f->sp[1].string->del();
+		f->sp[2].string->del();
 	    } else {
 		i_del_value(f->sp + 3);
 		i_del_value(f->sp + 4);
@@ -987,7 +987,7 @@ static void i_stores(Frame *f, int skip, int assign)
     }
 
     if (instr & I_POP_BIT) {
-	f->sp->u.array->del();
+	f->sp->array->del();
 	f->sp++;
     }
 
@@ -1017,7 +1017,7 @@ void i_lvalues(Frame *f)
     f->pc = pc;
 
     if (n != 0) {
-	nassign = f->sp->u.array->size;
+	nassign = f->sp->array->size;
 
 	if ((FETCH1U(pc) & I_INSTR_MASK) == I_SPREAD) {
 	    /*
@@ -1031,26 +1031,26 @@ void i_lvalues(Frame *f)
 	    }
 	    f->pc = pc;
 
-	    if (--n < nassign && f->sp[1].u.array->size > offset) {
-		nspread = f->sp[1].u.array->size - offset;
+	    if (--n < nassign && f->sp[1].array->size > offset) {
+		nspread = f->sp[1].array->size - offset;
 		if (nspread >= nassign - n) {
 		    nspread = nassign - n;
 		    i_add_ticks(f, nspread * 3);
 		    while (nspread != 0) {
 			--nassign;
 			if (type != 0) {
-			    i_cast(f, &f->sp->u.array->elts[nassign], type,
+			    i_cast(f, &f->sp->array->elts[nassign], type,
 				   sclass);
 			}
 			--nspread;
-			d_assign_elt(f->data, f->sp[1].u.array,
-				     &f->sp[1].u.array->elts[offset + nspread],
-				     &f->sp->u.array->elts[nassign]);
+			d_assign_elt(f->data, f->sp[1].array,
+				     &f->sp[1].array->elts[offset + nspread],
+				     &f->sp->array->elts[nassign]);
 		    }
 		}
 	    }
 
-	    f->sp[1].u.array->del();
+	    f->sp[1].array->del();
 	    f->sp[1] = f->sp[0];
 	    f->sp++;
 	}
@@ -1207,13 +1207,13 @@ Frame *i_set_sp(Frame *ftop, Value *sp)
 	    }
 	    switch (v->type) {
 	    case T_STRING:
-		v->u.string->del();
+		v->string->del();
 		break;
 
 	    case T_ARRAY:
 	    case T_MAPPING:
 	    case T_LWOBJECT:
-		v->u.array->del();
+		v->array->del();
 		break;
 	    }
 	    v++;
@@ -1319,13 +1319,13 @@ void i_typecheck(Frame *f, Frame *prog_f, const char *name, const char *ftype,
 			      nargs - i, name);
 		    }
 		} else {
-		    elts = d_get_elts(f->sp[i].u.array);
+		    elts = d_get_elts(f->sp[i].array);
 		    if (elts->type == T_OBJECT) {
 			if (!i_instanceof(prog_f, elts->oindex, sclass)) {
 			    error("Bad object argument %d for function %s",
 				  nargs - i, name);
 			}
-		    } else if (strcmp(Object::builtinName(elts->u.number),
+		    } else if (strcmp(Object::builtinName(elts->number),
 				      i_classname(prog_f, sclass)) != 0) {
 			error("Bad object argument %d for function %s",
 			      nargs - i, name);
@@ -1372,9 +1372,9 @@ static unsigned short i_switch_int(Frame *f, char *pc)
 	    m = (l + h) >> 1;
 	    p = pc + 3 * m;
 	    num = FETCH1S(p);
-	    if (f->sp->u.number == num) {
+	    if (f->sp->number == num) {
 		return FETCH2U(p, l);
-	    } else if (f->sp->u.number < num) {
+	    } else if (f->sp->number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		l = m + 1;	/* search in upper half */
@@ -1387,9 +1387,9 @@ static unsigned short i_switch_int(Frame *f, char *pc)
 	    m = (l + h) >> 1;
 	    p = pc + 4 * m;
 	    FETCH2S(p, num);
-	    if (f->sp->u.number == num) {
+	    if (f->sp->number == num) {
 		return FETCH2U(p, l);
-	    } else if (f->sp->u.number < num) {
+	    } else if (f->sp->number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		l = m + 1;	/* search in upper half */
@@ -1402,9 +1402,9 @@ static unsigned short i_switch_int(Frame *f, char *pc)
 	    m = (l + h) >> 1;
 	    p = pc + 5 * m;
 	    FETCH3S(p, num);
-	    if (f->sp->u.number == num) {
+	    if (f->sp->number == num) {
 		return FETCH2U(p, l);
-	    } else if (f->sp->u.number < num) {
+	    } else if (f->sp->number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		l = m + 1;	/* search in upper half */
@@ -1417,9 +1417,9 @@ static unsigned short i_switch_int(Frame *f, char *pc)
 	    m = (l + h) >> 1;
 	    p = pc + 6 * m;
 	    FETCH4S(p, num);
-	    if (f->sp->u.number == num) {
+	    if (f->sp->number == num) {
 		return FETCH2U(p, l);
-	    } else if (f->sp->u.number < num) {
+	    } else if (f->sp->number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		l = m + 1;	/* search in upper half */
@@ -1456,11 +1456,11 @@ static unsigned short i_switch_range(Frame *f, char *pc)
 	    m = (l + h) >> 1;
 	    p = pc + 4 * m;
 	    num = FETCH1S(p);
-	    if (f->sp->u.number < num) {
+	    if (f->sp->number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		num = FETCH1S(p);
-		if (f->sp->u.number <= num) {
+		if (f->sp->number <= num) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
@@ -1473,11 +1473,11 @@ static unsigned short i_switch_range(Frame *f, char *pc)
 	    m = (l + h) >> 1;
 	    p = pc + 6 * m;
 	    FETCH2S(p, num);
-	    if (f->sp->u.number < num) {
+	    if (f->sp->number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		FETCH2S(p, num);
-		if (f->sp->u.number <= num) {
+		if (f->sp->number <= num) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
@@ -1490,11 +1490,11 @@ static unsigned short i_switch_range(Frame *f, char *pc)
 	    m = (l + h) >> 1;
 	    p = pc + 8 * m;
 	    FETCH3S(p, num);
-	    if (f->sp->u.number < num) {
+	    if (f->sp->number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		FETCH3S(p, num);
-		if (f->sp->u.number <= num) {
+		if (f->sp->number <= num) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
@@ -1507,11 +1507,11 @@ static unsigned short i_switch_range(Frame *f, char *pc)
 	    m = (l + h) >> 1;
 	    p = pc + 10 * m;
 	    FETCH4S(p, num);
-	    if (f->sp->u.number < num) {
+	    if (f->sp->number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		FETCH4S(p, num);
-		if (f->sp->u.number <= num) {
+		if (f->sp->number <= num) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
@@ -1553,7 +1553,7 @@ static unsigned short i_switch_str(Frame *f, char *pc)
 	m = (l + h) >> 1;
 	p = pc + 5 * m;
 	u = FETCH1U(p);
-	cmp = f->sp->u.string->cmp(d_get_strconst(ctrl, u, FETCH2U(p, u2)));
+	cmp = f->sp->string->cmp(d_get_strconst(ctrl, u, FETCH2U(p, u2)));
 	if (cmp == 0) {
 	    return FETCH2U(p, l);
 	} else if (cmp < 0) {
@@ -1702,14 +1702,14 @@ static void i_interpret(Frame *f, char *pc)
 		break;
 
 	    case T_LWOBJECT:
-		if (f->sp->u.array->elts->type != T_OBJECT) {
+		if (f->sp->array->elts->type != T_OBJECT) {
 		    instance =
-		    (strcmp(Object::builtinName(f->sp->u.array->elts->u.number),
+		    (strcmp(Object::builtinName(f->sp->array->elts->number),
 			    i_classname(f, l)) == 0);
 		} else {
-		    instance = i_instanceof(f, f->sp->u.array->elts->oindex, l);
+		    instance = i_instanceof(f, f->sp->array->elts->oindex, l);
 		}
-		f->sp->u.array->del();
+		f->sp->array->del();
 		break;
 
 	    default:
@@ -1724,10 +1724,10 @@ static void i_interpret(Frame *f, char *pc)
 	    if (f->sp->type != T_ARRAY) {
 		error("Value is not an array");
 	    }
-	    if (u > f->sp->u.array->size) {
+	    if (u > f->sp->array->size) {
 		error("Wrong number of lvalues");
 	    }
-	    d_get_elts(f->sp->u.array);
+	    d_get_elts(f->sp->array);
 	    f->pc = pc;
 	    i_stores(f, 0, u);
 	    pc = f->pc;
@@ -1754,8 +1754,8 @@ static void i_interpret(Frame *f, char *pc)
 	case I_STORE_INDEX | I_POP_BIT:
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
-		f->sp[2].u.string->del();
-		val.u.string->del();
+		f->sp[2].string->del();
+		val.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -1767,8 +1767,8 @@ static void i_interpret(Frame *f, char *pc)
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_local(f, (short) u, &val, f->sp + 2);
-		f->sp[2].u.string->del();
-		val.u.string->del();
+		f->sp[2].string->del();
+		val.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -1780,8 +1780,8 @@ static void i_interpret(Frame *f, char *pc)
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_global(f, f->p_ctrl->ninherits - 1, u, &val, f->sp + 2);
-		f->sp[2].u.string->del();
-		val.u.string->del();
+		f->sp[2].string->del();
+		val.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -1794,8 +1794,8 @@ static void i_interpret(Frame *f, char *pc)
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_global(f, u, u2, &val, f->sp + 2);
-		f->sp[2].u.string->del();
-		val.u.string->del();
+		f->sp[2].string->del();
+		val.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -1807,8 +1807,8 @@ static void i_interpret(Frame *f, char *pc)
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		f->sp[1] = val;
 		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, f->sp + 1);
-		f->sp[1].u.string->del();
-		f->sp[2].u.string->del();
+		f->sp[1].string->del();
+		f->sp[2].string->del();
 	    } else {
 		i_del_value(f->sp + 3);
 		i_del_value(f->sp + 4);
@@ -2032,8 +2032,8 @@ static void i_interpret(Frame *f, char *pc)
 	    if (f->sp->type != T_INT) {
 		error("Bad rlimits ticks type");
 	    }
-	    newdepth = f->sp[1].u.number;
-	    newticks = f->sp->u.number;
+	    newdepth = f->sp[1].number;
+	    newticks = f->sp->number;
 	    if (!FETCH1U(pc)) {
 		/* runtime check */
 		i_check_rlimits(f);
@@ -2740,7 +2740,7 @@ void i_runtime_error(Frame *f, Int depth)
 	message((char *) NULL);
     } else {
 	if (f->sp->type == T_STRING) {
-	    set_errorstr(f->sp->u.string);
+	    set_errorstr(f->sp->string);
 	}
 	i_del_value(f->sp++);
     }
@@ -2764,7 +2764,7 @@ void i_atomic_error(Frame *ftop, Int level)
 	message((char *) NULL);
     } else {
 	if (ftop->sp->type == T_STRING) {
-	    set_errorstr(ftop->sp->u.string);
+	    set_errorstr(ftop->sp->string);
 	}
 	i_del_value(ftop->sp++);
     }

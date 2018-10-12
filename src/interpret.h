@@ -119,65 +119,65 @@
 			  "array", "mapping", "object", "mixed", "void" }
 # define TNBUFSIZE	24
 
-# define VAL_NIL(v)	((v)->type == nil_type && (v)->u.number == 0)
-# define VAL_TRUE(v)	((v)->u.number != 0 || (v)->type > T_FLOAT ||	\
+# define VAL_NIL(v)	((v)->type == nil_type && (v)->number == 0)
+# define VAL_TRUE(v)	((v)->number != 0 || (v)->type > T_FLOAT ||	\
 			 ((v)->type == T_FLOAT && (v)->oindex != 0))
 
-# define PUSH_INTVAL(f, i)	((--(f)->sp)->u.number = (i),		\
+# define PUSH_INTVAL(f, i)	((--(f)->sp)->number = (i),		\
 				 (f)->sp->type = T_INT)
-# define PUT_INTVAL(v, i)	((v)->u.number = (i), (v)->type = T_INT)
-# define PUT_INT(v, i)		((v)->u.number = (i))
+# define PUT_INTVAL(v, i)	((v)->number = (i), (v)->type = T_INT)
+# define PUT_INT(v, i)		((v)->number = (i))
 # define PUSH_FLTVAL(f, fl)	((--(f)->sp)->oindex = (fl).high,	\
-				 (f)->sp->u.objcnt = (fl).low,		\
+				 (f)->sp->objcnt = (fl).low,		\
 				 (f)->sp->type = T_FLOAT)
 # define PUSH_FLTCONST(f, h, l)	((--(f)->sp)->oindex = (h),		\
-				 (f)->sp->u.objcnt = (l),		\
+				 (f)->sp->objcnt = (l),			\
 				 (f)->sp->type = T_FLOAT)
 # define PUT_FLTVAL(v, fl)	((v)->oindex = (fl).high,		\
-				 (v)->u.objcnt = (fl).low,		\
+				 (v)->objcnt = (fl).low,		\
 				 (v)->type = T_FLOAT)
 # define PUT_FLT(v, fl)		((v)->oindex = (fl).high,		\
-				 (v)->u.objcnt = (fl).low)
+				 (v)->objcnt = (fl).low)
 # define GET_FLT(v, fl)		((fl).high = (v)->oindex,		\
-				 (fl).low = (v)->u.objcnt)
-# define PUSH_STRVAL(f, s)	(((--(f)->sp)->u.string = (s))->ref(),	\
+				 (fl).low = (v)->objcnt)
+# define PUSH_STRVAL(f, s)	(((--(f)->sp)->string = (s))->ref(),	\
 				 (f)->sp->type = T_STRING)
-# define PUT_STRVAL(v, s)	(((v)->u.string = (s))->ref(),		\
+# define PUT_STRVAL(v, s)	(((v)->string = (s))->ref(),		\
 				 (v)->type = T_STRING)
-# define PUT_STRVAL_NOREF(v, s)	((v)->u.string = (s), (v)->type = T_STRING)
-# define PUT_STR(v, s)		(((v)->u.string = (s))->ref())
+# define PUT_STRVAL_NOREF(v, s)	((v)->string = (s), (v)->type = T_STRING)
+# define PUT_STR(v, s)		(((v)->string = (s))->ref())
 # define PUSH_OBJVAL(f, o)	((--(f)->sp)->oindex = (o)->index,	\
-				 (f)->sp->u.objcnt = (o)->count,	\
+				 (f)->sp->objcnt = (o)->count,		\
 				 (f)->sp->type = T_OBJECT)
 # define PUT_OBJVAL(v, o)	((v)->oindex = (o)->index,		\
-				 (v)->u.objcnt = (o)->count,		\
+				 (v)->objcnt = (o)->count,		\
 				 (v)->type = T_OBJECT)
 # define PUT_OBJ(v, o)		((v)->oindex = (o)->index,		\
-				 (v)->u.objcnt = (o)->count)
-# define PUSH_ARRVAL(f, a)	(((--(f)->sp)->u.array = (a))->ref(),	\
+				 (v)->objcnt = (o)->count)
+# define PUSH_ARRVAL(f, a)	(((--(f)->sp)->array = (a))->ref(),	\
 				 (f)->sp->type = T_ARRAY)
-# define PUT_ARRVAL(v, a)	(((v)->u.array = (a))->ref(),		\
+# define PUT_ARRVAL(v, a)	(((v)->array = (a))->ref(),		\
 				 (v)->type = T_ARRAY)
-# define PUT_ARRVAL_NOREF(v, a)	((v)->u.array = (a), (v)->type = T_ARRAY)
-# define PUT_ARR(v, a)		(((v)->u.array = (a))->ref())
-# define PUSH_MAPVAL(f, m)	(((--(f)->sp)->u.array = (m))->ref(),	\
+# define PUT_ARRVAL_NOREF(v, a)	((v)->array = (a), (v)->type = T_ARRAY)
+# define PUT_ARR(v, a)		(((v)->array = (a))->ref())
+# define PUSH_MAPVAL(f, m)	(((--(f)->sp)->array = (m))->ref(),	\
 				 (f)->sp->type = T_MAPPING)
-# define PUT_MAPVAL(v, m)	(((v)->u.array = (m))->ref(),		\
+# define PUT_MAPVAL(v, m)	(((v)->array = (m))->ref(),		\
 				 (v)->type = T_MAPPING)
-# define PUT_MAPVAL_NOREF(v, m)	((v)->u.array = (m), (v)->type = T_MAPPING)
-# define PUT_MAP(v, m)		(((v)->u.array = (m))->ref())
-# define PUSH_LWOVAL(f, o)	(((--(f)->sp)->u.array = (o))->ref(),	\
+# define PUT_MAPVAL_NOREF(v, m)	((v)->array = (m), (v)->type = T_MAPPING)
+# define PUT_MAP(v, m)		(((v)->array = (m))->ref())
+# define PUSH_LWOVAL(f, o)	(((--(f)->sp)->array = (o))->ref(),	\
 				 (f)->sp->type = T_LWOBJECT)
-# define PUT_LWOVAL(v, o)	(((v)->u.array = (o))->ref(),		\
+# define PUT_LWOVAL(v, o)	(((v)->array = (o))->ref(),		\
 				 (v)->type = T_LWOBJECT)
-# define PUT_LWOVAL_NOREF(v, o)	((v)->u.array = (o), (v)->type = T_LWOBJECT)
-# define PUT_LWO(v, o)		(((v)->u.array = (o))->ref())
+# define PUT_LWOVAL_NOREF(v, o)	((v)->array = (o), (v)->type = T_LWOBJECT)
+# define PUT_LWO(v, o)		(((v)->array = (o))->ref())
 
-# define VFLT_ISZERO(v)	FLOAT_ISZERO((v)->oindex, (v)->u.objcnt)
-# define VFLT_ISONE(v)	FLOAT_ISONE((v)->oindex, (v)->u.objcnt)
-# define VFLT_HASH(v)	((v)->oindex ^ (v)->u.objcnt)
+# define VFLT_ISZERO(v)	FLOAT_ISZERO((v)->oindex, (v)->objcnt)
+# define VFLT_ISONE(v)	FLOAT_ISONE((v)->oindex, (v)->objcnt)
+# define VFLT_HASH(v)	((v)->oindex ^ (v)->objcnt)
 
-# define DESTRUCTED(v)	(OBJR((v)->oindex)->count != (v)->u.objcnt)
+# define DESTRUCTED(v)	(OBJR((v)->oindex)->count != (v)->objcnt)
 
 
 # define C_PRIVATE	0x01

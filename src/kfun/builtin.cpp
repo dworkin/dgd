@@ -36,16 +36,16 @@ static void kf_argerror(int kfun, int n)
  */
 static void kf_op_unary(Frame *f, int kfun)
 {
-    if (!i_call(f, (Object *) NULL, f->sp->u.array, kftab[kfun].name,
+    if (!i_call(f, (Object *) NULL, f->sp->array, kftab[kfun].name,
 		strlen(kftab[kfun].name), TRUE, 0)) {
 	kf_argerror(kfun, 1);
     }
-    if (f->sp->type != T_LWOBJECT || f->sp->u.array->elts[0].type != T_OBJECT) {
+    if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
 	error("operator %s did not return a light-weight object",
 	      kftab[kfun].name);
     }
 
-    f->sp[1].u.array->del();
+    f->sp[1].array->del();
     f->sp[1] = f->sp[0];
     f->sp++;
 }
@@ -60,16 +60,16 @@ static void kf_op_binary(Frame *f, int kfun)
 	kf_argerror(kfun, 2);
     }
 
-    if (!i_call(f, (Object *) NULL, f->sp[1].u.array, kftab[kfun].name,
+    if (!i_call(f, (Object *) NULL, f->sp[1].array, kftab[kfun].name,
 		strlen(kftab[kfun].name), TRUE, 1)) {
 	kf_argerror(kfun, 1);
     }
-    if (f->sp->type != T_LWOBJECT || f->sp->u.array->elts[0].type != T_OBJECT) {
+    if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
 	error("operator %s did not return a light-weight object",
 	      kftab[kfun].name);
     }
 
-    f->sp[1].u.array->del();
+    f->sp[1].array->del();
     f->sp[1] = f->sp[0];
     f->sp++;
 }
@@ -84,16 +84,16 @@ static void kf_op_compare(Frame *f, int kfun)
 	kf_argerror(kfun, 2);
     }
 
-    if (!i_call(f, (Object *) NULL, f->sp[1].u.array, kftab[kfun].name,
+    if (!i_call(f, (Object *) NULL, f->sp[1].array, kftab[kfun].name,
 		strlen(kftab[kfun].name), TRUE, 1)) {
 	kf_argerror(kfun, 1);
     }
-    if (f->sp->type != T_INT || (f->sp->u.number & ~1)) {
+    if (f->sp->type != T_INT || (f->sp->number & ~1)) {
 	error("operator %s did not return a truth value",
 	      kftab[kfun].name);
     }
 
-    f->sp[1].u.array->del();
+    f->sp[1].array->del();
     f->sp[1] = f->sp[0];
     f->sp++;
 }
@@ -104,16 +104,16 @@ static void kf_op_compare(Frame *f, int kfun)
  */
 static void kf_op_ternary(Frame *f, int kfun)
 {
-    if (!i_call(f, (Object *) NULL, f->sp[2].u.array, kftab[kfun].name,
+    if (!i_call(f, (Object *) NULL, f->sp[2].array, kftab[kfun].name,
 		strlen(kftab[kfun].name), TRUE, 2)) {
 	kf_argerror(kfun, 1);
     }
-    if (f->sp->type != T_LWOBJECT || f->sp->u.array->elts[0].type != T_OBJECT) {
+    if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
 	error("operator %s did not return a light-weight object",
 	      kftab[kfun].name);
     }
 
-    f->sp[1].u.array->del();
+    f->sp[1].array->del();
     f->sp[1] = f->sp[0];
     f->sp++;
 }
@@ -168,18 +168,18 @@ int kf_add(Frame *f, int n, kfunc *kf)
     case T_INT:
 	switch (f->sp->type) {
 	case T_INT:
-	    PUT_INT(&f->sp[1], f->sp[1].u.number + f->sp->u.number);
+	    PUT_INT(&f->sp[1], f->sp[1].number + f->sp->number);
 	    f->sp++;
 	    return 0;
 
 	case T_STRING:
 	    i_add_ticks(f, 2);
-	    num = kf_itoa(f->sp[1].u.number, buffer);
+	    num = kf_itoa(f->sp[1].number, buffer);
 	    str = String::create((char *) NULL,
-				 (l=(long) strlen(num)) + f->sp->u.string->len);
+				 (l=(long) strlen(num)) + f->sp->string->len);
 	    strcpy(str->text, num);
-	    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
-	    f->sp->u.string->del();
+	    memcpy(str->text + l, f->sp->string->text, f->sp->string->len);
+	    f->sp->string->del();
 	    f->sp++;
 	    PUT_STRVAL(f->sp, str);
 	    return 0;
@@ -202,10 +202,10 @@ int kf_add(Frame *f, int n, kfunc *kf)
 	    GET_FLT(&f->sp[1], f1);
 	    f1.ftoa(buffer);
 	    str = String::create((char *) NULL,
-			    (l=(long) strlen(buffer)) + f->sp->u.string->len);
+			    (l=(long) strlen(buffer)) + f->sp->string->len);
 	    strcpy(str->text, buffer);
-	    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
-	    f->sp->u.string->del();
+	    memcpy(str->text + l, f->sp->string->text, f->sp->string->len);
+	    f->sp->string->del();
 	    f->sp++;
 	    PUT_STRVAL(f->sp, str);
 	    return 0;
@@ -216,13 +216,13 @@ int kf_add(Frame *f, int n, kfunc *kf)
 	i_add_ticks(f, 2);
 	switch (f->sp->type) {
 	case T_INT:
-	    num = kf_itoa(f->sp->u.number, buffer);
+	    num = kf_itoa(f->sp->number, buffer);
 	    f->sp++;
 	    str = String::create((char *) NULL,
-				 f->sp->u.string->len + (long) strlen(num));
-	    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
-	    strcpy(str->text + f->sp->u.string->len, num);
-	    f->sp->u.string->del();
+				 f->sp->string->len + (long) strlen(num));
+	    memcpy(str->text, f->sp->string->text, f->sp->string->len);
+	    strcpy(str->text + f->sp->string->len, num);
+	    f->sp->string->del();
 	    PUT_STR(f->sp, str);
 	    return 0;
 
@@ -232,18 +232,18 @@ int kf_add(Frame *f, int n, kfunc *kf)
 	    f2.ftoa(buffer);
 	    f->sp++;
 	    str = String::create((char *) NULL,
-				 f->sp->u.string->len + (long) strlen(buffer));
-	    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
-	    strcpy(str->text + f->sp->u.string->len, buffer);
-	    f->sp->u.string->del();
+				 f->sp->string->len + (long) strlen(buffer));
+	    memcpy(str->text, f->sp->string->text, f->sp->string->len);
+	    strcpy(str->text + f->sp->string->len, buffer);
+	    f->sp->string->del();
 	    PUT_STR(f->sp, str);
 	    return 0;
 
 	case T_STRING:
-	    str = f->sp[1].u.string->add(f->sp->u.string);
-	    f->sp->u.string->del();
+	    str = f->sp[1].string->add(f->sp->string);
+	    f->sp->string->del();
 	    f->sp++;
-	    f->sp->u.string->del();
+	    f->sp->string->del();
 	    PUT_STR(f->sp, str);
 	    return 0;
 	}
@@ -251,11 +251,11 @@ int kf_add(Frame *f, int n, kfunc *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->add(f->data, f->sp->u.array);
-	    f->sp->u.array->del();
+	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    a = f->sp[1].array->add(f->data, f->sp->array);
+	    f->sp->array->del();
 	    f->sp++;
-	    f->sp->u.array->del();
+	    f->sp->array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -263,18 +263,18 @@ int kf_add(Frame *f, int n, kfunc *kf)
 
     case T_MAPPING:
 	if (f->sp->type == T_MAPPING) {
-	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->mapAdd(f->data, f->sp->u.array);
-	    f->sp->u.array->del();
+	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    a = f->sp[1].array->mapAdd(f->data, f->sp->array);
+	    f->sp->array->del();
 	    f->sp++;
-	    f->sp->u.array->del();
+	    f->sp->array->del();
 	    PUT_MAP(f->sp, a);
 	    return 0;
 	}
 	break;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_binary(f, KF_ADD);
 	    return 0;
 	}
@@ -303,7 +303,7 @@ int kf_add_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], f->sp[1].u.number + f->sp->u.number);
+    PUT_INT(&f->sp[1], f->sp[1].number + f->sp->number);
     f->sp++;
     return 0;
 }
@@ -327,7 +327,7 @@ int kf_add1(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_INT) {
-	PUT_INT(f->sp, f->sp->u.number + 1);
+	PUT_INT(f->sp, f->sp->number + 1);
     } else if (f->sp->type == T_FLOAT) {
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f1);
@@ -335,7 +335,7 @@ int kf_add1(Frame *f, int n, kfunc *kf)
 	f1.add(f2);
 	PUT_FLT(f->sp, f1);
     } else if (f->sp->type == T_LWOBJECT &&
-	       f->sp->u.array->elts[0].type == T_OBJECT) {
+	       f->sp->array->elts[0].type == T_OBJECT) {
 	kf_op_unary(f, KF_ADD1);
     } else {
 	kf_argerror(KF_ADD1, 1);
@@ -359,7 +359,7 @@ int kf_add1_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(f->sp, f->sp->u.number + 1);
+    PUT_INT(f->sp, f->sp->number + 1);
     return 0;
 }
 # endif
@@ -384,7 +384,7 @@ int kf_and(Frame *f, int n, kfunc *kf)
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp->type == T_INT) {
-	    PUT_INT(&f->sp[1], f->sp[1].u.number & f->sp->u.number);
+	    PUT_INT(&f->sp[1], f->sp[1].number & f->sp->number);
 	    f->sp++;
 	    return 0;
 	}
@@ -392,11 +392,11 @@ int kf_and(Frame *f, int n, kfunc *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->intersect(f->data, f->sp->u.array);
-	    f->sp->u.array->del();
+	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    a = f->sp[1].array->intersect(f->data, f->sp->array);
+	    f->sp->array->del();
 	    f->sp++;
-	    f->sp->u.array->del();
+	    f->sp->array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -404,9 +404,9 @@ int kf_and(Frame *f, int n, kfunc *kf)
 
     case T_MAPPING:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->mapIntersect(f->data, f->sp->u.array);
-	    f->sp->u.array->del();
+	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    a = f->sp[1].array->mapIntersect(f->data, f->sp->array);
+	    f->sp->array->del();
 	    f->sp++;
 	    PUT_MAP(f->sp, a);
 	    return 0;
@@ -414,7 +414,7 @@ int kf_and(Frame *f, int n, kfunc *kf)
 	break;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_binary(f, KF_AND);
 	    return 0;
 	}
@@ -443,7 +443,7 @@ int kf_and_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], f->sp[1].u.number & f->sp->u.number);
+    PUT_INT(&f->sp[1], f->sp[1].number & f->sp->number);
     f->sp++;
     return 0;
 }
@@ -472,8 +472,8 @@ int kf_div(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_DIV, 2);
 	}
-	i = f->sp[1].u.number;
-	d = f->sp->u.number;
+	i = f->sp[1].number;
+	d = f->sp->number;
 	if (d == 0) {
 	    error("Division by zero");
 	}
@@ -494,7 +494,7 @@ int kf_div(Frame *f, int n, kfunc *kf)
 	return 0;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_binary(f, KF_DIV);
 	    return 0;
 	}
@@ -524,8 +524,8 @@ int kf_div_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i = f->sp[1].u.number;
-    d = f->sp->u.number;
+    i = f->sp[1].number;
+    d = f->sp->number;
     if (d == 0) {
 	error("Division by zero");
     }
@@ -566,7 +566,7 @@ int kf_eq(Frame *f, int n, kfunc *kf)
 	break;
 
     case T_INT:
-	PUT_INT(&f->sp[1], (f->sp[1].u.number == f->sp->u.number));
+	PUT_INT(&f->sp[1], (f->sp[1].number == f->sp->number));
 	f->sp++;
 	break;
 
@@ -580,10 +580,10 @@ int kf_eq(Frame *f, int n, kfunc *kf)
 
     case T_STRING:
 	i_add_ticks(f, 2);
-	flag = (f->sp[1].u.string->cmp(f->sp->u.string) == 0);
-	f->sp->u.string->del();
+	flag = (f->sp[1].string->cmp(f->sp->string) == 0);
+	f->sp->string->del();
 	f->sp++;
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_INTVAL(f->sp, flag);
 	break;
 
@@ -595,10 +595,10 @@ int kf_eq(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	flag = (f->sp[1].u.array == f->sp->u.array);
-	f->sp->u.array->del();
+	flag = (f->sp[1].array == f->sp->array);
+	f->sp->array->del();
 	f->sp++;
-	f->sp->u.array->del();
+	f->sp->array->del();
 	PUT_INTVAL(f->sp, flag);
 	break;
     }
@@ -622,7 +622,7 @@ int kf_eq_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], (f->sp[1].u.number == f->sp->u.number));
+    PUT_INT(&f->sp[1], (f->sp[1].number == f->sp->number));
     f->sp++;
     return 0;
 }
@@ -651,7 +651,7 @@ int kf_ge(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_GE, 2);
 	}
-	PUT_INT(&f->sp[1], (f->sp[1].u.number >= f->sp->u.number));
+	PUT_INT(&f->sp[1], (f->sp[1].number >= f->sp->number));
 	f->sp++;
 	return 0;
 
@@ -671,15 +671,15 @@ int kf_ge(Frame *f, int n, kfunc *kf)
 	    kf_argerror(KF_GE, 2);
 	}
 	i_add_ticks(f, 2);
-	flag = (f->sp[1].u.string->cmp(f->sp->u.string) >= 0);
-	f->sp->u.string->del();
+	flag = (f->sp[1].string->cmp(f->sp->string) >= 0);
+	f->sp->string->del();
 	f->sp++;
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_compare(f, KF_GE);
 	    return 0;
 	}
@@ -707,7 +707,7 @@ int kf_ge_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], (f->sp[1].u.number >= f->sp->u.number));
+    PUT_INT(&f->sp[1], (f->sp[1].number >= f->sp->number));
     f->sp++;
     return 0;
 }
@@ -736,7 +736,7 @@ int kf_gt(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_GT, 2);
 	}
-	PUT_INT(&f->sp[1], (f->sp[1].u.number > f->sp->u.number));
+	PUT_INT(&f->sp[1], (f->sp[1].number > f->sp->number));
 	f->sp++;
 	return 0;
 
@@ -756,15 +756,15 @@ int kf_gt(Frame *f, int n, kfunc *kf)
 	    kf_argerror(KF_GT, 2);
 	}
 	i_add_ticks(f, 2);
-	flag = (f->sp[1].u.string->cmp(f->sp->u.string) > 0);
-	f->sp->u.string->del();
+	flag = (f->sp[1].string->cmp(f->sp->string) > 0);
+	f->sp->string->del();
 	f->sp++;
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_compare(f, KF_GT);
 	    return 0;
 	}
@@ -792,7 +792,7 @@ int kf_gt_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], (f->sp[1].u.number > f->sp->u.number));
+    PUT_INT(&f->sp[1], (f->sp[1].number > f->sp->number));
     f->sp++;
     return 0;
 }
@@ -821,7 +821,7 @@ int kf_le(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_LE, 2);
 	}
-	PUT_INT(&f->sp[1], (f->sp[1].u.number <= f->sp->u.number));
+	PUT_INT(&f->sp[1], (f->sp[1].number <= f->sp->number));
 	f->sp++;
 	return 0;
 
@@ -841,15 +841,15 @@ int kf_le(Frame *f, int n, kfunc *kf)
 	    kf_argerror(KF_LE, 2);
 	}
 	i_add_ticks(f, 2);
-	flag = (f->sp[1].u.string->cmp(f->sp->u.string) <= 0);
-	f->sp->u.string->del();
+	flag = (f->sp[1].string->cmp(f->sp->string) <= 0);
+	f->sp->string->del();
 	f->sp++;
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_compare(f, KF_LE);
 	    return 0;
 	}
@@ -877,7 +877,7 @@ int kf_le_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], (f->sp[1].u.number <= f->sp->u.number));
+    PUT_INT(&f->sp[1], (f->sp[1].number <= f->sp->number));
     f->sp++;
     return 0;
 }
@@ -899,7 +899,7 @@ int kf_lshift(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[1].type == T_LWOBJECT &&
-	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	f->sp[1].array->elts[0].type == T_OBJECT) {
 	kf_op_binary(f, KF_LSHIFT);
 	return 0;
     }
@@ -909,13 +909,13 @@ int kf_lshift(Frame *f, int n, kfunc *kf)
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_LSHIFT, 2);
     }
-    if ((f->sp->u.number & ~31) != 0) {
-	if (f->sp->u.number < 0) {
+    if ((f->sp->number & ~31) != 0) {
+	if (f->sp->number < 0) {
 	    error("Negative left shift");
 	}
 	PUT_INT(&f->sp[1], 0);
     } else {
-	PUT_INT(&f->sp[1], (Uint) f->sp[1].u.number << f->sp->u.number);
+	PUT_INT(&f->sp[1], (Uint) f->sp[1].number << f->sp->number);
     }
     f->sp++;
     return 0;
@@ -937,13 +937,13 @@ int kf_lshift_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if ((f->sp->u.number & ~31) != 0) {
-	if (f->sp->u.number < 0) {
+    if ((f->sp->number & ~31) != 0) {
+	if (f->sp->number < 0) {
 	    error("Negative left shift");
 	}
 	PUT_INT(&f->sp[1], 0);
     } else {
-	PUT_INT(&f->sp[1], (Uint) f->sp[1].u.number << f->sp->u.number);
+	PUT_INT(&f->sp[1], (Uint) f->sp[1].number << f->sp->number);
     }
     f->sp++;
     return 0;
@@ -973,7 +973,7 @@ int kf_lt(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_LT, 2);
 	}
-	PUT_INT(&f->sp[1], (f->sp[1].u.number < f->sp->u.number));
+	PUT_INT(&f->sp[1], (f->sp[1].number < f->sp->number));
 	f->sp++;
 	return 0;
 
@@ -993,15 +993,15 @@ int kf_lt(Frame *f, int n, kfunc *kf)
 	    kf_argerror(KF_LT, 2);
 	}
 	i_add_ticks(f, 2);
-	flag = (f->sp[1].u.string->cmp(f->sp->u.string) < 0);
-	f->sp->u.string->del();
+	flag = (f->sp[1].string->cmp(f->sp->string) < 0);
+	f->sp->string->del();
 	f->sp++;
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_compare(f, KF_LT);
 	    return 0;
 	}
@@ -1029,7 +1029,7 @@ int kf_lt_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], (f->sp[1].u.number < f->sp->u.number));
+    PUT_INT(&f->sp[1], (f->sp[1].number < f->sp->number));
     f->sp++;
     return 0;
 }
@@ -1053,7 +1053,7 @@ int kf_mod(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[1].type == T_LWOBJECT &&
-	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	f->sp[1].array->elts[0].type == T_OBJECT) {
 	kf_op_binary(f, KF_MOD);
 	return 0;
     }
@@ -1063,8 +1063,8 @@ int kf_mod(Frame *f, int n, kfunc *kf)
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_MOD, 2);
     }
-    i = f->sp[1].u.number;
-    d = f->sp->u.number;
+    i = f->sp[1].number;
+    d = f->sp->number;
     if (d == 0) {
 	error("Modulus by zero");
     }
@@ -1091,8 +1091,8 @@ int kf_mod_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i = f->sp[1].u.number;
-    d = f->sp->u.number;
+    i = f->sp[1].number;
+    d = f->sp->number;
     if (d == 0) {
 	error("Modulus by zero");
     }
@@ -1124,7 +1124,7 @@ int kf_mult(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_MULT, 2);
 	}
-	PUT_INT(&f->sp[1], f->sp[1].u.number * f->sp->u.number);
+	PUT_INT(&f->sp[1], f->sp[1].number * f->sp->number);
 	f->sp++;
 	return 0;
 
@@ -1141,7 +1141,7 @@ int kf_mult(Frame *f, int n, kfunc *kf)
 	return 0;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_binary(f, KF_MULT);
 	    return 0;
 	}
@@ -1169,7 +1169,7 @@ int kf_mult_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], f->sp[1].u.number * f->sp->u.number);
+    PUT_INT(&f->sp[1], f->sp[1].number * f->sp->number);
     f->sp++;
     return 0;
 }
@@ -1206,7 +1206,7 @@ int kf_ne(Frame *f, int n, kfunc *kf)
 	break;
 
     case T_INT:
-	PUT_INT(&f->sp[1], (f->sp[1].u.number != f->sp->u.number));
+	PUT_INT(&f->sp[1], (f->sp[1].number != f->sp->number));
 	f->sp++;
 	break;
 
@@ -1220,10 +1220,10 @@ int kf_ne(Frame *f, int n, kfunc *kf)
 
     case T_STRING:
 	i_add_ticks(f, 2);
-	flag = (f->sp[1].u.string->cmp(f->sp->u.string) != 0);
-	f->sp->u.string->del();
+	flag = (f->sp[1].string->cmp(f->sp->string) != 0);
+	f->sp->string->del();
 	f->sp++;
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_INTVAL(f->sp, flag);
 	break;
 
@@ -1235,10 +1235,10 @@ int kf_ne(Frame *f, int n, kfunc *kf)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	flag = (f->sp[1].u.array != f->sp->u.array);
-	f->sp->u.array->del();
+	flag = (f->sp[1].array != f->sp->array);
+	f->sp->array->del();
 	f->sp++;
-	f->sp->u.array->del();
+	f->sp->array->del();
 	PUT_INTVAL(f->sp, flag);
 	break;
     }
@@ -1262,7 +1262,7 @@ int kf_ne_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], (f->sp[1].u.number != f->sp->u.number));
+    PUT_INT(&f->sp[1], (f->sp[1].number != f->sp->number));
     f->sp++;
     return 0;
 }
@@ -1284,14 +1284,14 @@ int kf_neg(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_LWOBJECT &&
-	f->sp->u.array->elts[0].type == T_OBJECT) {
+	f->sp->array->elts[0].type == T_OBJECT) {
 	kf_op_unary(f, KF_NEG);
 	return 0;
     }
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_NEG, 1);
     }
-    PUT_INT(f->sp, ~f->sp->u.number);
+    PUT_INT(f->sp, ~f->sp->number);
     return 0;
 }
 # endif
@@ -1311,7 +1311,7 @@ int kf_neg_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(f->sp, ~f->sp->u.number);
+    PUT_INT(f->sp, ~f->sp->number);
     return 0;
 }
 # endif
@@ -1337,7 +1337,7 @@ int kf_not(Frame *f, int n, kfunc *kf)
 	return 0;
 
     case T_INT:
-	PUT_INT(f->sp, !f->sp->u.number);
+	PUT_INT(f->sp, !f->sp->number);
 	return 0;
 
     case T_FLOAT:
@@ -1345,13 +1345,13 @@ int kf_not(Frame *f, int n, kfunc *kf)
 	return 0;
 
     case T_STRING:
-	f->sp->u.string->del();
+	f->sp->string->del();
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	f->sp->u.array->del();
+	f->sp->array->del();
 	break;
     }
 
@@ -1373,7 +1373,7 @@ int kf_not_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(f->sp, !f->sp->u.number);
+    PUT_INT(f->sp, !f->sp->number);
     return 0;
 }
 # endif
@@ -1398,7 +1398,7 @@ int kf_or(Frame *f, int n, kfunc *kf)
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp->type == T_INT) {
-	    PUT_INT(&f->sp[1], f->sp[1].u.number | f->sp->u.number);
+	    PUT_INT(&f->sp[1], f->sp[1].number | f->sp->number);
 	    f->sp++;
 	    return 0;
 	}
@@ -1406,18 +1406,18 @@ int kf_or(Frame *f, int n, kfunc *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->setAdd(f->data, f->sp->u.array);
-	    f->sp->u.array->del();
+	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    a = f->sp[1].array->setAdd(f->data, f->sp->array);
+	    f->sp->array->del();
 	    f->sp++;
-	    f->sp->u.array->del();
+	    f->sp->array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
 	break;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_binary(f, KF_OR);
 	    return 0;
 	}
@@ -1446,7 +1446,7 @@ int kf_or_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], f->sp[1].u.number | f->sp->u.number);
+    PUT_INT(&f->sp[1], f->sp[1].number | f->sp->number);
     f->sp++;
     return 0;
 }
@@ -1471,17 +1471,17 @@ int kf_rangeft(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[2].type == T_MAPPING) {
-	a = f->sp[2].u.array->mapRange(f->data, &f->sp[1], f->sp);
+	a = f->sp[2].array->mapRange(f->data, &f->sp[1], f->sp);
 	i_del_value(f->sp++);
 	i_del_value(f->sp++);
-	i_add_ticks(f, f->sp->u.array->size);
-	f->sp->u.array->del();
+	i_add_ticks(f, f->sp->array->size);
+	f->sp->array->del();
 	PUT_ARR(f->sp, a);
 
 	return 0;
     }
     if (f->sp[2].type == T_LWOBJECT &&
-	f->sp[2].u.array->elts[0].type == T_OBJECT) {
+	f->sp[2].array->elts[0].type == T_OBJECT) {
 	if (VAL_NIL(f->sp + 1)) {
 	    kf_argerror(KF_RANGEFT, 2);
 	}
@@ -1502,9 +1502,9 @@ int kf_rangeft(Frame *f, int n, kfunc *kf)
 	    kf_argerror(KF_RANGEFT, 3);
 	}
 	i_add_ticks(f, 2);
-	str = f->sp[2].u.string->range(f->sp[1].u.number, f->sp->u.number);
+	str = f->sp[2].string->range(f->sp[1].number, f->sp->number);
 	f->sp += 2;
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_STR(f->sp, str);
 	break;
 
@@ -1515,11 +1515,10 @@ int kf_rangeft(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_RANGEFT, 3);
 	}
-	a = f->sp[2].u.array->range(f->data, f->sp[1].u.number,
-				    f->sp->u.number);
+	a = f->sp[2].array->range(f->data, f->sp[1].number, f->sp->number);
 	i_add_ticks(f, a->size);
 	f->sp += 2;
-	f->sp->u.array->del();
+	f->sp->array->del();
 	PUT_ARR(f->sp, a);
 	break;
 
@@ -1550,16 +1549,16 @@ int kf_rangef(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[1].type == T_MAPPING) {
-	a = f->sp[1].u.array->mapRange(f->data, f->sp, (Value *) NULL);
+	a = f->sp[1].array->mapRange(f->data, f->sp, (Value *) NULL);
 	i_del_value(f->sp++);
-	i_add_ticks(f, f->sp->u.array->size);
-	f->sp->u.array->del();
+	i_add_ticks(f, f->sp->array->size);
+	f->sp->array->del();
 	PUT_MAP(f->sp, a);
 
 	return 0;
     }
     if (f->sp[1].type == T_LWOBJECT &&
-	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	f->sp[1].array->elts[0].type == T_OBJECT) {
 	if (VAL_NIL(f->sp)) {
 	    kf_argerror(KF_RANGEF, 2);
 	}
@@ -1575,10 +1574,9 @@ int kf_rangef(Frame *f, int n, kfunc *kf)
 	    kf_argerror(KF_RANGEF, 2);
 	}
 	i_add_ticks(f, 2);
-	str = f->sp[1].u.string->range(f->sp->u.number,
-				       f->sp[1].u.string->len - 1L);
+	str = f->sp[1].string->range(f->sp->number, f->sp[1].string->len - 1L);
 	f->sp++;
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_STR(f->sp, str);
 	break;
 
@@ -1586,11 +1584,11 @@ int kf_rangef(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_RANGEF, 2);
 	}
-	a = f->sp[1].u.array->range(f->data, f->sp->u.number,
-				    f->sp[1].u.array->size - 1);
+	a = f->sp[1].array->range(f->data, f->sp->number,
+				  f->sp[1].array->size - 1);
 	i_add_ticks(f, a->size);
 	f->sp++;
-	f->sp->u.array->del();
+	f->sp->array->del();
 	PUT_ARR(f->sp, a);
 	break;
 
@@ -1621,16 +1619,16 @@ int kf_ranget(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[1].type == T_MAPPING) {
-	a = f->sp[1].u.array->mapRange(f->data, (Value *) NULL, f->sp);
+	a = f->sp[1].array->mapRange(f->data, (Value *) NULL, f->sp);
 	i_del_value(f->sp++);
-	i_add_ticks(f, f->sp->u.array->size);
-	f->sp->u.array->del();
+	i_add_ticks(f, f->sp->array->size);
+	f->sp->array->del();
 	PUT_MAP(f->sp, a);
 
 	return 0;
     }
     if (f->sp[1].type == T_LWOBJECT &&
-	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	f->sp[1].array->elts[0].type == T_OBJECT) {
 	if (VAL_NIL(f->sp)) {
 	    kf_argerror(KF_RANGET, 2);
 	}
@@ -1648,9 +1646,9 @@ int kf_ranget(Frame *f, int n, kfunc *kf)
 	    kf_argerror(KF_RANGET, 2);
 	}
 	i_add_ticks(f, 2);
-	str = f->sp[1].u.string->range(0, f->sp->u.number);
+	str = f->sp[1].string->range(0, f->sp->number);
 	f->sp++;
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_STR(f->sp, str);
 	break;
 
@@ -1658,10 +1656,10 @@ int kf_ranget(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_RANGET, 2);
 	}
-	a = f->sp[1].u.array->range(f->data, 0, f->sp->u.number);
+	a = f->sp[1].array->range(f->data, 0, f->sp->number);
 	i_add_ticks(f, a->size);
 	f->sp++;
-	f->sp->u.array->del();
+	f->sp->array->del();
 	PUT_ARR(f->sp, a);
 	break;
 
@@ -1692,15 +1690,15 @@ int kf_range(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_MAPPING) {
-	a = f->sp->u.array->mapRange(f->data, (Value *) NULL, (Value *) NULL);
-	i_add_ticks(f, f->sp->u.array->size);
-	f->sp->u.array->del();
+	a = f->sp->array->mapRange(f->data, (Value *) NULL, (Value *) NULL);
+	i_add_ticks(f, f->sp->array->size);
+	f->sp->array->del();
 	PUT_MAP(f->sp, a);
 
 	return 0;
     }
     if (f->sp->type == T_LWOBJECT &&
-	f->sp->u.array->elts[0].type == T_OBJECT) {
+	f->sp->array->elts[0].type == T_OBJECT) {
 	*--f->sp = nil_value;
 	*--f->sp = nil_value;
 	kf_op_ternary(f, KF_RANGE);
@@ -1711,15 +1709,15 @@ int kf_range(Frame *f, int n, kfunc *kf)
     switch (f->sp->type) {
     case T_STRING:
 	i_add_ticks(f, 2);
-	str = f->sp->u.string->range(0, f->sp->u.string->len - 1);
-	f->sp->u.string->del();
+	str = f->sp->string->range(0, f->sp->string->len - 1);
+	f->sp->string->del();
 	PUT_STR(f->sp, str);
 	break;
 
     case T_ARRAY:
-	a = f->sp->u.array->range(f->data, 0, f->sp->u.array->size - 1);
+	a = f->sp->array->range(f->data, 0, f->sp->array->size - 1);
 	i_add_ticks(f, a->size);
-	f->sp->u.array->del();
+	f->sp->array->del();
 	PUT_ARR(f->sp, a);
 	break;
 
@@ -1747,7 +1745,7 @@ int kf_rshift(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[1].type == T_LWOBJECT &&
-	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	f->sp[1].array->elts[0].type == T_OBJECT) {
 	kf_op_binary(f, KF_RSHIFT);
 	return 0;
     }
@@ -1757,13 +1755,13 @@ int kf_rshift(Frame *f, int n, kfunc *kf)
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_RSHIFT, 2);
     }
-    if ((f->sp->u.number & ~31) != 0) {
-	if (f->sp->u.number < 0) {
+    if ((f->sp->number & ~31) != 0) {
+	if (f->sp->number < 0) {
 	    error("Negative right shift");
 	}
 	PUT_INT(&f->sp[1], 0);
     } else {
-	PUT_INT(&f->sp[1], (Uint) f->sp[1].u.number >> f->sp->u.number);
+	PUT_INT(&f->sp[1], (Uint) f->sp[1].number >> f->sp->number);
     }
     f->sp++;
     return 0;
@@ -1785,13 +1783,13 @@ int kf_rshift_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if ((f->sp->u.number & ~31) != 0) {
-	if (f->sp->u.number < 0) {
+    if ((f->sp->number & ~31) != 0) {
+	if (f->sp->number < 0) {
 	    error("Negative right shift");
 	}
 	PUT_INT(&f->sp[1], 0);
     } else {
-	PUT_INT(&f->sp[1], (Uint) f->sp[1].u.number >> f->sp->u.number);
+	PUT_INT(&f->sp[1], (Uint) f->sp[1].number >> f->sp->number);
     }
     f->sp++;
     return 0;
@@ -1818,7 +1816,7 @@ int kf_sub(Frame *f, int n, kfunc *kf)
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp->type == T_INT) {
-	    PUT_INT(&f->sp[1], f->sp[1].u.number - f->sp->u.number);
+	    PUT_INT(&f->sp[1], f->sp[1].number - f->sp->number);
 	    f->sp++;
 	    return 0;
 	}
@@ -1840,11 +1838,11 @@ int kf_sub(Frame *f, int n, kfunc *kf)
 	if (f->sp->type == T_ARRAY) {
 	    Array *a;
 
-	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->sub(f->data, f->sp->u.array);
-	    f->sp->u.array->del();
+	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    a = f->sp[1].array->sub(f->data, f->sp->array);
+	    f->sp->array->del();
 	    f->sp++;
-	    f->sp->u.array->del();
+	    f->sp->array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -1854,18 +1852,18 @@ int kf_sub(Frame *f, int n, kfunc *kf)
 	if (f->sp->type == T_ARRAY) {
 	    Array *a;
 
-	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->mapSub(f->data, f->sp->u.array);
-	    f->sp->u.array->del();
+	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    a = f->sp[1].array->mapSub(f->data, f->sp->array);
+	    f->sp->array->del();
 	    f->sp++;
-	    f->sp->u.array->del();
+	    f->sp->array->del();
 	    PUT_MAP(f->sp, a);
 	    return 0;
 	}
 	break;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_binary(f, KF_SUB);
 	    return 0;
 	}
@@ -1894,7 +1892,7 @@ int kf_sub_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], f->sp[1].u.number - f->sp->u.number);
+    PUT_INT(&f->sp[1], f->sp[1].number - f->sp->number);
     f->sp++;
     return 0;
 }
@@ -1918,7 +1916,7 @@ int kf_sub1(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_INT) {
-	PUT_INT(f->sp, f->sp->u.number - 1);
+	PUT_INT(f->sp, f->sp->number - 1);
     } else if (f->sp->type == T_FLOAT) {
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f1);
@@ -1926,7 +1924,7 @@ int kf_sub1(Frame *f, int n, kfunc *kf)
 	f1.sub(f2);
 	PUT_FLT(f->sp, f1);
     } else if (f->sp->type == T_LWOBJECT &&
-	       f->sp->u.array->elts[0].type == T_OBJECT) {
+	       f->sp->array->elts[0].type == T_OBJECT) {
 	kf_op_unary(f, KF_SUB1);
     } else {
 	kf_argerror(KF_SUB1, 1);
@@ -1950,7 +1948,7 @@ int kf_sub1_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(f->sp, f->sp->u.number - 1);
+    PUT_INT(f->sp, f->sp->number - 1);
     return 0;
 }
 # endif
@@ -1975,19 +1973,19 @@ int kf_tofloat(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, 1);
     if (f->sp->type == T_INT) {
 	/* from int */
-	Float::itof(f->sp->u.number, &flt);
+	Float::itof(f->sp->number, &flt);
 	PUT_FLTVAL(f->sp, flt);
 	return 0;
     } else if (f->sp->type == T_STRING) {
 	char *p;
 
 	/* from string */
-	p = f->sp->u.string->text;
+	p = f->sp->string->text;
 	if (!Float::atof(&p, &flt) ||
-	    p != f->sp->u.string->text + f->sp->u.string->len) {
+	    p != f->sp->string->text + f->sp->string->len) {
 	    error("String cannot be converted to float");
 	}
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_FLTVAL(f->sp, flt);
 	return 0;
     }
@@ -2027,12 +2025,12 @@ int kf_toint(Frame *f, int n, kfunc *kf)
 	Int i;
 
 	/* from string */
-	p = f->sp->u.string->text;
+	p = f->sp->string->text;
 	i = strtoint(&p);
-	if (p != f->sp->u.string->text + f->sp->u.string->len) {
+	if (p != f->sp->string->text + f->sp->string->len) {
 	    error("String cannot be converted to int");
 	}
-	f->sp->u.string->del();
+	f->sp->string->del();
 	PUT_INTVAL(f->sp, i);
 	return 0;
     }
@@ -2065,7 +2063,7 @@ int kf_tst(Frame *f, int n, kfunc *kf)
 	return 0;
 
     case T_INT:
-	PUT_INT(f->sp, (f->sp->u.number != 0));
+	PUT_INT(f->sp, (f->sp->number != 0));
 	return 0;
 
     case T_FLOAT:
@@ -2073,13 +2071,13 @@ int kf_tst(Frame *f, int n, kfunc *kf)
 	return 0;
 
     case T_STRING:
-	f->sp->u.string->del();
+	f->sp->string->del();
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	f->sp->u.array->del();
+	f->sp->array->del();
 	break;
     }
 
@@ -2101,7 +2099,7 @@ int kf_tst_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(f->sp, (f->sp->u.number != 0));
+    PUT_INT(f->sp, (f->sp->number != 0));
     return 0;
 }
 # endif
@@ -2125,7 +2123,7 @@ int kf_umin(Frame *f, int n, kfunc *kf)
 
     switch (f->sp->type) {
     case T_INT:
-	PUT_INT(f->sp, -f->sp->u.number);
+	PUT_INT(f->sp, -f->sp->number);
 	return 0;
 
     case T_FLOAT:
@@ -2138,7 +2136,7 @@ int kf_umin(Frame *f, int n, kfunc *kf)
 	return 0;
 
     case T_LWOBJECT:
-	if (f->sp->u.array->elts[0].type == T_OBJECT) {
+	if (f->sp->array->elts[0].type == T_OBJECT) {
 	    kf_op_unary(f, KF_UMIN);
 	    return 0;
 	}
@@ -2165,7 +2163,7 @@ int kf_umin_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(f->sp, -f->sp->u.number);
+    PUT_INT(f->sp, -f->sp->number);
     return 0;
 }
 # endif
@@ -2190,7 +2188,7 @@ int kf_xor(Frame *f, int n, kfunc *kf)
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp->type == T_INT) {
-	    PUT_INT(&f->sp[1], f->sp[1].u.number ^ f->sp->u.number);
+	    PUT_INT(&f->sp[1], f->sp[1].number ^ f->sp->number);
 	    f->sp++;
 	    return 0;
 	}
@@ -2198,18 +2196,18 @@ int kf_xor(Frame *f, int n, kfunc *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
-	    a = f->sp[1].u.array->setXAdd(f->data, f->sp->u.array);
-	    f->sp->u.array->del();
+	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    a = f->sp[1].array->setXAdd(f->data, f->sp->array);
+	    f->sp->array->del();
 	    f->sp++;
-	    f->sp->u.array->del();
+	    f->sp->array->del();
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
 	break;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    kf_op_binary(f, KF_XOR);
 	    return 0;
 	}
@@ -2238,7 +2236,7 @@ int kf_xor_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUT_INT(&f->sp[1], f->sp[1].u.number ^ f->sp->u.number);
+    PUT_INT(&f->sp[1], f->sp[1].number ^ f->sp->number);
     f->sp++;
     return 0;
 }
@@ -2267,7 +2265,7 @@ int kf_tostring(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, 2);
     if (f->sp->type == T_INT) {
 	/* from int */
-	num = kf_itoa(f->sp->u.number, buffer);
+	num = kf_itoa(f->sp->number, buffer);
     } else if (f->sp->type == T_FLOAT) {
 	/* from float */
 	i_add_ticks(f, 1);
@@ -2307,9 +2305,9 @@ int kf_ckrangeft(Frame *f, int n, kfunc *kf)
 	kf_argerror(KF_CKRANGEFT, 3);
     }
     if (f->sp[2].type == T_STRING) {
-	f->sp[2].u.string->checkRange(f->sp[1].u.number, f->sp->u.number);
+	f->sp[2].string->checkRange(f->sp[1].number, f->sp->number);
     } else if (f->sp[2].type == T_ARRAY) {
-	f->sp[2].u.array->checkRange(f->sp[1].u.number, f->sp->u.number);
+	f->sp[2].array->checkRange(f->sp[1].number, f->sp->number);
     } else {
 	kf_argerror(KF_CKRANGEFT, 1);
     }
@@ -2338,12 +2336,12 @@ int kf_ckrangef(Frame *f, int n, kfunc *kf)
     }
     if (f->sp[1].type == T_STRING) {
 	(--f->sp)->type = T_INT;
-	f->sp->u.number = (Int) f->sp[2].u.string->len - 1;
-	f->sp[2].u.string->checkRange(f->sp[1].u.number, f->sp->u.number);
+	f->sp->number = (Int) f->sp[2].string->len - 1;
+	f->sp[2].string->checkRange(f->sp[1].number, f->sp->number);
     } else if (f->sp[1].type == T_ARRAY) {
 	(--f->sp)->type = T_INT;
-	f->sp->u.number = (Int) f->sp[2].u.array->size - 1;
-	f->sp[2].u.array->checkRange(f->sp[1].u.number, f->sp->u.number);
+	f->sp->number = (Int) f->sp[2].array->size - 1;
+	f->sp[2].array->checkRange(f->sp[1].number, f->sp->number);
     } else {
 	kf_argerror(KF_CKRANGEF, 1);
     }
@@ -2371,9 +2369,9 @@ int kf_ckranget(Frame *f, int n, kfunc *kf)
 	kf_argerror(KF_CKRANGET, 2);
     }
     if (f->sp[1].type == T_STRING) {
-	f->sp[1].u.string->checkRange(0, f->sp->u.number);
+	f->sp[1].string->checkRange(0, f->sp->number);
     } else if (f->sp[1].type == T_ARRAY) {
-	f->sp[1].u.array->checkRange(0, f->sp->u.number);
+	f->sp[1].array->checkRange(0, f->sp->number);
     } else {
 	kf_argerror(KF_CKRANGET, 1);
     }
@@ -2424,7 +2422,7 @@ int kf_status_idx(Frame *f, int n, kfunc *kf)
 	error("Non-numeric array index");
     }
     i_add_ticks(f, 6);
-    if (!conf_statusi(f, f->sp->u.number, f->sp)) {
+    if (!conf_statusi(f, f->sp->number, f->sp)) {
 	error("Index out of range");
     }
     return 0;
@@ -2452,11 +2450,11 @@ int kf_statuso_idx(Frame *f, int nargs, kfunc *kf)
 
     switch (f->sp[1].type) {
     case T_INT:
-	if (f->sp[1].u.number != 0) {
+	if (f->sp[1].number != 0) {
 	    error("Index on bad type");
 	}
 	i_add_ticks(f, 6);
-	if (!conf_statusi(f, f->sp->u.number, &f->sp[1])) {
+	if (!conf_statusi(f, f->sp->number, &f->sp[1])) {
 	    error("Index out of range");
 	}
 	f->sp++;
@@ -2467,9 +2465,9 @@ int kf_statuso_idx(Frame *f, int nargs, kfunc *kf)
 	break;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
-	    n = f->sp[1].u.array->elts[0].oindex;
-	    f->sp[1].u.array->del();
+	if (f->sp[1].array->elts[0].type == T_OBJECT) {
+	    n = f->sp[1].array->elts[0].oindex;
+	    f->sp[1].array->del();
 	    f->sp[1] = nil_value;
 	} else {
 	    /* no user-visible parts within (right?) */
@@ -2484,7 +2482,7 @@ int kf_statuso_idx(Frame *f, int nargs, kfunc *kf)
 	error("Non-numeric array index");
     }
     i_add_ticks(f, 6);
-    if (!conf_objecti(f->data, OBJR(n), f->sp->u.number, &f->sp[1])) {
+    if (!conf_objecti(f->data, OBJR(n), f->sp->number, &f->sp[1])) {
 	error("Index out of range");
     }
     f->sp++;
@@ -2512,7 +2510,7 @@ int kf_calltr_idx(Frame *f, int n, kfunc *kf)
 	error("Non-numeric array index");
     }
     i_add_ticks(f, 10);
-    if (!i_call_tracei(f, f->sp->u.number, f->sp)) {
+    if (!i_call_tracei(f, f->sp->number, f->sp)) {
 	error("Index out of range");
     }
     return 0;
@@ -2633,10 +2631,10 @@ int kf_add_float_string(Frame *f, int n, kfunc *kf)
     GET_FLT(&f->sp[1], flt);
     flt.ftoa(buffer);
     str = String::create((char *) NULL,
-			 (l=strlen(buffer)) + f->sp->u.string->len);
+			 (l=strlen(buffer)) + f->sp->string->len);
     strcpy(str->text, buffer);
-    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
-    f->sp->u.string->del();
+    memcpy(str->text + l, f->sp->string->text, f->sp->string->len);
+    f->sp->string->del();
     f->sp++;
     PUT_STRVAL(f->sp, str);
     return 0;
@@ -2663,11 +2661,11 @@ int kf_add_int_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    num = kf_itoa(f->sp[1].u.number, buffer);
-    str = String::create((char *) NULL, (l=strlen(num)) + f->sp->u.string->len);
+    num = kf_itoa(f->sp[1].number, buffer);
+    str = String::create((char *) NULL, (l=strlen(num)) + f->sp->string->len);
     strcpy(str->text, num);
-    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
-    f->sp->u.string->del();
+    memcpy(str->text + l, f->sp->string->text, f->sp->string->len);
+    f->sp->string->del();
     f->sp++;
     PUT_STRVAL(f->sp, str);
     return 0;
@@ -2692,10 +2690,10 @@ int kf_add_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    str = f->sp[1].u.string->add(f->sp->u.string);
-    f->sp->u.string->del();
+    str = f->sp[1].string->add(f->sp->string);
+    f->sp->string->del();
     f->sp++;
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
     return 0;
 }
@@ -2726,10 +2724,10 @@ int kf_add_string_float(Frame *f, int n, kfunc *kf)
     flt.ftoa(buffer);
     f->sp++;
     str = String::create((char *) NULL,
-			 f->sp->u.string->len + (long) strlen(buffer));
-    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
-    strcpy(str->text + f->sp->u.string->len, buffer);
-    f->sp->u.string->del();
+			 f->sp->string->len + (long) strlen(buffer));
+    memcpy(str->text, f->sp->string->text, f->sp->string->len);
+    strcpy(str->text + f->sp->string->len, buffer);
+    f->sp->string->del();
     PUT_STR(f->sp, str);
     return 0;
 }
@@ -2754,13 +2752,13 @@ int kf_add_string_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    num = kf_itoa(f->sp->u.number, buffer);
+    num = kf_itoa(f->sp->number, buffer);
     f->sp++;
     str = String::create((char *) NULL,
-			 f->sp->u.string->len + (long) strlen(num));
-    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
-    strcpy(str->text + f->sp->u.string->len, num);
-    f->sp->u.string->del();
+			 f->sp->string->len + (long) strlen(num));
+    memcpy(str->text, f->sp->string->text, f->sp->string->len);
+    strcpy(str->text + f->sp->string->len, num);
+    f->sp->string->del();
     PUT_STR(f->sp, str);
     return 0;
 }
@@ -2864,10 +2862,10 @@ int kf_eq_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    flag = (f->sp[1].u.string->cmp(f->sp->u.string) == 0);
-    f->sp->u.string->del();
+    flag = (f->sp[1].string->cmp(f->sp->string) == 0);
+    f->sp->string->del();
     f->sp++;
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, flag);
     return 0;
 }
@@ -2917,10 +2915,10 @@ int kf_ge_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    flag = (f->sp[1].u.string->cmp(f->sp->u.string) >= 0);
-    f->sp->u.string->del();
+    flag = (f->sp[1].string->cmp(f->sp->string) >= 0);
+    f->sp->string->del();
     f->sp++;
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, flag);
     return 0;
 }
@@ -2970,10 +2968,10 @@ int kf_gt_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    flag = (f->sp[1].u.string->cmp(f->sp->u.string) > 0);
-    f->sp->u.string->del();
+    flag = (f->sp[1].string->cmp(f->sp->string) > 0);
+    f->sp->string->del();
     f->sp++;
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, flag);
     return 0;
 }
@@ -3023,10 +3021,10 @@ int kf_le_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    flag = (f->sp[1].u.string->cmp(f->sp->u.string) <= 0);
-    f->sp->u.string->del();
+    flag = (f->sp[1].string->cmp(f->sp->string) <= 0);
+    f->sp->string->del();
     f->sp++;
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, flag);
     return 0;
 }
@@ -3076,10 +3074,10 @@ int kf_lt_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    flag = (f->sp[1].u.string->cmp(f->sp->u.string) < 0);
-    f->sp->u.string->del();
+    flag = (f->sp[1].string->cmp(f->sp->string) < 0);
+    f->sp->string->del();
     f->sp++;
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, flag);
     return 0;
 }
@@ -3156,10 +3154,10 @@ int kf_ne_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
-    flag = (f->sp[1].u.string->cmp(f->sp->u.string) != 0);
-    f->sp->u.string->del();
+    flag = (f->sp[1].string->cmp(f->sp->string) != 0);
+    f->sp->string->del();
     f->sp++;
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, flag);
     return 0;
 }
@@ -3200,7 +3198,7 @@ int kf_not_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, FALSE);
     return 0;
 }
@@ -3294,7 +3292,7 @@ int kf_tst_string(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, TRUE);
     return 0;
 }
@@ -3360,65 +3358,65 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
     nonint = nargs;
     result = 0;
     for (v = f->sp, i = nargs; --i >= 0; v++) {
-	switch (v->u.number) {
+	switch (v->number) {
 	case SUM_SIMPLE:
 	    /* simple term */
 	    v++;
 	    vtype = v->type;
 	    if (vtype == T_STRING) {
-		size += v->u.string->len;
+		size += v->string->len;
 	    } else if (vtype == T_ARRAY) {
-		size += v->u.array->size;
+		size += v->array->size;
 	    } else {
-		size += strlen(kf_itoa(v->u.number, buffer));
+		size += strlen(kf_itoa(v->number, buffer));
 	    }
 	    break;
 
 	case SUM_ALLOCATE_NIL:
 	    v++;
-	    if (v->u.number < 0) {
+	    if (v->number < 0) {
 		error("Bad argument 1 for kfun allocate");
 	    }
-	    if (v->u.number > conf_array_size()) {
+	    if (v->number > conf_array_size()) {
 		error("Array too large");
 	    }
-	    size += v->u.number;
+	    size += v->number;
 	    vtype = T_ARRAY;
 	    break;
 
 	case SUM_ALLOCATE_INT:
 	    v++;
-	    if (v->u.number < 0) {
+	    if (v->number < 0) {
 		error("Bad argument 1 for kfun allocate_int");
 	    }
-	    if (v->u.number > conf_array_size()) {
+	    if (v->number > conf_array_size()) {
 		error("Array too large");
 	    }
-	    size += v->u.number;
+	    size += v->number;
 	    vtype = T_ARRAY;
 	    break;
 
 	case SUM_ALLOCATE_FLT:
 	    v++;
-	    if (v->u.number < 0) {
+	    if (v->number < 0) {
 		error("Bad argument 1 for kfun allocate_float");
 	    }
-	    if (v->u.number > conf_array_size()) {
+	    if (v->number > conf_array_size()) {
 		error("Array too large");
 	    }
-	    size += v->u.number;
+	    size += v->number;
 	    vtype = T_ARRAY;
 	    break;
 
 	default:
-	    if (v->u.number <= SUM_AGGREGATE) {
+	    if (v->number <= SUM_AGGREGATE) {
 		/* aggregate */
-		size += SUM_AGGREGATE - v->u.number;
-		v += SUM_AGGREGATE - v->u.number;
+		size += SUM_AGGREGATE - v->number;
+		v += SUM_AGGREGATE - v->number;
 		vtype = T_ARRAY;
 	    } else {
 		/* subrange term */
-		size += v->u.number - v[1].u.number + 1;
+		size += v->number - v[1].number + 1;
 		v += 2;
 		vtype = v->type;
 	    }
@@ -3436,7 +3434,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	} else if (vtype != T_INT || type == T_ARRAY) {
 	    error("Bad argument %d for kfun +", (i == 0) ? 1 : 2);
 	} else {
-	    result += v->u.number;
+	    result += v->number;
 	}
     }
     if (nonint > 1) {
@@ -3451,31 +3449,30 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	s = String::create((char *) NULL, size);
 	s->text[size] = '\0';
 	for (v = f->sp, i = nargs; --i >= 0; v++) {
-	    if (v->u.number == SUM_SIMPLE) {
+	    if (v->number == SUM_SIMPLE) {
 		/* simple term */
 		v++;
 		if (v->type == T_STRING) {
-		    size -= v->u.string->len;
-		    memcpy(s->text + size, v->u.string->text, v->u.string->len);
-		    v->u.string->del();
+		    size -= v->string->len;
+		    memcpy(s->text + size, v->string->text, v->string->len);
+		    v->string->del();
 		    result = 0;
 		} else if (nonint < i) {
-		    num = kf_itoa(v->u.number, buffer);
+		    num = kf_itoa(v->number, buffer);
 		    len = strlen(num);
 		    size -= len;
 		    memcpy(s->text + size, num, len);
 		    result = 0;
 		} else {
-		    result += v->u.number;
+		    result += v->number;
 		}
 	    } else {
 		/* subrange */
-		len = (v->u.number - v[1].u.number + 1);
+		len = (v->number - v[1].number + 1);
 		size -= len;
-		memcpy(s->text + size, v[2].u.string->text + v[1].u.number,
-		       len);
+		memcpy(s->text + size, v[2].string->text + v[1].number, len);
 		v += 2;
-		v->u.string->del();
+		v->string->del();
 		result = 0;
 	    }
 	}
@@ -3490,46 +3487,46 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	a = Array::create(f->data, size);
 	e1 = a->elts + size;
 	for (v = f->sp, i = nargs; --i >= 0; v++) {
-	    switch (v->u.number) {
+	    switch (v->number) {
 	    case SUM_SIMPLE:
 		/* simple term */
 		v++;
-		len = v->u.array->size;
-		e2 = d_get_elts(v->u.array) + len;
+		len = v->array->size;
+		e2 = d_get_elts(v->array) + len;
 		break;
 
 	    case SUM_ALLOCATE_NIL:
 		v++;
-		for (len = v->u.number; len > 0; --len) {
+		for (len = v->number; len > 0; --len) {
 		    *--e1 = nil_value;
 		}
 		continue;
 
 	    case SUM_ALLOCATE_INT:
 		v++;
-		for (len = v->u.number; len > 0; --len) {
+		for (len = v->number; len > 0; --len) {
 		    *--e1 = zero_int;
 		}
 		continue;
 
 	    case SUM_ALLOCATE_FLT:
 		v++;
-		for (len = v->u.number; len > 0; --len) {
+		for (len = v->number; len > 0; --len) {
 		    *--e1 = zero_float;
 		}
 		continue;
 
 	    default:
-		if (v->u.number <= SUM_AGGREGATE) {
+		if (v->number <= SUM_AGGREGATE) {
 		    /* aggregate */
-		    for (len = SUM_AGGREGATE - v->u.number; len > 0; --len) {
+		    for (len = SUM_AGGREGATE - v->number; len > 0; --len) {
 			*--e1 = *++v;
 		    }
 		    continue;
 		} else {
 		    /* subrange */
-		    len = v->u.number - v[1].u.number + 1;
-		    e2 = d_get_elts(v[2].u.array) + v->u.number + 1;
+		    len = v->number - v[1].number + 1;
+		    e2 = d_get_elts(v[2].array) + v->number + 1;
 		    v += 2;
 		    break;
 		}
@@ -3537,7 +3534,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 
 	    e1 -= len;
 	    i_copy(e1, e2 - len, len);
-	    v->u.array->del();
+	    v->array->del();
 	    size -= len;
 	}
 
@@ -3547,11 +3544,11 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
     } else {
 	/* integers only */
 	for (v = f->sp, i = nargs; --i > 0; v += 2) {
-	    result += v[1].u.number;
+	    result += v[1].number;
 	}
 
 	f->sp = v + 1;
-	f->sp->u.number += result;
+	f->sp->number += result;
     }
 
     return 0;

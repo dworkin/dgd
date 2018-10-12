@@ -179,7 +179,7 @@ static void addtoflush(user *usr, Array *arr)
 
     /* remember initial buffer */
     if (d_get_elts(arr)[1].type == T_STRING) {
-	usr->outbuf = arr->elts[1].u.string;
+	usr->outbuf = arr->elts[1].string;
 	usr->outbuf->ref();
     }
 }
@@ -269,7 +269,7 @@ static user *comm_new(Frame *f, Object *obj, connection *conn, int flags)
 	*usr->inbuf++ = LF;	/* sentinel */
 	m_dynamic();
 
-	arr->elts[0].u.number = CF_ECHO;
+	arr->elts[0].number = CF_ECHO;
 	PUT_STRVAL_NOREF(&val, String::create(init, sizeof(init)));
 	d_assign_elt(obj->data, arr, &arr->elts[1], &val);
     }
@@ -303,7 +303,7 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned char protocol,
 	if (usr == (user *) NULL) {
 	    usr = comm_new(f, obj, (connection *) NULL,
 			   (protocol == P_TELNET) ? CF_TELNET : 0);
-	    arr = d_get_extravar(obj->data)->u.array;
+	    arr = d_get_extravar(obj->data)->array;
 	    usr->flush = outbound;
 	    outbound = usr;
 	    break;
@@ -339,7 +339,7 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
     if (!destruct) {
 	/* if not destructing, make sure the connection terminates */
 	if (!(usr->flags & CF_FLUSH)) {
-	    addtoflush(usr, d_get_extravar(data)->u.array);
+	    addtoflush(usr, d_get_extravar(data)->array);
 	}
 	obj->flags &= ~O_USER;
     }
@@ -360,7 +360,7 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
     if (destruct) {
 	/* if destructing, don't disconnect if there's an error in close() */
 	if (!(usr->flags & CF_FLUSH)) {
-	    addtoflush(usr, d_get_extravar(data)->u.array);
+	    addtoflush(usr, d_get_extravar(data)->array);
 	}
 	obj->flags &= ~O_USER;
     }
@@ -385,7 +385,7 @@ void comm_challenge(Object *obj, String *str)
     if (usr->flags & CF_UDPDATA) {
 	error("Datagram channel already established");
     }
-    arr = d_get_extravar(data = obj->data)->u.array;
+    arr = d_get_extravar(data = obj->data)->array;
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, arr);
     }
@@ -412,7 +412,7 @@ static int comm_write(user *usr, Object *obj, String *str, char *text,
     ssizet osdone, olen;
     Value val;
 
-    arr = d_get_extravar(data = obj->dataspace())->u.array;
+    arr = d_get_extravar(data = obj->dataspace())->array;
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, arr);
     }
@@ -420,8 +420,8 @@ static int comm_write(user *usr, Object *obj, String *str, char *text,
     v = arr->elts + 1;
     if (v->type == T_STRING) {
 	/* append to existing buffer */
-	osdone = (usr->outbuf == v->u.string) ? usr->osdone : 0;
-	olen = v->u.string->len - osdone;
+	osdone = (usr->outbuf == v->string) ? usr->osdone : 0;
+	olen = v->string->len - osdone;
 	if (olen + len > MAX_STRLEN) {
 	    len = MAX_STRLEN - olen;
 	    if (len == 0 ||
@@ -431,7 +431,7 @@ static int comm_write(user *usr, Object *obj, String *str, char *text,
 	    }
 	}
 	str = String::create((char *) NULL, (long) olen + len);
-	memcpy(str->text, v->u.string->text + osdone, olen);
+	memcpy(str->text, v->string->text + osdone, olen);
 	memcpy(str->text + olen, text, len);
     } else {
 	/* create new buffer */
@@ -547,7 +547,7 @@ int comm_udpsend(Object *obj, String *str)
 	error("Datagram channel not established");
     }
 
-    arr = d_get_extravar(data = obj->data)->u.array;
+    arr = d_get_extravar(data = obj->data)->array;
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, arr);
     }
@@ -576,16 +576,16 @@ bool comm_echo(Object *obj, int echo)
 
     usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
-	arr = d_get_extravar(data = obj->data)->u.array;
+	arr = d_get_extravar(data = obj->data)->array;
 	v = d_get_elts(arr);
-	if (echo != (v->u.number & CF_ECHO) >> 1) {
+	if (echo != (v->number & CF_ECHO) >> 1) {
 	    Value val;
 
 	    if (!(usr->flags & CF_FLUSH)) {
 		addtoflush(usr, arr);
 	    }
 	    val = *v;
-	    val.u.number ^= CF_ECHO;
+	    val.number ^= CF_ECHO;
 	    d_assign_elt(data, arr, v, &val);
 	}
 	return TRUE;
@@ -605,16 +605,16 @@ void comm_block(Object *obj, int block)
     Value *v;
 
     usr = &users[EINDEX(obj->etabi)];
-    arr = d_get_extravar(data = obj->data)->u.array;
+    arr = d_get_extravar(data = obj->data)->array;
     v = d_get_elts(arr);
-    if (block != (v->u.number & CF_BLOCKED) >> 4) {
+    if (block != (v->number & CF_BLOCKED) >> 4) {
 	Value val;
 
 	if (!(usr->flags & CF_FLUSH)) {
 	    addtoflush(usr, arr);
 	}
 	val = *v;
-	val.u.number ^= CF_BLOCKED;
+	val.number ^= CF_BLOCKED;
 	d_assign_elt(data, arr, v, &val);
     }
 }
@@ -634,11 +634,11 @@ static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
 
     if (v[1].type == T_STRING) {
 	if (conn_wrdone(usr->conn)) {
-	    n = conn_write(usr->conn, v[1].u.string->text + usr->osdone,
-			   v[1].u.string->len - usr->osdone);
+	    n = conn_write(usr->conn, v[1].string->text + usr->osdone,
+			   v[1].string->len - usr->osdone);
 	    if (n >= 0) {
 		n += usr->osdone;
-		if (n == v[1].u.string->len) {
+		if (n == v[1].string->len) {
 		    /* buffer fully drained */
 		    n = 0;
 		    usr->flags &= ~CF_OUTPUT;
@@ -659,9 +659,8 @@ static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
 
     if (v[2].type == T_STRING) {
 	if (usr->flags & CF_UDPDATA) {
-	    conn_udpwrite(usr->conn, v[2].u.string->text, v[2].u.string->len);
-	} else if (conn_udp(usr->conn, v[2].u.string->text, v[2].u.string->len))
-	{
+	    conn_udpwrite(usr->conn, v[2].string->text, v[2].string->len);
+	} else if (conn_udp(usr->conn, v[2].string->text, v[2].string->len)) {
 	    usr->flags |= CF_UDP;
 	}
 	d_assign_elt(data, arr, &v[2], &nil_value);
@@ -687,8 +686,8 @@ void comm_flush()
 	obj = OBJ(usr->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER) {
 	    /* connect */
-	    usr->conn = conn_connect(arr->elts[1].u.string->text,
-				     arr->elts[1].u.string->len);
+	    usr->conn = conn_connect(arr->elts[1].string->text,
+				     arr->elts[1].string->len);
 	    if (usr->conn == (connection *) NULL) {
 		fatal("can't connect to server");
 	    }
@@ -714,12 +713,12 @@ void comm_flush()
 	arr = usr->extra;
 	v = arr->elts;
 	if (usr->flags & CF_TELNET) {
-	    if ((v->u.number ^ usr->flags) & CF_ECHO) {
+	    if ((v->number ^ usr->flags) & CF_ECHO) {
 		char buf[3];
 
 		/* change echo */
 		buf[0] = (char) IAC;
-		buf[1] = (v->u.number & CF_ECHO) ? (char) WONT : (char) WILL;
+		buf[1] = (v->number & CF_ECHO) ? (char) WONT : (char) WILL;
 		buf[2] = TELOPT_ECHO;
 		if (comm_write(usr, obj, (String *) NULL, buf, 3) != 0) {
 		    usr->flags ^= CF_ECHO;
@@ -728,7 +727,7 @@ void comm_flush()
 	    if (usr->flags & CF_PROMPT) {
 		usr->flags &= ~CF_PROMPT;
 		if ((usr->flags & CF_GA) && v[1].type == T_STRING &&
-		    usr->outbuf != v[1].u.string) {
+		    usr->outbuf != v[1].string) {
 		    static char ga[] = { (char) IAC, (char) GA };
 
 		    /* append go-ahead */
@@ -736,7 +735,7 @@ void comm_flush()
 		}
 	    }
 	}
-	if ((v->u.number ^ usr->flags) & CF_BLOCKED) {
+	if ((v->number ^ usr->flags) & CF_BLOCKED) {
 	    usr->flags ^= CF_BLOCKED;
 	    conn_block(usr->conn, ((usr->flags & CF_BLOCKED) != 0));
 	}
@@ -745,7 +744,7 @@ void comm_flush()
 	 * write
 	 */
 	if (usr->outbuf != (String *) NULL) {
-	    if (usr->outbuf != v[1].u.string) {
+	    if (usr->outbuf != v[1].string) {
 		usr->osdone = 0;	/* new mesg before buffer drained */
 	    }
 	    usr->outbuf->del();
@@ -820,7 +819,7 @@ static void comm_taccept(Frame *f, connection *conn, int port)
     }
 
     usr->flags |= CF_PROMPT;
-    addtoflush(usr, d_get_extravar(obj->dataspace())->u.array);
+    addtoflush(usr, d_get_extravar(obj->dataspace())->array);
     this_user = obj->index;
     if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	i_del_value(f->sp++);
@@ -1022,7 +1021,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    usr->flags &= ~CF_OPENDING;
 		    if (!(usr->flags & CF_FLUSH)) {
 			addtoflush(usr,
-				   d_get_extravar(obj->dataspace())->u.array);
+				   d_get_extravar(obj->dataspace())->array);
 		    }
 		    old_user = this_user;
 		    this_user = obj->index;
@@ -1059,7 +1058,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		Dataspace *data;
 
 		data = obj->dataspace();
-		comm_uflush(usr, obj, data, d_get_extravar(data)->u.array);
+		comm_uflush(usr, obj, data, d_get_extravar(data)->array);
 	    }
 	    if (usr->flags & CF_ODONE) {
 		/* callback */
@@ -1303,7 +1302,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		}
 		usr->flags |= CF_PROMPT;
 		if (!(usr->flags & CF_FLUSH)) {
-		    addtoflush(usr, d_get_extravar(obj->dataspace())->u.array);
+		    addtoflush(usr, d_get_extravar(obj->dataspace())->array);
 		}
 	    } else {
 		/*

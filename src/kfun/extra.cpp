@@ -44,7 +44,7 @@ void kf_enc_key(Frame *f, int nargs, Value *val)
     if (nargs != 1) {
 	error("Too many arguments for kfun encrypt");
     }
-    str = P_encrypt_des_key(f, f->sp->u.string);
+    str = P_encrypt_des_key(f, f->sp->string);
     PUT_STRVAL_NOREF(val, str);
 }
 
@@ -59,7 +59,7 @@ void kf_enc(Frame *f, int nargs, Value *val)
     if (nargs != 2) {
 	error("Too few arguments for kfun encrypt");
     }
-    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
+    str = P_encrypt_des(f, f->sp[1].string, f->sp->string);
     PUT_STRVAL_NOREF(val, str);
 }
 # endif
@@ -84,7 +84,7 @@ void kf_dec_key(Frame *f, int nargs, Value *val)
     if (nargs != 1) {
 	error("Too many arguments for kfun decrypt");
     }
-    str = P_decrypt_des_key(f, f->sp->u.string);
+    str = P_decrypt_des_key(f, f->sp->string);
     PUT_STRVAL_NOREF(val, str);
 }
 
@@ -100,7 +100,7 @@ void kf_dec(Frame *f, int nargs, Value *val)
 	error("Too few arguments for kfun decrypt");
     }
     /* Given the proper key, DES is its own inverse */
-    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
+    str = P_encrypt_des(f, f->sp[1].string, f->sp->string);
     PUT_STRVAL_NOREF(val, str);
 }
 # endif
@@ -123,7 +123,7 @@ int kf_ctime(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 5);
-    P_ctime(buf, f->sp->u.number);
+    P_ctime(buf, f->sp->number);
     PUT_STRVAL(f->sp, String::create(buf, 24));
 
     return 0;
@@ -151,10 +151,10 @@ int kf_explode(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    p = f->sp[1].u.string->text;
-    len = f->sp[1].u.string->len;
-    s = f->sp->u.string->text;
-    slen = f->sp->u.string->len;
+    p = f->sp[1].string->text;
+    len = f->sp[1].string->len;
+    s = f->sp->string->text;
+    slen = f->sp->string->len;
 
     if (len == 0) {
 	/*
@@ -196,8 +196,8 @@ int kf_explode(Frame *f, int n, kfunc *kf)
 	a = Array::create(f->data, size);
 	v = a->elts;
 
-	p = f->sp[1].u.string->text;
-	len = f->sp[1].u.string->len;
+	p = f->sp[1].string->text;
+	len = f->sp[1].string->len;
 	size = 0;
 	if (len > slen && memcmp(p, s, slen) == 0) {
 	    /* skip leading separator */
@@ -228,8 +228,8 @@ int kf_explode(Frame *f, int n, kfunc *kf)
 	PUT_STRVAL(v, String::create(p - size, size));
     }
 
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_ARRVAL(f->sp, a);
     i_add_ticks(f, (Int) 2 * a->size);
 
@@ -259,42 +259,42 @@ int kf_implode(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    s = f->sp->u.string->text;
-    slen = f->sp->u.string->len;
+    s = f->sp->string->text;
+    slen = f->sp->string->len;
 
     /* first, determine the size of the imploded string */
-    i = f->sp[1].u.array->size;
+    i = f->sp[1].array->size;
     i_add_ticks(f, i);
     if (i != 0) {
 	len = (i - 1) * (long) slen;	/* size of all separators */
-	for (v = d_get_elts(f->sp[1].u.array); i > 0; v++, --i) {
+	for (v = d_get_elts(f->sp[1].array); i > 0; v++, --i) {
 	    if (v->type != T_STRING) {
 		/* not a (string *) */
 		return 1;
 	    }
-	    len += v->u.string->len;
+	    len += v->string->len;
 	}
 	str = String::create((char *) NULL, len);
 
 	/* create the imploded string */
 	p = str->text;
-	for (i = f->sp[1].u.array->size, v -= i; i > 1; --i, v++) {
+	for (i = f->sp[1].array->size, v -= i; i > 1; --i, v++) {
 	    /* copy array part */
-	    memcpy(p, v->u.string->text, v->u.string->len);
-	    p += v->u.string->len;
+	    memcpy(p, v->string->text, v->string->len);
+	    p += v->string->len;
 	    /* copy separator */
 	    memcpy(p, s, slen);
 	    p += slen;
 	}
 	/* copy final array part */
-	memcpy(p, v->u.string->text, v->u.string->len);
+	memcpy(p, v->string->text, v->string->len);
     } else {
 	/* zero size array gives zero size string */
 	str = String::create((char *) NULL, 0);
     }
 
-    (f->sp++)->u.string->del();
-    f->sp->u.array->del();
+    (f->sp++)->string->del();
+    f->sp->array->del();
     PUT_STRVAL(f->sp, str);
     return 0;
 }
@@ -316,11 +316,11 @@ int kf_random(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 1);
-    if (f->sp->u.number < 0) {
+    if (f->sp->number < 0) {
 	return 1;
     }
-    PUT_INT(f->sp, (f->sp->u.number > 0) ?
-		    P_random() % f->sp->u.number : P_random());
+    PUT_INT(f->sp, (f->sp->number > 0) ?
+		    P_random() % f->sp->number : P_random());
     return 0;
 }
 # endif
@@ -395,12 +395,12 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
 	union {
 	    unsigned short fhigh;	/* high word of float */
 	    ssizet len;			/* length of string */
-	} o;
+	};
 	union {
 	    Int number;			/* number */
 	    Uint flow;			/* low longword of float */
 	    char *text;			/* text of string */
-	} u;
+	};
     } results[MAX_LOCALS];
     unsigned int flen, slen, size;
     char *format, *x;
@@ -425,13 +425,13 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
     if (top[1].type != T_STRING) {
 	return 1;
     }
-    s = top[1].u.string->text;
-    slen = top[1].u.string->len;
+    s = top[1].string->text;
+    slen = top[1].string->len;
     if (top[0].type != T_STRING) {
 	return 2;
     }
-    format = top[0].u.string->text;
-    flen = top[0].u.string->len;
+    format = top[0].string->text;
+    flen = top[0].string->len;
 
     matches = 0;
     nargs = 0;
@@ -563,8 +563,8 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
 	    i_add_ticks(f, 8);
 	    if (!skip) {
 		results[nargs].type = T_STRING;
-		results[nargs].o.len = size;
-		results[nargs].u.text = s;
+		results[nargs].len = size;
+		results[nargs].text = s;
 		nargs++;
 	    }
 	    s = x;
@@ -587,7 +587,7 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
 	    i_add_ticks(f, 8);
 	    if (!skip) {
 		results[nargs].type = T_INT;
-		results[nargs].u.number = i;
+		results[nargs].number = i;
 		nargs++;
 	    }
 	    break;
@@ -608,8 +608,8 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
 	    i_add_ticks(f, 8);
 	    if (!skip) {
 		results[nargs].type = T_FLOAT;
-		results[nargs].o.fhigh = flt.high;
-		results[nargs].u.flow = flt.low;
+		results[nargs].fhigh = flt.high;
+		results[nargs].flow = flt.low;
 		nargs++;
 	    }
 	    break;
@@ -622,7 +622,7 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
 	    i_add_ticks(f, 8);
 	    if (!skip) {
 		results[nargs].type = T_INT;
-		results[nargs].u.number = UCHAR(*s);
+		results[nargs].number = UCHAR(*s);
 		nargs++;
 	    }
 	    s++;
@@ -640,24 +640,24 @@ no_match:
     for (elts = a->elts, size = 0; size < nargs; elts++, size++) {
 	switch (results[size].type) {
 	case T_INT:
-	    PUT_INTVAL(elts, results[size].u.number);
+	    PUT_INTVAL(elts, results[size].number);
 	    break;
 
 	case T_FLOAT:
-	    flt.high = results[size].o.fhigh;
-	    flt.low = results[size].u.flow;
+	    flt.high = results[size].fhigh;
+	    flt.low = results[size].flow;
 	    PUT_FLTVAL(elts, flt);
 	    break;
 
 	case T_STRING:
-	    PUT_STRVAL(elts, String::create(results[size].u.text,
-					    results[size].o.len));
+	    PUT_STRVAL(elts, String::create(results[size].text,
+					    results[size].len));
 	    break;
 	}
     }
 
-    top[0].u.string->del();
-    top[1].u.string->del();
+    top[0].string->del();
+    top[1].string->del();
     memmove(f->sp + 2, f->sp, (top - f->sp) * sizeof(Value));
     f->sp++;
 
@@ -690,7 +690,7 @@ int kf_parse_string(Frame *f, int nargs, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (nargs > 2) {
-	maxalt = (f->sp++)->u.number + 1;
+	maxalt = (f->sp++)->number + 1;
 	if (maxalt <= 0) {
 	    return 3;
 	}
@@ -702,9 +702,9 @@ int kf_parse_string(Frame *f, int nargs, kfunc *kf)
 	error("parse_string() from special purpose object");
     }
 
-    a = ps_parse_string(f, f->sp[1].u.string, f->sp->u.string, maxalt);
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    a = ps_parse_string(f, f->sp[1].string, f->sp->string, maxalt);
+    (f->sp++)->string->del();
+    f->sp->string->del();
 
     if (a != (Array *) NULL) {
 	/* return parse tree */
@@ -785,7 +785,7 @@ int kf_hash_crc16(Frame *f, int nargs, kfunc *kf)
 
     cost = 0;
     for (i = nargs; --i >= 0; ) {
-	cost += f->sp[i].u.string->len;
+	cost += f->sp[i].string->len;
     }
     cost = 3 * nargs + (cost >> 2);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
@@ -796,11 +796,11 @@ int kf_hash_crc16(Frame *f, int nargs, kfunc *kf)
 
     crc = 0xffff;
     for (i = nargs; --i >= 0; ) {
-	p = f->sp[i].u.string->text;
-	for (len = f->sp[i].u.string->len; len != 0; --len) {
+	p = f->sp[i].string->text;
+	for (len = f->sp[i].string->len; len != 0; --len) {
 	    crc = (crc >> 8) ^ crctab[UCHAR(crc ^ *p++)];
 	}
-	f->sp[i].u.string->del();
+	f->sp[i].string->del();
     }
     crc = (crc >> 8) + (crc << 8);
 
@@ -898,7 +898,7 @@ int kf_hash_crc32(Frame *f, int nargs, kfunc *kf)
 
     cost = 0;
     for (i = nargs; --i >= 0; ) {
-	cost += f->sp[i].u.string->len;
+	cost += f->sp[i].string->len;
     }
     cost = 3 * nargs + (cost >> 2);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
@@ -909,11 +909,11 @@ int kf_hash_crc32(Frame *f, int nargs, kfunc *kf)
 
     crc = 0xffffffff;
     for (i = nargs; --i >= 0; ) {
-	p = f->sp[i].u.string->text;
-	for (len = f->sp[i].u.string->len; len != 0; --len) {
+	p = f->sp[i].string->text;
+	for (len = f->sp[i].string->len; len != 0; --len) {
 	    crc = (crc >> 8) ^ crctab[UCHAR(crc ^ *p++)];
 	}
-	f->sp[i].u.string->del();
+	f->sp[i].string->del();
     }
     crc ^= 0xffffffffL;
 
@@ -946,10 +946,10 @@ void kf_xcrypt(Frame *f, int nargs, Value *val)
     if (nargs > 2) {
 	error("Too many arguments for kfun hash_string");
     }
-    if (nargs == 2 && f->sp->u.string->len >= 2) {
+    if (nargs == 2 && f->sp->string->len >= 2) {
 	/* fixed salt */
-	s[0] = f->sp->u.string->text[0];
-	s[1] = f->sp->u.string->text[1];
+	s[0] = f->sp->string->text[0];
+	s[1] = f->sp->string->text[1];
     } else {
 	Uint n;
 
@@ -961,7 +961,7 @@ void kf_xcrypt(Frame *f, int nargs, Value *val)
     s[2] = '\0';
 
     i_add_ticks(f, 900);
-    str = String::create(P_crypt(f->sp[nargs - 1].u.string->text, s), 13);
+    str = String::create(P_crypt(f->sp[nargs - 1].string->text, s), 13);
     PUT_STRVAL_NOREF(val, str);
 }
 
@@ -1135,7 +1135,7 @@ static Int hash_sha1_start(Frame *f, int nargs, Uint *digest)
 
     cost = 3 * nargs + 64;
     while (--nargs >= 0) {
-	cost += f->sp[nargs].u.string->len;
+	cost += f->sp[nargs].string->len;
     }
     return cost;
 }
@@ -1258,10 +1258,10 @@ static Uint hash_blocks(Frame *f, int nargs, Uint *digest, char *buffer,
     length = 0;
     bufsz = 0;
     while (--nargs >= 0) {
-	len = f->sp[nargs].u.string->len;
+	len = f->sp[nargs].string->len;
 	if (len != 0) {
 	    length += len;
-	    p = f->sp[nargs].u.string->text;
+	    p = f->sp[nargs].string->text;
 	    if (bufsz != 0) {
 		unsigned short size;
 
@@ -1314,7 +1314,7 @@ void kf_md5(Frame *f, int nargs, Value *val)
 
     cost = 3 * nargs + 64;
     while (--nargs >= 0) {
-	cost += f->sp[nargs].u.string->len;
+	cost += f->sp[nargs].string->len;
     }
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
@@ -1399,10 +1399,10 @@ int kf_asn_add(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_add(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    (f->sp++)->u.string->del();
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    str = asn_add(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    (f->sp++)->string->del();
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1427,10 +1427,10 @@ int kf_asn_sub(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_sub(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    (f->sp++)->u.string->del();
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    str = asn_sub(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    (f->sp++)->string->del();
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1455,9 +1455,9 @@ int kf_asn_cmp(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    cmp = asn_cmp(f, f->sp[1].u.string, f->sp[0].u.string);
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    cmp = asn_cmp(f, f->sp[1].string, f->sp[0].string);
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_INTVAL(f->sp, cmp);
 
     return 0;
@@ -1482,10 +1482,10 @@ int kf_asn_mult(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_mult(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    (f->sp++)->u.string->del();
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    str = asn_mult(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    (f->sp++)->string->del();
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1510,10 +1510,10 @@ int kf_asn_div(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_div(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    (f->sp++)->u.string->del();
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    str = asn_div(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    (f->sp++)->string->del();
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1538,9 +1538,9 @@ int kf_asn_mod(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_mod(f, f->sp[1].u.string, f->sp[0].u.string);
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    str = asn_mod(f, f->sp[1].string, f->sp[0].string);
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1565,10 +1565,10 @@ int kf_asn_pow(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_pow(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    (f->sp++)->u.string->del();
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    str = asn_pow(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    (f->sp++)->string->del();
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1593,10 +1593,10 @@ int kf_asn_lshift(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_lshift(f, f->sp[2].u.string, f->sp[1].u.number, f->sp->u.string);
-    f->sp->u.string->del();
+    str = asn_lshift(f, f->sp[2].string, f->sp[1].number, f->sp->string);
+    f->sp->string->del();
     f->sp += 2;
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1621,9 +1621,9 @@ int kf_asn_rshift(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_rshift(f, f->sp[1].u.string, f->sp->u.number);
+    str = asn_rshift(f, f->sp[1].string, f->sp->number);
     f->sp++;
-    f->sp->u.string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1648,9 +1648,9 @@ int kf_asn_and(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_and(f, f->sp[1].u.string, f->sp->u.string);
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    str = asn_and(f, f->sp[1].string, f->sp->string);
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1675,9 +1675,9 @@ int kf_asn_or(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_or(f, f->sp[1].u.string, f->sp->u.string);
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    str = asn_or(f, f->sp[1].string, f->sp->string);
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1702,9 +1702,9 @@ int kf_asn_xor(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_xor(f, f->sp[1].u.string, f->sp->u.string);
-    (f->sp++)->u.string->del();
-    f->sp->u.string->del();
+    str = asn_xor(f, f->sp[1].string, f->sp->string);
+    (f->sp++)->string->del();
+    f->sp->string->del();
     PUT_STR(f->sp, str);
 
     return 0;

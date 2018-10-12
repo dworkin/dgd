@@ -47,7 +47,7 @@ struct tbuf : public ChunkAllocated {
     union {
 	char *filename;		/* file name */
 	macro *mc;		/* macro this buffer is an expansion of */
-    } u;
+    };
     tbuf *prev;			/* previous token buffer */
 };
 
@@ -97,7 +97,7 @@ static void push(macro *mc, char *buffer, unsigned int buflen, bool eof)
     tb->up = tb->ubuf;
     tb->eof = eof;
     tb->fd = -2;
-    tb->u.mc = mc;
+    tb->mc = mc;
     tb->prev = tbuffer;
     tbuffer = tb;
 }
@@ -113,8 +113,8 @@ static void pop()
 
     tb = tbuffer;
     if (tb->fd < -1) {
-	if (tb->u.mc != (macro *) NULL) {
-	    if (tb->u.mc->narg > 0) {
+	if (tb->mc != (macro *) NULL) {
+	    if (tb->mc->narg > 0) {
 		/* in the buffer a function-like macro has been expanded */
 		FREE(tb->buffer);
 	    }
@@ -135,7 +135,7 @@ static void pop()
 	    FREE(tb->strs);
 	}
 	ibuffer = tbuffer->prev;
-	FREE(tb->u.filename);
+	FREE(tb->filename);
     }
     tbuffer = tb->prev;
 
@@ -202,10 +202,10 @@ bool tk_include(char *file, String **strs, int nstr)
 	if (len >= STRINGSZ - 1) {
 	    len = STRINGSZ - 2;
 	}
-	ibuffer->u.filename = ALLOC(char, len + 2);
-	strncpy(ibuffer->u.filename + 1, file, len);
-	ibuffer->u.filename[0] = '/';
-	ibuffer->u.filename[len + 1] = '\0';
+	ibuffer->filename = ALLOC(char, len + 2);
+	strncpy(ibuffer->filename + 1, file, len);
+	ibuffer->filename[0] = '/';
+	ibuffer->filename[len + 1] = '\0';
 	ibuffer->line = 1;
 	seen_nl = TRUE;
 
@@ -240,7 +240,7 @@ unsigned short tk_line()
  */
 char *tk_filename()
 {
-    return ibuffer->u.filename;
+    return ibuffer->filename;
 }
 
 /*
@@ -264,9 +264,9 @@ void tk_setfilename(char *file)
     if (len >= STRINGSZ) {
 	len = STRINGSZ - 1;
     }
-    ibuffer->u.filename = (char *) memcpy(REALLOC(ibuffer->u.filename, char, 0, len + 1),
+    ibuffer->filename = (char *) memcpy(REALLOC(ibuffer->filename, char, 0, len + 1),
 				 file, len);
-    ibuffer->u.filename[len] = '\0';
+    ibuffer->filename[len] = '\0';
 }
 
 /*
@@ -1098,8 +1098,8 @@ int tk_expand(macro *mc)
 
 	tb = tbuffer;
 	do {
-	    if (tb->fd < -1 && tb->u.mc != (macro *) NULL &&
-	      strcmp(mc->name, tb->u.mc->name) == 0) {
+	    if (tb->fd < -1 && tb->mc != (macro *) NULL &&
+	      strcmp(mc->name, tb->mc->name) == 0) {
 		return -1;
 	    }
 	    tb = tb->prev;

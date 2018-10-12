@@ -37,7 +37,7 @@ struct pnode : public ChunkAllocated {
 	char *text;		/* token/reduction text */
 	String *str;		/* token string */
 	Array *arr;		/* rule array */
-    } u;
+    };
     pnode *next;		/* next in linked list */
     pnode *list;		/* list of nodes for reduction */
     pnode *trav;		/* traverse list */
@@ -63,7 +63,7 @@ static pnode *pn_new(pnchunk **c, short symb, unsigned short state, char *text, 
     pn->symbol = symb;
     pn->state = state;
     pn->len = len;
-    pn->u.text = text;
+    pn->text = text;
     pn->next = next;
     pn->list = list;
 
@@ -356,18 +356,18 @@ static void ps_reduce(parser *ps, pnode *pn, char *p)
 	if (sn->pn->symbol == symb && sn->pn->next == next) {
 	    pnode **ppn;
 
-	    if (sn->pn->u.text != (char *) NULL) {
+	    if (sn->pn->text != (char *) NULL) {
 		/* first alternative */
-		sn->pn->list = pn_new(&ps->pnc, symb, n, sn->pn->u.text,
+		sn->pn->list = pn_new(&ps->pnc, symb, n, sn->pn->text,
 				      sn->pn->len, (pnode *) NULL,
 				      sn->pn->list);
-		sn->pn->u.text = (char *) NULL;
+		sn->pn->text = (char *) NULL;
 		sn->pn->len = 1;
 	    }
 
 	    /* add alternative */
 	    for (ppn = &sn->pn->list;
-		 *ppn != (pnode *) NULL && (*ppn)->u.text < red;
+		 *ppn != (pnode *) NULL && (*ppn)->text < red;
 		 ppn = &(*ppn)->next) ;
 	    sn->pn->len++;
 
@@ -529,17 +529,17 @@ static void ps_flatten(pnode *pn, pnode *next, Value *v)
 	switch (pn->symbol) {
 	case PN_STRING:
 	    --v;
-	    PUT_STRVAL(v, pn->u.str);
+	    PUT_STRVAL(v, pn->str);
 	    break;
 
 	case PN_ARRAY:
 	    v -= pn->len;
-	    i_copy(v, d_get_elts(pn->u.arr), (unsigned int) pn->len);
+	    i_copy(v, d_get_elts(pn->arr), (unsigned int) pn->len);
 	    break;
 
 	case PN_BRANCH:
 	    --v;
-	    PUT_ARRVAL(v, pn->u.arr);
+	    PUT_ARRVAL(v, pn->arr);
 	    break;
 
 	case PN_RULE:
@@ -578,12 +578,12 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 	    /*
 	     * token
 	     */
-	    pn->u.str = String::create(pn->u.text, pn->len);
-	    sc_add(&ps->strc, pn->u.str);
+	    pn->str = String::create(pn->text, pn->len);
+	    sc_add(&ps->strc, pn->str);
 
 	    pn->symbol = PN_STRING;
 	    return pn->len = 1;
-	} else if (pn->u.text != (char *) NULL) {
+	} else if (pn->text != (char *) NULL) {
 	    /*
 	     * production rule
 	     */
@@ -612,8 +612,8 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		pn->symbol = PN_RULE;
 	    }
 
-	    n = UCHAR(pn->u.text[0]) << 1;
-	    if (n == UCHAR(pn->u.text[1])) {
+	    n = UCHAR(pn->text[0]) << 1;
+	    if (n == UCHAR(pn->text[1])) {
 		/* no ?func */
 		pn->len = len;
 	    } else {
@@ -631,8 +631,8 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		    ec_push((ec_ftn) NULL);
 		    PUSH_ARRVAL(ps->frame, a);
 		    call = i_call(ps->frame, OBJR(ps->frame->oindex),
-				  (Array *) NULL, pn->u.text + 2 + n,
-				  UCHAR(pn->u.text[1]) - n - 1, TRUE, 1);
+				  (Array *) NULL, pn->text + 2 + n,
+				  UCHAR(pn->text[1]) - n - 1, TRUE, 1);
 		    ec_pop();
 		} catch (...) {
 		    /* error: restore original parser */
@@ -662,9 +662,9 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		}
 
 		pn->symbol = PN_ARRAY;
-		ac_add(&ps->arrc, pn->u.arr = (ps->frame->sp++)->u.array);
-		pn->u.arr->del();
-		pn->len = pn->u.arr->size;
+		ac_add(&ps->arrc, pn->arr = (ps->frame->sp++)->array);
+		pn->arr->del();
+		pn->len = pn->arr->size;
 	    }
 	    return pn->len;
 	} else {
@@ -702,13 +702,13 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 			return pn->len;
 		    } else {
 			if (sub->symbol == PN_ARRAY) {
-			    PUT_ARRVAL(v, sub->u.arr);
+			    PUT_ARRVAL(v, sub->arr);
 			} else {
 			    PUT_ARRVAL(v, Array::create(ps->data, sub->len));
 			    if (sub->len != 0) {
 				ps_flatten(sub, next,
-					   v->u.array->elts + sub->len);
-				d_ref_imports(v->u.array);
+					   v->array->elts + sub->len);
+				d_ref_imports(v->array);
 			    }
 			}
 			v++;
@@ -717,7 +717,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		}
 	    }
 	    pn->symbol = PN_BRANCH;
-	    pn->u.arr = a;
+	    pn->arr = a;
 	    return pn->len = 1;
 	}
     } else {
@@ -747,43 +747,43 @@ static parser *ps_load(Frame *f, Value *elts)
     ps->frame = f;
     ps->data = f->data;
     ps->data->parser = ps;
-    fasize = elts->u.number >> 16;
-    lrsize = (elts++)->u.number & 0xffff;
-    ps->source = (elts++)->u.string;
+    fasize = elts->number >> 16;
+    lrsize = (elts++)->number & 0xffff;
+    ps->source = (elts++)->string;
     ps->source->ref();
-    ps->grammar = (elts++)->u.string;
+    ps->grammar = (elts++)->string;
     ps->grammar->ref();
 
     if (fasize > 1) {
 	for (i = fasize, len = 0; --i >= 0; ) {
-	    len += elts[i].u.string->len;
+	    len += elts[i].string->len;
 	}
 	p = ps->fastr = ALLOC(char, len);
 	for (i = fasize; --i >= 0; ) {
-	    memcpy(p, elts->u.string->text, elts->u.string->len);
-	    p += (elts++)->u.string->len;
+	    memcpy(p, elts->string->text, elts->string->len);
+	    p += (elts++)->string->len;
 	}
 	p -= len;
     } else {
-	p = elts->u.string->text;
-	len = (elts++)->u.string->len;
+	p = elts->string->text;
+	len = (elts++)->string->len;
 	ps->fastr = (char *) NULL;
     }
     ps->fa = dfa_load(ps->source->text, ps->grammar->text, p, len);
 
     if (lrsize > 1) {
 	for (i = lrsize, len = 0; --i >= 0; ) {
-	    len += elts[i].u.string->len;
+	    len += elts[i].string->len;
 	}
 	p = ps->lrstr = ALLOC(char, len);
 	for (i = lrsize; --i >= 0; ) {
-	    memcpy(p, elts->u.string->text, elts->u.string->len);
-	    p += (elts++)->u.string->len;
+	    memcpy(p, elts->string->text, elts->string->len);
+	    p += (elts++)->string->len;
 	}
 	p -= len;
     } else {
-	p = elts->u.string->text;
-	len = elts->u.string->len;
+	p = elts->string->text;
+	len = elts->string->len;
 	ps->lrstr = (char *) NULL;
     }
     ps->lr = srp_load(ps->grammar->text, p, len);
@@ -827,7 +827,7 @@ void ps_save(parser *ps)
 	PUT_ARRVAL_NOREF(&val, Array::create(data, 3L + fasize + lrsize));
 
 	/* grammar */
-	v = val.u.array->elts;
+	v = val.array->elts;
 	PUT_INTVAL(v, ((Int) fasize << 16) + lrsize);
 	v++;
 	PUT_STRVAL(v, ps->source);
@@ -889,10 +889,10 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	same = (ps->source->cmp(source) == 0);
     } else {
 	val = d_get_extravar(data);
-	if (val->type == T_ARRAY && d_get_elts(val->u.array)->type == T_INT &&
-	    val->u.array->elts[1].u.string->cmp(source) == 0 &&
-	    val->u.array->elts[2].u.string->text[0] == GRAM_VERSION) {
-	    ps = ps_load(f, val->u.array->elts);
+	if (val->type == T_ARRAY && d_get_elts(val->array)->type == T_INT &&
+	    val->array->elts[1].string->cmp(source) == 0 &&
+	    val->array->elts[2].string->text[0] == GRAM_VERSION) {
+	    ps = ps_load(f, val->array->elts);
 	    same = TRUE;
 	} else {
 	    ps = (parser *) NULL;

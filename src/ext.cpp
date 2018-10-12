@@ -118,7 +118,7 @@ static Value *ext_value_temp2(Dataspace *data)
  */
 static Int ext_int_getval(Value *val)
 {
-    return val->u.number;
+    return val->number;
 }
 
 /*
@@ -200,7 +200,7 @@ static int ext_float_putval(Value *val, long double ld)
  */
 static String *ext_string_getval(Value *val)
 {
-    return val->u.string;
+    return val->string;
 }
 
 /*
@@ -301,7 +301,7 @@ static void ext_object_unmark(Object *obj)
  */
 static Array *ext_array_getval(Value *val)
 {
-    return val->u.array;
+    return val->array;
 }
 
 /*

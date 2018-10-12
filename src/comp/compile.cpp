@@ -442,8 +442,8 @@ bool c_inherit(char *file, node *label, int priv)
 
 	/* get associated object */
 	PUSH_STRVAL(f, String::create(NULL, strlen(current->file) + 1L));
-	f->sp->u.string->text[0] = '/';
-	strcpy(f->sp->u.string->text + 1, current->file);
+	f->sp->string->text[0] = '/';
+	strcpy(f->sp->string->text + 1, current->file);
 	PUSH_STRVAL(f, String::create(file, strlen(file)));
 	PUSH_INTVAL(f, priv);
 
@@ -710,7 +710,7 @@ String *c_objecttype(node *n)
 	    c_error("invalid object type");
 	    p = n->l.string->text;
 	} else {
-	    p = f->sp->u.string->text;
+	    p = f->sp->string->text;
 	}
 	path_resolve(path, p);
 	i_del_value(f->sp++);
@@ -1220,8 +1220,8 @@ node *c_endrlimits(node *n1, node *n2, node *n3)
 	f = current->frame;
 	PUSH_STRVAL(f, String::create((char *) NULL,
 				      strlen(current->file) + 1));
-	f->sp->u.string->text[0] = '/';
-	strcpy(f->sp->u.string->text + 1, current->file);
+	f->sp->string->text[0] = '/';
+	strcpy(f->sp->string->text + 1, current->file);
 	call_driver_object(f, "compile_rlimits", 1);
 	n1 = node_bin(N_RLIMITS, VAL_TRUE(f->sp), node_bin(N_PAIR, 0, n1, n2),
 		      n3);

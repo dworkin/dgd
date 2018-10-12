@@ -84,7 +84,7 @@ struct svalue {
 	Uint string;		/* string */
 	Uint objcnt;		/* object creation count */
 	Uint array;		/* array */
-    } u;
+    };
 };
 
 static char sv_layout[] = "ccui";
@@ -1165,29 +1165,29 @@ static void d_get_values(Dataspace *data, svalue *sv, Value *v, int n)
 	v->modified = FALSE;
 	switch (v->type = sv->type) {
 	case T_NIL:
-	    v->u.number = 0;
+	    v->number = 0;
 	    break;
 
 	case T_INT:
-	    v->u.number = sv->u.number;
+	    v->number = sv->number;
 	    break;
 
 	case T_STRING:
-	    v->u.string = d_get_string(data, sv->u.string);
-	    v->u.string->ref();
+	    v->string = d_get_string(data, sv->string);
+	    v->string->ref();
 	    break;
 
 	case T_FLOAT:
 	case T_OBJECT:
 	    v->oindex = sv->oindex;
-	    v->u.objcnt = sv->u.objcnt;
+	    v->objcnt = sv->objcnt;
 	    break;
 
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
-	    v->u.array = d_get_array(data, sv->u.array);
-	    v->u.array->ref();
+	    v->array = d_get_array(data, sv->array);
+	    v->array->ref();
 	    break;
 	}
 	sv++;
@@ -1637,29 +1637,29 @@ static void d_count(savedata *save, Value *v, Uint n)
     while (n > 0) {
 	switch (v->type) {
 	case T_STRING:
-	    if (v->u.string->put(save->nstr) == save->nstr) {
+	    if (v->string->put(save->nstr) == save->nstr) {
 		save->nstr++;
-		save->strsize += v->u.string->len;
+		save->strsize += v->string->len;
 	    }
 	    break;
 
 	case T_ARRAY:
-	    if (v->u.array->put(save->narr) == save->narr) {
-		d_arrcount(save, v->u.array);
+	    if (v->array->put(save->narr) == save->narr) {
+		d_arrcount(save, v->array);
 	    }
 	    break;
 
 	case T_MAPPING:
-	    if (v->u.array->put(save->narr) == save->narr) {
-		if (v->u.array->hashmod) {
-		    v->u.array->mapCompact(v->u.array->primary->data);
+	    if (v->array->put(save->narr) == save->narr) {
+		if (v->array->hashmod) {
+		    v->array->mapCompact(v->array->primary->data);
 		}
-		d_arrcount(save, v->u.array);
+		d_arrcount(save, v->array);
 	    }
 	    break;
 
 	case T_LWOBJECT:
-	    elts = d_get_elts(v->u.array);
+	    elts = d_get_elts(v->array);
 	    if (elts->type == T_OBJECT) {
 		obj = OBJ(elts->oindex);
 		count = obj->count;
@@ -1668,15 +1668,15 @@ static void d_count(savedata *save, Value *v, Uint n)
 		    elts[1].type = T_FLOAT;
 		    elts[1].oindex = FALSE;
 		}
-		if (v->u.array->put(save->narr) == save->narr) {
-		    if (elts->u.objcnt == count &&
-			elts[1].u.objcnt != obj->update) {
-			d_upgrade_lwobj(v->u.array, obj);
+		if (v->array->put(save->narr) == save->narr) {
+		    if (elts->objcnt == count && elts[1].objcnt != obj->update)
+		    {
+			d_upgrade_lwobj(v->array, obj);
 		    }
-		    d_arrcount(save, v->u.array);
+		    d_arrcount(save, v->array);
 		}
-	    } else if (v->u.array->put(save->narr) == save->narr) {
-		d_arrcount(save, v->u.array);
+	    } else if (v->array->put(save->narr) == save->narr) {
+		d_arrcount(save, v->array);
 	    }
 	    break;
 	}
@@ -1699,39 +1699,39 @@ static void d_save(savedata *save, svalue *sv, Value *v, unsigned short n)
 	switch (sv->type = v->type) {
 	case T_NIL:
 	    sv->oindex = 0;
-	    sv->u.number = 0;
+	    sv->number = 0;
 	    break;
 
 	case T_INT:
 	    sv->oindex = 0;
-	    sv->u.number = v->u.number;
+	    sv->number = v->number;
 	    break;
 
 	case T_STRING:
-	    i = v->u.string->put(save->nstr);
+	    i = v->string->put(save->nstr);
 	    sv->oindex = 0;
-	    sv->u.string = i;
+	    sv->string = i;
 	    if (save->sstrings[i].ref++ == 0) {
 		/* new string value */
-		save->sstrings[i].len = v->u.string->len;
-		memcpy(save->stext + save->strsize, v->u.string->text,
-		       v->u.string->len);
-		save->strsize += v->u.string->len;
+		save->sstrings[i].len = v->string->len;
+		memcpy(save->stext + save->strsize, v->string->text,
+		       v->string->len);
+		save->strsize += v->string->len;
 	    }
 	    break;
 
 	case T_FLOAT:
 	case T_OBJECT:
 	    sv->oindex = v->oindex;
-	    sv->u.objcnt = v->u.objcnt;
+	    sv->objcnt = v->objcnt;
 	    break;
 
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
-	    i = v->u.array->put(save->narr);
+	    i = v->array->put(save->narr);
 	    sv->oindex = 0;
-	    sv->u.array = i;
+	    sv->array = i;
 	    if (save->sarrays[i].ref++ == 0) {
 		/* new array value */
 		save->sarrays[i].type = sv->type;
@@ -1756,30 +1756,30 @@ static void d_put_values(Dataspace *data, svalue *sv, Value *v, unsigned short n
 	    switch (sv->type = v->type) {
 	    case T_NIL:
 		sv->oindex = 0;
-		sv->u.number = 0;
+		sv->number = 0;
 		break;
 
 	    case T_INT:
 		sv->oindex = 0;
-		sv->u.number = v->u.number;
+		sv->number = v->number;
 		break;
 
 	    case T_STRING:
 		sv->oindex = 0;
-		sv->u.string = v->u.string->primary - data->base.strings;
+		sv->string = v->string->primary - data->base.strings;
 		break;
 
 	    case T_FLOAT:
 	    case T_OBJECT:
 		sv->oindex = v->oindex;
-		sv->u.objcnt = v->u.objcnt;
+		sv->objcnt = v->objcnt;
 		break;
 
 	    case T_ARRAY:
 	    case T_MAPPING:
 	    case T_LWOBJECT:
 		sv->oindex = 0;
-		sv->u.array = v->u.array->primary - data->base.arrays;
+		sv->array = v->array->primary - data->base.arrays;
 		break;
 	    }
 	    v->modified = FALSE;
@@ -2585,13 +2585,13 @@ static void d_fixobjs(svalue *v, Uint n, Uint *ctab)
 {
     while (n != 0) {
 	if (v->type == T_OBJECT) {
-	    if (v->u.objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
+	    if (v->objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
 		/* fix object count */
-		v->u.objcnt = OBJ(v->oindex)->count;
+		v->objcnt = OBJ(v->oindex)->count;
 	    } else {
 		/* destructed object; mark as invalid */
 		v->oindex = 0;
-		v->u.objcnt = 1;
+		v->objcnt = 1;
 	    }
 	}
 	v++;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -64,21 +64,20 @@ struct blk {
     block prev, next;		/* first and last */
     Int lines;			/* size of this block */
     union {
-	Int u_index;		/* index from start of chain block */
+	Int lindex;		/* index from start of chain block */
 	struct {
 	    short u_index1;	/* index in first chain block */
 	    short u_index2;	/* index in last chain block */
 	} s;
-    } u;
+    };
 };
 
 # define lfirst	prev
 # define llast	next
-# define type	u.s.u_index1
-# define depth	u.s.u_index2
-# define lindex	u.u_index
-# define index1	u.s.u_index1
-# define index2	u.s.u_index2
+# define type	s.u_index1
+# define depth	s.u_index2
+# define index1	s.u_index1
+# define index2	s.u_index2
 
 # define BLOCK(lb, blk)	\
 	(block) ((lb)->wb->offset + (intptr_t) (blk) - (intptr_t) (lb)->wb->buf)

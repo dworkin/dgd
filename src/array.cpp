@@ -106,7 +106,7 @@ public:
 	    break;
 
 	case T_LWOBJECT:
-	    v = d_get_elts(idx.u.array);
+	    v = d_get_elts(idx.array);
 	    if (v->type == T_OBJECT && DESTRUCTED(v)) {
 		/*
 		 * index is destructed object
@@ -133,7 +133,7 @@ public:
 	    break;
 
 	case T_LWOBJECT:
-	    v = d_get_elts(val.u.array);
+	    v = d_get_elts(val.array);
 	    if (v->type == T_OBJECT && DESTRUCTED(v)) {
 		/*
 		 * value is destructed object
@@ -196,10 +196,10 @@ public:
 	    for (e = *t; e != (MapElt *) NULL; e = n) {
 		if (e->add) {
 		    if (e->idx.type == T_STRING) {
-			e->idx.u.string->del();
+			e->idx.string->del();
 		    }
 		    if (e->val.type == T_STRING) {
-			e->val.u.string->del();
+			e->val.string->del();
 		    }
 		    e->add = FALSE;
 		}
@@ -275,7 +275,7 @@ public:
 	for (p = &table[i % tablesize];
 	     (e=*p) != (MapElt *) NULL; p = &e->next) {
 	    if (cmp(val, &e->idx) == 0 &&
-		(!T_INDEXED(val->type) || val->u.array == e->idx.u.array)) {
+		(!T_INDEXED(val->type) || val->array == e->idx.array)) {
 		return p;
 	    }
 	}
@@ -577,7 +577,7 @@ void Array::freelist()
 	if ((v=a->elts) != (Value *) NULL) {
 	    for (i = a->size; i > 0; --i) {
 		if (v->type == T_STRING) {
-		    v->u.string->del();
+		    v->string->del();
 		}
 		v++;
 	    }
@@ -666,13 +666,13 @@ void Array::backup(Backup **ac)
 	for (i = size; i != 0; --i) {
 	    switch (v->type) {
 	    case T_STRING:
-		v->u.string->ref();
+		v->string->ref();
 		break;
 
 	    case T_ARRAY:
 	    case T_MAPPING:
 	    case T_LWOBJECT:
-		v->u.array->ref();
+		v->array->ref();
 		break;
 	    }
 	    v++;
@@ -741,7 +741,7 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v2->u.array);
+		o = d_get_elts(v2->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    d_assign_elt(data, a, v2, &nil_value);
 		}
@@ -789,8 +789,8 @@ static int cmp(cvoid *cv1, cvoid *cv2)
 	return 0;
 
     case T_INT:
-	return (v1->u.number <= v2->u.number) ?
-		(v1->u.number < v2->u.number) ? -1 : 0 :
+	return (v1->number <= v2->number) ?
+		(v1->number < v2->number) ? -1 : 0 :
 		1;
 
     case T_FLOAT:
@@ -799,7 +799,7 @@ static int cmp(cvoid *cv1, cvoid *cv2)
 	return f1.cmp(f2);
 
     case T_STRING:
-	return v1->u.string->cmp(v2->u.string);
+	return v1->string->cmp(v2->string);
 
     case T_OBJECT:
 	return (v1->oindex <= v2->oindex) ?
@@ -809,8 +809,8 @@ static int cmp(cvoid *cv1, cvoid *cv2)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	return (v1->u.array->tag <= v2->u.array->tag) ?
-		(v1->u.array->tag < v2->u.array->tag) ? -1 : 0 :
+	return (v1->array->tag <= v2->array->tag) ?
+		(v1->array->tag < v2->array->tag) ? -1 : 0 :
 		1;
     }
 
@@ -835,7 +835,7 @@ static int search(Value *v1, Value *v2, unsigned short h, int step, bool place)
 	v3 = v2 + m;
 	c = cmp(v1, v3);
 	if (c == 0) {
-	    if (T_INDEXED(v1->type) && v1->u.array != v3->u.array) {
+	    if (T_INDEXED(v1->type) && v1->array != v3->array) {
 		/*
 		 * It is possible for one object to export an array, both
 		 * objects being swapped out after that, and the other object
@@ -854,10 +854,10 @@ static int search(Value *v1, Value *v2, unsigned short h, int step, bool place)
 		    if (m == h || !T_INDEXED(v3->type)) {
 			break;	/* out of range */
 		    }
-		    if (v1->u.array == v3->u.array) {
+		    if (v1->array == v3->array) {
 			return m;	/* found the right one */
 		    }
-		    if (v1->u.array->tag != v3->u.array->tag) {
+		    if (v1->array->tag != v3->array->tag) {
 			break;		/* wrong tag */
 		    }
 		}
@@ -870,10 +870,10 @@ static int search(Value *v1, Value *v2, unsigned short h, int step, bool place)
 			break;	/* out of range */
 		    }
 		    m -= step;
-		    if (v1->u.array == v3->u.array) {
+		    if (v1->array == v3->array) {
 			return m;	/* found the right one */
 		    }
-		    if (v1->u.array->tag != v3->u.array->tag) {
+		    if (v1->array->tag != v3->array->tag) {
 			break;		/* wrong tag */
 		    }
 		}
@@ -948,7 +948,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v1->u.array);
+		o = d_get_elts(v1->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
 		    d_assign_elt(primary->data, this, v1, &nil_value);
@@ -1023,7 +1023,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v1->u.array);
+		o = d_get_elts(v1->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
 		    d_assign_elt(primary->data, this, v1, &nil_value);
@@ -1108,7 +1108,7 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v2->u.array);
+		o = d_get_elts(v2->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
 		    d_assign_elt(a2->primary->data, a2, v2, &nil_value);
@@ -1317,7 +1317,7 @@ void Array::mapSort()
 	qsort(v = elts, i = sz >> 1, 2 * sizeof(Value), cmp);
 	while (--i != 0) {
 	    if (cmp((cvoid *) v, (cvoid *) &v[2]) == 0 &&
-		(!T_INDEXED(v->type) || v->u.array == v[2].u.array)) {
+		(!T_INDEXED(v->type) || v->array == v[2].array)) {
 		error("Identical indices in mapping");
 	    }
 	    v += 2;
@@ -1357,7 +1357,7 @@ void Array::mapDehash(Dataspace *data, bool clean)
 		break;
 
 	    case T_LWOBJECT:
-		v3 = d_get_elts(v2->u.array);
+		v3 = d_get_elts(v2->array);
 		if (v3->type == T_OBJECT && DESTRUCTED(v3)) {
 		    /*
 		     * index is destructed object
@@ -1381,7 +1381,7 @@ void Array::mapDehash(Dataspace *data, bool clean)
 		break;
 
 	    case T_LWOBJECT:
-		v3 = d_get_elts(v2[1].u.array);
+		v3 = d_get_elts(v2[1].array);
 		if (v3->type == T_OBJECT && DESTRUCTED(v3)) {
 		    /*
 		     * value is destructed object
@@ -1535,7 +1535,7 @@ Array *Array::mapAdd(Dataspace *data, Array *m2)
 	    v3 += 2;
 	    if (c == 0) {
 		/* equal elements? */
-		if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
+		if (T_INDEXED(v1->type) && v1->array != v2->array) {
 		    Value *v;
 		    unsigned short n;
 
@@ -1548,13 +1548,13 @@ Array *Array::mapAdd(Dataspace *data, Array *m2)
 		    for (;;) {
 			v += 2; n -= 2;
 			if (n == 0 || !T_INDEXED(v->type) ||
-			    v->u.array->tag != v1->u.array->tag) {
+			    v->array->tag != v1->array->tag) {
 			    /* not in m2 */
 			    i_copy(v3, v1, 2);
 			    v3 += 2;
 			    break;
 			}
-			if (v->u.array == v1->u.array) {
+			if (v->array == v1->array) {
 			    /* also in m2 */
 			    break;
 			}
@@ -1625,7 +1625,7 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
 	    v2++; --n2;
 	} else {
 	    /* equal elements? */
-	    if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
+	    if (T_INDEXED(v1->type) && v1->array != v2->array) {
 		Value *v;
 		unsigned short n;
 
@@ -1638,13 +1638,13 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
 		for (;;) {
 		    v++; --n;
 		    if (n == 0 || !T_INDEXED(v->type) ||
-			v->u.array->tag != v1->u.array->tag) {
+			v->array->tag != v1->array->tag) {
 			/* not in a2 */
 			i_copy(v3, v1, 2);
 			v3 += 2;
 			break;
 		    }
-		    if (v->u.array == v1->u.array) {
+		    if (v->array == v1->array) {
 			/* also in a2 */
 			break;
 		    }
@@ -1707,7 +1707,7 @@ Array *Array::mapIntersect(Dataspace *data, Array *a2)
 	    v2++; --n2;
 	} else {
 	    /* equal elements? */
-	    if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
+	    if (T_INDEXED(v1->type) && v1->array != v2->array) {
 		Value *v;
 		unsigned short n;
 
@@ -1720,11 +1720,11 @@ Array *Array::mapIntersect(Dataspace *data, Array *a2)
 		for (;;) {
 		    v++; --n;
 		    if (n == 0 || !T_INDEXED(v->type) ||
-			v->u.array->tag != v1->u.array->tag) {
+			v->array->tag != v1->array->tag) {
 			/* not in a2 */
 			break;
 		    }
-		    if (v->u.array == v1->u.array) {
+		    if (v->array == v1->array) {
 			/* also in a2 */
 			i_copy(v3, v1, 2);
 			v3 += 2; v1 += 2; n1 -= 2;
@@ -1780,7 +1780,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 	break;
 
     case T_INT:
-	i = val->u.number;
+	i = val->number;
 	break;
 
     case T_FLOAT:
@@ -1788,8 +1788,8 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 	break;
 
     case T_STRING:
-	i = Hashtab::hashstr(val->u.string->text, STRMAPHASHSZ) ^
-							    val->u.string->len;
+	i = Hashtab::hashstr(val->string->text, STRMAPHASHSZ) ^
+							    val->string->len;
 	break;
 
     case T_OBJECT:
@@ -1799,7 +1799,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	i = (unsigned short) ((uintptr_t) val->u.array >> 3);
+	i = (unsigned short) ((uintptr_t) val->array >> 3);
 	break;
     }
 
@@ -1815,12 +1815,12 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 	    if (elt != (Value *) NULL &&
 		(verify == (Value *) NULL ||
 		 (e->val.type == T_STRING &&
-		  e->val.u.string == verify->u.string))) {
+		  e->val.string == verify->string))) {
 		/*
 		 * change element
 		 */
 		if (val->type == T_OBJECT) {
-		    e->idx.u.objcnt = val->u.objcnt;	/* refresh */
+		    e->idx.objcnt = val->objcnt;	/* refresh */
 		}
 		if (e->add) {
 		    d_assign_elt(data, this, &e->val, elt);
@@ -1830,8 +1830,8 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 		    e->val = *elt;
 		}
 	    } else if (del ||
-		       (val->type == T_OBJECT &&
-			val->u.objcnt != e->idx.u.objcnt)) {
+		       (val->type == T_OBJECT && val->objcnt != e->idx.objcnt))
+	    {
 		/*
 		 * delete element
 		 */
@@ -1865,19 +1865,17 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 	    v = &elts[n];
 	    if (elt != (Value *) NULL &&
 		(verify == (Value *) NULL ||
-		 (v[1].type == T_STRING && v[1].u.string == verify->u.string)))
-	    {
+		 (v[1].type == T_STRING && v[1].string == verify->string))) {
 		/*
 		 * change the element
 		 */
 		d_assign_elt(data, this, v + 1, elt);
 		if (val->type == T_OBJECT) {
 		    v->modified = TRUE;
-		    v->u.objcnt = val->u.objcnt;	/* refresh */
+		    v->objcnt = val->objcnt;	/* refresh */
 		}
 	    } else if (del ||
-		       (val->type == T_OBJECT &&
-			val->u.objcnt != v->u.objcnt)) {
+		       (val->type == T_OBJECT && val->objcnt != v->objcnt)) {
 		/*
 		 * delete the element
 		 */
@@ -1965,7 +1963,7 @@ Array *Array::mapRange(Dataspace *data, Value *v1, Value *v2)
     } else {
 	to = search(v2, elts, size, 2, TRUE);
 	if (to < size && cmp(v2, &elts[to]) == 0 &&
-	    (!T_INDEXED(v2->type) || v2->u.array == elts[to].u.array)) {
+	    (!T_INDEXED(v2->type) || v2->array == elts[to].array)) {
 	    /*
 	     * include last element
 	     */
