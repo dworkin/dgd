@@ -513,23 +513,44 @@ void d_new_plane(Dataspace *data, Int level)
  */
 static void commit_values(Value *v, unsigned int n, Int level)
 {
-    Array *arr;
+    Array *list, *arr;
 
-    while (n != 0) {
-	if (T_INDEXED(v->type)) {
-	    arr = v->array;
-	    if (arr->primary->arr == (Array *) NULL &&
-		arr->primary->plane->level > level) {
-		if (arr->hashmod) {
-		    arr->mapCompact(arr->primary->data);
+    list = (Array *) NULL;
+    for (;;) {
+	while (n != 0) {
+	    if (T_INDEXED(v->type)) {
+		arr = v->array;
+		if (arr->primary->arr == (Array *) NULL &&
+		    arr->primary->plane->level > level) {
+		    if (arr->hashmod) {
+			arr->mapCompact(arr->primary->data);
+		    }
+		    arr->primary = &arr->primary->plane->prev->alocal;
+		    if (arr->size != 0) {
+			arr->prev->next = arr->next;
+			arr->next->prev = arr->prev;
+			arr->next = list;
+			list = arr;
+		    }
 		}
-		arr->primary = &arr->primary->plane->prev->alocal;
-		commit_values(arr->elts, arr->size, level);
-	    }
 
+	    }
+	    v++;
+	    --n;
 	}
-	v++;
-	--n;
+
+	if (list == (Array *) NULL) {
+	    break;
+	}
+
+	arr = list;
+	list = arr->next;
+	arr->prev = &arr->primary->data->alist;
+	arr->next = arr->prev->next;
+	arr->next->prev = arr;
+	arr->prev->next = arr;
+	v = arr->elts;
+	n = arr->size;
     }
 }
 
