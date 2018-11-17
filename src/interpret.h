@@ -226,6 +226,7 @@ struct Frame {
     rlinfo *rlim;		/* rlimits info */
     Int level;			/* plane level */
     bool atomic;		/* within uncaught atomic code */
+    bool kflv;			/* kfun with lvalue parameters */
 };
 
 extern void	i_init		(char*, bool);
@@ -249,7 +250,7 @@ extern int	i_instancestr	(unsigned int, char*);
 extern void	i_cast		(Frame*, Value*, unsigned int, Uint);
 extern void	i_store_global	(Frame*, int, int, Value*, Value*);
 extern bool	i_store_index	(Frame*, Value*, Value*, Value*, Value*);
-extern void	i_lvalues	(Frame*);
+extern void	i_lvalues	(Frame*, int);
 extern Int	i_get_depth	(Frame*);
 extern Int	i_get_ticks	(Frame*);
 extern void	i_new_rlimits	(Frame*, Int, Int);

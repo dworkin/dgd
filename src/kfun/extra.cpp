@@ -327,7 +327,7 @@ int kf_random(Frame *f, int n, kfunc *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("sscanf", kf_sscanf, pt_sscanf, 1)
+FUNCDEF("sscanf", kf_sscanf, pt_sscanf, 2)
 # else
 char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
 		     T_STRING, T_LVALUE };
@@ -656,16 +656,52 @@ no_match:
 	}
     }
 
-    top[0].string->del();
     top[1].string->del();
-    memmove(f->sp + 2, f->sp, (top - f->sp) * sizeof(Value));
-    f->sp++;
+    PUT_INTVAL(&top[1], matches);
+    top[0].string->del();
+    memmove(f->sp + 1, f->sp, (top - f->sp) * sizeof(Value));
 
     PUT_ARRVAL(f->sp, a);
-    i_lvalues(f);
-    a->del();
+    f->kflv = TRUE;
 
-    PUT_INTVAL(f->sp, matches);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("1.sscanf", kf_old_sscanf, pt_old_sscanf, 1)
+# else
+char pt_old_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
+			 T_STRING, T_LVALUE };
+
+/*
+ * NAME:	kfun->old_sscanf()
+ * DESCRIPTION:	scan a string
+ */
+int kf_old_sscanf(Frame *f, int nargs, kfunc *kf)
+{
+    int n;
+    char *pc;
+
+    n = kf_sscanf(f, nargs, kf);
+    if (n != 0) {
+	return n;
+    }
+    f->kflv = FALSE;
+
+    pc = f->pc;
+# ifdef DEBUG
+    if ((FETCH1U(pc) & I_INSTR_MASK) != I_STORES) {
+	fatal("stores expected");
+    }
+# else
+    pc++;
+# endif
+    n = FETCH1U(pc);
+    f->pc = pc;
+    i_lvalues(f, n);
+
     return 0;
 }
 # endif

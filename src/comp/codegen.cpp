@@ -1003,11 +1003,12 @@ static void cg_expr(node *n, int pop)
 	    code_instr(I_STORES, n->line);
 	    code_byte(l);
 	    cg_store_aggr(n->l.left->l.left);
-	} else {
-	    cg_lvalue(n->l.left, FALSE);
-	    cg_expr(n->r.right, FALSE);
-	    cg_store(n->l.left);
+	    return;
 	}
+
+	cg_lvalue(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	cg_store(n->l.left);
 	break;
 
     case N_CAST:
@@ -1097,18 +1098,19 @@ static void cg_expr(node *n, int pop)
 	    } else {
 		code_kfun((short) n->r.number, n->line);
 	    }
-	    if (pop) {
-		*last_instruction |= I_POP_BIT;
-	    }
 	    if ((n->r.number >> 24) == KFCALL_LVAL) {
 		/* generate stores */
 		code_instr(I_STORES, n->line);
 		code_byte(nargs);
 		if (args != (node *) NULL) {
+		    char *instr;
+
+		    instr = last_instruction;
 		    cg_storeargs(args);
+		    last_instruction = instr;
 		}
 	    }
-	    return;
+	    break;
 
 	case DFCALL:
 	    if ((n->r.number & 0xff00) == 0) {

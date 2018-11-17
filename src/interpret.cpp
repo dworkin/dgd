@@ -986,10 +986,8 @@ static void i_stores(Frame *f, int skip, int assign)
 	--assign;
     }
 
-    if (instr & I_POP_BIT) {
-	f->sp->array->del();
-	f->sp++;
-    }
+    f->sp->array->del();
+    f->sp++;
 
     f->pc = pc;
 }
@@ -998,23 +996,15 @@ static void i_stores(Frame *f, int skip, int assign)
  * NAME:	interpret->lvalues()
  * DESCRIPTION:	perform assignments for lvalue arguments
  */
-void i_lvalues(Frame *f)
+void i_lvalues(Frame *f, int n)
 {
     char *pc;
-    int n, offset, type;
+    int offset, type;
     unsigned short nassign, nspread;
     Uint sclass;
 
     pc = f->pc;
-# ifdef DEBUG
-    if ((FETCH1U(pc) & I_INSTR_MASK) != I_STORES) {
-	fatal("stores expected");
-    }
-# else
-    pc++;
-# endif
-    n = FETCH1U(pc);
-    f->pc = pc;
+    nassign = 0;
 
     if (n != 0) {
 	nassign = f->sp->array->size;
@@ -1058,8 +1048,9 @@ void i_lvalues(Frame *f)
 	if (n < nassign) {
 	    error("Missing lvalue");
 	}
-	i_stores(f, n - nassign, nassign);
     }
+
+    i_stores(f, n - nassign, nassign);
 }
 
 /*
@@ -1720,18 +1711,24 @@ static void i_interpret(Frame *f, char *pc)
 	    break;
 
 	case I_STORES:
+	case I_STORES | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    if (f->sp->type != T_ARRAY) {
-		error("Value is not an array");
-	    }
-	    if (u > f->sp->array->size) {
-		error("Wrong number of lvalues");
-	    }
-	    d_get_elts(f->sp->array);
 	    f->pc = pc;
-	    i_stores(f, 0, u);
+	    if (f->kflv) {
+		f->kflv = FALSE;
+		i_lvalues(f, u);
+	    } else {
+		if (f->sp->type != T_ARRAY) {
+		    error("Value is not an array");
+		}
+		if (u > f->sp->array->size) {
+		    error("Wrong number of lvalues");
+		}
+		d_get_elts(f->sp->array);
+		i_stores(f, 0, u);
+	    }
 	    pc = f->pc;
-	    continue;
+	    break;
 
 	case I_STORE_LOCAL:
 	case I_STORE_LOCAL | I_POP_BIT:
@@ -2128,6 +2125,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 	    error("Out of ticks");
 	}
     }
+    f.kflv = FALSE;
 
     /* set the program control block */
     obj = OBJR(f.ctrl->inherits[p_ctrli].oindex);
@@ -2479,6 +2477,7 @@ static unsigned short i_line(Frame *f)
 	case I_STORE_GLOBAL:
 	case I_STORE_GLOBAL | I_POP_BIT:
 	case I_STORES:
+	case I_STORES | I_POP_BIT:
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
 	case I_STORE_GLOBAL_INDEX:
