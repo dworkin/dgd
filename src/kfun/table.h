@@ -40,6 +40,7 @@ struct extkfunc {
 
 extern void kf_clear	();
 extern void kf_ext_kfun	(const extkfunc*, int);
+extern int  kf_unused	(Frame*, int, kfunc*);
 extern void kf_init	();
 extern void kf_jit	();
 extern int  kf_func	(const char*);

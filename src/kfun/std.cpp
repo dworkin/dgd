@@ -30,6 +30,7 @@
 
 
 # ifdef FUNCDEF
+FUNCDEF("0.compile_object", kf_unused, pt_unused, 0)
 FUNCDEF("compile_object", kf_compile_object, pt_compile_object, 1)
 # else
 char pt_compile_object[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
@@ -1340,6 +1341,7 @@ int kf_swapout(Frame *f, int n, kfunc *kf)
 
 
 # ifdef FUNCDEF
+FUNCDEF("0.dump_state", kf_unused, pt_unused, 0)
 FUNCDEF("dump_state", kf_dump_state, pt_dump_state, 1)
 # else
 char pt_dump_state[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
@@ -1416,6 +1418,7 @@ int kf_connect(Frame *f, int nargs, kfunc *kf)
 
 
 # ifdef FUNCDEF
+FUNCDEF("0.shutdown", kf_unused, pt_unused, 0)
 FUNCDEF("shutdown", kf_shutdown, pt_shutdown, 1)
 # else
 char pt_shutdown[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };

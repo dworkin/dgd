@@ -327,6 +327,7 @@ int kf_random(Frame *f, int n, kfunc *kf)
 
 
 # ifdef FUNCDEF
+FUNCDEF("0.sscanf", kf_unused, pt_unused, 0)
 FUNCDEF("sscanf", kf_sscanf, pt_sscanf, 2)
 # else
 char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
@@ -961,6 +962,8 @@ int kf_hash_crc32(Frame *f, int nargs, kfunc *kf)
 
 
 # ifdef FUNCDEF
+FUNCDEF("0.hash_md5", kf_unused, pt_unused, 0)
+FUNCDEF("0.hash_sha1", kf_unused, pt_unused, 0)
 FUNCDEF("hash_string", kf_hash_string, pt_hash_string, 0)
 # else
 extern char *P_crypt (char*, char*);

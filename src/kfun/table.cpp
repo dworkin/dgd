@@ -198,6 +198,21 @@ void kf_ext_kfun(const extkfunc *kfadd, int n)
     }
 }
 
+char pt_unused[] = { C_STATIC, 0, 0, 0, 6, T_MIXED };
+
+/*
+ * NAME:	kfun->unused()
+ * DESCRIPTION:	unused kfun
+ */
+int kf_unused(Frame *f, int nargs, kfunc *kf)
+{
+    UNREFERENCED_PARAMETER(f);
+    UNREFERENCED_PARAMETER(nargs);
+    UNREFERENCED_PARAMETER(kf);
+
+    return 1;
+}
+
 /*
  * NAME:	kfun->cmp()
  * DESCRIPTION:	compare two kftable entries

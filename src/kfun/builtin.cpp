@@ -2385,22 +2385,7 @@ int kf_ckranget(Frame *f, int n, kfunc *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("sum", kf_old_sum, pt_old_sum, 0)
-# else
-char pt_old_sum[] = { C_STATIC | C_ELLIPSIS, 0, 1, 0, 7, T_MIXED, T_MIXED };
-
-/*
- * NAME:	kfun->old_sum()
- * DESCRIPTION:	perform a summand operation
- */
-int kf_old_sum(Frame *f, int nargs, kfunc *kf)
-{
-    UNREFERENCED_PARAMETER(f);
-    UNREFERENCED_PARAMETER(nargs);
-    UNREFERENCED_PARAMETER(kf);
-
-    return 1;
-}
+FUNCDEF("sum", kf_unused, pt_unused, 0)
 # endif
 
 
@@ -2539,44 +2524,8 @@ int kf_nil(Frame *f, int n, kfunc *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("<-", kf_old_instanceof, pt_old_instanceof, 0)
-# else
-char pt_old_instanceof[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT, T_INT };
-
-/*
- * NAME:	kfun->old_instanceof()
- * DESCRIPTION:	instanceof
- */
-int kf_old_instanceof(Frame *f, int n, kfunc *kf)
-{
-    UNREFERENCED_PARAMETER(f);
-    UNREFERENCED_PARAMETER(n);
-    UNREFERENCED_PARAMETER(kf);
-
-    return 1;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("=", kf_store_aggr, pt_store_aggr, 0)
-# else
-char pt_store_aggr[] = { C_STATIC, 2, 0, 0, 8, T_MIXED,
-			 T_MIXED | (1 << REFSHIFT), T_INT };
-
-/*
- * NAME:	kfun->store_aggr()
- * DESCRIPTION:	store array elements in lvalues on the stack, which will also
- *		be popped
- */
-int kf_store_aggr(Frame *f, int nargs, kfunc *kf)
-{
-    UNREFERENCED_PARAMETER(f);
-    UNREFERENCED_PARAMETER(nargs);
-    UNREFERENCED_PARAMETER(kf);
-
-    return 1;
-}
+FUNCDEF("<-", kf_unused, pt_unused, 0)
+FUNCDEF("=", kf_unused, pt_unused, 0)
 # endif
 
 
