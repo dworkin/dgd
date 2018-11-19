@@ -471,19 +471,6 @@ Array::Array(unsigned short size)
 
 Array::~Array()
 {
-    Value *v;
-    unsigned short i;
-
-    if ((v=elts) != (Value *) NULL) {
-	for (i = size; i > 0; --i) {
-	    i_del_value(v++);
-	}
-	FREE(elts);
-    }
-
-    if (hashed != (MapHash *) NULL) {
-	delete hashed;
-    }
 }
 
 /*
@@ -541,7 +528,8 @@ Array *Array::createNil(Dataspace *data, long size)
 void Array::del()
 {
     if (--refCount == 0) {
-	static Array *dlist, *a;
+	static Array *dlist;
+	Array *a;
 
 	prev->next = next;
 	next->prev = prev;
@@ -552,12 +540,28 @@ void Array::del()
 	    return;
 	}
 
-	a = this;
+	dlist = a = this;
 	do {
-	    dlist = a->prev;
+	    Value *v;
+	    unsigned short i;
+	    Array *list;
+
+	    if ((v=a->elts) != (Value *) NULL) {
+		for (i = a->size; i > 0; --i) {
+		    i_del_value(v++);
+		}
+		FREE(a->elts);
+	    }
+
+	    if (a->hashed != (MapHash *) NULL) {
+		delete a->hashed;
+	    }
+
+	    list = a->prev;
 	    delete a;
-	    a = dlist;
+	    a = list;
 	} while (a != (Array *) NULL);
+	dlist = (Array *) NULL;
     }
 }
 
