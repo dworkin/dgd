@@ -24,6 +24,7 @@ struct kfunc {
     int (*func)(Frame*, int, struct kfunc*);		/* function address */
     extfunc ext;					/* extension */
     short version;					/* version number */
+    bool lval;						/* has lvalue params */
 };
 
 extern kfunc kftab[], kfenc[], kfdec[], kfhsh[];	/* kfun tables */

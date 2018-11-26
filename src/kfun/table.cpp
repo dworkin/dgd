@@ -61,6 +61,9 @@ extern void kf_xcrypt(Frame *, int, Value *);
 extern void kf_md5(Frame *, int, Value *);
 extern void kf_sha1(Frame *, int, Value *);
 
+extern Value *ext_value_temp(Dataspace*);
+extern void ext_kfuns(char*, int, int);
+
 /*
  * NAME:	kfun->clear()
  * DESCRIPTION:	clear previously added kfuns from the table
@@ -96,6 +99,10 @@ static int kf_callgate(Frame *f, int nargs, kfunc *kf)
     i_ref_value(&val);
     i_pop(f, nargs);
     *--f->sp = val;
+    if (kf->lval) {
+	f->kflv = TRUE;
+	PUSH_ARRVAL(f, ext_value_temp(f->data)->array);
+    }
 
     return 0;
 }
@@ -104,7 +111,7 @@ static int kf_callgate(Frame *f, int nargs, kfunc *kf)
  * NAME:	prototype()
  * DESCRIPTION:	construct proper prototype for new kfun
  */
-static char *prototype(char *proto)
+static char *prototype(char *proto, bool *lval)
 {
     char *p, *q;
     int nargs, vargs;
@@ -133,8 +140,14 @@ static char *prototype(char *proto)
 		varargs = TRUE;
 	    } else {
 		if (*p != T_MIXED) {
-		    /* non-mixed arguments: typecheck this function */
-		    tclass |= C_TYPECHECKED;
+		    if (*p == T_LVALUE) {
+			/* lvalue arguments: turn off typechecking */
+			tclass &= ~C_TYPECHECKED;
+			*lval = TRUE;
+		    } else {
+			/* non-mixed arguments: typecheck this function */
+			tclass |= C_TYPECHECKED;
+		    }
 		}
 		if (varargs) {
 		    vargs++;
@@ -191,7 +204,8 @@ void kf_ext_kfun(const extkfunc *kfadd, int n)
 	    kf = &kftab[nkfun++];
 	    kf->name = kfadd->name;
 	}
-	kf->proto = prototype(kfadd->proto);
+	kf->lval = FALSE;
+	kf->proto = prototype(kfadd->proto, &kf->lval);
 	kf->func = &kf_callgate;
 	kf->ext = kfadd->func;
 	kf->version = 0;
@@ -251,37 +265,44 @@ void kf_init()
     }
 }
 
-extern void ext_kfuns(kfindex*, char*, int, int);
-
 /*
  * NAME:	kfun->jit()
  * DESCRIPTION:	prepare JIT compiler
  */
 void kf_jit()
 {
-    int size, i;
+    int size, i, n, nkf;
     char *protos, *proto;
 
-    for (size = 0, i = 0; i < nkfun; i++) {
-	if (kfx[i] != 0 || i == 0) {
+    for (size = 0, i = 0; i < KF_BUILTINS; i++) {
+	size += PROTO_SIZE(kftab[i].proto);
+    }
+    nkf = nkfun - KF_BUILTINS;
+    for (; i < nkfun; i++) {
+	if (kfx[i] != 0) {
 	    size += PROTO_SIZE(kftab[i].proto);
 	} else {
-	    size++;
+	    --nkf;
 	}
     }
+
     protos = ALLOCA(char, size);
-    for (i = 0; i < nkfun; i++) {
-	if (kfx[i] != 0 || i == 0) {
-	    proto = kftab[i].proto;
+    for (i = 0; i < KF_BUILTINS; i++) {
+	proto = kftab[i].proto;
+	memcpy(protos, proto, PROTO_SIZE(proto));
+	protos += PROTO_SIZE(proto);
+    }
+    for (; i < nkfun; i++) {
+	n = kfind[i + 128 - KF_BUILTINS];
+	if (kfx[n] != 0) {
+	    proto = kftab[n].proto;
 	    memcpy(protos, proto, PROTO_SIZE(proto));
 	    protos += PROTO_SIZE(proto);
-	} else {
-	    *protos++ = '\0';
 	}
     }
 
     protos -= size;
-    ext_kfuns(kfind, protos, size, nkfun);
+    ext_kfuns(protos, size, nkf);
     AFREE(protos);
 }
 

@@ -31,7 +31,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	0
-# define EXTENSION_MINOR	10
+# define EXTENSION_MINOR	11
 
 
 /*
@@ -92,7 +92,7 @@ static Value *ext_value_nil()
  * NAME:	ext->value_temp()
  * DESCRIPTION:	return a scratch value
  */
-static Value *ext_value_temp(Dataspace *data)
+Value *ext_value_temp(Dataspace *data)
 {
     static Value temp;
 
@@ -432,8 +432,8 @@ static void ext_spawn(void (*fdlist)(int*, int), void (*finish)())
     mod_finish = finish;
 }
 
-static int (*jit_init)(int, int, size_t, size_t, uint16_t*, int, uint8_t*,
-		       size_t, int);
+static int (*jit_init)(int, int, size_t, size_t, int, int, uint8_t*, size_t,
+		       int);
 static void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
 			   uint8_t*, size_t, uint8_t*, size_t);
 static int (*jit_execute)(uint64_t, uint64_t, int, Value*);
@@ -442,8 +442,8 @@ static int (*jit_execute)(uint64_t, uint64_t, int, Value*);
  * NAME:        ext->jit()
  * DESCRIPTION: initialize JIT extension
  */
-static void ext_jit(int (*init)(int, int, size_t, size_t, uint16_t*, int,
-                                uint8_t*, size_t, int),
+static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, uint8_t*,
+				size_t, int),
                     void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
                                     int, uint8_t*, size_t, uint8_t*, size_t),
                     int (*execute)(uint64_t, uint64_t, int, Value*))
@@ -457,11 +457,10 @@ static void ext_jit(int (*init)(int, int, size_t, size_t, uint16_t*, int,
  * NAME:        ext->kfuns()
  * DESCRIPTION: pass kernel function prototypes to the JIT extension
  */
-void ext_kfuns(kfindex *map, char *protos, int size, int nkfun)
+void ext_kfuns(char *protos, int size, int nkfun)
 {
     if (jit_compile != NULL && !(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR,
-					    sizeof(Int), 1, (uint16_t *) map,
-					    nkfun + 128 - KF_BUILTINS,
+					    sizeof(Int), 1, KF_BUILTINS, nkfun,
 					    (uint8_t *) protos, size, nkfun)) {
 	jit_compile = NULL;
     }
