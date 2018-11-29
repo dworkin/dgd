@@ -668,14 +668,6 @@ void co_call(Frame *f)
     Object *obj;
     String *str;
     int nargs;
-#ifdef CO_THROTTLE
-#   if (CO_THROTTLE < 1)
-#	error Invalid CO_THROTTLE setting
-#   endif
-    int quota;
-
-    quota = CO_THROTTLE;
-#endif
 
     if (running == 0) {
 	co_expire();
@@ -687,11 +679,7 @@ void co_call(Frame *f)
 	/*
 	 * callouts to do
 	 */
-#ifdef CO_THROTTLE
-	while ((i=running) != 0 && (quota-- > 0)) {
-#else
 	while ((i=running) != 0) {
-#endif
 	    handle = cotab[i].handle;
 	    obj = OBJ(cotab[i].oindex);
 	    freecallout(&running, i, i, 0);
