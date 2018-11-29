@@ -10,7 +10,7 @@ DGD's home page is at:
     http://www.dworkin.nl/dgd/
 
 			*** PLEASE NOTE ***
-DGD 1.6 is backward compatible with snapshots from DGD 1.5.6 and later, only.
+DGD 1.6 is backward compatible with snapshots from DGD 1.5.8 and later, only.
 To upgrade to DGD 1.6, first upgrade to the latest 1.5.x version, recompile
 all objects, and create a non-incremental snapshot.
 
@@ -19,15 +19,9 @@ This distribution is organized as follows:
 
 bin		Installation binaries will be created here (Unix).
 doc		Documentation, still very incomplete.
-mud		A place to put the mudlib.
 src		Where the source of DGD resides, and where you issue your
 		`make' command on Unix.
 src/host/*	Subdirectories for various platform-dependent files.
-tmp		The place where temporary files, such as the swap file, are
-		created by DGD.
-
-See the file doc/Platforms for help on compiling DGD on various platforms.
-Also consult the src/host/*/README file for your platform, if there is one.
 
 
 This version of DGD is released under the GNU Affero General Public License.
