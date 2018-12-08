@@ -282,8 +282,7 @@ static user *comm_new(Frame *f, Object *obj, connection *conn, int flags)
  * NAME:	comm->connect()
  * DESCRIPTION:	attempt to establish an outbound connection
  */
-void comm_connect(Frame *f, Object *obj, char *addr, unsigned char protocol,
-	unsigned short port)
+void comm_connect(Frame *f, Object *obj, char *addr, unsigned short port)
 {
     void *host;
     int len;
@@ -301,8 +300,7 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned char protocol,
 
     for (usr = outbound; ; usr = usr->flush) {
 	if (usr == (user *) NULL) {
-	    usr = comm_new(f, obj, (connection *) NULL,
-			   (protocol == P_TELNET) ? CF_TELNET : 0);
+	    usr = comm_new(f, obj, (connection *) NULL, 0);
 	    arr = d_get_extravar(obj->data)->array;
 	    usr->flush = outbound;
 	    outbound = usr;

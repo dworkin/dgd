@@ -78,7 +78,7 @@ extern String  *comm_ip_name	(Object*);
 extern void	comm_close	(Frame*, Object*);
 extern Object  *comm_user	();
 extern void	comm_connect	(Frame *f, Object *obj, char *addr,
-				   unsigned char protocol, unsigned short port);
+				 unsigned short port);
 extern Array   *comm_users	(Dataspace*);
 extern bool     comm_is_connection (Object*);
 extern bool	comm_dump	(int);

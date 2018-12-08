@@ -1370,11 +1370,12 @@ int kf_dump_state(Frame *f, int nargs, kfunc *kf)
 }
 # endif
 
+
 # ifdef FUNCDEF
-FUNCDEF("connect", kf_connect, pt_connect, 0)
+FUNCDEF("connect", kf_connect, pt_connect, 1)
 # else
-char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 0, 0, 8,
-		      T_VOID, T_STRING, T_INT };
+char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 1, 0, 9,
+		      T_VOID, T_STRING, T_INT, T_STRING };
 
 /*
  * NAME:	kfun->connect
@@ -1382,14 +1383,16 @@ char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 0, 0, 8,
  */
 int kf_connect(Frame *f, int nargs, kfunc *kf)
 {
-    char *addr, proto;
     unsigned short port;
     Object *obj;
 
     UNREFERENCED_PARAMETER(nargs);
     UNREFERENCED_PARAMETER(kf);
-    proto = 0;
 
+    if (nargs > 2) {
+	f->sp->string->del();
+	f->sp++;
+    }
     if (f->lwobj != (Array *) NULL) {
 	error("connect() in non-persistent object");
     }
@@ -1407,12 +1410,28 @@ int kf_connect(Frame *f, int nargs, kfunc *kf)
 	error("Port number out of range");
     }
     port = (f->sp++)->number;
-    addr = f->sp->string->text;
 
-    comm_connect(f, obj, addr, proto, port);
+    comm_connect(f, obj, f->sp->string->text, port);
     f->sp->string->del();
     *f->sp = nil_value;
     return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("0.connect", kf_old_connect, pt_old_connect, 0)
+# else
+char pt_old_connect[] = { C_TYPECHECKED | C_STATIC , 2, 0, 0, 8,
+			  T_VOID, T_STRING, T_INT };
+
+/*
+ * NAME:	kfun->old_connect
+ * DESCRIPTION: connect to a server
+ */
+int kf_old_connect(Frame *f, int nargs, kfunc *kf)
+{
+    return kf_connect(f, nargs, kf);
 }
 # endif
 
