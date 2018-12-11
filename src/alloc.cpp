@@ -1042,8 +1042,6 @@ Alloc::Info *Alloc::info()
  */
 void Alloc::finish()
 {
-    char *p;
-
     /* purge dynamic memory */
 # ifdef DEBUG
     hlist = (MemHeader *) NULL;
