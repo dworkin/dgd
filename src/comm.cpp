@@ -316,9 +316,64 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned short port)
 	}
     }
 
+    PUT_INTVAL(&val, -1);
+    d_assign_elt(obj->data, arr, &arr->elts[0], &val);
     PUT_STRVAL_NOREF(&val, String::create((char *) host, len));
     d_assign_elt(obj->data, arr, &arr->elts[1], &val);
     usr->flags |= CF_FLUSH;
+    usr->extra = arr;
+    usr->extra->ref();
+    usr->flags |= CF_OPENDING;
+}
+
+/*
+ * NAME:	comm->connect_dgram()
+ * DESCRIPTION:	attempt to establish an outbound datagram connection
+ */
+void comm_connect_dgram(Frame *f, Object *obj, int uport, char *addr,
+			unsigned short port)
+{
+    void *host;
+    int len;
+    user *usr;
+    Array *arr;
+    Value val;
+
+    if (ndgram >= maxdgram) {
+	error("Max number of connection objects exceeded");
+    }
+
+    if (uport < 0 || uport >= ndport) {
+	error("No such datagram port");
+    }
+    host = conn_host(addr, port, &len);
+    if (host == (void *) NULL) {
+	error("Unknown address");
+    }
+
+    for (usr = outbound; ; usr = usr->flush) {
+	if (usr == (user *) NULL) {
+	    usr = comm_new(f, obj, (connection *) NULL, 0);
+	    arr = d_get_extravar(obj->data)->array;
+	    usr->flush = outbound;
+	    outbound = usr;
+	    break;
+	}
+	if ((OBJR(usr->oindex)->flags & O_SPECIAL) != O_USER) {
+	    /*
+	     * a previous outbound connection was undone, reuse it
+	     */
+	    usr->extra->del();
+	    arr = comm_setup(usr, f, obj);
+	    break;
+	}
+    }
+
+    PUT_INTVAL(&val, uport);
+    d_assign_elt(obj->data, arr, &arr->elts[0], &val);
+    PUT_STRVAL_NOREF(&val, String::create((char *) host, len));
+    d_assign_elt(obj->data, arr, &arr->elts[1], &val);
+    usr->flags |= CF_UDPDATA | CF_FLUSH;
     usr->extra = arr;
     usr->extra->ref();
     usr->flags |= CF_OPENDING;
@@ -684,12 +739,19 @@ void comm_flush()
 	obj = OBJ(usr->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER) {
 	    /* connect */
-	    usr->conn = conn_connect(arr->elts[1].string->text,
-				     arr->elts[1].string->len);
+	    if (arr->elts[0].number < 0) {
+		usr->conn = conn_connect(arr->elts[1].string->text,
+					 arr->elts[1].string->len);
+	    } else {
+		usr->conn = conn_dconnect(arr->elts[0].number,
+					  arr->elts[1].string->text,
+					  arr->elts[1].string->len);
+	    }
 	    if (usr->conn == (connection *) NULL) {
 		fatal("can't connect to server");
 	    }
 
+	    d_assign_elt(obj->data, arr, &arr->elts[0], &zero_int);
 	    d_assign_elt(obj->data, arr, &arr->elts[1], &nil_value);
 	    arr->del();
 	    usr->flags &= ~CF_FLUSH;

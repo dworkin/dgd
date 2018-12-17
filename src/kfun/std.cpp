@@ -1437,6 +1437,53 @@ int kf_old_connect(Frame *f, int nargs, kfunc *kf)
 
 
 # ifdef FUNCDEF
+FUNCDEF("connect_datagram", kf_connect_datagram, pt_connect_datagram, 0)
+# else
+char pt_connect_datagram[] = { C_TYPECHECKED | C_STATIC , 3, 1, 0, 10,
+			       T_VOID, T_INT, T_STRING, T_INT, T_STRING };
+
+/*
+ * NAME:	kfun->connect_datagram
+ * DESCRIPTION: connect by datagrams to a server
+ */
+int kf_connect_datagram(Frame *f, int nargs, kfunc *kf)
+{
+    unsigned short port;
+    Object *obj;
+
+    UNREFERENCED_PARAMETER(nargs);
+    UNREFERENCED_PARAMETER(kf);
+
+    if (nargs > 3) {
+	(f->sp++)->string->del();
+    }
+    if (f->lwobj != (Array *) NULL) {
+	error("connect_datagram() in non-persistent object");
+    }
+    obj = OBJW(f->oindex);
+
+    if (obj->count == 0) {
+	error("connect_datagram() in destructed object");
+    }
+
+    if (obj->flags & O_SPECIAL) {
+	error("connect_datagram() in special purpose object");
+    }
+
+    if (f->sp->number < 1 || f->sp->number > 65535) {
+	error("Port number out of range");
+    }
+    port = (f->sp++)->number;
+
+    comm_connect_dgram(f, obj, f->sp[1].number, f->sp->string->text, port);
+    (f->sp++)->string->del();
+    *f->sp = nil_value;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("0.shutdown", kf_unused, pt_unused, 0)
 FUNCDEF("shutdown", kf_shutdown, pt_shutdown, 1)
 # else

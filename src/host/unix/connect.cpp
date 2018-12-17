@@ -422,6 +422,7 @@ struct connection : public Hashtab::Entry {
     int fd;				/* file descriptor */
     int npkts;				/* # packets in buffer */
     int bufsz;				/* # bytes in buffer */
+    int err;				/* state of outbound UDP connection */
     char *udpbuf;			/* datagram buffer */
     ipaddr *addr;			/* internet address of connection */
     unsigned short port;		/* UDP port of connection */
@@ -897,7 +898,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    ipv4 = TRUE;
 	} else {
 # ifdef INET6
-	    if (inet_pton(AF_INET6, thosts[n], &sin6) > 0) {
+	    if (inet_pton(AF_INET6, thosts[n], &sin6.sin6_addr) > 0) {
 		sin6.sin6_family = AF_INET6;
 		ipv6 = TRUE;
 	    } else {
@@ -959,7 +960,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    ipv4 = TRUE;
 	} else {
 # ifdef INET6
-	    if (inet_pton(AF_INET6, bhosts[n], &sin6) > 0) {
+	    if (inet_pton(AF_INET6, bhosts[n], &sin6.sin6_addr) > 0) {
 		sin6.sin6_family = AF_INET6;
 		ipv6 = TRUE;
 	    } else {
@@ -1021,7 +1022,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    ipv4 = TRUE;
 	} else {
 # ifdef INET6
-	    if (inet_pton(AF_INET6, dhosts[n], &sin6) > 0) {
+	    if (inet_pton(AF_INET6, dhosts[n], &sin6.sin6_addr) > 0) {
 		sin6.sin6_family = AF_INET6;
 		ipv6 = TRUE;
 	    } else {
@@ -1511,21 +1512,23 @@ void conn_del(connection *conn)
     }
     if (conn->udpbuf != (char *) NULL) {
 	pthread_mutex_lock(&udpmutex);
-	if (conn->name != (char *) NULL) {
-	    hash = (connection **) chtab->lookup(conn->name, FALSE);
+	if (conn->addr != (ipaddr *) NULL) {
+	    if (conn->name != (char *) NULL) {
+		hash = (connection **) chtab->lookup(conn->name, FALSE);
 # ifdef INET6
-	} else if (conn->addr->ipnum.ipv6) {
-	    hash = &udphtab[(Hashtab::hashmem((char *) &conn->addr->ipnum,
+	    } else if (conn->addr->ipnum.ipv6) {
+		hash = &udphtab[(Hashtab::hashmem((char *) &conn->addr->ipnum,
 			    sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
 # endif
-	} else {
-	    hash = &udphtab[(((Uint) conn->addr->ipnum.addr.s_addr) ^
+	    } else {
+		hash = &udphtab[(((Uint) conn->addr->ipnum.addr.s_addr) ^
 						    conn->port) % udphtabsz];
+	    }
+	    while (*hash != conn) {
+		hash = (connection **) &(*hash)->next;
+	    }
+	    *hash = (connection *) conn->next;
 	}
-	while (*hash != conn) {
-	    hash = (connection **) &(*hash)->next;
-	}
-	*hash = (connection *) conn->next;
 	if (conn->npkts != 0) {
 	    read(inpkts, conn->udpbuf, conn->npkts);
 	}
@@ -1941,12 +1944,126 @@ connection *conn_connect(void *addr, int len)
 }
 
 /*
+ * NAME:	conn->dconnect()
+ * DESCRIPTION:	establish an oubound UDP connection
+ */
+connection *conn_dconnect(int uport, void *addr, int len)
+{
+    in46addr ipnum;
+    connection *conn, **hash;
+    unsigned short port, hashval;
+
+    if (flist == (connection *) NULL) {
+       return NULL;
+    }
+
+# ifdef INET6
+    if (((sockaddr_in6 *) addr)->sin6_family == AF_INET6) {
+	if (IN6_IS_ADDR_V4MAPPED(&((struct sockaddr_in6 *) addr)->sin6_addr)) {
+	    ipnum.addr = *(struct in_addr *)
+			&((struct sockaddr_in6 *) addr)->sin6_addr.s6_addr[12];
+	    ipnum.ipv6 = FALSE;
+	    port = ((struct sockaddr_in6 *) addr)->sin6_port;
+	} else {
+	    ipnum.addr6 = ((struct sockaddr_in6 *) addr)->sin6_addr;
+	    ipnum.ipv6 = TRUE;
+	    port = ((struct sockaddr_in6 *) addr)->sin6_port;
+	}
+    } else
+# endif
+    {
+	ipnum.addr = ((struct sockaddr_in *) addr)->sin_addr;
+	ipnum.ipv6 = FALSE;
+	port = ((struct sockaddr_in *) addr)->sin_port;
+    }
+
+    conn = flist;
+    flist = (connection *) conn->next;
+    conn->name = (char *) NULL;
+    Alloc::staticMode();
+    conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
+    Alloc::dynamicMode();
+    conn->fd = -2;
+    conn->addr = NULL;
+    conn->port = port;
+    conn->at = uport;
+    conn->bufsz = 0;
+    conn->npkts = 0;
+
+# ifdef INET6
+    /*
+     * check address family
+     */
+    if (ipnum.ipv6) {
+	if (udescs[uport].fd.in6 < 0) {
+	    conn->err = 3;
+	    return conn;
+	}
+    } else if (udescs[uport].fd.in4 < 0) {
+	conn->err = 3;
+	return conn;
+    }
+
+    if (ipnum.ipv6) {
+	hashval = (Hashtab::hashmem((char *) &ipnum,
+				sizeof(struct in6_addr)) ^ port) % udphtabsz;
+    } else
+# endif
+    {
+	hashval = (((Uint) ipnum.addr.s_addr) ^ port) % udphtabsz;
+    }
+    hash = &udphtab[hashval];
+    pthread_mutex_lock(&udpmutex);
+    for (;;) {
+	if (*hash == (connection *) NULL) {
+	    /*
+	     * establish connection
+	     */
+	    hash = &udphtab[hashval];
+	    conn->next = *hash;
+	    *hash = conn;
+	    conn->err = 0;
+	    conn->addr = ipa_new(&ipnum);
+	    break;
+	}
+	if ((*hash)->at == uport && (*hash)->port == port && (
+# ifdef INET6
+	     (ipnum.ipv6) ?
+	      memcmp(&(*hash)->addr->ipnum, &ipnum.addr6,
+		     sizeof(struct in6_addr)) == 0 :
+# endif
+	      (*hash)->addr->ipnum.addr.s_addr == ipnum.addr.s_addr)) {
+	    /*
+	     * already exists
+	     */
+	    conn->err = 5;
+	    break;
+	}
+	hash = (connection **) &(*hash)->next;
+    }
+    pthread_mutex_unlock(&udpmutex);
+
+    return conn;
+}
+
+/*
  * check for a connection in pending state and see if it is connected.
  */
 int conn_check_connected(connection *conn, int *errcode)
 {
     int optval;
     socklen_t lon;
+
+    if (conn->fd == -2) {
+	/*
+	 * UDP connection
+	 */
+	if (conn->err != 0) {
+	    *errcode = conn->err;
+	    return -1;
+	}
+	return 1;
+    }
 
     /*
      * indicate that our fd became invalid.

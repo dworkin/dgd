@@ -50,6 +50,7 @@ extern void	   conn_ipnum	 (connection*, char*);
 extern void	   conn_ipname	 (connection*, char*);
 extern void	  *conn_host	 (char*, unsigned short, int*);
 extern connection *conn_connect	 (void*, int);
+extern connection *conn_dconnect (int, void*, int);
 extern int	   conn_check_connected (connection*, int*);
 extern bool	   conn_export	 (connection*, int*, char*, unsigned short*,
 				  short*, int*, int*, char**, char*);
@@ -79,6 +80,8 @@ extern void	comm_close	(Frame*, Object*);
 extern Object  *comm_user	();
 extern void	comm_connect	(Frame *f, Object *obj, char *addr,
 				 unsigned short port);
+extern void	comm_connect_dgram (Frame *f, Object *obj, int uport,
+				    char *addr, unsigned short port);
 extern Array   *comm_users	(Dataspace*);
 extern bool     comm_is_connection (Object*);
 extern bool	comm_dump	(int);
