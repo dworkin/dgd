@@ -630,7 +630,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    ipv4 = TRUE;
 	} else {
 # ifdef INET6
-	    if (inet_pton(AF_INET6, thosts[n], &sin6) > 0) {
+	    if (inet_pton(AF_INET6, thosts[n], &sin6.sin6_addr) > 0) {
 		sin6.sin6_family = AF_INET6;
 		ipv6 = TRUE;
 	    } else {
@@ -692,7 +692,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    ipv4 = TRUE;
 	} else {
 # ifdef INET6
-	    if (inet_pton(AF_INET6, bhosts[n], &sin6) > 0) {
+	    if (inet_pton(AF_INET6, bhosts[n], &sin6.sin6_addr) > 0) {
 		sin6.sin6_family = AF_INET6;
 		ipv6 = TRUE;
 	    } else {
@@ -754,7 +754,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    ipv4 = TRUE;
 	} else {
 # ifdef INET6
-	    if (inet_pton(AF_INET6, dhosts[n], &sin6) > 0) {
+	    if (inet_pton(AF_INET6, dhosts[n], &sin6.sin6_addr) > 0) {
 		sin6.sin6_family = AF_INET6;
 		ipv6 = TRUE;
 	    } else {
