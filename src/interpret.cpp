@@ -35,7 +35,7 @@
 
 static Value stack[MIN_STACK];	/* initial stack */
 static Frame topframe;		/* top frame */
-static rlinfo rlim;		/* top rlimits info */
+static RLInfo rlim;		/* top rlimits info */
 Frame *cframe;			/* current frame */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
@@ -374,9 +374,9 @@ void i_map_aggregate(Frame *f, unsigned int size)
 	} while (--size != 0);
 	f->sp = v;
 	try {
-	    ec_push((ec_ftn) NULL);
+	    ErrorContext::push();
 	    a->mapSort();
-	    ec_pop();
+	    ErrorContext::pop();
 	} catch (...) {
 	    /* error in sorting, delete mapping and pass on error */
 	    a->ref();
@@ -1059,7 +1059,7 @@ void i_lvalues(Frame *f, int n)
  */
 Int i_get_depth(Frame *f)
 {
-    rlinfo *rlim;
+    RLInfo *rlim;
 
     rlim = f->rlim;
     if (rlim->nodepth) {
@@ -1074,7 +1074,7 @@ Int i_get_depth(Frame *f)
  */
 Int i_get_ticks(Frame *f)
 {
-    rlinfo *rlim;
+    RLInfo *rlim;
 
     rlim = f->rlim;
     if (rlim->noticks) {
@@ -1120,10 +1120,10 @@ static void i_check_rlimits(Frame *f)
  */
 void i_new_rlimits(Frame *f, Int depth, Int t)
 {
-    rlinfo *rlim;
+    RLInfo *rlim;
 
-    rlim = ALLOC(rlinfo, 1);
-    memset(rlim, '\0', sizeof(rlinfo));
+    rlim = ALLOC(RLInfo, 1);
+    memset(rlim, '\0', sizeof(RLInfo));
     if (depth != 0) {
 	if (depth < 0) {
 	    rlim->nodepth = TRUE;
@@ -1158,9 +1158,9 @@ void i_new_rlimits(Frame *f, Int depth, Int t)
  * NAME:	interpret->set_rlimits()
  * DESCRIPTION:	restore rlimits to an earlier state
  */
-void i_set_rlimits(Frame *f, rlinfo *rlim)
+void i_set_rlimits(Frame *f, RLInfo *rlim)
 {
-    rlinfo *r, *next;
+    RLInfo *r, *next;
 
     r = f->rlim;
     if (r->ticks < 0) {
@@ -2004,10 +2004,10 @@ static void i_interpret(Frame *f, char *pc)
 	    atomic = f->atomic;
 	    p = f->prog + FETCH2U(pc, u);
 	    try {
-		ec_push((ec_ftn) i_catcherr);
+		ErrorContext::push((ErrorContext::Handler) i_catcherr);
 		f->atomic = FALSE;
 		i_interpret(f, pc);
-		ec_pop();
+		ErrorContext::pop();
 		pc = f->pc;
 		*--f->sp = nil_value;
 	    } catch (...) {
@@ -2017,7 +2017,7 @@ static void i_interpret(Frame *f, char *pc)
 		    CHECK_LOOP_TICKS();
 		}
 		pc = p;
-		PUSH_STRVAL(f, errorstr());
+		PUSH_STRVAL(f, ErrorContext::exception());
 	    }
 	    f->atomic = atomic;
 	    break;
@@ -2712,11 +2712,12 @@ bool i_call_critical(Frame *f, const char *func, int narg, int flag)
     i_new_rlimits(f, -1, -1);
     f->sp += narg;		/* so the error context knows what to pop */
     try {
-	ec_push((flag) ? (ec_ftn) NULL : (ec_ftn) emptyhandler);
+	ErrorContext::push((ErrorContext::Handler) ((flag) ?
+						     NULL : emptyhandler));
 	f->sp -= narg;	/* recover arguments */
 	call_driver_object(f, func, narg);
 	ok = TRUE;
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	ok = FALSE;
     }
@@ -2731,7 +2732,7 @@ bool i_call_critical(Frame *f, const char *func, int narg, int flag)
  */
 void i_runtime_error(Frame *f, Int depth)
 {
-    PUSH_STRVAL(f, errorstr());
+    PUSH_STRVAL(f, ErrorContext::exception());
     PUSH_INTVAL(f, depth);
     PUSH_INTVAL(f, i_get_ticks(f));
     if (!i_call_critical(f, "runtime_error", 3, FALSE)) {
@@ -2739,7 +2740,7 @@ void i_runtime_error(Frame *f, Int depth)
 	message((char *) NULL);
     } else {
 	if (f->sp->type == T_STRING) {
-	    set_errorstr(f->sp->string);
+	    ErrorContext::setException(f->sp->string);
 	}
 	i_del_value(f->sp++);
     }
@@ -2755,7 +2756,7 @@ void i_atomic_error(Frame *ftop, Int level)
 
     for (f = ftop; f->level != level; f = f->prev) ;
 
-    PUSH_STRVAL(ftop, errorstr());
+    PUSH_STRVAL(ftop, ErrorContext::exception());
     PUSH_INTVAL(ftop, f->depth);
     PUSH_INTVAL(ftop, i_get_ticks(ftop));
     if (!i_call_critical(ftop, "atomic_error", 3, FALSE)) {
@@ -2763,7 +2764,7 @@ void i_atomic_error(Frame *ftop, Int level)
 	message((char *) NULL);
     } else {
 	if (ftop->sp->type == T_STRING) {
-	    set_errorstr(ftop->sp->string);
+	    ErrorContext::setException(ftop->sp->string);
 	}
 	i_del_value(ftop->sp++);
     }

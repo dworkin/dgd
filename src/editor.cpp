@@ -179,7 +179,7 @@ String *ed_command(Object *obj, char *cmd)
     outbufsz = 0;
     internal = FALSE;
     try {
-	ec_push((ec_ftn) ed_handler);
+	ErrorContext::push((ErrorContext::Handler) ed_handler);
 	recursion = TRUE;
 	if (cb_command(e->ed, cmd)) {
 	    lb_inact(e->ed->edbuf->lb);
@@ -188,7 +188,7 @@ String *ed_command(Object *obj, char *cmd)
 	    recursion = FALSE;
 	    ed_del(obj);
 	}
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
 	lb_inact(e->ed->edbuf->lb);
@@ -196,7 +196,7 @@ String *ed_command(Object *obj, char *cmd)
 	if (!internal) {
 	    error((char *) NULL);	/* pass on error */
 	}
-	output("%s\012", errorstr()->text);	/* LF */
+	output("%s\012", ErrorContext::exception()->text);	/* LF */
     }
 
     if (outbufsz == 0) {

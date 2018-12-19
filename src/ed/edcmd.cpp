@@ -673,7 +673,7 @@ int cb_global(cmdbuf *cb)
      */
     cb->glob_rx = rx_new();
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	/* compile regexp */
 	p = rx_comp(cb->glob_rx, buffer);
 	if (p != (char *) NULL) {
@@ -706,7 +706,7 @@ int cb_global(cmdbuf *cb)
 
 	/* pop error context */
 	aborted = FALSE;
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	aborted = TRUE;
     }

@@ -131,9 +131,9 @@ bool io_load(editbuf *eb, char *fname, Int l, io *iobuf)
 
     /* add the block to the edit buffer */
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	eb_add(eb, l, get_line);
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	P_close(ffd);
 	error((char *) NULL);	/* pass on error */
@@ -212,12 +212,12 @@ bool io_save(editbuf *eb, char *fname, Int first, Int last, int append, io *iobu
 
     /* write range */
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	eb_range(eb, first, last, put_line, FALSE);
 	if (P_write(ffd, buffer, inbuf) != inbuf) {
 	    error("error while writing file \"/%s\"", filename);
 	}
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	P_close(ffd);
 	error((char *) NULL);	/* pass on error */

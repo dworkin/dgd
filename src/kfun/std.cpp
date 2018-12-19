@@ -76,7 +76,7 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
 	strs = (String **) NULL;
     }
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	if (OBJR(f->oindex)->flags & O_DRIVER) {
 	    Frame *xf;
 
@@ -88,7 +88,7 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
 	    iflag = FALSE;
 	}
 	obj = c_compile(f, file, obj, strs, nargs, iflag);
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	if (nargs != 0) {
 	    AFREE(strs - nargs);
@@ -1027,7 +1027,7 @@ int kf_error(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    serror(f->sp->string);
+    error(f->sp->string);
     return 0;
 }
 # endif

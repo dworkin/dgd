@@ -533,7 +533,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
     ncompiled++;
 
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	for (;;) {
 	    if (c_autodriver() != 0) {
 		ctrl_init();
@@ -609,7 +609,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 		error("Failed to compile \"/%s\"", file_c);
 	    }
 	}
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	pp_clear();
 	ctrl_clear();

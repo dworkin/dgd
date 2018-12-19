@@ -739,7 +739,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
     i = a->size;
     v = a->elts;
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	/* restore the values */
 	while (i > 0) {
 	    buf = restore_value(x, buf, v);
@@ -753,7 +753,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 	if (*buf++ != '}' || *buf++ != ')') {
 	    restore_error(x, "'})' expected");
 	}
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	a->ref();
 	a->del();
@@ -791,7 +791,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
     i = a->size;
     v = a->elts;
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	/* restore the values */
 	while (i > 0) {
 	    buf = restore_value(x, buf, v);
@@ -811,7 +811,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	    restore_error(x, "'])' expected");
 	}
 	a->mapSort();
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	a->ref();
 	a->del();
@@ -984,7 +984,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     buf = buffer;
     pending = FALSE;
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	for (;;) {
 	    if (f->lwobj != (Array *) NULL) {
 		var = &f->lwobj->elts[2];
@@ -1096,7 +1096,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 			    FREE(buffer);
 			}
 			f->sp->number = 1;
-			ec_pop();
+			ErrorContext::pop();
 			return 0;
 		    }
 		}

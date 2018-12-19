@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,16 +17,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef void  (*ec_ftn)		(Frame*, Int);
+class ErrorContext : public Allocated {
+public:
+    typedef void (*Handler) (Frame*, Int);
 
-extern void	ec_clear	();
-extern void	ec_push		(ec_ftn);
-extern void	ec_pop		();
+    static void push(Handler handler = NULL);
+    static void pop();
 
-extern void	serror		(String*);
-extern void	set_errorstr	(String*);
-extern String  *errorstr	();
+    static void setException(String *err);
+    static String *exception();
+    static void clearException();
 
-extern void	message		(const char *, ...);
-extern void	error		(const char *, ...);
-extern void	fatal		(const char *, ...);
+    Frame *f;				/* frame context */
+    unsigned short offset;		/* sp offset */
+    bool atomic;			/* atomic status */
+    RLInfo *rlim;			/* rlimits info */
+    Handler handler;			/* error handler */
+    ErrorContext *next;			/* next in linked list */
+
+private:
+    ErrorContext(Frame *frame, Handler handler);
+
+    static String *err;			/* current error string */
+};
+
+extern void error	(const char *format, ...);
+extern void error	(String *str);
+extern void message	(const char *, ...);
+extern void fatal	(const char *, ...);

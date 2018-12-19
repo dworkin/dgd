@@ -26,11 +26,12 @@ struct Value;
 struct Control;
 struct Dataplane;
 struct Dataspace;
+struct RLInfo;
 struct Frame;
 
 # include "config.h"
-# include "error.h"
 # include "alloc.h"
+# include "error.h"
 
 # define BOFF(bit)		((bit) >> 5)
 # define BBIT(bit)		(1 << ((bit) & 31))

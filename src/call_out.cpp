@@ -685,7 +685,7 @@ void co_call(Frame *f)
 	    freecallout(&running, i, i, 0);
 
 	    try {
-		ec_push((ec_ftn) errhandler);
+		ErrorContext::push((ErrorContext::Handler) errhandler);
 		str = d_get_call_out(obj->dataspace(), handle, f, &nargs);
 		if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
 			   nargs)) {
@@ -693,7 +693,7 @@ void co_call(Frame *f)
 		    i_del_value(f->sp++);
 		}
 		(f->sp++)->string->del();
-		ec_pop();
+		ErrorContext::pop();
 	    } catch (...) { }
 	    endtask();
 	}

@@ -1618,17 +1618,17 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     conf_dumpinit();
 
     Alloc::staticMode();		/* allocate error context statically */
-    ec_push((ec_ftn) NULL);		/* guard error context */
+    ErrorContext::push();		/* guard error context */
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	Alloc::dynamicMode();
 	if (snapshot == (char *) NULL) {
 	    /* initialize mudlib */
 	    d_converted();
 	    try {
-		ec_push((ec_ftn) errhandler);
+		ErrorContext::push((ErrorContext::Handler) errhandler);
 		call_driver_object(cframe, "initialize", 0);
-		ec_pop();
+		ErrorContext::pop();
 	    } catch (...) {
 		error((char *) NULL);
 	    }
@@ -1640,24 +1640,24 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 
 	    /* notify mudlib */
 	    try {
-		ec_push((ec_ftn) errhandler);
+		ErrorContext::push((ErrorContext::Handler) errhandler);
 		if (hotbooted) {
 		    PUSH_INTVAL(cframe, TRUE);
 		    call_driver_object(cframe, "restored", 1);
 		} else {
 		    call_driver_object(cframe, "restored", 0);
 		}
-		ec_pop();
+		ErrorContext::pop();
 	    } catch (...) {
 		error((char *) NULL);
 	    }
 	}
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	message((char *) NULL);
 	endtask();
 	message("Config error: initialization failed\012");	/* LF */
-	ec_pop();			/* remove guard */
+	ErrorContext::pop();		/* remove guard */
 
 	sw_finish();
 	comm_clear();
@@ -1677,7 +1677,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     }
     i_del_value(cframe->sp++);
     endtask();
-    ec_pop();				/* remove guard */
+    ErrorContext::pop();		/* remove guard */
 
     /* inform extension modules about restored connections */
     conf_fdlist();
@@ -1922,12 +1922,12 @@ Array *conf_status(Frame *f)
     Array *a;
 
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	a = Array::createNil(f->data, 27);
 	for (i = 0, v = a->elts; i < 27; i++, v++) {
 	    conf_statusi(f, i, v);
 	}
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	a->ref();
 	a->del();
@@ -2015,11 +2015,11 @@ Array *conf_object(Dataspace *data, Object *obj)
 
     a = Array::createNil(data, 7);
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	for (i = 0, v = a->elts; i < 7; i++, v++) {
 	    conf_objecti(data, obj, i, v);
 	}
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	a->ref();
 	a->del();

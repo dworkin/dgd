@@ -2253,7 +2253,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 
     m = (Array *) NULL;
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	m = Array::mapCreate(data, size);
 	memset(m->elts, '\0', size * sizeof(Value));
 	for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
@@ -2279,7 +2279,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 		PUT_STRVAL(v, d_get_strconst(ctrl, f->inherit, f->index));
 	    }
 	}
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	if (m != (Array *) NULL) {
 	    /* discard mapping */

@@ -398,14 +398,14 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
     }
     olduser = this_user;
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	this_user = obj->index;
 	PUSH_INTVAL(f, destruct);
 	if (i_call(f, obj, (Array *) NULL, "close", 5, TRUE, 1)) {
 	    i_del_value(f->sp++);
 	}
 	this_user = olduser;
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	this_user = olduser;
 	error((char *) NULL);
@@ -863,7 +863,7 @@ static void comm_taccept(Frame *f, connection *conn, int port)
     Object *obj;
 
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	PUSH_INTVAL(f, port);
 	call_driver_object(f, "telnet_connect", 1);
 	if (f->sp->type != T_OBJECT) {
@@ -872,7 +872,7 @@ static void comm_taccept(Frame *f, connection *conn, int port)
 	obj = OBJ(f->sp->oindex);
 	f->sp++;
 	usr = comm_new(f, obj, conn, CF_TELNET);
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	conn_del(conn);		/* delete connection */
 	error((char *) NULL);	/* pass on error */
@@ -897,7 +897,7 @@ static void comm_baccept(Frame *f, connection *conn, int port)
     Object *obj;
 
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	PUSH_INTVAL(f, port);
 	call_driver_object(f, "binary_connect", 1);
 	if (f->sp->type != T_OBJECT) {
@@ -906,7 +906,7 @@ static void comm_baccept(Frame *f, connection *conn, int port)
 	obj = OBJ(f->sp->oindex);
 	f->sp++;
 	comm_new(f, obj, conn, 0);
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	conn_del(conn);		/* delete connection */
 	error((char *) NULL);	/* pass on error */
@@ -929,7 +929,7 @@ static void comm_daccept(Frame *f, connection *conn, int port)
     Object *obj;
 
     try {
-	ec_push((ec_ftn) NULL);
+	ErrorContext::push();
 	PUSH_INTVAL(f, port);
 	call_driver_object(f, "datagram_connect", 1);
 	if (f->sp->type != T_OBJECT) {
@@ -939,7 +939,7 @@ static void comm_daccept(Frame *f, connection *conn, int port)
 	f->sp++;
 	comm_new(f, obj, conn, CF_UDPDATA);
 	ndgram++;
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	conn_del(conn);		/* delete connection */
 	error((char *) NULL);	/* pass on error */
@@ -986,7 +986,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
     }
 
     try {
-	ec_push(errhandler);
+	ErrorContext::push(errhandler);
 	if (ntport != 0 && nusers < maxusers) {
 	    n = nexttport;
 	    do {
@@ -1423,7 +1423,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	    break;
 	}
 
-	ec_pop();
+	ErrorContext::pop();
     } catch (...) {
 	endtask();
 	this_user = OBJ_NONE;

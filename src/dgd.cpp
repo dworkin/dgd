@@ -84,7 +84,7 @@ void endtask()
     Object::clean();
     i_clear();
     ed_clear();
-    ec_clear();
+    ErrorContext::clearException();
 
     co_swapcount(d_swapout(fragment));
 
@@ -215,10 +215,10 @@ int dgd_main(int argc, char **argv)
 	if (intr) {
 	    intr = FALSE;
 	    try {
-		ec_push((ec_ftn) errhandler);
+		ErrorContext::push((ErrorContext::Handler) errhandler);
 		call_driver_object(cframe, "interrupt", 0);
 		i_del_value(cframe->sp++);
-		ec_pop();
+		ErrorContext::pop();
 	    } catch (...) { }
 	    endtask();
 	}

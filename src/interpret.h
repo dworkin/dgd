@@ -195,12 +195,12 @@
 # define SWITCH_STRING	2
 
 
-struct rlinfo {
+struct RLInfo {
     Int maxdepth;		/* max stack depth */
     Int ticks;			/* ticks left */
     bool nodepth;		/* no stack depth checking */
     bool noticks;		/* no ticks checking */
-    rlinfo *next;		/* next in linked list */
+    RLInfo *next;		/* next in linked list */
 };
 
 struct Frame {
@@ -223,7 +223,7 @@ struct Frame {
     Value *argp;		/* argument pointer (previous sp) */
     Value *fp;			/* frame pointer (at end of local stack) */
     Int depth;			/* stack depth */
-    rlinfo *rlim;		/* rlimits info */
+    RLInfo *rlim;		/* rlimits info */
     Int level;			/* plane level */
     bool atomic;		/* within uncaught atomic code */
     bool kflv;			/* kfun with lvalue parameters */
@@ -254,7 +254,7 @@ extern void	i_lvalues	(Frame*, int);
 extern Int	i_get_depth	(Frame*);
 extern Int	i_get_ticks	(Frame*);
 extern void	i_new_rlimits	(Frame*, Int, Int);
-extern void	i_set_rlimits	(Frame*, rlinfo*);
+extern void	i_set_rlimits	(Frame*, RLInfo*);
 extern Frame   *i_set_sp	(Frame*, Value*);
 extern Frame   *i_prev_object	(Frame*, int);
 extern const char    *i_prev_program	(Frame*, int);
