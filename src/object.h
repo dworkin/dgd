@@ -53,8 +53,8 @@ public:
 
     static void init(unsigned int, Uint);
     static void newPlane();
-    static void	commitPlane();
-    static void	discardPlane();
+    static void commitPlane();
+    static void discardPlane();
 
     static Object *oread(unsigned int index) {
 	return (BTST(ocmap, index)) ? access(index, OACC_READ) : &objTable[index];
@@ -66,16 +66,16 @@ public:
     static const char *builtinName(Int);
     static Object *find(char*, int);
 
-    static bool	space();
-    static void	clean();
+    static bool space();
+    static void clean();
     static uindex ocount();
     static uindex dobjects();
     static bool save(int, bool);
     static void restore(int, bool);
-    static bool	copy(Uint);
+    static bool copy(Uint);
 
-    static void	swapout();
-    static void	dumpState(bool);
+    static void swapout();
+    static void dumpState(bool);
     static void finish(bool);
 
     static Object *objTable;
