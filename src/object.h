@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -43,6 +43,7 @@ struct Object : public Hashtab::Entry {
 # define O_TOUCHED		0x08
 # define O_USER			0x10
 # define O_EDITOR		0x20
+# define O_COMPILED		0x40
 # define O_LWOBJ		0x80
 
 # define O_SPECIAL		0x30
@@ -89,6 +90,7 @@ extern uindex	  o_count		();
 extern uindex	  o_dobjects		();
 extern bool	  o_dump		(int, bool);
 extern void	  o_restore		(int, unsigned int, bool);
+extern uindex	  o_restoredprogs	();
 extern bool	  o_copy		(Uint);
 
 extern void	  swapout		();

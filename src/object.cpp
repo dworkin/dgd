@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -72,6 +72,7 @@ bool swap, dump, incr, stop, boot; /* global state vars */
 static bool recount;		/* object counts recalculated? */
 static uindex otabsize;		/* size of object table */
 static uindex uobjects;		/* objects to check for upgrades */
+static uindex rprograms;	/* # object programs restored */
 static objplane baseplane;	/* base object plane */
 static objplane *oplane;	/* current object plane */
 static Uint *omap;		/* object dump bitmap */
@@ -114,6 +115,7 @@ void o_init(unsigned int n, Uint interval)
     odcount = 1;
     obase = TRUE;
     recount = TRUE;
+    rprograms = 0;
 }
 
 
@@ -641,6 +643,10 @@ static void o_delete(Object *o, Frame *f)
     dinherit *inh;
     int i;
 
+    if (!(o->flags & O_COMPILED)) {
+	--rprograms;
+    }
+
     ctrl = (O_UPGRADING(o)) ? OBJR(o->prev)->ctrl : o_control(o);
 
     /* put in deleted list */
@@ -679,7 +685,7 @@ void o_upgrade(Object *obj, Control *ctrl, Frame *f)
     /* allocate upgrade object */
     tmpl = o_alloc();
     tmpl->name = (char *) NULL;
-    tmpl->flags = O_MASTER;
+    tmpl->flags = O_MASTER | (obj->flags & O_COMPILED);
     tmpl->count = 0;
     tmpl->update = obj->update;
     tmpl->ctrl = ctrl;
@@ -1073,6 +1079,11 @@ void o_clean()
 	    baseplane.destruct = o->index;
 	} else {
 	    /* upgrade objects */
+	    if (o->flags & O_COMPILED) {
+		o->flags &= ~O_COMPILED;
+	    } else {
+		--rprograms;
+	    }
 	    up->cref -= 2;
 	    o->u_ref = up->cref;
 	    if (up->flags & O_LWOBJ) {
@@ -1360,6 +1371,7 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
     /* read object names */
     buflen = 0;
     for (i = 0, o = otable; i < baseplane.nobjects; i++, o++) {
+	o->flags &= ~O_COMPILED;
 	if (rlwobj != 0) {
 	    o->flags &= ~O_LWOBJ;
 	}
@@ -1385,6 +1397,7 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 	    m_static();
 	    o->name = strcpy(ALLOC(char, len = strlen(p) + 1), p);
 	    m_dynamic();
+	    rprograms++;
 
 	    if (o->count != 0) {
 		Hashtab::Entry **h;
@@ -1505,6 +1518,15 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
     }
 
     baseplane.ocount = count;
+}
+
+/*
+ * NAME:	Object->restoredprogs()
+ * DESCRIPTION:	return number of restored programs
+ */
+uindex o_restoredprogs()
+{
+    return rprograms;
 }
 
 /*

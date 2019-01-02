@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -152,6 +152,7 @@ struct alignz { char c;			};
 # define DUMP_VSTRING	42	/* version string */
 
 # define FLAGS_PARTIAL	0x01	/* partial snapshot */
+# define FLAGS_COMP159	0x02	/* all objects recompiled by 1.5.9+ */
 # define FLAGS_HOTBOOT	0x04	/* hotboot snapshot */
 
 typedef char dumpinfo[64];
@@ -213,6 +214,7 @@ static int realign;		/* align(eindex) */
 static Uint starttime;		/* start time */
 static Uint elapsed;		/* elapsed time */
 static Uint boottime;		/* boot time */
+static bool comp159;		/* all programs compiled by 1.5.9+ */
 
 /*
  * NAME:	conf->dumpinit()
@@ -263,6 +265,7 @@ static void conf_dumpinit()
     case sizeof(short):	ealign = salign; break;
     case sizeof(Int):	ealign = ialign; break;
     }
+    comp159 = TRUE;
 }
 
 /*
@@ -297,6 +300,10 @@ void conf_dump(bool incr, bool boot)
     dflags = 0;
     if (o_dobjects() > 0) {
 	dflags |= FLAGS_PARTIAL;
+    }
+    if (comp159 || o_restoredprogs() == 0) {
+	comp159 = TRUE;
+	dflags |= FLAGS_COMP159;
     }
     fd = sw_dump(conf[DUMP_FILE].u.str, dflags & FLAGS_PARTIAL);
     if (!kf_dump(fd)) {
@@ -421,6 +428,9 @@ static bool conf_restore(int fd, int fd2)
 	    error("Secondary snapshot has different type");
 	}
 	sw_restore2(fd2);
+    }
+    if (!(rdflags & FLAGS_COMP159)) {
+	comp159 = FALSE;
     }
 
     starttime = (UCHAR(rheader[DUMP_STARTTIME + 0]) << 24) |
