@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -152,6 +152,7 @@ struct alignz { char c;			};
 # define DUMP_VSTRING	42	/* version string */
 
 # define FLAGS_PARTIAL	0x01	/* partial snapshot */
+# define FLAGS_COMP159	0x02	/* all programs compiled by 1.5.9+ */
 # define FLAGS_HOTBOOT	0x04	/* hotboot snapshot */
 
 typedef char dumpinfo[64];
@@ -364,6 +365,9 @@ static bool conf_restore(int fd, int fd2)
 	error("Incompatible snapshot version");
     }
     if (rheader[DUMP_VERSION] < 15) {
+	if (!(rdflags & FLAGS_COMP159)) {
+	    error("Snapshot contains legacy programs");
+	}
 	conv_14 = TRUE;
     }
     header[DUMP_VERSION] = rheader[DUMP_VERSION];

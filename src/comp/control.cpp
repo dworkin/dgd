@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -981,7 +981,6 @@ void ctrl_create()
     newohash = oh_new("/");		/* unique name */
     newohash->index = ninherits;
     newctrl = d_new_control();
-    newctrl->flags |= CTRL_VM_2_1;
     inh = newctrl->inherits =
 	  ALLOC(dinherit, newctrl->ninherits = ninherits + 1);
     newctrl->imap = ALLOC(char, (ninherits + 2) * (ninherits + 1) / 2);
