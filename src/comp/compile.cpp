@@ -2105,7 +2105,8 @@ static node *funcall(node *call, node *args, int funcptr)
 	}
     }
 
-    if (proto[PROTO_SIZE(proto) - 1] == T_LVALUE) {
+    if ((func->r.number >> 24) == KFCALL &&
+	proto[PROTO_SIZE(proto) - 1] == T_LVALUE) {
 	/* kfuns can have lvalue parameters */
 	func->r.number |= (long) KFCALL_LVAL << 24;
     }
