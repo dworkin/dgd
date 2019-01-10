@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2104,7 +2104,8 @@ static node *funcall(node *call, node *args, int funcptr)
 	}
     }
 
-    if (proto[PROTO_SIZE(proto) - 1] == T_LVALUE) {
+    if ((func->r.number >> 24) == KFCALL &&
+	proto[PROTO_SIZE(proto) - 1] == T_LVALUE) {
 	/* kfuns can have lvalue parameters */
 	func->r.number |= (long) KFCALL_LVAL << 24;
     }
