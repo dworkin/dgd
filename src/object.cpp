@@ -421,13 +421,13 @@ void Object::commitPlane()
  */
 void Object::discardPlane()
 {
-    ObjPatch **o, *op;
+    ObjPatch **o, *op, *clist;
     int i;
-    Object *obj, *clist;
+    Object *obj;
     ObjPlane *p;
 
     if (oplane->optab != (ObjPatchTable *) NULL) {
-	clist = (Object *) NULL;
+	clist = (ObjPatch *) NULL;
 	for (i = OBJPATCHHTABSZ, o = oplane->optab->op; --i >= 0; o++) {
 	    while (*o != (ObjPatch *) NULL && (*o)->plane == oplane) {
 		op = *o;
@@ -471,20 +471,22 @@ void Object::discardPlane()
 		    }
 		}
 
+		*o = op->next;
 		if (obj->index == OBJ_NONE) {
 		    /*
 		     * discard newly created object
 		     */
-		    if ((op->obj.flags & O_MASTER) &&
-			op->obj.ctrl != (Control *) NULL) {
-			op->obj.next = clist;
-			clist = &op->obj;
-		    }
 		    if (op->obj.data != (Dataspace *) NULL) {
 			/* discard new data block */
 			d_del_dataspace(op->obj.data);
 		    }
 		    obj->index = op->obj.index;
+		    if ((op->obj.flags & O_MASTER) &&
+			op->obj.ctrl != (Control *) NULL) {
+			op->next = clist;
+			clist = op;
+			continue;
+		    }
 		} else {
 		    /* pass on control block and dataspace */
 		    obj->ctrl = op->obj.ctrl;
@@ -497,16 +499,17 @@ void Object::discardPlane()
 			}
 		    }
 		}
-		*o = op->next;
 		delete op;
 	    }
 	}
 
 	/* discard new control blocks */
-	while (clist != (Object *) NULL) {
-	    obj = clist;
-	    clist = (Object *) obj->next;
+	while (clist != (ObjPatch *) NULL) {
+	    obj = &clist->obj;
 	    d_del_control(obj->ctrl);
+	    op = clist;
+	    clist = clist->next;
+	    delete op;
 	}
     }
 
