@@ -32,6 +32,28 @@
 
 struct scontrol {
     sector nsectors;		/* # sectors in part one */
+    char flags;			/* control flags: compression */
+    char version;		/* program version */
+    short ninherits;		/* # objects in inherit table */
+    uindex imapsz;		/* inherit map size */
+    Uint progsize;		/* size of program code */
+    Uint compiled;		/* time of compilation */
+    unsigned short comphigh;	/* time of compilation high word */
+    unsigned short nstrings;	/* # strings in string constant table */
+    Uint strsize;		/* size of string constant table */
+    char nfuncdefs;		/* # entries in function definition table */
+    char nvardefs;		/* # entries in variable definition table */
+    char nclassvars;		/* # class variables */
+    uindex nfuncalls;		/* # entries in function call table */
+    unsigned short nsymbols;	/* # entries in symbol table */
+    unsigned short nvariables;	/* # variables */
+    unsigned short vmapsize;	/* size of variable map, or 0 for none */
+};
+
+static char sc_layout[] = "dccsuiissicccusss";
+
+struct scontrol0 {
+    sector nsectors;		/* # sectors in part one */
     short flags;		/* control flags: compression */
     short ninherits;		/* # objects in inherit table */
     uindex imapsz;		/* inherit map size */
@@ -49,7 +71,7 @@ struct scontrol {
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
 };
 
-static char sc_layout[] = "dssuiissicccusss";
+static char sc0_layout[] = "dssuiissicccusss";
 
 struct sinherit {
     uindex oindex;		/* index in object table */
@@ -154,6 +176,7 @@ static Dataspace *gcdata;		/* next dataspace to garbage collect */
 static sector nctrl;			/* # control blocks */
 static sector ndata;			/* # dataspace blocks */
 static bool conv_14;			/* convert arrays & strings? */
+static bool conv_15;			/* convert control blocks? */
 static bool converted;			/* conversion complete? */
 
 
@@ -167,7 +190,7 @@ void d_init()
     dhead = dtail = (Dataspace *) NULL;
     gcdata = (Dataspace *) NULL;
     nctrl = ndata = 0;
-    conv_14 = FALSE;
+    conv_14 = conv_15 = FALSE;
     converted = FALSE;
 }
 
@@ -175,9 +198,10 @@ void d_init()
  * NAME:	data->init_conv()
  * DESCRIPTION:	prepare for conversions
  */
-void d_init_conv(bool c14)
+void d_init_conv(bool c14, bool c15)
 {
     conv_14 = c14;
+    conv_15 = c15;
 }
 
 /*
@@ -204,6 +228,7 @@ Control *d_new_control()
     nctrl++;
 
     ctrl->flags = 0;
+    ctrl->version = CTRL_VERSION;
 
     ctrl->nsectors = 0;		/* nothing on swap device yet */
     ctrl->sectors = (sector *) NULL;
@@ -373,6 +398,7 @@ static Control *load_control(Object *obj, Uint instance,
     size += sizeof(scontrol);
 
     ctrl->flags = header.flags;
+    ctrl->version = header.version;
 
     /* inherits */
     ctrl->ninherits = header.ninherits;
@@ -1408,6 +1434,7 @@ static void d_save_control(Control *ctrl)
 
     /* create header */
     header.flags = ctrl->flags & CTRL_UNDEFINED;
+    header.version = ctrl->version;
     header.ninherits = ctrl->ninherits;
     header.imapsz = ctrl->imapsz;
     header.compiled = ctrl->compiled;
@@ -2393,9 +2420,34 @@ static Control *d_conv_control(Object *obj, Uint instance,
     /*
      * restore from snapshot
      */
-    size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1, (Uint) 0,
-		  readv);
+    if (conv_15) {
+	scontrol0 h0;
+
+	size = d_conv((char *) &h0, &obj->cfirst, sc0_layout, (Uint) 1,
+		      (Uint) 0, readv);
+	header.nsectors = h0.nsectors;
+	header.flags = h0.flags;
+	header.version = 0;
+	header.ninherits = h0.ninherits;
+	header.imapsz = h0.imapsz;
+	header.progsize = h0.progsize;
+	header.compiled = h0.compiled;
+	header.comphigh = h0.comphigh;
+	header.nstrings = h0.nstrings;
+	header.strsize = h0.strsize;
+	header.nfuncdefs = h0.nfuncdefs;
+	header.nvardefs = h0.nvardefs;
+	header.nclassvars = h0.nclassvars;
+	header.nfuncalls = h0.nfuncalls;
+	header.nsymbols = h0.nsymbols;
+	header.nvariables = h0.nvariables;
+	header.vmapsize = h0.vmapsize;
+    } else {
+	size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1,
+		      (Uint) 0, readv);
+    }
     ctrl->flags = header.flags;
+    ctrl->version = header.version;
     ctrl->ninherits = header.ninherits;
     ctrl->imapsz = header.imapsz;
     ctrl->compiled = header.compiled;

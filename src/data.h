@@ -70,7 +70,8 @@ struct Control {
     uindex oindex;		/* i object */
     Uint instance;		/* i instance */
 
-    short flags;		/* various bitflags */
+    char flags;			/* various bitflags */
+    char version;		/* program version */
 
     short ninherits;		/* i/o # inherited objects */
     dinherit *inherits;		/* i/o inherit objects */
@@ -231,7 +232,7 @@ struct Dataspace {
 /* sdata.c */
 
 extern void		d_init		 ();
-extern void		d_init_conv	 (bool);
+extern void		d_init_conv	 (bool, bool);
 
 extern Control	       *d_new_control	 ();
 extern Dataspace       *d_new_dataspace  (Object*);
@@ -304,6 +305,8 @@ extern void		d_del_dataspace	(Dataspace*);
 # define CTRL_STRCMP		0x00c	/* strings compressed */
 # define CTRL_UNDEFINED		0x010	/* has undefined functions */
 # define CTRL_VARMAP		0x020	/* varmap updated */
+
+# define CTRL_VERSION		1	/* program version */
 
 /* bit values for dataspace->flags */
 # define DATA_STRCMP		0x03	/* strings compressed */

@@ -138,7 +138,7 @@ struct aligni { char fill; Int i;	};
 struct alignp { char fill; char *p;	};
 struct alignz { char c;			};
 
-# define FORMAT_VERSION	15
+# define FORMAT_VERSION	16
 
 # define DUMP_VALID	0	/* valid dump flag */
 # define DUMP_VERSION	1	/* snapshot version number */
@@ -356,11 +356,11 @@ static unsigned int conf_header(int fd, dumpinfo h)
  */
 static bool conf_restore(int fd, int fd2)
 {
-    bool conv_14;
+    bool conv_14, conv_15;
     unsigned int secsize;
 
     secsize = conf_header(fd, rheader);
-    conv_14 = FALSE;
+    conv_14 = conv_15 = FALSE;
     if (rheader[DUMP_VERSION] < 14) {
 	error("Incompatible snapshot version");
     }
@@ -369,6 +369,9 @@ static bool conf_restore(int fd, int fd2)
 	    error("Snapshot contains legacy programs");
 	}
 	conv_14 = TRUE;
+    }
+    if (rheader[DUMP_VERSION] < 16) {
+	conv_15 = TRUE;
     }
     header[DUMP_VERSION] = rheader[DUMP_VERSION];
     if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0 ||
@@ -434,7 +437,7 @@ static bool conf_restore(int fd, int fd2)
     sw_restore(fd, secsize);
     kf_restore(fd);
     Object::restore(fd, rdflags & FLAGS_PARTIAL);
-    d_init_conv(conv_14);
+    d_init_conv(conv_14, conv_15);
     if (conv_14) {
 	pc_restore(fd);
     }
