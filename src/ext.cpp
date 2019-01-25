@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,7 +31,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	0
-# define EXTENSION_MINOR	11
+# define EXTENSION_MINOR	12
 
 
 /*
@@ -436,7 +436,7 @@ static int (*jit_init)(int, int, size_t, size_t, int, int, uint8_t*, size_t,
 		       int);
 static void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
 			   uint8_t*, size_t, uint8_t*, size_t);
-static int (*jit_execute)(uint64_t, uint64_t, int, Value*);
+static int (*jit_execute)(uint64_t, uint64_t, int, int, Value*);
 
 /*
  * NAME:        ext->jit()
@@ -446,7 +446,7 @@ static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, uint8_t*,
 				size_t, int),
                     void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
                                     int, uint8_t*, size_t, uint8_t*, size_t),
-                    int (*execute)(uint64_t, uint64_t, int, Value*))
+                    int (*execute)(uint64_t, uint64_t, int, int, Value*))
 {
     jit_init = init;
     jit_compile = compile;
@@ -487,7 +487,8 @@ bool ext_execute(const Frame *f, int func, Value *val)
     if (ctrl->instance == 0) {
 	return FALSE;
     }
-    result = (*jit_execute)(ctrl->oindex, ctrl->instance, func, val);
+    result = (*jit_execute)(ctrl->oindex, ctrl->instance, ctrl->version, func,
+			    val);
     if (result < 0) {
 	/*
 	 * compile new program
