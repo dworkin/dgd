@@ -126,11 +126,18 @@ public:
     }
 
     static void operator delete(void *ptr) {
-	/* let the chunk allocator reuse this memory */
 	ChunkAllocator::Header *item;
 
+	/* let the chunk allocator reuse this memory */
 	item = (ChunkAllocator::Header *) ptr - 1;
 	item->chunk->del(item);
+    }
+
+    static void operator delete(void *ptr, ChunkAllocator &chunk) {
+	UNREFERENCED_PARAMETER(chunk);
+
+	/* exception thrown in constructor */
+	operator delete(ptr);
     }
 };
 

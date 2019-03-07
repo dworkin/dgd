@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1557,15 +1557,6 @@ static unsigned short i_switch_str(Frame *f, char *pc)
 }
 
 /*
- * NAME:	interpret->catcherr()
- * DESCRIPTION:	handle caught error
- */
-void i_catcherr(Frame *f, Int depth)
-{
-    i_runtime_error(f, depth);
-}
-
-/*
  * NAME:	interpret->interpret()
  * DESCRIPTION:	Main interpreter function. Interpret stack machine code.
  */
@@ -2004,7 +1995,7 @@ static void i_interpret(Frame *f, char *pc)
 	    atomic = f->atomic;
 	    p = f->prog + FETCH2U(pc, u);
 	    try {
-		ErrorContext::push((ErrorContext::Handler) i_catcherr);
+		ErrorContext::push((ErrorContext::Handler) i_runtime_error);
 		f->atomic = FALSE;
 		i_interpret(f, pc);
 		ErrorContext::pop();

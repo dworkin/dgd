@@ -354,7 +354,7 @@ static copatch *cop_new(Dataplane *plane, copatch **c, int type,
  * NAME:	copatch->del()
  * DESCRIPTION:	delete a callout patch
  */
-static void cop_del(Dataplane *plane, copatch **c, bool del)
+static void cop_del(copatch **c, bool del)
 {
     copatch *cop;
     dcallout *co;
@@ -614,7 +614,7 @@ static void commit_callouts(Dataplane *plane, bool merge)
 		    if (next == &cop->next) {
 			next = c;
 		    }
-		    cop_del(plane, c, TRUE);
+		    cop_del(c, TRUE);
 		} else {
 		    /*
 		     * commit to previous plane
@@ -633,7 +633,7 @@ static void commit_callouts(Dataplane *plane, bool merge)
 				    if (next == &cop->next) {
 					next = c;
 				    }
-				    cop_del(prev, c, TRUE);
+				    cop_del(c, TRUE);
 				    break;
 
 				case COP_REMOVE:
@@ -642,13 +642,13 @@ static void commit_callouts(Dataplane *plane, bool merge)
 					cop_release(*n);
 				    } else {
 					/* del old */
-					cop_del(prev, n, TRUE);
+					cop_del(n, TRUE);
 				    }
 				    /* del new */
 				    if (next == &cop->next) {
 					next = c;
 				    }
-				    cop_del(prev, c, TRUE);
+				    cop_del(c, TRUE);
 				    break;
 
 				case COP_REPLACE:
@@ -660,10 +660,10 @@ static void commit_callouts(Dataplane *plane, bool merge)
 					if (next == &cop->next) {
 					    next = c;
 					}
-					cop_del(prev, c, TRUE);
+					cop_del(c, TRUE);
 				    } else {
 					/* make replace into add, remove old */
-					cop_del(prev, n, TRUE);
+					cop_del(n, TRUE);
 					cop_commit(cop);
 				    }
 				    break;
@@ -830,14 +830,14 @@ static void discard_callouts(Dataplane *plane)
 	    switch (cop->type) {
 	    case COP_ADD:
 		d_free_call_out(data, cop->handle);
-		cop_del(plane, c, TRUE);
+		cop_del(c, TRUE);
 		--ncallout;
 		break;
 
 	    case COP_REMOVE:
 		d_alloc_call_out(data, cop->handle, cop->rco.time,
 				 cop->rco.mtime, cop->rco.nargs, cop->rco.val);
-		cop_del(plane, c, FALSE);
+		cop_del(c, FALSE);
 		ncallout++;
 		break;
 
@@ -846,7 +846,7 @@ static void discard_callouts(Dataplane *plane)
 		d_alloc_call_out(data, cop->handle, cop->rco.time,
 				 cop->rco.mtime, cop->rco.nargs, cop->rco.val);
 		cop_discard(cop);
-		cop_del(plane, c, TRUE);
+		cop_del(c, TRUE);
 		break;
 	    }
 	}
@@ -1281,7 +1281,7 @@ Int d_del_call_out(Dataspace *data, Uint handle, unsigned short *mtime)
 		if (cop->type == COP_REPLACE) {
 		    cop_release(cop);
 		} else {
-		    cop_del(plane, c, TRUE);
+		    cop_del(c, TRUE);
 		}
 		break;
 	    }

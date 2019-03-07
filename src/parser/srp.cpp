@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -56,7 +56,7 @@ static item *it_new(itchunk **c, char *ref, unsigned short ruleno, unsigned shor
  * NAME:	item->del()
  * DESCRIPTION:	delete an item
  */
-static item *it_del(itchunk *c, item *it)
+static item *it_del(item *it)
 {
     item *next;
 
@@ -961,7 +961,7 @@ static srpstate *srp_expand(srp *lr, srpstate *state)
     for (it = state->items, i = state->nitem; --i > 0; it = it->next) ;
     next = it->next;
     it->next = (item *) NULL;
-    for (it = next; it != (item *) NULL; it = it_del(lr->itc, it)) ;
+    for (it = next; it != (item *) NULL; it = it_del(it)) ;
 
     /*
      * sort and merge token and goto tables
