@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,54 +19,47 @@
 
 # define INCLUDE_FILE_IO
 # include "dgd.h"
+# include "hash.h"
 # include "swap.h"
-
-struct header {			/* swap slot header */
-    header *prev;		/* previous in swap slot list */
-    header *next;		/* next in swap slot list */
-    sector sec;			/* the sector that uses this slot */
-    sector swap;		/* the swap sector (if any) */
-    bool dirty;			/* has the swap slot been written to? */
-};
 
 static char *swapfile;			/* swap file name */
 static int swap;			/* swap file descriptor */
 static int dump, dump2;			/* snapshot descriptors */
 static char *mem;			/* swap slots in memory */
-static sector *map, *smap;		/* sector map, swap free map */
-static sector mfree, sfree;		/* free sector lists */
+static Sector *map, *smap;		/* sector map, swap free map */
+static Sector mfree, sfree;		/* free sector lists */
 static char *cbuf;			/* sector buffer */
-static sector cached;			/* sector currently cached in cbuf */
-static header *first, *last;		/* first and last swap slot */
-static header *lfree;			/* free swap slot list */
-static off_t slotsize;			/* sizeof(header) + size of sector */
+static Sector cached;			/* sector currently cached in cbuf */
+static Swap::SwapSlot *first, *last;	/* first and last swap slot */
+static Swap::SwapSlot *lfree;		/* free swap slot list */
+static off_t slotsize;			/* sizeof(SwapSlot) + size of sector */
 static unsigned int sectorsize;		/* size of sector */
 static unsigned int restoresecsize;	/* size of sector in restore file */
-static sector swapsize, cachesize;	/* # of sectors in swap and cache */
-static sector nsectors;			/* total swap sectors */
-static sector nfree;			/* # free sectors */
-static sector ssectors;			/* sectors actually in swap file */
-static sector sbarrier;			/* swap sector barrier */
+static Sector swapsize, cachesize;	/* # of sectors in swap and cache */
+static Sector nsectors;			/* total swap sectors */
+static Sector nfree;			/* # free sectors */
+static Sector ssectors;			/* sectors actually in swap file */
+static Sector sbarrier;			/* swap sector barrier */
 static bool swapping;			/* currently using a swapfile? */
 
 /*
- * NAME:	swap->init()
- * DESCRIPTION:	initialize the swap device
+ * initialize the swap device
  */
-void sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
+void Swap::init(char *file, unsigned int total, unsigned int cache,
+		unsigned int secsize)
 {
-    header *h;
-    sector i;
+    SwapSlot *h;
+    Sector i;
 
     /* allocate and initialize all tables */
     swapfile = file;
     swapsize = total;
     cachesize = cache;
     sectorsize = secsize;
-    slotsize = sizeof(header) + secsize;
+    slotsize = sizeof(SwapSlot) + secsize;
     mem = ALLOC(char, slotsize * cache);
-    map = ALLOC(sector, total);
-    smap = ALLOC(sector, total);
+    map = ALLOC(Sector, total);
+    smap = ALLOC(Sector, total);
     cbuf = ALLOC(char, secsize);
     cached = SW_UNUSED;
 
@@ -79,28 +72,27 @@ void sw_init(char *file, unsigned int total, unsigned int cache, unsigned int se
     /* init free sector maps */
     mfree = SW_UNUSED;
     sfree = SW_UNUSED;
-    lfree = h = (header *) mem;
+    lfree = h = (SwapSlot *) mem;
     for (i = cache - 1; i > 0; --i) {
 	h->sec = SW_UNUSED;
-	h->next = (header *) ((char *) h + slotsize);
+	h->next = (SwapSlot *) ((char *) h + slotsize);
 	h = h->next;
     }
     h->sec = SW_UNUSED;
-    h->next = (header *) NULL;
+    h->next = (SwapSlot *) NULL;
 
     /* no swap slots in use yet */
-    first = (header *) NULL;
-    last = (header *) NULL;
+    first = (SwapSlot *) NULL;
+    last = (SwapSlot *) NULL;
 
     swap = dump = -1;
     swapping = TRUE;
 }
 
 /*
- * NAME:	swap->finish()
- * DESCRIPTION:	clean up swapfile
+ * clean up swapfile
  */
-void sw_finish()
+void Swap::finish()
 {
     if (swap >= 0) {
 	char buf[STRINGSZ];
@@ -114,10 +106,9 @@ void sw_finish()
 }
 
 /*
- * NAME:	swap->write()
- * DESCRIPTION:	write possibly large items to the swap
+ * write possibly large items to the swap
  */
-bool sw_write(int fd, void *buffer, size_t size)
+bool Swap::write(int fd, void *buffer, size_t size)
 {
     while (size > SWAPCHUNK) {
 	if (P_write(fd, (char *) buffer, SWAPCHUNK) != SWAPCHUNK) {
@@ -130,10 +121,9 @@ bool sw_write(int fd, void *buffer, size_t size)
 }
 
 /*
- * NAME:	create()
- * DESCRIPTION:	create the swap file
+ * create the swap file
  */
-static void sw_create()
+void Swap::create()
 {
     char buf[STRINGSZ], *p;
 
@@ -141,16 +131,33 @@ static void sw_create()
     p = path_native(buf, swapfile);
     P_unlink(p);
     swap = P_open(p, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
-    if (swap < 0 || !sw_write(swap, cbuf, sectorsize)) {
+    if (swap < 0 || !write(swap, cbuf, sectorsize)) {
 	fatal("cannot create swap file \"%s\"", swapfile);
     }
 }
 
 /*
- * NAME:	swap->newv()
- * DESCRIPTION:	initialize a new vector of sectors
+ * count the number of sectors required for size bytes + a map
  */
-void sw_newv(sector *vec, unsigned int size)
+Sector Swap::mapsize(unsigned int size)
+{
+    Sector i, n;
+
+    /* calculate the number of sectors required */
+    n = 0;
+    for (;;) {
+	i = (size + n * sizeof(Sector) + sectorsize - 1) / sectorsize;
+	if (n == i) {
+	    return n;
+	}
+	n = i;
+    }
+}
+
+/*
+ * initialize a new vector of sectors
+ */
+void Swap::newv(Sector *vec, unsigned int size)
 {
     while (mfree != SW_UNUSED) {
 	/* reuse a previously deleted sector */
@@ -174,19 +181,19 @@ void sw_newv(sector *vec, unsigned int size)
 }
 
 /*
- * NAME:	swap->wipev()
- * DESCRIPTION:	wipe a vector of sectors
+ * wipe a vector of sectors
  */
-void sw_wipev(sector *vec, unsigned int size)
+void Swap::wipev(Sector *vec, unsigned int size)
 {
-    sector sec, i;
-    header *h;
+    Sector sec, i;
+    SwapSlot *h;
 
     vec += size;
     while (size > 0) {
 	sec = *--vec;
 	i = map[sec];
-	if (i < cachesize && (h=(header *) (mem + i * slotsize))->sec == sec) {
+	if (i < cachesize &&
+	    (h=(SwapSlot *) (mem + i * slotsize))->sec == sec) {
 	    i = h->swap;
 	    h->swap = SW_UNUSED;
 	} else {
@@ -205,13 +212,12 @@ void sw_wipev(sector *vec, unsigned int size)
 }
 
 /*
- * NAME:	swap->delv()
- * DESCRIPTION:	delete a vector of swap sectors
+ * delete a vector of swap sectors
  */
-void sw_delv(sector *vec, unsigned int size)
+void Swap::delv(Sector *vec, unsigned int size)
 {
-    sector sec, i;
-    header *h;
+    Sector sec, i;
+    SwapSlot *h;
 
     /*
      * note: sectors must have been wiped before being deleted!
@@ -220,7 +226,8 @@ void sw_delv(sector *vec, unsigned int size)
     while (size > 0) {
 	sec = *--vec;
 	i = map[sec];
-	if (i < cachesize && (h=(header *) (mem + i * slotsize))->sec == sec) {
+	if (i < cachesize &&
+	    (h=(SwapSlot *) (mem + i * slotsize))->sec == sec) {
 	    /*
 	     * remove the swap slot from the first-last list
 	     */
@@ -228,16 +235,16 @@ void sw_delv(sector *vec, unsigned int size)
 		h->prev->next = h->next;
 	    } else {
 		first = h->next;
-		if (first != (header *) NULL) {
-		    first->prev = (header *) NULL;
+		if (first != (SwapSlot *) NULL) {
+		    first->prev = (SwapSlot *) NULL;
 		}
 	    }
 	    if (h != last) {
 		h->next->prev = h->prev;
 	    } else {
 		last = h->prev;
-		if (last != (header *) NULL) {
-		    last->next = (header *) NULL;
+		if (last != (SwapSlot *) NULL) {
+		    last->next = (SwapSlot *) NULL;
 		}
 	    }
 	    /*
@@ -260,22 +267,49 @@ void sw_delv(sector *vec, unsigned int size)
 }
 
 /*
- * NAME:	swap->load()
- * DESCRIPTION:	reserve a swap slot for sector sec. If fill == TRUE, load it
- *		from the swap file if appropriate.
+ * allocate swapspace for something
  */
-static header *sw_load(sector sec, bool restore, bool fill)
+Sector Swap::alloc(Uint size, Sector nsectors, Sector **sectors)
 {
-    header *h;
-    sector load, save;
+    Sector n, *s;
+
+    s = *sectors;
+    if (nsectors != 0) {
+	/* wipe old sectors */
+	wipev(s, nsectors);
+    }
+
+    n = Swap::mapsize(size);
+    if (nsectors > n) {
+	/* too many sectors */
+	delv(s + n, nsectors - n);
+    }
+
+    s = *sectors = REALLOC(*sectors, Sector, nsectors, n);
+    if (nsectors < n) {
+	/* not enough sectors */
+	newv(s + nsectors, n - nsectors);
+    }
+
+    return n;
+}
+
+/*
+ * reserve a swap slot for sector sec. If fill == TRUE, load it
+ * from the swap file if appropriate.
+ */
+Swap::SwapSlot *Swap::load(Sector sec, bool restore, bool fill)
+{
+    SwapSlot *h;
+    Sector load, save;
 
     load = map[sec];
     if (load >= cachesize ||
-	(h=(header *) (mem + load * slotsize))->sec != sec) {
+	(h=(SwapSlot *) (mem + load * slotsize))->sec != sec) {
 	/*
 	 * the sector is either unused or in the swap file
 	 */
-	if (lfree != (header *) NULL) {
+	if (lfree != (SwapSlot *) NULL) {
 	    /*
 	     * get swap slot from the free swap slot list
 	     */
@@ -288,10 +322,10 @@ static header *sw_load(sector sec, bool restore, bool fill)
 	     */
 	    h = last;
 	    last = h->prev;
-	    if (last != (header *) NULL) {
-		last->next = (header *) NULL;
+	    if (last != (SwapSlot *) NULL) {
+		last->next = (SwapSlot *) NULL;
 	    } else {
-		first = (header *) NULL;
+		first = (SwapSlot *) NULL;
 	    }
 	    save = h->swap;
 	    if (h->dirty) {
@@ -316,10 +350,10 @@ static header *sw_load(sector sec, bool restore, bool fill)
 		}
 
 		if (swap < 0) {
-		    sw_create();
+		    create();
 		}
 		P_lseek(swap, (off_t) (save + 1L) * sectorsize, SEEK_SET);
-		if (!sw_write(swap, h + 1, sectorsize)) {
+		if (!write(swap, h + 1, sectorsize)) {
 		    fatal("cannot write swap file");
 		}
 	    }
@@ -368,17 +402,17 @@ static header *sw_load(sector sec, bool restore, bool fill)
 	    h->next->prev = h->prev;
 	} else {
 	    last = h->prev;
-	    if (last != (header *) NULL) {
-		last->next = (header *) NULL;
+	    if (last != (SwapSlot *) NULL) {
+		last->next = (SwapSlot *) NULL;
 	    }
 	}
     }
     /*
      * put the sector at the head of the first-last list
      */
-    h->prev = (header *) NULL;
+    h->prev = (SwapSlot *) NULL;
     h->next = first;
-    if (first != (header *) NULL) {
+    if (first != (SwapSlot *) NULL) {
 	first->prev = h;
     } else {
 	last = h;	/* last was NULL too */
@@ -389,10 +423,9 @@ static header *sw_load(sector sec, bool restore, bool fill)
 }
 
 /*
- * NAME:	swap->readv()
- * DESCRIPTION:	read bytes from a vector of sectors
+ * read bytes from a vector of sectors
  */
-void sw_readv(char *m, sector *vec, Uint size, Uint idx)
+void Swap::readv(char *m, Sector *vec, Uint size, Uint idx)
 {
     unsigned int len;
 
@@ -400,26 +433,25 @@ void sw_readv(char *m, sector *vec, Uint size, Uint idx)
     idx %= sectorsize;
     do {
 	len = (size > sectorsize - idx) ? sectorsize - idx : size;
-	memcpy(m, (char *) (sw_load(*vec++, FALSE, TRUE) + 1) + idx, len);
+	memcpy(m, (char *) (load(*vec++, FALSE, TRUE) + 1) + idx, len);
 	idx = 0;
 	m += len;
     } while ((size -= len) > 0);
 }
 
 /*
- * NAME:	swap->writev()
- * DESCRIPTION:	write bytes to a vector of sectors
+ * write bytes to a vector of sectors
  */
-void sw_writev(char *m, sector *vec, Uint size, Uint idx)
+void Swap::writev(char *m, Sector *vec, Uint size, Uint idx)
 {
-    header *h;
+    SwapSlot *h;
     unsigned int len;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
     do {
 	len = (size > sectorsize - idx) ? sectorsize - idx : size;
-	h = sw_load(*vec++, FALSE, (len != sectorsize));
+	h = load(*vec++, FALSE, (len != sectorsize));
 	h->dirty = TRUE;
 	memcpy((char *) (h + 1) + idx, m, len);
 	idx = 0;
@@ -428,19 +460,18 @@ void sw_writev(char *m, sector *vec, Uint size, Uint idx)
 }
 
 /*
- * NAME:	swap->dreadv()
- * DESCRIPTION:	restore bytes from a vector of sectors in snapshot
+ * restore bytes from a vector of sectors in snapshot
  */
-void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
+void Swap::dreadv(char *m, Sector *vec, Uint size, Uint idx)
 {
-    header *h;
+    SwapSlot *h;
     unsigned int len;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
     do {
 	len = (size > sectorsize - idx) ? sectorsize - idx : size;
-	h = sw_load(*vec++, TRUE, FALSE);
+	h = load(*vec++, TRUE, FALSE);
 	h->swap = SW_UNUSED;
 	memcpy(m, (char *) (h + 1) + idx, len);
 	idx = 0;
@@ -449,10 +480,9 @@ void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 }
 
 /*
- * NAME:	swap->conv()
- * DESCRIPTION:	restore converted bytes from a vector of sectors in snapshot
+ * restore converted bytes from a vector of sectors in snapshot
  */
-void sw_conv(char *m, sector *vec, Uint size, Uint idx)
+void Swap::conv(char *m, Sector *vec, Uint size, Uint idx)
 {
     unsigned int len;
 
@@ -475,10 +505,9 @@ void sw_conv(char *m, sector *vec, Uint size, Uint idx)
 }
 
 /*
- * NAME:	swap->conv2()
- * DESCRIPTION:	restore bytes from a vector of sectors in secondary snapshot
+ * restore bytes from a vector of sectors in secondary snapshot
  */
-void sw_conv2(char *m, sector *vec, Uint size, Uint idx)
+void Swap::conv2(char *m, Sector *vec, Uint size, Uint idx)
 {
     unsigned int len;
 
@@ -502,61 +531,199 @@ void sw_conv2(char *m, sector *vec, Uint size, Uint idx)
 }
 
 /*
- * NAME:	swap->mapsize()
- * DESCRIPTION:	count the number of sectors required for size bytes + a map
+ * convert something from the snapshot
  */
-sector sw_mapsize(unsigned int size)
+Uint Swap::convert(char *m, Sector *vec, const char *layout, Uint n, Uint idx,
+		   void (*readv) (char*, Sector*, Uint, Uint))
 {
-    sector i, n;
+    Uint bufsize;
+    char *buf;
 
-    /* calculate the number of sectors required */
-    n = 0;
-    for (;;) {
-	i = (size + n * sizeof(sector) + sectorsize - 1) / sectorsize;
-	if (n == i) {
-	    return n;
+    bufsize = (conf_dsize(layout) & 0xff) * n;
+    buf = ALLOC(char, bufsize);
+    (*readv)(buf, vec, bufsize, idx);
+    conf_dconv(m, buf, layout, n);
+    FREE(buf);
+
+    return bufsize;
+}
+
+/*
+ * compress data
+ */
+Uint Swap::compress(char *data, char *text, Uint size)
+{
+    char htab[16384];
+    unsigned short buf, bufsize, x;
+    char *p, *q;
+    Uint cspace;
+
+    if (size <= 4 + 1) {
+	/* can't get smaller than this */
+	return 0;
+    }
+
+    /* clear the hash table */
+    memset(htab, '\0', sizeof(htab));
+
+    buf = bufsize = 0;
+    x = 0;
+    p = text;
+    q = data;
+    *q++ = size >> 24;
+    *q++ = size >> 16;
+    *q++ = size >> 8;
+    *q++ = size;
+    cspace = size - 4;
+
+    while (size != 0) {
+	if (htab[x] == *p) {
+	    buf >>= 1;
+	    bufsize += 1;
+	} else {
+	    htab[x] = *p;
+	    buf = (buf >> 9) + 0x0080 + (UCHAR(*p) << 8);
+	    bufsize += 9;
 	}
-	n = i;
+	x = ((x << 3) & 0x3fff) ^ Hashtab::hashchar(UCHAR(*p++));
+
+	if (bufsize >= 8) {
+	    if (bufsize == 16) {
+		if ((Int) (cspace-=2) <= 0) {
+		    return 0;	/* out of space */
+		}
+		*q++ = buf;
+		*q++ = buf >> 8;
+		bufsize = 0;
+	    } else {
+		if (--cspace == 0) {
+		    return 0;	/* out of space */
+		}
+		*q++ = buf >> (16 - bufsize);
+		bufsize -= 8;
+	    }
+	}
+
+	--size;
+    }
+    if (bufsize != 0) {
+	if (--cspace == 0) {
+	    return 0;	/* compression did not reduce size */
+	}
+	/* add last incomplete byte */
+	*q++ = (buf >> (16 - bufsize)) + (0xff << bufsize);
+    }
+
+    return (intptr_t) q - (intptr_t) data;
+}
+
+/*
+ * read and decompress data from the swap file
+ */
+char *Swap::decompress(Sector *sectors,
+		       void (*readv) (char*, Sector*, Uint, Uint),
+		       Uint size, Uint offset, Uint *dsize)
+{
+    char buffer[8192], htab[16384];
+    unsigned short buf, bufsize, x;
+    Uint n;
+    char *p, *q;
+
+    buf = bufsize = 0;
+    x = 0;
+
+    /* clear the hash table */
+    memset(htab, '\0', sizeof(htab));
+
+    n = sizeof(buffer);
+    if (n > size) {
+	n = size;
+    }
+    (*readv)(p = buffer, sectors, n, offset);
+    size -= n;
+    offset += n;
+    *dsize = (UCHAR(p[0]) << 24) | (UCHAR(p[1]) << 16) | (UCHAR(p[2]) << 8) |
+	     UCHAR(p[3]);
+    q = ALLOC(char, *dsize);
+    p += 4;
+    n -= 4;
+
+    for (;;) {
+	for (;;) {
+	    if (bufsize == 0) {
+		if (n == 0) {
+		    break;
+		}
+		--n;
+		buf = UCHAR(*p++);
+		bufsize = 8;
+	    }
+	    if (buf & 1) {
+		if (n == 0) {
+		    break;
+		}
+		--n;
+		buf += UCHAR(*p++) << bufsize;
+
+		*q = htab[x] = buf >> 1;
+		buf >>= 9;
+	    } else {
+		*q = htab[x];
+		buf >>= 1;
+	    }
+	    --bufsize;
+
+	    x = ((x << 3) & 0x3fff) ^ Hashtab::hashchar(UCHAR(*q++));
+	}
+
+	if (size == 0) {
+	    return q - *dsize;
+	}
+	n = sizeof(buffer);
+	if (n > size) {
+	    n = size;
+	}
+	(*readv)(p = buffer, sectors, n, offset);
+	size -= n;
+	offset += n;
     }
 }
 
 /*
- * NAME:	swap->count()
- * DESCRIPTION:	return the number of sectors presently in use
+ * return the number of sectors presently in use
  */
-sector sw_count()
+Sector Swap::count()
 {
     return nsectors - nfree;
 }
 
 
-struct dump_header {
+struct DumpHeader {
     Uint secsize;		/* size of swap sector */
-    sector nsectors;		/* # sectors */
-    sector ssectors;		/* # swap sectors */
-    sector nfree;		/* # free sectors */
-    sector mfree;		/* free sector list */
+    Sector nsectors;		/* # sectors */
+    Sector ssectors;		/* # swap sectors */
+    Sector nfree;		/* # free sectors */
+    Sector mfree;		/* free sector list */
 };
 
 static char dh_layout[] = "idddd";
 
 /*
- * NAME:	swap->dump()
- * DESCRIPTION:	create snapshot
+ * create snapshot
  */
-int sw_dump(char *snapshot, bool keep)
+int Swap::save(char *snapshot, bool keep)
 {
-    header *h;
-    sector sec;
+    SwapSlot *h;
+    Sector sec;
     char buffer[STRINGSZ + 4], buf1[STRINGSZ], buf2[STRINGSZ], *p, *q;
-    sector n;
+    Sector n;
 
     if (swap < 0) {
-	sw_create();
+	create();
     }
 
     /* flush the cache and adjust sector map */
-    for (h = last; h != (header *) NULL; h = h->prev) {
+    for (h = last; h != (SwapSlot *) NULL; h = h->prev) {
 	sec = h->swap;
 	if (h->dirty) {
 	    /*
@@ -579,7 +746,7 @@ int sw_dump(char *snapshot, bool keep)
 		h->swap = sec;
 	    }
 	    P_lseek(swap, (off_t) (sec + 1L) * sectorsize, SEEK_SET);
-	    if (!sw_write(swap, h + 1, sectorsize)) {
+	    if (!write(swap, h + 1, sectorsize)) {
 		fatal("cannot write swap file");
 	    }
 	}
@@ -617,7 +784,7 @@ int sw_dump(char *snapshot, bool keep)
 	    if (P_read(old, cbuf, sectorsize) <= 0) {
 		fatal("cannot read swap file");
 	    }
-	    if (!sw_write(swap, cbuf, sectorsize)) {
+	    if (!write(swap, cbuf, sectorsize)) {
 		fatal("cannot write snapshot");
 	    }
 	    /* copy swap sectors */
@@ -625,7 +792,7 @@ int sw_dump(char *snapshot, bool keep)
 		if (P_read(old, cbuf, sectorsize) <= 0) {
 		    fatal("cannot read swap file");
 		}
-		if (!sw_write(swap, cbuf, sectorsize)) {
+		if (!write(swap, cbuf, sectorsize)) {
 		    fatal("cannot write snapshot");
 		}
 	    }
@@ -643,12 +810,12 @@ int sw_dump(char *snapshot, bool keep)
 
     /* write map */
     P_lseek(swap, (off_t) (ssectors + 1L) * sectorsize, SEEK_SET);
-    if (!sw_write(swap, map, nsectors * sizeof(sector))) {
+    if (!write(swap, map, nsectors * sizeof(Sector))) {
 	fatal("cannot write sector map to snapshot");
     }
 
     /* fix the sector map */
-    for (h = last; h != (header *) NULL; h = h->prev) {
+    for (h = last; h != (SwapSlot *) NULL; h = h->prev) {
 	map[h->sec] = ((intptr_t) h - (intptr_t) mem) / slotsize;
 	h->dirty = FALSE;
     }
@@ -657,15 +824,14 @@ int sw_dump(char *snapshot, bool keep)
 }
 
 /*
- * NAME:	swap->dump2()
- * DESCRIPTION:	finish snapshot
+ * finish snapshot
  */
-void sw_dump2(char *header, int size, bool incr)
+void Swap::save2(char *header, int size, bool incr)
 {
     static off_t prev;
     off_t sectors;
     Uint offset;
-    dump_header dh;
+    DumpHeader dh;
     char save[4];
 
     memset(cbuf, '\0', sectorsize);
@@ -676,7 +842,7 @@ void sw_dump2(char *header, int size, bool incr)
 	offset = sectors % sectorsize;
 	sectors /= sectorsize;
 	if (offset != 0) {
-	    if (!sw_write(swap, cbuf, sectorsize - offset)) {
+	    if (!write(swap, cbuf, sectorsize - offset)) {
 		fatal("cannot extend swap file");
 	    }
 	    sectors++;
@@ -695,8 +861,8 @@ void sw_dump2(char *header, int size, bool incr)
     dh.ssectors = ssectors;
     dh.nfree = nfree;
     dh.mfree = mfree;
-    memcpy(cbuf + sectorsize - sizeof(dump_header), &dh, sizeof(dump_header));
-    if (!sw_write(swap, cbuf, sectorsize)) {
+    memcpy(cbuf + sectorsize - sizeof(DumpHeader), &dh, sizeof(DumpHeader));
+    if (!write(swap, cbuf, sectorsize)) {
 	fatal("cannot write snapshot header");
     }
 
@@ -707,7 +873,7 @@ void sw_dump2(char *header, int size, bool incr)
 	save[2] = sectors >> 8;
 	save[3] = sectors;
 	P_lseek(swap, prev * sectorsize + size - sizeof(save), SEEK_SET);
-	if (!sw_write(swap, save, sizeof(save))) {
+	if (!write(swap, save, sizeof(save))) {
 	    fatal("cannot write offset");
 	}
 	prev = sectors;
@@ -736,12 +902,11 @@ void sw_dump2(char *header, int size, bool incr)
 }
 
 /*
- * NAME:	swap->restore()
- * DESCRIPTION:	restore snapshot
+ * restore snapshot
  */
-void sw_restore(int fd, unsigned int secsize)
+void Swap::restore(int fd, unsigned int secsize)
 {
-    dump_header dh;
+    DumpHeader dh;
 
     /* restore swap header */
     P_lseek(fd, -(off_t) (conf_dsize(dh_layout) & 0xff), SEEK_CUR);
@@ -770,10 +935,9 @@ void sw_restore(int fd, unsigned int secsize)
 }
 
 /*
- * NAME:	swap->restore2()
- * DESCRIPTION:	restore secondary snapshot
+ * restore secondary snapshot
  */
-void sw_restore2(int fd)
+void Swap::restore2(int fd)
 {
     dump2 = fd;
 }

@@ -1227,8 +1227,8 @@ bool Object::save(int fd, bool incr)
     }
 
     /* write header and objects */
-    if (!sw_write(fd, &dh, sizeof(ObjectHeader)) ||
-	!sw_write(fd, objTable, baseplane.nobjects * sizeof(Object))) {
+    if (!Swap::write(fd, &dh, sizeof(ObjectHeader)) ||
+	!Swap::write(fd, objTable, baseplane.nobjects * sizeof(Object))) {
 	return FALSE;
     }
 
@@ -1238,7 +1238,7 @@ bool Object::save(int fd, bool incr)
 	if (o->name != (char *) NULL) {
 	    len = strlen(o->name) + 1;
 	    if (buflen + len > CHUNKSZ) {
-		if (!sw_write(fd, buffer, buflen)) {
+		if (!Swap::write(fd, buffer, buflen)) {
 		    return FALSE;
 		}
 		buflen = 0;
@@ -1247,7 +1247,7 @@ bool Object::save(int fd, bool incr)
 	    buflen += len;
 	}
     }
-    if (buflen != 0 && !sw_write(fd, buffer, buflen)) {
+    if (buflen != 0 && !Swap::write(fd, buffer, buflen)) {
 	return FALSE;
     }
 
@@ -1263,13 +1263,13 @@ bool Object::save(int fd, bool incr)
 	if (rcount) {
 	    mh.count = baseplane.ocount;
 	}
-	if (!sw_write(fd, &mh, sizeof(MapHeader)) ||
-	    !sw_write(fd, omap + BOFF(dobject),
-		      (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) ||
-	    !sw_write(fd, omap + BOFF(dobject),
-		      (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) ||
+	if (!Swap::write(fd, &mh, sizeof(MapHeader)) ||
+	    !Swap::write(fd, omap + BOFF(dobject),
+			 (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) ||
+	    !Swap::write(fd, omap + BOFF(dobject),
+			 (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) ||
 	    (mh.count != 0 &&
-	     !sw_write(fd, counttab, dh.nobjects * sizeof(Uint)))) {
+	     !Swap::write(fd, counttab, dh.nobjects * sizeof(Uint)))) {
 	    return FALSE;
 	}
     }
@@ -1406,7 +1406,7 @@ void Object::restore(int fd, bool part)
 		    BCLR(omap, i);
 		    --ndobject;
 		}
-		d_restore_ctrl(o, insttab[o->index], &sw_conv2);
+		d_restore_ctrl(o, insttab[o->index], &Swap::conv2);
 		d_swapout(1);
 	    }
 	    i++;
@@ -1425,7 +1425,7 @@ void Object::restore(int fd, bool part)
 		    BCLR(omap, i);
 		    --ndobject;
 		}
-		d_restore_data(o, counttab, &sw_conv2);
+		d_restore_data(o, counttab, &Swap::conv2);
 		d_swapout(1);
 	    }
 	    i++;

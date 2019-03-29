@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -491,7 +491,7 @@ bool kf_dump(int fd)
     }
 
     /* write header */
-    if (!sw_write(fd, &dh, sizeof(dump_header))) {
+    if (!Swap::write(fd, &dh, sizeof(dump_header))) {
 	return FALSE;
     }
 
@@ -511,7 +511,7 @@ bool kf_dump(int fd)
 	    buflen += len;
 	}
     }
-    flag = sw_write(fd, buffer, buflen);
+    flag = Swap::write(fd, buffer, buflen);
     AFREE(buffer);
 
     return flag;

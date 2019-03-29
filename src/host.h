@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -249,20 +249,20 @@ extern void  P_message	(const char*);
 	/* no filename translation */
 # define path_native(buf, path)	(path)
 
-# define P_open		open
-# define P_close	close
-# define P_read		read
-# define P_write	write
-# define P_lseek	lseek
-# define P_fstat	fstat
-# define P_stat		stat
-# define P_access	access
-# define P_unlink	unlink
-# define P_rename	rename
-# define P_mkdir	mkdir
-# define P_rmdir	rmdir
-# define P_chdir	chdir
-# define P_execv	execv
+# define P_open		::open
+# define P_close	::close
+# define P_read		::read
+# define P_write	::write
+# define P_lseek	::lseek
+# define P_fstat	::fstat
+# define P_stat		::stat
+# define P_access	::access
+# define P_unlink	::unlink
+# define P_rename	::rename
+# define P_mkdir	::mkdir
+# define P_rmdir	::rmdir
+# define P_chdir	::chdir
+# define P_execv	::execv
 # else
 	/* filename translation */
 typedef long off_t;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1622,7 +1622,7 @@ bool comm_dump(int fd)
     }
 
     /* write header */
-    if (!sw_write(fd, &dh, sizeof(dump_header))) {
+    if (!Swap::write(fd, &dh, sizeof(dump_header))) {
 	fatal("failed to dump user header");
     }
 
@@ -1630,7 +1630,7 @@ bool comm_dump(int fd)
 	/*
 	 * write users
 	 */
-	if (!sw_write(fd, du, nusers * sizeof(duser))) {
+	if (!Swap::write(fd, du, nusers * sizeof(duser))) {
 	    fatal("failed to dump users");
 	}
 
@@ -1663,13 +1663,13 @@ bool comm_dump(int fd)
 	 * write buffer content
 	 */
 	if (dh.tbufsz != 0) {
-	    if (!sw_write(fd, tbuf, dh.tbufsz)) {
+	    if (!Swap::write(fd, tbuf, dh.tbufsz)) {
 		fatal("failed to dump telnet buffers");
 	    }
 	    FREE(tbuf);
 	}
 	if (dh.ubufsz != 0) {
-	    if (!sw_write(fd, ubuf, dh.ubufsz)) {
+	    if (!Swap::write(fd, ubuf, dh.ubufsz)) {
 		fatal("failed to dump UDP buffers");
 	    }
 	    FREE(ubuf);

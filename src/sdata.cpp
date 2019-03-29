@@ -31,7 +31,7 @@
 # define PRIV			0x0001	/* in sinherit->flags */
 
 struct scontrol {
-    sector nsectors;		/* # sectors in part one */
+    Sector nsectors;		/* # sectors in part one */
     char flags;			/* control flags: compression */
     char version;		/* program version */
     short ninherits;		/* # objects in inherit table */
@@ -53,7 +53,7 @@ struct scontrol {
 static char sc_layout[] = "dccsuiissicccusss";
 
 struct scontrol0 {
-    sector nsectors;		/* # sectors in part one */
+    Sector nsectors;		/* # sectors in part one */
     short flags;		/* control flags: compression */
     short ninherits;		/* # objects in inherit table */
     uindex imapsz;		/* inherit map size */
@@ -84,7 +84,7 @@ struct sinherit {
 static char si_layout[] = "uuuss";
 
 struct sdataspace {
-    sector nsectors;		/* number of sectors in data space */
+    Sector nsectors;		/* number of sectors in data space */
     short flags;		/* dataspace flags: compression */
     unsigned short nvariables;	/* number of variables */
     Uint narrays;		/* number of array values */
@@ -173,8 +173,8 @@ public:
 static Control *chead, *ctail;		/* list of control blocks */
 static Dataspace *dhead, *dtail;	/* list of dataspace blocks */
 static Dataspace *gcdata;		/* next dataspace to garbage collect */
-static sector nctrl;			/* # control blocks */
-static sector ndata;			/* # dataspace blocks */
+static Sector nctrl;			/* # control blocks */
+static Sector ndata;			/* # dataspace blocks */
 static bool conv_14;			/* convert arrays & strings? */
 static bool conv_15;			/* convert control blocks? */
 static bool converted;			/* conversion complete? */
@@ -231,7 +231,7 @@ Control *d_new_control()
     ctrl->version = CTRL_VERSION;
 
     ctrl->nsectors = 0;		/* nothing on swap device yet */
-    ctrl->sectors = (sector *) NULL;
+    ctrl->sectors = (Sector *) NULL;
     ctrl->oindex = UINDEX_MAX;
     ctrl->instance = 0;
     ctrl->ninherits = 0;
@@ -302,7 +302,7 @@ static Dataspace *d_alloc_dataspace(Object *obj)
 
     /* sectors */
     data->nsectors = 0;
-    data->sectors = (sector *) NULL;
+    data->sectors = (Sector *) NULL;
 
     /* variables */
     data->nvariables = 0;
@@ -375,7 +375,7 @@ Dataspace *d_new_dataspace(Object *obj)
  * DESCRIPTION:	load a control block
  */
 static Control *load_control(Object *obj, Uint instance,
-			     void (*readv) (char*, sector*, Uint, Uint))
+			     void (*readv) (char*, Sector*, Uint, Uint))
 {
     Control *ctrl;
     scontrol header;
@@ -388,9 +388,9 @@ static Control *load_control(Object *obj, Uint instance,
     /* header */
     (*readv)((char *) &header, &obj->cfirst, (Uint) sizeof(scontrol), (Uint) 0);
     ctrl->nsectors = header.nsectors;
-    ctrl->sectors = ALLOC(sector, header.nsectors);
+    ctrl->sectors = ALLOC(Sector, header.nsectors);
     ctrl->sectors[0] = obj->cfirst;
-    size = header.nsectors * (Uint) sizeof(sector);
+    size = header.nsectors * (Uint) sizeof(Sector);
     if (header.nsectors > 1) {
 	(*readv)((char *) ctrl->sectors, ctrl->sectors, size,
 		 (Uint) sizeof(scontrol));
@@ -489,14 +489,14 @@ static Control *load_control(Object *obj, Uint instance,
  */
 Control *d_load_control(Object *obj, Uint instance)
 {
-    return load_control(obj, instance, sw_readv);
+    return load_control(obj, instance, Swap::readv);
 }
 
 /*
  * NAME:	load_dataspace()
  * DESCRIPTION:	load the dataspace header block
  */
-static Dataspace *load_dataspace(Object *obj, void (*readv) (char*, sector*, Uint, Uint))
+static Dataspace *load_dataspace(Object *obj, void (*readv) (char*, Sector*, Uint, Uint))
 {
     sdataspace header;
     Dataspace *data;
@@ -510,9 +510,9 @@ static Dataspace *load_dataspace(Object *obj, void (*readv) (char*, sector*, Uin
     (*readv)((char *) &header, &obj->dfirst, (Uint) sizeof(sdataspace),
 	     (Uint) 0);
     data->nsectors = header.nsectors;
-    data->sectors = ALLOC(sector, header.nsectors);
+    data->sectors = ALLOC(Sector, header.nsectors);
     data->sectors[0] = obj->dfirst;
-    size = header.nsectors * (Uint) sizeof(sector);
+    size = header.nsectors * (Uint) sizeof(Sector);
     if (header.nsectors > 1) {
 	(*readv)((char *) data->sectors, data->sectors, size,
 		 (Uint) sizeof(sdataspace));
@@ -555,7 +555,7 @@ Dataspace *d_load_dataspace(Object *obj)
 {
     Dataspace *data;
 
-    data = load_dataspace(obj, sw_readv);
+    data = load_dataspace(obj, Swap::readv);
 
     if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->master)->update &&
 	obj->count != 0) {
@@ -609,157 +609,15 @@ void d_ref_dataspace(Dataspace *data)
 
 
 /*
- * NAME:	compress()
- * DESCRIPTION:	compress data
- */
-static Uint compress(char *data, char *text, Uint size)
-{
-    char htab[16384];
-    unsigned short buf, bufsize, x;
-    char *p, *q;
-    Uint cspace;
-
-    if (size <= 4 + 1) {
-	/* can't get smaller than this */
-	return 0;
-    }
-
-    /* clear the hash table */
-    memset(htab, '\0', sizeof(htab));
-
-    buf = bufsize = 0;
-    x = 0;
-    p = text;
-    q = data;
-    *q++ = size >> 24;
-    *q++ = size >> 16;
-    *q++ = size >> 8;
-    *q++ = size;
-    cspace = size - 4;
-
-    while (size != 0) {
-	if (htab[x] == *p) {
-	    buf >>= 1;
-	    bufsize += 1;
-	} else {
-	    htab[x] = *p;
-	    buf = (buf >> 9) + 0x0080 + (UCHAR(*p) << 8);
-	    bufsize += 9;
-	}
-	x = ((x << 3) & 0x3fff) ^ Hashtab::hashchar(UCHAR(*p++));
-
-	if (bufsize >= 8) {
-	    if (bufsize == 16) {
-		if ((Int) (cspace-=2) <= 0) {
-		    return 0;	/* out of space */
-		}
-		*q++ = buf;
-		*q++ = buf >> 8;
-		bufsize = 0;
-	    } else {
-		if (--cspace == 0) {
-		    return 0;	/* out of space */
-		}
-		*q++ = buf >> (16 - bufsize);
-		bufsize -= 8;
-	    }
-	}
-
-	--size;
-    }
-    if (bufsize != 0) {
-	if (--cspace == 0) {
-	    return 0;	/* compression did not reduce size */
-	}
-	/* add last incomplete byte */
-	*q++ = (buf >> (16 - bufsize)) + (0xff << bufsize);
-    }
-
-    return (intptr_t) q - (intptr_t) data;
-}
-
-/*
- * NAME:	decompress()
- * DESCRIPTION:	read and decompress data from the swap file
- */
-static char *decompress(sector *sectors, void (*readv) (char*, sector*, Uint, Uint), Uint size, Uint offset, Uint *dsize)
-{
-    char buffer[8192], htab[16384];
-    unsigned short buf, bufsize, x;
-    Uint n;
-    char *p, *q;
-
-    buf = bufsize = 0;
-    x = 0;
-
-    /* clear the hash table */
-    memset(htab, '\0', sizeof(htab));
-
-    n = sizeof(buffer);
-    if (n > size) {
-	n = size;
-    }
-    (*readv)(p = buffer, sectors, n, offset);
-    size -= n;
-    offset += n;
-    *dsize = (UCHAR(p[0]) << 24) | (UCHAR(p[1]) << 16) | (UCHAR(p[2]) << 8) |
-	     UCHAR(p[3]);
-    q = ALLOC(char, *dsize);
-    p += 4;
-    n -= 4;
-
-    for (;;) {
-	for (;;) {
-	    if (bufsize == 0) {
-		if (n == 0) {
-		    break;
-		}
-		--n;
-		buf = UCHAR(*p++);
-		bufsize = 8;
-	    }
-	    if (buf & 1) {
-		if (n == 0) {
-		    break;
-		}
-		--n;
-		buf += UCHAR(*p++) << bufsize;
-
-		*q = htab[x] = buf >> 1;
-		buf >>= 9;
-	    } else {
-		*q = htab[x];
-		buf >>= 1;
-	    }
-	    --bufsize;
-
-	    x = ((x << 3) & 0x3fff) ^ Hashtab::hashchar(UCHAR(*q++));
-	}
-
-	if (size == 0) {
-	    return q - *dsize;
-	}
-	n = sizeof(buffer);
-	if (n > size) {
-	    n = size;
-	}
-	(*readv)(p = buffer, sectors, n, offset);
-	size -= n;
-	offset += n;
-    }
-}
-
-
-/*
  * NAME:	get_prog()
  * DESCRIPTION:	get the program
  */
-static void get_prog(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
+static void get_prog(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (ctrl->progsize != 0) {
 	if (ctrl->flags & CTRL_PROGCMP) {
-	    ctrl->prog = decompress(ctrl->sectors, readv, ctrl->progsize,
-				    ctrl->progoffset, &ctrl->progsize);
+	    ctrl->prog = Swap::decompress(ctrl->sectors, readv, ctrl->progsize,
+					  ctrl->progoffset, &ctrl->progsize);
 	} else {
 	    ctrl->prog = ALLOC(char, ctrl->progsize);
 	    (*readv)(ctrl->prog, ctrl->sectors, ctrl->progsize,
@@ -775,7 +633,7 @@ static void get_prog(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 char *d_get_prog(Control *ctrl)
 {
     if (ctrl->prog == (char *) NULL && ctrl->progsize != 0) {
-	get_prog(ctrl, sw_readv);
+	get_prog(ctrl, Swap::readv);
     }
     return ctrl->prog;
 }
@@ -784,15 +642,15 @@ char *d_get_prog(Control *ctrl)
  * NAME:	get_stext()
  * DESCRIPTION:	load strings text
  */
-static void get_stext(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
+static void get_stext(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
 {
     /* load strings text */
     if (ctrl->flags & CTRL_STRCMP) {
-	ctrl->stext = decompress(ctrl->sectors, readv,
-				 ctrl->strsize,
-				 ctrl->stroffset +
-				 ctrl->nstrings * sizeof(ssizet),
-				 &ctrl->strsize);
+	ctrl->stext = Swap::decompress(ctrl->sectors, readv,
+				       ctrl->strsize,
+				       ctrl->stroffset +
+				       ctrl->nstrings * sizeof(ssizet),
+				       &ctrl->strsize);
     } else {
 	ctrl->stext = ALLOC(char, ctrl->strsize);
 	(*readv)(ctrl->stext, ctrl->sectors, ctrl->strsize,
@@ -804,7 +662,7 @@ static void get_stext(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
  * NAME:	get_strconsts()
  * DESCRIPTION:	load string constants
  */
-static void get_strconsts(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
+static void get_strconsts(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (ctrl->nstrings != 0) {
 	/* load strings */
@@ -834,7 +692,7 @@ String *d_get_strconst(Control *ctrl, int inherit, Uint idx)
 	memset(ctrl->strings, '\0', ctrl->nstrings * sizeof(String *));
 
 	if (ctrl->sslength == (ssizet *) NULL) {
-	    get_strconsts(ctrl, sw_readv);
+	    get_strconsts(ctrl, Swap::readv);
 	}
 	if (ctrl->ssindex == (Uint *) NULL) {
 	    Uint size;
@@ -864,7 +722,7 @@ String *d_get_strconst(Control *ctrl, int inherit, Uint idx)
  * NAME:	get_funcdefs()
  * DESCRIPTION:	load function definitions
  */
-static void get_funcdefs(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
+static void get_funcdefs(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (ctrl->nfuncdefs != 0) {
 	ctrl->funcdefs = ALLOC(dfuncdef, ctrl->nfuncdefs);
@@ -880,7 +738,7 @@ static void get_funcdefs(Control *ctrl, void (*readv) (char*, sector*, Uint, Uin
 dfuncdef *d_get_funcdefs(Control *ctrl)
 {
     if (ctrl->funcdefs == (dfuncdef *) NULL && ctrl->nfuncdefs != 0) {
-	get_funcdefs(ctrl, sw_readv);
+	get_funcdefs(ctrl, Swap::readv);
     }
     return ctrl->funcdefs;
 }
@@ -889,7 +747,7 @@ dfuncdef *d_get_funcdefs(Control *ctrl)
  * NAME:	get_vardefs()
  * DESCRIPTION:	load variable definitions
  */
-static void get_vardefs(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
+static void get_vardefs(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (ctrl->nvardefs != 0) {
 	ctrl->vardefs = ALLOC(dvardef, ctrl->nvardefs);
@@ -910,7 +768,7 @@ static void get_vardefs(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint
 dvardef *d_get_vardefs(Control *ctrl)
 {
     if (ctrl->vardefs == (dvardef *) NULL && ctrl->nvardefs != 0) {
-	get_vardefs(ctrl, sw_readv);
+	get_vardefs(ctrl, Swap::readv);
     }
     if (ctrl->cvstrings == (String **) NULL && ctrl->nclassvars != 0) {
 	char *p;
@@ -938,7 +796,7 @@ dvardef *d_get_vardefs(Control *ctrl)
  * NAME:	get_funcalls()
  * DESCRIPTION:	get function call table
  */
-static void get_funcalls(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
+static void get_funcalls(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (ctrl->nfuncalls != 0) {
 	ctrl->funcalls = ALLOC(char, 2L * ctrl->nfuncalls);
@@ -954,7 +812,7 @@ static void get_funcalls(Control *ctrl, void (*readv) (char*, sector*, Uint, Uin
 char *d_get_funcalls(Control *ctrl)
 {
     if (ctrl->funcalls == (char *) NULL && ctrl->nfuncalls != 0) {
-	get_funcalls(ctrl, sw_readv);
+	get_funcalls(ctrl, Swap::readv);
     }
     return ctrl->funcalls;
 }
@@ -963,7 +821,7 @@ char *d_get_funcalls(Control *ctrl)
  * NAME:	get_symbols()
  * DESCRIPTION:	get symbol table
  */
-static void get_symbols(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
+static void get_symbols(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (ctrl->nsymbols > 0) {
 	ctrl->symbols = ALLOC(dsymbol, ctrl->nsymbols);
@@ -979,7 +837,7 @@ static void get_symbols(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint
 dsymbol *d_get_symbols(Control *ctrl)
 {
     if (ctrl->symbols == (dsymbol *) NULL && ctrl->nsymbols > 0) {
-	get_symbols(ctrl, sw_readv);
+	get_symbols(ctrl, Swap::readv);
     }
     return ctrl->symbols;
 }
@@ -988,7 +846,7 @@ dsymbol *d_get_symbols(Control *ctrl)
  * NAME:	get_vtypes()
  * DESCRIPTION:	get variable types
  */
-static void get_vtypes(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
+static void get_vtypes(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (ctrl->nvariables > ctrl->nvardefs) {
 	ctrl->vtypes = ALLOC(char, ctrl->nvariables - ctrl->nvardefs);
@@ -1004,7 +862,7 @@ static void get_vtypes(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint)
 static char *d_get_vtypes(Control *ctrl)
 {
     if (ctrl->vtypes == (char *) NULL && ctrl->nvariables > ctrl->nvardefs) {
-	get_vtypes(ctrl, sw_readv);
+	get_vtypes(ctrl, Swap::readv);
     }
     return ctrl->vtypes;
 }
@@ -1017,11 +875,11 @@ Uint d_get_progsize(Control *ctrl)
 {
     if (ctrl->progsize != 0 && ctrl->prog == (char *) NULL &&
 	(ctrl->flags & CTRL_PROGCMP)) {
-	get_prog(ctrl, sw_readv);	/* decompress program */
+	get_prog(ctrl, Swap::readv);	/* decompress program */
     }
     if (ctrl->strsize != 0 && ctrl->stext == (char *) NULL &&
 	(ctrl->flags & CTRL_STRCMP)) {
-	get_stext(ctrl, sw_readv);	/* decompress strings */
+	get_stext(ctrl, Swap::readv);	/* decompress strings */
     }
 
     return ctrl->ninherits * sizeof(dinherit) +
@@ -1042,7 +900,7 @@ Uint d_get_progsize(Control *ctrl)
  * NAME:	get_strings()
  * DESCRIPTION:	load strings for dataspace
  */
-static void get_strings(Dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
+static void get_strings(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (data->nstrings != 0) {
 	/* load strings */
@@ -1052,10 +910,11 @@ static void get_strings(Dataspace *data, void (*readv) (char*, sector*, Uint, Ui
 	if (data->strsize > 0) {
 	    /* load strings text */
 	    if (data->flags & DATA_STRCMP) {
-		data->stext = decompress(data->sectors, readv, data->strsize,
-					 data->stroffset +
+		data->stext = Swap::decompress(data->sectors, readv,
+					       data->strsize,
+					       data->stroffset +
 					       data->nstrings * sizeof(sstring),
-					 &data->strsize);
+					       &data->strsize);
 	    } else {
 		data->stext = ALLOC(char, data->strsize);
 		(*readv)(data->stext, data->sectors, data->strsize,
@@ -1079,7 +938,7 @@ static String *d_get_string(Dataspace *data, Uint idx)
 	Uint i;
 
 	if (data->sstrings == (sstring *) NULL) {
-	    get_strings(data, sw_readv);
+	    get_strings(data, Swap::readv);
 	}
 	if (data->ssindex == (Uint *) NULL) {
 	    Uint size;
@@ -1121,7 +980,7 @@ static String *d_get_string(Dataspace *data, Uint idx)
  * NAME:	get_arrays()
  * DESCRIPTION:	load arrays for dataspace
  */
-static void get_arrays(Dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
+static void get_arrays(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (data->narrays != 0) {
 	/* load arrays */
@@ -1146,7 +1005,7 @@ static Array *d_get_array(Dataspace *data, Uint idx)
 
 	if (data->sarrays == (sarray *) NULL) {
 	    /* load arrays */
-	    get_arrays(data, sw_readv);
+	    get_arrays(data, Swap::readv);
 	}
 
 	arr = Array::alloc(data->sarrays[idx].size);
@@ -1252,7 +1111,7 @@ void d_new_variables(Control *ctrl, Value *val)
  * NAME:	get_variables()
  * DESCRIPTION:	load variables
  */
-static void get_variables(Dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
+static void get_variables(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
 {
     data->svariables = ALLOC(svalue, data->nvariables);
     (*readv)((char *) data->svariables, data->sectors,
@@ -1278,7 +1137,7 @@ Value *d_get_variable(Dataspace *data, unsigned int idx)
 	     */
 	    if (data->svariables == (svalue *) NULL) {
 		/* load svalues */
-		get_variables(data, sw_readv);
+		get_variables(data, Swap::readv);
 	    }
 	    d_get_values(data, data->svariables, data->variables,
 			 data->nvariables);
@@ -1292,7 +1151,7 @@ Value *d_get_variable(Dataspace *data, unsigned int idx)
  * NAME:	get_elts()
  * DESCRIPTION:	load elements
  */
-static void get_elts(Dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
+static void get_elts(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (data->eltsize != 0) {
 	/* load array elements */
@@ -1318,7 +1177,7 @@ Value *d_get_elts(Array *arr)
 
 	data = arr->primary->data;
 	if (data->selts == (svalue *) NULL) {
-	    get_elts(data, sw_readv);
+	    get_elts(data, Swap::readv);
 	}
 	if (data->saindex == (Uint *) NULL) {
 	    Uint size;
@@ -1342,7 +1201,7 @@ Value *d_get_elts(Array *arr)
  * NAME:	get_callouts()
  * DESCRIPTION:	load callouts from swap
  */
-static void get_callouts(Dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
+static void get_callouts(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (data->ncallouts != 0) {
 	data->scallouts = ALLOC(scallout, data->ncallouts);
@@ -1362,7 +1221,7 @@ void d_get_callouts(Dataspace *data)
     uindex n;
 
     if (data->scallouts == (scallout *) NULL) {
-	get_callouts(data, sw_readv);
+	get_callouts(data, Swap::readv);
     }
     sco = data->scallouts;
     co = data->callouts = ALLOC(dcallout, data->ncallouts);
@@ -1382,35 +1241,6 @@ void d_get_callouts(Dataspace *data)
     }
 }
 
-
-/*
- * NAME:	data->swapalloc()
- * DESCRIPTION:	allocate swapspace for something
- */
-static sector d_swapalloc(Uint size, sector nsectors, sector **sectors)
-{
-    sector n, *s;
-
-    s = *sectors;
-    if (nsectors != 0) {
-	/* wipe old sectors */
-	sw_wipev(s, nsectors);
-    }
-
-    n = sw_mapsize(size);
-    if (nsectors > n) {
-	/* too many sectors */
-	sw_delv(s + n, nsectors - n);
-    }
-
-    s = *sectors = REALLOC(*sectors, sector, nsectors, n);
-    if (nsectors < n) {
-	/* not enough sectors */
-	sw_newv(s + nsectors, n - nsectors);
-    }
-
-    return n;
-}
 
 /*
  * NAME:	data->save_control()
@@ -1458,7 +1288,7 @@ static void d_save_control(Control *ctrl)
 	prog = ctrl->prog;
 	if (header.progsize >= CMPLIMIT) {
 	    prog = ALLOC(char, header.progsize);
-	    size = compress(prog, ctrl->prog, header.progsize);
+	    size = Swap::compress(prog, ctrl->prog, header.progsize);
 	    if (size != 0) {
 		header.flags |= CMP_PRED;
 		header.progsize = size;
@@ -1495,7 +1325,7 @@ static void d_save_control(Control *ctrl)
 	text = stext;
 	if (header.strsize >= CMPLIMIT) {
 	    text = ALLOC(char, header.strsize);
-	    size = compress(text, stext, header.strsize);
+	    size = Swap::compress(text, stext, header.strsize);
 	    if (size != 0) {
 		header.flags |= CMP_PRED << 2;
 		header.strsize = size;
@@ -1518,7 +1348,7 @@ static void d_save_control(Control *ctrl)
 	       header.nsymbols * (Uint) sizeof(dsymbol) +
 	       header.nvariables - UCHAR(header.nvardefs);
     }
-    ctrl->nsectors = header.nsectors = d_swapalloc(size, ctrl->nsectors,
+    ctrl->nsectors = header.nsectors = Swap::alloc(size, ctrl->nsectors,
 						   &ctrl->sectors);
     OBJ(ctrl->oindex)->cfirst = ctrl->sectors[0];
 
@@ -1527,21 +1357,21 @@ static void d_save_control(Control *ctrl)
      */
 
     /* save header */
-    sw_writev((char *) &header, ctrl->sectors, (Uint) sizeof(scontrol),
-	      (Uint) 0);
+    Swap::writev((char *) &header, ctrl->sectors, (Uint) sizeof(scontrol),
+		 (Uint) 0);
     size = sizeof(scontrol);
 
     /* save sector map */
-    sw_writev((char *) ctrl->sectors, ctrl->sectors,
-	      header.nsectors * (Uint) sizeof(sector), size);
-    size += header.nsectors * (Uint) sizeof(sector);
+    Swap::writev((char *) ctrl->sectors, ctrl->sectors,
+		 header.nsectors * (Uint) sizeof(Sector), size);
+    size += header.nsectors * (Uint) sizeof(Sector);
 
     if (header.vmapsize != 0) {
 	/*
 	 * save only vmap
 	 */
-	sw_writev((char *) ctrl->vmap, ctrl->sectors,
-		  header.vmapsize * (Uint) sizeof(unsigned short), size);
+	Swap::writev((char *) ctrl->vmap, ctrl->sectors,
+		     header.vmapsize * (Uint) sizeof(unsigned short), size);
     } else {
 	/* save inherits */
 	inherits = ctrl->inherits;
@@ -1556,18 +1386,18 @@ static void d_save_control(Control *ctrl)
 	    sinherits++;
 	} while (--i > 0);
 	sinherits -= header.ninherits;
-	sw_writev((char *) sinherits, ctrl->sectors,
-		  header.ninherits * (Uint) sizeof(sinherit), size);
+	Swap::writev((char *) sinherits, ctrl->sectors,
+		     header.ninherits * (Uint) sizeof(sinherit), size);
 	size += header.ninherits * sizeof(sinherit);
 	AFREE(sinherits);
 
 	/* save iindices */
-	sw_writev(ctrl->imap, ctrl->sectors, ctrl->imapsz, size);
+	Swap::writev(ctrl->imap, ctrl->sectors, ctrl->imapsz, size);
 	size += ctrl->imapsz;
 
 	/* save program */
 	if (header.progsize > 0) {
-	    sw_writev(prog, ctrl->sectors, (Uint) header.progsize, size);
+	    Swap::writev(prog, ctrl->sectors, (Uint) header.progsize, size);
 	    size += header.progsize;
 	    if (prog != ctrl->prog) {
 		FREE(prog);
@@ -1576,11 +1406,11 @@ static void d_save_control(Control *ctrl)
 
 	/* save string constants */
 	if (header.nstrings > 0) {
-	    sw_writev((char *) sslength, ctrl->sectors,
-		      header.nstrings * (Uint) sizeof(ssizet), size);
+	    Swap::writev((char *) sslength, ctrl->sectors,
+			 header.nstrings * (Uint) sizeof(ssizet), size);
 	    size += header.nstrings * (Uint) sizeof(ssizet);
 	    if (header.strsize > 0) {
-		sw_writev(text, ctrl->sectors, header.strsize, size);
+		Swap::writev(text, ctrl->sectors, header.strsize, size);
 		size += header.strsize;
 		if (text != stext) {
 		    FREE(text);
@@ -1596,41 +1426,42 @@ static void d_save_control(Control *ctrl)
 
 	/* save function definitions */
 	if (UCHAR(header.nfuncdefs) > 0) {
-	    sw_writev((char *) ctrl->funcdefs, ctrl->sectors,
-		      UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef), size);
+	    Swap::writev((char *) ctrl->funcdefs, ctrl->sectors,
+			 UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef),
+			 size);
 	    size += UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef);
 	}
 
 	/* save variable definitions */
 	if (UCHAR(header.nvardefs) > 0) {
-	    sw_writev((char *) ctrl->vardefs, ctrl->sectors,
-		      UCHAR(header.nvardefs) * (Uint) sizeof(dvardef), size);
+	    Swap::writev((char *) ctrl->vardefs, ctrl->sectors,
+			 UCHAR(header.nvardefs) * (Uint) sizeof(dvardef), size);
 	    size += UCHAR(header.nvardefs) * (Uint) sizeof(dvardef);
 	    if (UCHAR(header.nclassvars) > 0) {
-		sw_writev(ctrl->classvars, ctrl->sectors,
-			  UCHAR(header.nclassvars) * (Uint) 3, size);
+		Swap::writev(ctrl->classvars, ctrl->sectors,
+			     UCHAR(header.nclassvars) * (Uint) 3, size);
 		size += UCHAR(header.nclassvars) * (Uint) 3;
 	    }
 	}
 
 	/* save function call table */
 	if (header.nfuncalls > 0) {
-	    sw_writev((char *) ctrl->funcalls, ctrl->sectors,
-		      header.nfuncalls * (Uint) 2, size);
+	    Swap::writev((char *) ctrl->funcalls, ctrl->sectors,
+			 header.nfuncalls * (Uint) 2, size);
 	    size += header.nfuncalls * (Uint) 2;
 	}
 
 	/* save symbol table */
 	if (header.nsymbols > 0) {
-	    sw_writev((char *) ctrl->symbols, ctrl->sectors,
-		      header.nsymbols * (Uint) sizeof(dsymbol), size);
+	    Swap::writev((char *) ctrl->symbols, ctrl->sectors,
+			 header.nsymbols * (Uint) sizeof(dsymbol), size);
 	    size += header.nsymbols * sizeof(dsymbol);
 	}
 
 	/* save variable types */
 	if (header.nvariables > UCHAR(header.nvardefs)) {
-	    sw_writev(ctrl->vtypes, ctrl->sectors,
-		      header.nvariables - UCHAR(header.nvardefs), size);
+	    Swap::writev(ctrl->vtypes, ctrl->sectors,
+			 header.nvariables - UCHAR(header.nvardefs), size);
 	}
     }
 }
@@ -1938,9 +1769,9 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	    d_put_values(data, data->svariables, data->variables,
 			 data->nvariables);
 	    if (swap) {
-		sw_writev((char *) data->svariables, data->sectors,
-			  data->nvariables * (Uint) sizeof(svalue),
-			  data->varoffset);
+		Swap::writev((char *) data->svariables, data->sectors,
+			     data->nvariables * (Uint) sizeof(svalue),
+			     data->varoffset);
 	    }
 	}
 	if (data->base.flags & MOD_ARRAYREF) {
@@ -1963,8 +1794,8 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 		a++;
 	    }
 	    if (mod && swap) {
-		sw_writev((char *) data->sarrays, data->sectors,
-			  data->narrays * sizeof(sarray), data->arroffset);
+		Swap::writev((char *) data->sarrays, data->sectors,
+			     data->narrays * sizeof(sarray), data->arroffset);
 	    }
 	}
 	if (data->base.flags & MOD_ARRAY) {
@@ -1982,9 +1813,9 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 		    d_put_values(data, &data->selts[idx], a->arr->elts,
 				 a->arr->size);
 		    if (swap) {
-			sw_writev((char *) &data->selts[idx], data->sectors,
-				  a->arr->size * (Uint) sizeof(svalue),
-				  data->arroffset +
+			Swap::writev((char *) &data->selts[idx], data->sectors,
+				     a->arr->size * (Uint) sizeof(svalue),
+				     data->arroffset +
 					      data->narrays * sizeof(sarray) +
 					      idx * sizeof(svalue));
 		    }
@@ -2011,9 +1842,9 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 		s++;
 	    }
 	    if (mod && swap) {
-		sw_writev((char *) data->sstrings, data->sectors,
-			  data->nstrings * sizeof(sstring),
-			  data->stroffset);
+		Swap::writev((char *) data->sstrings, data->sectors,
+			     data->nstrings * sizeof(sstring),
+			     data->stroffset);
 	    }
 	}
 	if (data->base.flags & MOD_CALLOUT) {
@@ -2043,14 +1874,14 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 
 	    if (swap) {
 		/* save new (?) fcallouts value */
-		sw_writev((char *) &data->fcallouts, data->sectors,
-			  (Uint) sizeof(uindex),
+		Swap::writev((char *) &data->fcallouts, data->sectors,
+			     (Uint) sizeof(uindex),
 			  (Uint) ((char *)&header.fcallouts - (char *)&header));
 
 		/* save scallouts */
-		sw_writev((char *) data->scallouts, data->sectors,
-			  data->ncallouts * (Uint) sizeof(scallout),
-			  data->cooffset);
+		Swap::writev((char *) data->scallouts, data->sectors,
+			     data->ncallouts * (Uint) sizeof(scallout),
+			     data->cooffset);
 	    }
 	}
     } else {
@@ -2195,7 +2026,7 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	    text = save.stext;
 	    if (header.strsize >= CMPLIMIT) {
 		text = ALLOC(char, header.strsize);
-		size = compress(text, save.stext, header.strsize);
+		size = Swap::compress(text, save.stext, header.strsize);
 		if (size != 0) {
 		    header.flags |= CMP_PRED;
 		    header.strsize = size;
@@ -2212,32 +2043,32 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 		   header.nstrings * sizeof(sstring) +
 		   header.strsize +
 		   header.ncallouts * (Uint) sizeof(scallout);
-	    header.nsectors = d_swapalloc(size, data->nsectors, &data->sectors);
+	    header.nsectors = Swap::alloc(size, data->nsectors, &data->sectors);
 	    data->nsectors = header.nsectors;
 	    OBJ(data->oindex)->dfirst = data->sectors[0];
 
 	    /* save header */
 	    size = sizeof(sdataspace);
-	    sw_writev((char *) &header, data->sectors, size, (Uint) 0);
-	    sw_writev((char *) data->sectors, data->sectors,
-		      header.nsectors * (Uint) sizeof(sector), size);
-	    size += header.nsectors * (Uint) sizeof(sector);
+	    Swap::writev((char *) &header, data->sectors, size, (Uint) 0);
+	    Swap::writev((char *) data->sectors, data->sectors,
+			 header.nsectors * (Uint) sizeof(Sector), size);
+	    size += header.nsectors * (Uint) sizeof(Sector);
 
 	    /* save variables */
 	    data->varoffset = size;
-	    sw_writev((char *) data->svariables, data->sectors,
-		      data->nvariables * (Uint) sizeof(svalue), size);
+	    Swap::writev((char *) data->svariables, data->sectors,
+			 data->nvariables * (Uint) sizeof(svalue), size);
 	    size += data->nvariables * (Uint) sizeof(svalue);
 
 	    /* save arrays */
 	    data->arroffset = size;
 	    if (header.narrays > 0) {
-		sw_writev((char *) save.sarrays, data->sectors,
-			  header.narrays * sizeof(sarray), size);
+		Swap::writev((char *) save.sarrays, data->sectors,
+			     header.narrays * sizeof(sarray), size);
 		size += header.narrays * sizeof(sarray);
 		if (header.eltsize > 0) {
-		    sw_writev((char *) save.selts, data->sectors,
-			      header.eltsize * sizeof(svalue), size);
+		    Swap::writev((char *) save.selts, data->sectors,
+				 header.eltsize * sizeof(svalue), size);
 		    size += header.eltsize * sizeof(svalue);
 		}
 	    }
@@ -2245,11 +2076,11 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	    /* save strings */
 	    data->stroffset = size;
 	    if (header.nstrings > 0) {
-		sw_writev((char *) save.sstrings, data->sectors,
-			  header.nstrings * sizeof(sstring), size);
+		Swap::writev((char *) save.sstrings, data->sectors,
+			     header.nstrings * sizeof(sstring), size);
 		size += header.nstrings * sizeof(sstring);
 		if (header.strsize > 0) {
-		    sw_writev(text, data->sectors, header.strsize, size);
+		    Swap::writev(text, data->sectors, header.strsize, size);
 		    size += header.strsize;
 		    if (text != save.stext) {
 			FREE(text);
@@ -2260,8 +2091,8 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	    /* save callouts */
 	    data->cooffset = size;
 	    if (header.ncallouts > 0) {
-		sw_writev((char *) data->scallouts, data->sectors,
-			  header.ncallouts * (Uint) sizeof(scallout), size);
+		Swap::writev((char *) data->scallouts, data->sectors,
+			     header.ncallouts * (Uint) sizeof(scallout), size);
 	    }
 	}
 
@@ -2299,9 +2130,9 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
  * DESCRIPTION:	Swap out a portion of the control and dataspace blocks in
  *		memory.  Return the number of dataspace blocks swapped out.
  */
-sector d_swapout(unsigned int frag)
+Sector d_swapout(unsigned int frag)
 {
-    sector n, count;
+    Sector n, count;
     Dataspace *data;
     Control *ctrl;
 
@@ -2329,7 +2160,7 @@ sector d_swapout(unsigned int frag)
 
 	    prev = ctrl->prev;
 	    if (ctrl->ndata == 0) {
-		if (ctrl->sectors == (sector *) NULL ||
+		if (ctrl->sectors == (Sector *) NULL ||
 		    (ctrl->flags & CTRL_VARMAP)) {
 		    d_save_control(ctrl);
 		}
@@ -2383,30 +2214,11 @@ void d_upgrade_mem(Object *tmpl, Object *newob)
 }
 
 /*
- * NAME:	data->conv()
- * DESCRIPTION:	convert something from the snapshot
- */
-static Uint d_conv(char *m, sector *vec, const char *layout, Uint n, Uint idx,
-		   void (*readv) (char*, sector*, Uint, Uint))
-{
-    Uint bufsize;
-    char *buf;
-
-    bufsize = (conf_dsize(layout) & 0xff) * n;
-    buf = ALLOC(char, bufsize);
-    (*readv)(buf, vec, bufsize, idx);
-    conf_dconv(m, buf, layout, n);
-    FREE(buf);
-
-    return bufsize;
-}
-
-/*
  * NAME:	data->conv_control()
  * DESCRIPTION:	convert control block
  */
 static Control *d_conv_control(Object *obj, Uint instance,
-			       void (*readv) (char*, sector*, Uint, Uint))
+			       void (*readv) (char*, Sector*, Uint, Uint))
 {
     scontrol header;
     Control *ctrl;
@@ -2423,8 +2235,8 @@ static Control *d_conv_control(Object *obj, Uint instance,
     if (conv_15) {
 	scontrol0 h0;
 
-	size = d_conv((char *) &h0, &obj->cfirst, sc0_layout, (Uint) 1,
-		      (Uint) 0, readv);
+	size = Swap::convert((char *) &h0, &obj->cfirst, sc0_layout, (Uint) 1,
+			     (Uint) 0, readv);
 	header.nsectors = h0.nsectors;
 	header.flags = h0.flags;
 	header.version = 0;
@@ -2443,8 +2255,8 @@ static Control *d_conv_control(Object *obj, Uint instance,
 	header.nvariables = h0.nvariables;
 	header.vmapsize = h0.vmapsize;
     } else {
-	size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1,
-		      (Uint) 0, readv);
+	size = Swap::convert((char *) &header, &obj->cfirst, sc_layout,
+			     (Uint) 1, (Uint) 0, readv);
     }
     ctrl->flags = header.flags;
     ctrl->version = header.version;
@@ -2463,18 +2275,18 @@ static Control *d_conv_control(Object *obj, Uint instance,
     ctrl->vmapsize = header.vmapsize;
 
     /* sectors */
-    ctrl->sectors = ALLOC(sector, ctrl->nsectors = header.nsectors);
+    ctrl->sectors = ALLOC(Sector, ctrl->nsectors = header.nsectors);
     ctrl->sectors[0] = obj->cfirst;
     for (n = 0; n < header.nsectors; n++) {
-	size += d_conv((char *) (ctrl->sectors + n), ctrl->sectors, "d",
-		       (Uint) 1, size, readv);
+	size += Swap::convert((char *) (ctrl->sectors + n), ctrl->sectors, "d",
+			      (Uint) 1, size, readv);
     }
 
     if (header.vmapsize != 0) {
 	/* only vmap */
 	ctrl->vmap = ALLOC(unsigned short, header.vmapsize);
-	d_conv((char *) ctrl->vmap, ctrl->sectors, "s", (Uint) header.vmapsize,
-	       size, readv);
+	Swap::convert((char *) ctrl->vmap, ctrl->sectors, "s",
+		      (Uint) header.vmapsize, size, readv);
     } else {
 	dinherit *inherits;
 	sinherit *sinherits;
@@ -2484,8 +2296,8 @@ static Control *d_conv_control(Object *obj, Uint instance,
 	ctrl->inherits = inherits = ALLOC(dinherit, n);
 
 	sinherits = ALLOCA(sinherit, n);
-	size += d_conv((char *) sinherits, ctrl->sectors, si_layout, (Uint) n,
-		       size, readv);
+	size += Swap::convert((char *) sinherits, ctrl->sectors, si_layout,
+			      (Uint) n, size, readv);
 	do {
 	    inherits->oindex = sinherits->oindex;
 	    inherits->progoffset = sinherits->progoffset;
@@ -2502,8 +2314,9 @@ static Control *d_conv_control(Object *obj, Uint instance,
 	if (header.progsize != 0) {
 	    /* program */
 	    if (header.flags & CMP_TYPE) {
-		ctrl->prog = decompress(ctrl->sectors, readv, header.progsize,
-					size, &ctrl->progsize);
+		ctrl->prog = Swap::decompress(ctrl->sectors, readv,
+					      header.progsize, size,
+					      &ctrl->progsize);
 	    } else {
 		ctrl->prog = ALLOC(char, header.progsize);
 		(*readv)(ctrl->prog, ctrl->sectors, header.progsize, size);
@@ -2519,21 +2332,22 @@ static Control *d_conv_control(Object *obj, Uint instance,
 		unsigned short i;
 
 		sstrings = ALLOCA(dstrconst0, header.nstrings);
-		size += d_conv((char *) sstrings, ctrl->sectors, DSTR0_LAYOUT,
-			       (Uint) header.nstrings, size, readv);
+		size += Swap::convert((char *) sstrings, ctrl->sectors,
+				      DSTR0_LAYOUT, (Uint) header.nstrings,
+				      size, readv);
 		for (i = 0; i < header.nstrings; i++) {
 		    ctrl->sslength[i] = sstrings[i].len;
 		}
 		AFREE(sstrings);
 	    } else {
-		size += d_conv((char *) ctrl->sslength, ctrl->sectors, "t",
-			       (Uint) header.nstrings, size, readv);
+		size += Swap::convert((char *) ctrl->sslength, ctrl->sectors,
+				      "t", (Uint) header.nstrings, size, readv);
 	    }
 	    if (header.strsize != 0) {
 		if (header.flags & (CMP_TYPE << 2)) {
-		    ctrl->stext = decompress(ctrl->sectors, readv,
-					     header.strsize, size,
-					     &ctrl->strsize);
+		    ctrl->stext = Swap::decompress(ctrl->sectors, readv,
+						   header.strsize, size,
+						   &ctrl->strsize);
 		} else {
 		    ctrl->stext = ALLOC(char, header.strsize);
 		    (*readv)(ctrl->stext, ctrl->sectors, header.strsize, size);
@@ -2545,15 +2359,17 @@ static Control *d_conv_control(Object *obj, Uint instance,
 	if (header.nfuncdefs != 0) {
 	    /* function definitions */
 	    ctrl->funcdefs = ALLOC(dfuncdef, UCHAR(header.nfuncdefs));
-	    size += d_conv((char *) ctrl->funcdefs, ctrl->sectors, DF_LAYOUT,
-			   (Uint) UCHAR(header.nfuncdefs), size, readv);
+	    size += Swap::convert((char *) ctrl->funcdefs, ctrl->sectors,
+				  DF_LAYOUT, (Uint) UCHAR(header.nfuncdefs),
+				  size, readv);
 	}
 
 	if (header.nvardefs != 0) {
 	    /* variable definitions */
 	    ctrl->vardefs = ALLOC(dvardef, UCHAR(header.nvardefs));
-	    size += d_conv((char *) ctrl->vardefs, ctrl->sectors, DV_LAYOUT,
-			   (Uint) UCHAR(header.nvardefs), size, readv);
+	    size += Swap::convert((char *) ctrl->vardefs, ctrl->sectors,
+				  DV_LAYOUT, (Uint) UCHAR(header.nvardefs),
+				  size, readv);
 	    if (ctrl->nclassvars != 0) {
 		ctrl->classvars = ALLOC(char, ctrl->nclassvars * 3);
 		(*readv)(ctrl->classvars, ctrl->sectors,
@@ -2573,8 +2389,9 @@ static Control *d_conv_control(Object *obj, Uint instance,
 	if (header.nsymbols != 0) {
 	    /* symbol table */
 	    ctrl->symbols = ALLOC(dsymbol, header.nsymbols);
-	    size += d_conv((char *) ctrl->symbols, ctrl->sectors, DSYM_LAYOUT,
-			   (Uint) header.nsymbols, size, readv);
+	    size += Swap::convert((char *) ctrl->symbols, ctrl->sectors,
+				  DSYM_LAYOUT, (Uint) header.nsymbols, size,
+				  readv);
 	}
 
 	if (header.nvariables > UCHAR(header.nvardefs)) {
@@ -2593,13 +2410,13 @@ static Control *d_conv_control(Object *obj, Uint instance,
  * NAME:	data->conv_sarray1()
  * DESCRIPTION:	convert old sarrays
  */
-static Uint d_conv_sarray1(sarray *sa, sector *s, Uint n, Uint size)
+static Uint d_conv_sarray1(sarray *sa, Sector *s, Uint n, Uint size)
 {
     sarray1 *osa;
     Uint i;
 
     osa = ALLOC(sarray1, n);
-    size = d_conv((char *) osa, s, sa1_layout, n, size, &sw_conv);
+    size = Swap::convert((char *) osa, s, sa1_layout, n, size, &Swap::conv);
     for (i = 0; i < n; i++) {
 	sa->tag = osa->tag;
 	sa->ref = osa->ref;
@@ -2614,13 +2431,13 @@ static Uint d_conv_sarray1(sarray *sa, sector *s, Uint n, Uint size)
  * NAME:	data->conv_sstring0()
  * DESCRIPTION:	convert old sstrings
  */
-static Uint d_conv_sstring0(sstring *ss, sector *s, Uint n, Uint size)
+static Uint d_conv_sstring0(sstring *ss, Sector *s, Uint n, Uint size)
 {
     sstring0 *oss;
     Uint i;
 
     oss = ALLOC(sstring0, n);
-    size = d_conv((char *) oss, s, ss0_layout, n, size, &sw_conv);
+    size = Swap::convert((char *) oss, s, ss0_layout, n, size, &Swap::conv);
     for (i = 0; i < n; i++) {
 	ss->ref = oss->ref;
 	(ss++)->len = (oss++)->len;
@@ -2678,7 +2495,7 @@ static void d_fixdata(Dataspace *data, Uint *counttab)
  * DESCRIPTION:	convert dataspace
  */
 static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
-				   void (*readv) (char*, sector*, Uint, Uint))
+				   void (*readv) (char*, Sector*, Uint, Uint))
 {
     sdataspace header;
     Dataspace *data;
@@ -2692,8 +2509,8 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
     /*
      * restore from snapshot
      */
-    size = d_conv((char *) &header, &obj->dfirst, sd_layout, (Uint) 1,
-		  (Uint) 0, readv);
+    size = Swap::convert((char *) &header, &obj->dfirst, sd_layout, (Uint) 1,
+			 (Uint) 0, readv);
     data->nvariables = header.nvariables;
     data->narrays = header.narrays;
     data->eltsize = header.eltsize;
@@ -2703,17 +2520,17 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
     data->fcallouts = header.fcallouts;
 
     /* sectors */
-    data->sectors = ALLOC(sector, data->nsectors = header.nsectors);
+    data->sectors = ALLOC(Sector, data->nsectors = header.nsectors);
     data->sectors[0] = obj->dfirst;
     for (n = 0; n < header.nsectors; n++) {
-	size += d_conv((char *) (data->sectors + n), data->sectors, "d",
-		       (Uint) 1, size, readv);
+	size += Swap::convert((char *) (data->sectors + n), data->sectors, "d",
+			      (Uint) 1, size, readv);
     }
 
     /* variables */
     data->svariables = ALLOC(svalue, header.nvariables);
-    size += d_conv((char *) data->svariables, data->sectors, sv_layout,
-		   (Uint) header.nvariables, size, readv);
+    size += Swap::convert((char *) data->svariables, data->sectors, sv_layout,
+			  (Uint) header.nvariables, size, readv);
 
     if (header.narrays != 0) {
 	/* arrays */
@@ -2722,13 +2539,13 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	    size += d_conv_sarray1(data->sarrays, data->sectors,
 				   header.narrays, size);
 	} else {
-	    size += d_conv((char *) data->sarrays, data->sectors, sa_layout,
-			   header.narrays, size, readv);
+	    size += Swap::convert((char *) data->sarrays, data->sectors,
+				  sa_layout, header.narrays, size, readv);
 	}
 	if (header.eltsize != 0) {
 	    data->selts = ALLOC(svalue, header.eltsize);
-	    size += d_conv((char *) data->selts, data->sectors, sv_layout,
-			   header.eltsize, size, readv);
+	    size += Swap::convert((char *) data->selts, data->sectors,
+				  sv_layout, header.eltsize, size, readv);
 	}
     }
 
@@ -2739,13 +2556,14 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	    size += d_conv_sstring0(data->sstrings, data->sectors,
 				    (Uint) header.nstrings, size);
 	} else {
-	    size += d_conv((char *) data->sstrings, data->sectors, ss_layout,
-			   header.nstrings, size, readv);
+	    size += Swap::convert((char *) data->sstrings, data->sectors,
+				  ss_layout, header.nstrings, size, readv);
 	}
 	if (header.strsize != 0) {
 	    if (header.flags & CMP_TYPE) {
-		data->stext = decompress(data->sectors, readv, header.strsize,
-					 size, &data->strsize);
+		data->stext = Swap::decompress(data->sectors, readv,
+					       header.strsize, size,
+					       &data->strsize);
 	    } else {
 		data->stext = ALLOC(char, header.strsize);
 		(*readv)(data->stext, data->sectors, header.strsize, size);
@@ -2760,8 +2578,8 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	/* callouts */
 	co_time(&dummy);
 	data->scallouts = ALLOC(scallout, header.ncallouts);
-	d_conv((char *) data->scallouts, data->sectors, sco_layout,
-	       (Uint) header.ncallouts, size, readv);
+	Swap::convert((char *) data->scallouts, data->sectors, sco_layout,
+		      (Uint) header.ncallouts, size, readv);
     }
 
     data->ctrl = obj->control();
@@ -2775,7 +2593,7 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
  * DESCRIPTION:	restore a control block
  */
 Control *d_restore_ctrl(Object *obj, Uint instance,
-			void (*readv) (char*, sector*, Uint, Uint))
+			void (*readv) (char*, Sector*, Uint, Uint))
 {
     Control *ctrl;
 
@@ -2807,7 +2625,7 @@ Control *d_restore_ctrl(Object *obj, Uint instance,
  * DESCRIPTION:	restore a dataspace
  */
 Dataspace *d_restore_data(Object *obj, Uint *counttab,
-			  void (*readv) (char*, sector*, Uint, Uint))
+			  void (*readv) (char*, Sector*, Uint, Uint))
 {
     Dataspace *data;
 
@@ -2850,11 +2668,11 @@ void d_restore_obj(Object *obj, Uint instance, Uint *counttab, bool cactive,
     Dataspace *data;
 
     if (!converted) {
-	ctrl = d_restore_ctrl(obj, instance, sw_conv);
-	data = d_restore_data(obj, counttab, sw_conv);
+	ctrl = d_restore_ctrl(obj, instance, Swap::conv);
+	data = d_restore_data(obj, counttab, Swap::conv);
     } else {
-	ctrl = d_restore_ctrl(obj, instance, sw_dreadv);
-	data = d_restore_data(obj, counttab, sw_dreadv);
+	ctrl = d_restore_ctrl(obj, instance, Swap::dreadv);
+	data = d_restore_data(obj, counttab, Swap::dreadv);
     }
 
     if (!cactive) {
@@ -2937,7 +2755,7 @@ void d_free_control(Control *ctrl)
     }
 
     /* delete sectors */
-    if (ctrl->sectors != (sector *) NULL) {
+    if (ctrl->sectors != (Sector *) NULL) {
 	FREE(ctrl->sectors);
     }
 
@@ -3025,7 +2843,7 @@ void d_free_dataspace(Dataspace *data)
     d_free_values(data);
 
     /* delete sectors */
-    if (data->sectors != (sector *) NULL) {
+    if (data->sectors != (Sector *) NULL) {
 	FREE(data->sectors);
     }
 

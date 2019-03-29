@@ -38,8 +38,8 @@ public:
     };
     Control *ctrl;		/* control block (master object only) */
     Dataspace *data;		/* dataspace block */
-    sector cfirst;		/* first sector of control block */
-    sector dfirst;		/* first sector of dataspace block */
+    Sector cfirst;		/* first sector of control block */
+    Sector dfirst;		/* first sector of dataspace block */
 
     Object *clone();
     void lightWeight();

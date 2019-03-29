@@ -247,7 +247,7 @@ static void conf_dumpinit()
     i2 = strchr((char *) &i, 0x56) - (char *) &i;
     i3 = strchr((char *) &i, 0x78) - (char *) &i;
     utsize = sizeof(uindex) | (sizeof(ssizet) << 4);
-    desize = sizeof(sector) | (sizeof(eindex) << 4);
+    desize = sizeof(Sector) | (sizeof(eindex) << 4);
     psize = sizeof(char*) | (sizeof(char) << 4);
     calign = (char *) &cdummy.c - (char *) &cdummy.fill;
     salign = (char *) &sdummy.s - (char *) &sdummy.fill;
@@ -258,7 +258,7 @@ static void conf_dumpinit()
 
     ualign = (sizeof(uindex) == sizeof(short)) ? salign : ialign;
     talign = (sizeof(ssizet) == sizeof(short)) ? salign : ialign;
-    dalign = (sizeof(sector) == sizeof(short)) ? salign : ialign;
+    dalign = (sizeof(Sector) == sizeof(short)) ? salign : ialign;
     switch (sizeof(eindex)) {
     case sizeof(char):	ealign = calign; break;
     case sizeof(short):	ealign = salign; break;
@@ -299,7 +299,7 @@ void conf_dump(bool incr, bool boot)
     if (Object::dobjects() > 0) {
 	dflags |= FLAGS_PARTIAL;
     }
-    fd = sw_dump(conf[DUMP_FILE].str, dflags & FLAGS_PARTIAL);
+    fd = Swap::save(conf[DUMP_FILE].str, dflags & FLAGS_PARTIAL);
     if (!kf_dump(fd)) {
 	fatal("failed to dump kfun table");
     }
@@ -316,7 +316,7 @@ void conf_dump(bool incr, bool boot)
 	}
     }
 
-    sw_dump2(header, sizeof(dumpinfo), incr);
+    Swap::save2(header, sizeof(dumpinfo), incr);
 }
 
 /*
@@ -389,7 +389,7 @@ static bool conf_restore(int fd, int fd2)
 	if (memcmp(rheader, h, DUMP_HEADERSZ) != 0) {
 	    error("Secondary snapshot has different type");
 	}
-	sw_restore2(fd2);
+	Swap::restore2(fd2);
     }
 
     starttime = (UCHAR(rheader[DUMP_STARTTIME + 0]) << 24) |
@@ -426,7 +426,7 @@ static bool conf_restore(int fd, int fd2)
     case sizeof(Int):	realign = rialign; break;
     }
     if (sizeof(uindex) < rusize || sizeof(ssizet) < rtsize ||
-	sizeof(sector) < rdsize) {
+	sizeof(Sector) < rdsize) {
 	error("Cannot restore uindex, ssizet or sector of greater width");
     }
     if ((rpsize >> 4) > 1) {
@@ -434,7 +434,7 @@ static bool conf_restore(int fd, int fd2)
     }
     rpsize &= 0xf;
 
-    sw_restore(fd, secsize);
+    Swap::restore(fd, secsize);
     kf_restore(fd);
     Object::restore(fd, rdflags & FLAGS_PARTIAL);
     d_init_conv(conv_14, conv_15);
@@ -505,7 +505,7 @@ Uint conf_dsize(const char *layout)
 	    break;
 
 	case 'd':	/* sector */
-	    sz = sizeof(sector);
+	    sz = sizeof(Sector);
 	    rsz = rdsize;
 	    al = dalign;
 	    ral = rdalign;
@@ -666,8 +666,8 @@ Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 	    case 'd':
 		i = ALGN(i, dalign);
 		ri = ALGN(ri, rdalign);
-		if (sizeof(sector) == rdsize) {
-		    if (sizeof(sector) == sizeof(short)) {
+		if (sizeof(Sector) == rdsize) {
+		    if (sizeof(Sector) == sizeof(short)) {
 			buf[i + s0] = rbuf[ri + rs0];
 			buf[i + s1] = rbuf[ri + rs1];
 		    } else {
@@ -684,7 +684,7 @@ Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		    buf[i + i2] = rbuf[ri + rs0];
 		    buf[i + i3] = rbuf[ri + rs1];
 		}
-		i += sizeof(sector);
+		i += sizeof(Sector);
 		ri += rdsize;
 		break;
 
@@ -1430,12 +1430,12 @@ extern bool ext_dgd (char*, char*, void (**)(int*, int), void (**)());
  * DESCRIPTION:	initialize the driver
  */
 bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
-	       sector *fragment)
+	       Sector *fragment)
 {
     char buf[STRINGSZ];
     int fd, fd2, i;
     bool init;
-    sector cache;
+    Sector cache;
 
     fd = fd2 = -1;
 
@@ -1559,9 +1559,9 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 		 (Uint) conf[DUMP_INTERVAL].num);
 
     /* initialize swap device */
-    cache = (sector) ((conf[CACHE_SIZE].set) ? conf[CACHE_SIZE].num : 100);
-    sw_init(conf[SWAP_FILE].str, (sector) conf[SWAP_SIZE].num, cache,
-	    (unsigned int) conf[SECTOR_SIZE].num);
+    cache = (Sector) ((conf[CACHE_SIZE].set) ? conf[CACHE_SIZE].num : 100);
+    Swap::init(conf[SWAP_FILE].str, (Sector) conf[SWAP_SIZE].num, cache,
+	       (unsigned int) conf[SECTOR_SIZE].num);
 
     /* initialize swapped data handler */
     d_init();
@@ -1573,7 +1573,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 
     /* initialize call_outs */
     if (!co_init((uindex) conf[CALL_OUTS].num)) {
-	sw_finish();
+	Swap::finish();
 	comm_clear();
 	comm_finish();
 	if (snapshot2 != (char *) NULL) {
@@ -1607,7 +1607,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
      * create include files
      */
     if (!conf_includes()) {
-	sw_finish();
+	Swap::finish();
 	comm_clear();
 	comm_finish();
 	if (snapshot2 != (char *) NULL) {
@@ -1666,7 +1666,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	message("Config error: initialization failed\012");	/* LF */
 	ErrorContext::pop();		/* remove guard */
 
-	sw_finish();
+	Swap::finish();
 	comm_clear();
 	comm_finish();
 	ed_finish();
@@ -1810,7 +1810,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 5:	/* ST_SWAPUSED */
-	PUT_INTVAL(v, sw_count());
+	PUT_INTVAL(v, Swap::count());
 	break;
 
     case 6:	/* ST_SECTORSIZE */

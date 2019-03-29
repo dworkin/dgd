@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-# include "swap.h"
-
 struct dinherit {
     uindex oindex;		/* inherited object */
     uindex progoffset;		/* program offset */
@@ -64,8 +62,8 @@ struct Control {
     Control *prev, *next;
     uindex ndata;		/* # of data blocks using this control block */
 
-    sector nsectors;		/* o # of sectors */
-    sector *sectors;		/* o vector with sectors */
+    Sector nsectors;		/* o # of sectors */
+    Sector *sectors;		/* o vector with sectors */
 
     uindex oindex;		/* i object */
     Uint instance;		/* i instance */
@@ -187,8 +185,8 @@ struct Dataspace {
     Dataspace *iprev;		/* previous in import list */
     Dataspace *inext;		/* next in import list */
 
-    sector *sectors;		/* o vector of sectors */
-    sector nsectors;		/* o # sectors */
+    Sector *sectors;		/* o vector of sectors */
+    Sector nsectors;		/* o # sectors */
 
     short flags;		/* various bitflags */
     Control *ctrl;		/* control block */
@@ -254,12 +252,12 @@ extern Value	       *d_get_variable	 (Dataspace*, unsigned int);
 extern Value	       *d_get_elts	 (Array*);
 extern void		d_get_callouts	 (Dataspace*);
 
-extern sector		d_swapout	 (unsigned int);
+extern Sector		d_swapout	 (unsigned int);
 extern void		d_upgrade_mem	 (Object*, Object*);
 extern Control	       *d_restore_ctrl	 (Object*, Uint,
-					  void(*)(char*, sector*, Uint, Uint));
+					  void(*)(char*, Sector*, Uint, Uint));
 extern Dataspace       *d_restore_data	 (Object*, Uint*,
-					  void(*)(char*, sector*, Uint, Uint));
+					  void(*)(char*, Sector*, Uint, Uint));
 extern void		d_restore_obj	 (Object*, Uint, Uint*, bool, bool);
 extern void		d_converted	 ();
 

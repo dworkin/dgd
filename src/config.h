@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,7 +21,7 @@
 typedef unsigned short uindex;
 # define UINDEX_MAX	USHRT_MAX
 
-typedef uindex sector;
+typedef uindex Sector;
 # define SW_UNUSED	UINDEX_MAX
 
 /* sizeof(ssizet) <= sizeof(uindex) */
@@ -99,7 +99,7 @@ typedef unsigned short kfindex;
 # define BIPREFIXLEN	8
 
 extern void		conf_mod_finish	();
-extern bool		conf_init	(char*, char*, char*, char*, sector*);
+extern bool		conf_init	(char*, char*, char*, char*, Sector*);
 extern char	       *conf_base_dir	();
 extern char	       *conf_driver	();
 extern char	      **conf_hotboot	();

@@ -139,7 +139,7 @@ error.o str.o array.o object.o data.o sdata.o path.o comm.o call_out.o: data.h
 interpret.o config.o ext.o dgd.o: data.h
 path.o config.o: path.h
 hash.o: hash.h
-swap.o: swap.h
+swap.o: hash.h swap.h
 editor.o config.o dgd.o: editor.h
 data.o sdata.o call_out.o config.o dgd.o: call_out.h
 error.o comm.o config.o ext.o dgd.o: comm.h

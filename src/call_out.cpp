@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -836,13 +836,13 @@ bool co_dump(int fd)
     dh.timediff = timediff;
 
     /* write header and callouts */
-    return (sw_write(fd, &dh, sizeof(dump_header)) &&
+    return (Swap::write(fd, &dh, sizeof(dump_header)) &&
 	    (queuebrk == 0 ||
-	     sw_write(fd, cotab, queuebrk * sizeof(call_out))) &&
+	     Swap::write(fd, cotab, queuebrk * sizeof(call_out))) &&
 	    (cycbrk == cotabsz ||
-	     sw_write(fd, cotab + cycbrk,
-		      (cotabsz - cycbrk) * sizeof(call_out))) &&
-	    sw_write(fd, cycbuf, CYCBUF_SIZE * sizeof(uindex)));
+	     Swap::write(fd, cotab + cycbrk,
+			 (cotabsz - cycbrk) * sizeof(call_out))) &&
+	    Swap::write(fd, cycbuf, CYCBUF_SIZE * sizeof(uindex)));
 }
 
 /*

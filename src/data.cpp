@@ -1911,9 +1911,9 @@ void d_export()
  */
 void d_del_control(Control *ctrl)
 {
-    if (ctrl->sectors != (sector *) NULL) {
-	sw_wipev(ctrl->sectors, ctrl->nsectors);
-	sw_delv(ctrl->sectors, ctrl->nsectors);
+    if (ctrl->sectors != (Sector *) NULL) {
+	Swap::wipev(ctrl->sectors, ctrl->nsectors);
+	Swap::delv(ctrl->sectors, ctrl->nsectors);
     }
     d_free_control(ctrl);
 }
@@ -1953,9 +1953,9 @@ void d_del_dataspace(Dataspace *data)
 	    }
 	}
     }
-    if (data->sectors != (sector *) NULL) {
-	sw_wipev(data->sectors, data->nsectors);
-	sw_delv(data->sectors, data->nsectors);
+    if (data->sectors != (Sector *) NULL) {
+	Swap::wipev(data->sectors, data->nsectors);
+	Swap::delv(data->sectors, data->nsectors);
     }
     d_free_dataspace(data);
 }
