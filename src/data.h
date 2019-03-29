@@ -25,13 +25,6 @@ struct dinherit {
     bool priv;			/* privately inherited? */
 };
 
-struct dstrconst0 {
-    Uint index;			/* index in control block */
-    ssizet len;			/* string length */
-};
-
-# define DSTR0_LAYOUT	"it"
-
 struct dfuncdef {
     char sclass;		/* function class */
     char inherit;		/* function name inherit index */
@@ -122,6 +115,41 @@ struct Control {
 # define NEW_FLOAT		((unsigned short) -2)
 # define NEW_POINTER		((unsigned short) -3)
 # define NEW_VAR(x)		((x) >= NEW_POINTER)
+
+/* bit values for ctrl->flags */
+# define CTRL_PROGCMP		0x003	/* program compressed */
+# define CTRL_STRCMP		0x00c	/* strings compressed */
+# define CTRL_UNDEFINED		0x010	/* has undefined functions */
+# define CTRL_VARMAP		0x020	/* varmap updated */
+
+# define CTRL_VERSION		1	/* program version */
+
+/* data compression */
+# define CMP_TYPE		0x03
+# define CMP_NONE		0x00	/* no compression */
+# define CMP_PRED		0x01	/* predictor compression */
+
+extern Control	       *d_new_control	 ();
+extern Control	       *d_load_control	 (Object*, Uint);
+extern void		d_ref_control	 (Control*);
+extern void		d_deref_ctrl	 (Control*);
+extern char	       *d_get_prog	 (Control*);
+extern String	       *d_get_strconst	 (Control*, int, unsigned int);
+extern dfuncdef        *d_get_funcdefs	 (Control*);
+extern dvardef	       *d_get_vardefs	 (Control*);
+extern char	       *d_get_funcalls	 (Control*);
+extern dsymbol	       *d_get_symbols	 (Control*);
+extern Uint		d_get_progsize	 (Control*);
+extern char	       *d_get_vtypes	 (Control*);
+extern Control	       *d_restore_ctrl	 (Object*, Uint,
+					  void(*)(char*, Sector*, Uint, Uint));
+extern void		d_free_control	 (Control*);
+extern void		d_del_control	 (Control*);
+extern void		d_init_ctrl	 ();
+extern void		d_init_conv_ctrl (bool, bool);
+extern void		d_converted_ctrl ();
+extern void		d_swapout_ctrl	 (unsigned int);
+
 
 struct strref {
     String *str;		/* string value */
@@ -227,25 +255,12 @@ struct Dataspace {
 # define THISPLANE(a)		((a)->plane == (a)->data->plane)
 # define SAMEPLANE(d1, d2)	((d1)->plane->level == (d2)->plane->level)
 
-/* sdata.c */
-
 extern void		d_init		 ();
-extern void		d_init_conv	 (bool, bool);
+extern void		d_init_conv	 (bool);
 
-extern Control	       *d_new_control	 ();
 extern Dataspace       *d_new_dataspace  (Object*);
-extern Control	       *d_load_control	 (Object*, Uint);
 extern Dataspace       *d_load_dataspace (Object*);
-extern void		d_ref_control	 (Control*);
 extern void		d_ref_dataspace  (Dataspace*);
-
-extern char	       *d_get_prog	 (Control*);
-extern String	       *d_get_strconst	 (Control*, int, unsigned int);
-extern dfuncdef        *d_get_funcdefs	 (Control*);
-extern dvardef	       *d_get_vardefs	 (Control*);
-extern char	       *d_get_funcalls	 (Control*);
-extern dsymbol	       *d_get_symbols	 (Control*);
-extern Uint		d_get_progsize	 (Control*);
 
 extern void		d_new_variables	 (Control*, Value*);
 extern Value	       *d_get_variable	 (Dataspace*, unsigned int);
@@ -254,17 +269,12 @@ extern void		d_get_callouts	 (Dataspace*);
 
 extern Sector		d_swapout	 (unsigned int);
 extern void		d_upgrade_mem	 (Object*, Object*);
-extern Control	       *d_restore_ctrl	 (Object*, Uint,
-					  void(*)(char*, Sector*, Uint, Uint));
 extern Dataspace       *d_restore_data	 (Object*, Uint*,
 					  void(*)(char*, Sector*, Uint, Uint));
 extern void		d_restore_obj	 (Object*, Uint, Uint*, bool, bool);
 extern void		d_converted	 ();
 
-extern void		d_free_control	 (Control*);
 extern void		d_free_dataspace (Dataspace*);
-
-/* data.c */
 
 extern void		d_new_plane	(Dataspace*, Int);
 extern void		d_commit_plane	(Int, Value*);
@@ -294,17 +304,8 @@ extern void		d_upgrade_clone	(Dataspace*);
 extern Object	       *d_upgrade_lwobj	(Array*, Object*);
 extern void		d_export	();
 
-extern void		d_del_control	(Control*);
 extern void		d_del_dataspace	(Dataspace*);
 
-
-/* bit values for ctrl->flags */
-# define CTRL_PROGCMP		0x003	/* program compressed */
-# define CTRL_STRCMP		0x00c	/* strings compressed */
-# define CTRL_UNDEFINED		0x010	/* has undefined functions */
-# define CTRL_VARMAP		0x020	/* varmap updated */
-
-# define CTRL_VERSION		1	/* program version */
 
 /* bit values for dataspace->flags */
 # define DATA_STRCMP		0x03	/* strings compressed */
@@ -319,11 +320,6 @@ extern void		d_del_dataspace	(Dataspace*);
 # define MOD_NEWCALLOUT		0x20	/* new callout added */
 # define PLANE_MERGE		0x40	/* merge planes on commit */
 # define MOD_SAVE		0x80	/* save on next full swapout */
-
-/* data compression */
-# define CMP_TYPE		0x03
-# define CMP_NONE		0x00	/* no compression */
-# define CMP_PRED		0x01	/* predictor compression */
 
 # define ARR_MOD		0x80000000L	/* in arrref->ref */
 

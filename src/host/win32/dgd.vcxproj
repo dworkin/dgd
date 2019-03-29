@@ -62,7 +62,6 @@
     <ClCompile Include="..\..\parser\parse.cpp" />
     <ClCompile Include="..\..\parser\srp.cpp" />
     <ClCompile Include="..\..\path.cpp" />
-    <ClCompile Include="..\..\sdata.cpp" />
     <ClCompile Include="..\..\str.cpp" />
     <ClCompile Include="..\..\swap.cpp" />
     <ClCompile Include="..\asn.cpp" />

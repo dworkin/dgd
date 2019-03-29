@@ -65,10 +65,10 @@ ifeq ($(HOST),SOLARIS)
 endif
 
 SRC=	alloc.cpp error.cpp hash.cpp swap.cpp str.cpp array.cpp object.cpp \
-	sdata.cpp data.cpp path.cpp editor.cpp comm.cpp call_out.cpp \
-	interpret.cpp config.cpp ext.cpp dgd.cpp
-OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
-	path.o editor.o comm.o call_out.o interpret.o config.o ext.o dgd.o
+	data.cpp path.cpp editor.cpp comm.cpp call_out.cpp interpret.cpp \
+	config.cpp ext.cpp dgd.cpp
+OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o data.o path.o \
+	editor.o comm.o call_out.o interpret.o config.o ext.o dgd.o
 
 a.out:	$(OBJ) comp/dgd lex/dgd ed/dgd parser/dgd kfun/dgd host/dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
@@ -118,29 +118,29 @@ clean:
 path.o config.o dgd.o: comp/node.h comp/compile.h
 config.o: comp/csupport.h
 config.o: comp/parser.h
-config.o sdata.o interpret.o ext.o: comp/control.h
+config.o interpret.o ext.o: comp/control.h
 
 config.o: lex/macro.h lex/token.h lex/ppcontrol.h
 
 editor.o: ed/edcmd.h
 
-data.o sdata.o: parser/parse.h
+data.o: parser/parse.h
 
 interpret.o config.o ext.o: kfun/table.h
 
 $(OBJ):	dgd.h config.h host.h alloc.h error.h
 error.o str.o array.o object.o data.o: str.h array.h object.h hash.h swap.h
-sdata.o path.o comm.o editor.o call_out.o: str.h array.h object.h hash.h swap.h
+path.o comm.o editor.o call_out.o: str.h array.h object.h hash.h swap.h
 interpret.o config.o ext.o dgd.o: str.h array.h object.h hash.h swap.h
 array.o data.o call_out.o interpret.o path.o config.o ext.o dgd.o: xfloat.h
-error.o array.o object.o data.o sdata.o path.o editor.o comm.o: interpret.h
+error.o array.o object.o data.o path.o editor.o comm.o: interpret.h
 call_out.o interpret.o config.o ext.o dgd.o: interpret.h
-error.o str.o array.o object.o data.o sdata.o path.o comm.o call_out.o: data.h
+error.o str.o array.o object.o data.o path.o comm.o call_out.o: data.h
 interpret.o config.o ext.o dgd.o: data.h
 path.o config.o: path.h
 hash.o: hash.h
 swap.o: hash.h swap.h
 editor.o config.o dgd.o: editor.h
-data.o sdata.o call_out.o config.o dgd.o: call_out.h
+data.o call_out.o config.o dgd.o: call_out.h
 error.o comm.o config.o ext.o dgd.o: comm.h
 comm.o config.o: version.h

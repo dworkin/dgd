@@ -130,9 +130,6 @@
     <ClCompile Include="..\..\path.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\sdata.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\str.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

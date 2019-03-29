@@ -437,7 +437,8 @@ static bool conf_restore(int fd, int fd2)
     Swap::restore(fd, secsize);
     kf_restore(fd);
     Object::restore(fd, rdflags & FLAGS_PARTIAL);
-    d_init_conv(conv_14, conv_15);
+    d_init_conv(conv_14);
+    d_init_conv_ctrl(conv_14, conv_15);
     if (conv_14) {
 	pc_restore(fd);
     }
@@ -1565,6 +1566,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 
     /* initialize swapped data handler */
     d_init();
+    d_init_ctrl();
     *fragment = conf[SWAP_FRAGMENT].num;
 
     /* initalize editor */
@@ -1632,6 +1634,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot == (char *) NULL) {
 	    /* initialize mudlib */
 	    d_converted();
+	    d_converted_ctrl();
 	    try {
 		ErrorContext::push((ErrorContext::Handler) errhandler);
 		call_driver_object(cframe, "initialize", 0);

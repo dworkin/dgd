@@ -877,6 +877,8 @@ struct cfunc {
     unsigned short progsize;		/* function program size */
 };
 
+static Control *chead, *ctail;		/* list of control blocks */
+static Sector nctrl;			/* # control blocks */
 static Control *newctrl;		/* the new control block */
 static oh *newohash;			/* fake ohash entry for new object */
 static Uint nstrs;			/* # of strings in all string chunks */
@@ -889,6 +891,238 @@ static String **cvstrings;		/* variable class strings */
 static char *classvars;			/* class variables */
 static int nclassvars;			/* # classvars */
 static Uint nfcalls;			/* # function calls */
+
+/*
+ * NAME:	data->new_control()
+ * DESCRIPTION:	create a new control block
+ */
+Control *d_new_control()
+{
+    Control *ctrl;
+
+    ctrl = ALLOC(Control, 1);
+    if (chead != (Control *) NULL) {
+	/* insert at beginning of list */
+	chead->prev = ctrl;
+	ctrl->prev = (Control *) NULL;
+	ctrl->next = chead;
+	chead = ctrl;
+    } else {
+	/* list was empty */
+	ctrl->prev = ctrl->next = (Control *) NULL;
+	chead = ctail = ctrl;
+    }
+    ctrl->ndata = 0;
+    nctrl++;
+
+    ctrl->flags = 0;
+    ctrl->version = CTRL_VERSION;
+
+    ctrl->nsectors = 0;		/* nothing on swap device yet */
+    ctrl->sectors = (Sector *) NULL;
+    ctrl->oindex = UINDEX_MAX;
+    ctrl->instance = 0;
+    ctrl->ninherits = 0;
+    ctrl->inherits = (dinherit *) NULL;
+    ctrl->imapsz = 0;
+    ctrl->imap = (char *) NULL;
+    ctrl->compiled = 0;
+    ctrl->progsize = 0;
+    ctrl->prog = (char *) NULL;
+    ctrl->nstrings = 0;
+    ctrl->strings = (String **) NULL;
+    ctrl->sslength = (ssizet *) NULL;
+    ctrl->ssindex = (Uint *) NULL;
+    ctrl->stext = (char *) NULL;
+    ctrl->nfuncdefs = 0;
+    ctrl->funcdefs = (dfuncdef *) NULL;
+    ctrl->nvardefs = 0;
+    ctrl->nclassvars = 0;
+    ctrl->vardefs = (dvardef *) NULL;
+    ctrl->cvstrings = (String **) NULL;
+    ctrl->classvars = (char *) NULL;
+    ctrl->nfuncalls = 0;
+    ctrl->funcalls = (char *) NULL;
+    ctrl->nsymbols = 0;
+    ctrl->symbols = (dsymbol *) NULL;
+    ctrl->nvariables = 0;
+    ctrl->vtypes = (char *) NULL;
+    ctrl->vmapsize = 0;
+    ctrl->vmap = (unsigned short *) NULL;
+
+    return ctrl;
+}
+
+/*
+ * NAME:	data->ref_control()
+ * DESCRIPTION:	reference control block
+ */
+void d_ref_control(Control *ctrl)
+{
+    if (ctrl != chead) {
+	/* move to head of list */
+	ctrl->prev->next = ctrl->next;
+	if (ctrl->next != (Control *) NULL) {
+	    ctrl->next->prev = ctrl->prev;
+	} else {
+	    ctail = ctrl->prev;
+	}
+	ctrl->prev = (Control *) NULL;
+	ctrl->next = chead;
+	chead->prev = ctrl;
+	chead = ctrl;
+    }
+}
+
+/*
+ * NAME:	data->deref_ctrl()
+ * DESCRIPTION:	restore an object
+ */
+void d_deref_ctrl(Control *ctrl)
+{
+    /* swap this out first */
+    if (ctrl != (Control *) NULL && ctrl != ctail) {
+	if (chead == ctrl) {
+	    chead = ctrl->next;
+	    chead->prev = (Control *) NULL;
+	} else {
+	    ctrl->prev->next = ctrl->next;
+	    ctrl->next->prev = ctrl->prev;
+	}
+	ctail->next = ctrl;
+	ctrl->prev = ctail;
+	ctrl->next = (Control *) NULL;
+	ctail = ctrl;
+    }
+}
+
+/*
+ * NAME:	data->free_control()
+ * DESCRIPTION:	remove the control block from memory
+ */
+void d_free_control(Control *ctrl)
+{
+    String **strs;
+    unsigned short i;
+
+    /* delete strings */
+    if (ctrl->strings != (String **) NULL) {
+	strs = ctrl->strings;
+	for (i = ctrl->nstrings; i > 0; --i) {
+	    if (*strs != (String *) NULL) {
+		(*strs)->del();
+	    }
+	    strs++;
+	}
+	FREE(ctrl->strings);
+    }
+    if (ctrl->cvstrings != (String **) NULL) {
+	strs = ctrl->cvstrings;
+	for (i = ctrl->nvardefs; i > 0; --i) {
+	    if (*strs != (String *) NULL) {
+		(*strs)->del();
+	    }
+	    strs++;
+	}
+	FREE(ctrl->cvstrings);
+    }
+
+    /* delete vmap */
+    if (ctrl->vmap != (unsigned short *) NULL) {
+	FREE(ctrl->vmap);
+    }
+
+    /* delete sectors */
+    if (ctrl->sectors != (Sector *) NULL) {
+	FREE(ctrl->sectors);
+    }
+
+    if (ctrl->inherits != (dinherit *) NULL) {
+	/* delete inherits */
+	FREE(ctrl->inherits);
+    }
+
+    if (ctrl->prog != (char *) NULL) {
+	FREE(ctrl->prog);
+    }
+
+    /* delete inherit indices */
+    if (ctrl->imap != (char *) NULL) {
+	FREE(ctrl->imap);
+    }
+
+    /* delete string constants */
+    if (ctrl->sslength != (ssizet *) NULL) {
+	FREE(ctrl->sslength);
+    }
+    if (ctrl->ssindex != (Uint *) NULL) {
+	FREE(ctrl->ssindex);
+    }
+    if (ctrl->stext != (char *) NULL) {
+	FREE(ctrl->stext);
+    }
+
+    /* delete function definitions */
+    if (ctrl->funcdefs != (dfuncdef *) NULL) {
+	FREE(ctrl->funcdefs);
+    }
+
+    /* delete variable definitions */
+    if (ctrl->vardefs != (dvardef *) NULL) {
+	FREE(ctrl->vardefs);
+	if (ctrl->classvars != (char *) NULL) {
+	    FREE(ctrl->classvars);
+	}
+    }
+
+    /* delete function call table */
+    if (ctrl->funcalls != (char *) NULL) {
+	FREE(ctrl->funcalls);
+    }
+
+    /* delete symbol table */
+    if (ctrl->symbols != (dsymbol *) NULL) {
+	FREE(ctrl->symbols);
+    }
+
+    /* delete variable types */
+    if (ctrl->vtypes != (char *) NULL) {
+	FREE(ctrl->vtypes);
+    }
+
+    if (ctrl != chead) {
+	ctrl->prev->next = ctrl->next;
+    } else {
+	chead = ctrl->next;
+	if (chead != (Control *) NULL) {
+	    chead->prev = (Control *) NULL;
+	}
+    }
+    if (ctrl != ctail) {
+	ctrl->next->prev = ctrl->prev;
+    } else {
+	ctail = ctrl->prev;
+	if (ctail != (Control *) NULL) {
+	    ctail->next = (Control *) NULL;
+	}
+    }
+    --nctrl;
+
+    FREE(ctrl);
+}
+
+/*
+ * NAME:	data->del_control()
+ * DESCRIPTION:	delete a control block from swap and memory
+ */
+void d_del_control(Control *ctrl)
+{
+    if (ctrl->sectors != (Sector *) NULL) {
+	Swap::wipev(ctrl->sectors, ctrl->nsectors);
+	Swap::delv(ctrl->sectors, ctrl->nsectors);
+    }
+    d_free_control(ctrl);
+}
 
 /*
  * NAME:	Control->imap()
@@ -920,47 +1154,6 @@ static void ctrl_imap(Control *ctrl)
     }
     ctrl->imap = REALLOC(ctrl->imap, char, ctrl->imapsz, imapsz);
     ctrl->imapsz = imapsz;
-}
-
-/*
- * NAME:	Control->convert()
- * DESCRIPTION:	convert inherits
- */
-void ctrl_convert(Control *ctrl)
-{
-    int n, imapsz;
-    oh *ohash;
-    dinherit *inh;
-    Object *obj;
-    Hashtab *xotab;
-    oh **xolist;
-
-    xotab = otab;
-    xolist = olist;
-    oh_init();
-    olist = (oh **) NULL;
-
-    imapsz = 0;
-    for (n = 0, inh = ctrl->inherits; n < ctrl->ninherits; n++, inh++) {
-	obj = OBJR(inh->oindex);
-	ohash = oh_new(obj->name);
-	if (ohash->index < 0) {
-	    ohash->obj = obj;
-	    ohash->index = n;
-	}
-	imapsz += obj->control()->ninherits;
-    }
-    ctrl->imap = ALLOC(char, ctrl->imapsz = imapsz);
-    imapsz = 0;
-    for (n = ctrl->ninherits, inh = ctrl->inherits; n > 0; --n, inh++) {
-	ctrl->imap[imapsz++] = n;
-    }
-    ctrl->imap[0] = 0;
-    ctrl_imap(ctrl);
-
-    oh_clear();
-    olist = xolist;
-    otab = xotab;
 }
 
 /*
@@ -1950,53 +2143,6 @@ void ctrl_mkvtypes(Control *ctrl)
 }
 
 /*
- * NAME:	Control->symb()
- * DESCRIPTION:	return the entry in the symbol table for func, or NULL
- */
-dsymbol *ctrl_symb(Control *ctrl, const char *func, unsigned int len)
-{
-    dsymbol *symb;
-    dfuncdef *f;
-    unsigned int i, j;
-    String *str;
-    dsymbol *symtab, *symb1;
-    dinherit *inherits;
-
-    if ((i=ctrl->nsymbols) == 0) {
-	return (dsymbol *) NULL;
-    }
-
-    inherits = ctrl->inherits;
-    symtab = d_get_symbols(ctrl);
-    i = Hashtab::hashstr(func, VFMERGEHASHSZ) % i;
-    symb1 = symb = &symtab[i];
-    ctrl = OBJR(inherits[UCHAR(symb->inherit)].oindex)->control();
-    f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
-    str = d_get_strconst(ctrl, f->inherit, f->index);
-    if (len == str->len && memcmp(func, str->text, len) == 0) {
-	/* found it */
-	return (f->sclass & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
-    }
-    while (symb->next != i && symb->next != (unsigned short) -1) {
-	symb = &symtab[i = symb->next];
-	ctrl = OBJR(inherits[UCHAR(symb->inherit)].oindex)->control();
-	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
-	str = d_get_strconst(ctrl, f->inherit, f->index);
-	if (len == str->len && memcmp(func, str->text, len) == 0) {
-	    /* found it: put symbol first in linked list */
-	    i = symb1->inherit;
-	    j = symb1->index;
-	    symb1->inherit = symb->inherit;
-	    symb1->index = symb->index;
-	    symb->inherit = i;
-	    symb->index = j;
-	    return (f->sclass & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
-	}
-    }
-    return (dsymbol *) NULL;
-}
-
-/*
  * NAME:	Control->construct()
  * DESCRIPTION:	construct and return a control block for the object just
  *		compiled
@@ -2209,6 +2355,976 @@ unsigned short *ctrl_varmap(Control *octrl, Control *nctrl)
     return (unsigned short *) NULL;
 }
 
+
+struct scontrol {
+    Sector nsectors;		/* # sectors in part one */
+    char flags;			/* control flags: compression */
+    char version;		/* program version */
+    short ninherits;		/* # objects in inherit table */
+    uindex imapsz;		/* inherit map size */
+    Uint progsize;		/* size of program code */
+    Uint compiled;		/* time of compilation */
+    unsigned short comphigh;	/* time of compilation high word */
+    unsigned short nstrings;	/* # strings in string constant table */
+    Uint strsize;		/* size of string constant table */
+    char nfuncdefs;		/* # entries in function definition table */
+    char nvardefs;		/* # entries in variable definition table */
+    char nclassvars;		/* # class variables */
+    uindex nfuncalls;		/* # entries in function call table */
+    unsigned short nsymbols;	/* # entries in symbol table */
+    unsigned short nvariables;	/* # variables */
+    unsigned short vmapsize;	/* size of variable map, or 0 for none */
+};
+
+static char sc_layout[] = "dccsuiissicccusss";
+
+struct scontrol0 {
+    Sector nsectors;		/* # sectors in part one */
+    short flags;		/* control flags: compression */
+    short ninherits;		/* # objects in inherit table */
+    uindex imapsz;		/* inherit map size */
+    Uint progsize;		/* size of program code */
+    Uint compiled;		/* time of compilation */
+    unsigned short comphigh;	/* time of compilation high word */
+    unsigned short nstrings;	/* # strings in string constant table */
+    Uint strsize;		/* size of string constant table */
+    char nfuncdefs;		/* # entries in function definition table */
+    char nvardefs;		/* # entries in variable definition table */
+    char nclassvars;		/* # class variables */
+    uindex nfuncalls;		/* # entries in function call table */
+    unsigned short nsymbols;	/* # entries in symbol table */
+    unsigned short nvariables;	/* # variables */
+    unsigned short vmapsize;	/* size of variable map, or 0 for none */
+};
+
+static char sc0_layout[] = "dssuiissicccusss";
+
+struct sinherit {
+    uindex oindex;		/* index in object table */
+    uindex progoffset;		/* program offset */
+    uindex funcoffset;		/* function call offset */
+    unsigned short varoffset;	/* variable offset */
+    unsigned short flags;	/* bit flags */
+};
+
+static char si_layout[] = "uuuss";
+
+struct dstrconst0 {
+    Uint index;			/* index in control block */
+    ssizet len;			/* string length */
+};
+
+# define DSTR0_LAYOUT	"it"
+
+static bool conv_14;			/* convert arrays & strings? */
+static bool conv_15;			/* convert control blocks? */
+static bool converted;			/* conversion complete? */
+
+/*
+ * NAME:	load_control()
+ * DESCRIPTION:	load a control block
+ */
+static Control *load_control(Object *obj, Uint instance,
+			     void (*readv) (char*, Sector*, Uint, Uint))
+{
+    Control *ctrl;
+    scontrol header;
+    Uint size;
+
+    ctrl = d_new_control();
+    ctrl->oindex = obj->index;
+    ctrl->instance = instance;
+
+    /* header */
+    (*readv)((char *) &header, &obj->cfirst, (Uint) sizeof(scontrol), (Uint) 0);
+    ctrl->nsectors = header.nsectors;
+    ctrl->sectors = ALLOC(Sector, header.nsectors);
+    ctrl->sectors[0] = obj->cfirst;
+    size = header.nsectors * (Uint) sizeof(Sector);
+    if (header.nsectors > 1) {
+	(*readv)((char *) ctrl->sectors, ctrl->sectors, size,
+		 (Uint) sizeof(scontrol));
+    }
+    size += sizeof(scontrol);
+
+    ctrl->flags = header.flags;
+    ctrl->version = header.version;
+
+    /* inherits */
+    ctrl->ninherits = header.ninherits;
+
+    if (header.vmapsize != 0) {
+	/*
+	 * Control block for outdated issue; only vmap can be loaded.
+	 * The load offsets will be invalid (and unused).
+	 */
+	ctrl->vmapsize = header.vmapsize;
+	ctrl->vmap = ALLOC(unsigned short, header.vmapsize);
+	(*readv)((char *) ctrl->vmap, ctrl->sectors,
+		 header.vmapsize * (Uint) sizeof(unsigned short), size);
+    } else {
+	int n;
+	dinherit *inherits;
+	sinherit *sinherits;
+
+	/* load inherits */
+	n = header.ninherits; /* at least one */
+	ctrl->inherits = inherits = ALLOC(dinherit, n);
+	sinherits = ALLOCA(sinherit, n);
+	(*readv)((char *) sinherits, ctrl->sectors, n * (Uint) sizeof(sinherit),
+		 size);
+	size += n * sizeof(sinherit);
+	do {
+	    inherits->oindex = sinherits->oindex;
+	    inherits->progoffset = sinherits->progoffset;
+	    inherits->funcoffset = sinherits->funcoffset;
+	    inherits->varoffset = sinherits->varoffset;
+	    (inherits++)->priv = (sinherits++)->flags;
+	} while (--n > 0);
+	AFREE(sinherits - header.ninherits);
+
+	/* load iindices */
+	ctrl->imapsz = header.imapsz;
+	ctrl->imap = ALLOC(char, header.imapsz);
+	(*readv)(ctrl->imap, ctrl->sectors, ctrl->imapsz, size);
+	size += ctrl->imapsz;
+    }
+
+    /* compile time */
+    ctrl->compiled = header.compiled;
+
+    /* program */
+    ctrl->progoffset = size;
+    ctrl->progsize = header.progsize;
+    size += header.progsize;
+
+    /* string constants */
+    ctrl->stroffset = size;
+    ctrl->nstrings = header.nstrings;
+    ctrl->strsize = header.strsize;
+    size += header.nstrings * (Uint) sizeof(ssizet) + header.strsize;
+
+    /* function definitions */
+    ctrl->funcdoffset = size;
+    ctrl->nfuncdefs = UCHAR(header.nfuncdefs);
+    size += UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef);
+
+    /* variable definitions */
+    ctrl->vardoffset = size;
+    ctrl->nvardefs = UCHAR(header.nvardefs);
+    ctrl->nclassvars = UCHAR(header.nclassvars);
+    size += UCHAR(header.nvardefs) * (Uint) sizeof(dvardef) +
+	    UCHAR(header.nclassvars) * (Uint) 3;
+
+    /* function call table */
+    ctrl->funccoffset = size;
+    ctrl->nfuncalls = header.nfuncalls;
+    size += header.nfuncalls * (Uint) 2;
+
+    /* symbol table */
+    ctrl->symboffset = size;
+    ctrl->nsymbols = header.nsymbols;
+    size += header.nsymbols * (Uint) sizeof(dsymbol);
+
+    /* # variables */
+    ctrl->vtypeoffset = size;
+    ctrl->nvariables = header.nvariables;
+
+    return ctrl;
+}
+
+/*
+ * NAME:	data->load_control()
+ * DESCRIPTION:	load a control block from the swap device
+ */
+Control *d_load_control(Object *obj, Uint instance)
+{
+    return load_control(obj, instance, Swap::readv);
+}
+
+/*
+ * NAME:	data->conv_control()
+ * DESCRIPTION:	convert control block
+ */
+static Control *d_conv_control(Object *obj, Uint instance,
+			       void (*readv) (char*, Sector*, Uint, Uint))
+{
+    scontrol header;
+    Control *ctrl;
+    Uint size;
+    unsigned int n;
+
+    ctrl = d_new_control();
+    ctrl->oindex = obj->index;
+    ctrl->instance = instance;
+
+    /*
+     * restore from snapshot
+     */
+    if (conv_15) {
+	scontrol0 h0;
+
+	size = Swap::convert((char *) &h0, &obj->cfirst, sc0_layout, (Uint) 1,
+			     (Uint) 0, readv);
+	header.nsectors = h0.nsectors;
+	header.flags = h0.flags;
+	header.version = 0;
+	header.ninherits = h0.ninherits;
+	header.imapsz = h0.imapsz;
+	header.progsize = h0.progsize;
+	header.compiled = h0.compiled;
+	header.comphigh = h0.comphigh;
+	header.nstrings = h0.nstrings;
+	header.strsize = h0.strsize;
+	header.nfuncdefs = h0.nfuncdefs;
+	header.nvardefs = h0.nvardefs;
+	header.nclassvars = h0.nclassvars;
+	header.nfuncalls = h0.nfuncalls;
+	header.nsymbols = h0.nsymbols;
+	header.nvariables = h0.nvariables;
+	header.vmapsize = h0.vmapsize;
+    } else {
+	size = Swap::convert((char *) &header, &obj->cfirst, sc_layout,
+			     (Uint) 1, (Uint) 0, readv);
+    }
+    ctrl->flags = header.flags;
+    ctrl->version = header.version;
+    ctrl->ninherits = header.ninherits;
+    ctrl->imapsz = header.imapsz;
+    ctrl->compiled = header.compiled;
+    ctrl->progsize = header.progsize;
+    ctrl->nstrings = header.nstrings;
+    ctrl->strsize = header.strsize;
+    ctrl->nfuncdefs = UCHAR(header.nfuncdefs);
+    ctrl->nvardefs = UCHAR(header.nvardefs);
+    ctrl->nclassvars = UCHAR(header.nclassvars);
+    ctrl->nfuncalls = header.nfuncalls;
+    ctrl->nsymbols = header.nsymbols;
+    ctrl->nvariables = header.nvariables;
+    ctrl->vmapsize = header.vmapsize;
+
+    /* sectors */
+    ctrl->sectors = ALLOC(Sector, ctrl->nsectors = header.nsectors);
+    ctrl->sectors[0] = obj->cfirst;
+    for (n = 0; n < header.nsectors; n++) {
+	size += Swap::convert((char *) (ctrl->sectors + n), ctrl->sectors, "d",
+			      (Uint) 1, size, readv);
+    }
+
+    if (header.vmapsize != 0) {
+	/* only vmap */
+	ctrl->vmap = ALLOC(unsigned short, header.vmapsize);
+	Swap::convert((char *) ctrl->vmap, ctrl->sectors, "s",
+		      (Uint) header.vmapsize, size, readv);
+    } else {
+	dinherit *inherits;
+	sinherit *sinherits;
+
+	/* inherits */
+	n = header.ninherits; /* at least one */
+	ctrl->inherits = inherits = ALLOC(dinherit, n);
+
+	sinherits = ALLOCA(sinherit, n);
+	size += Swap::convert((char *) sinherits, ctrl->sectors, si_layout,
+			      (Uint) n, size, readv);
+	do {
+	    inherits->oindex = sinherits->oindex;
+	    inherits->progoffset = sinherits->progoffset;
+	    inherits->funcoffset = sinherits->funcoffset;
+	    inherits->varoffset = sinherits->varoffset;
+	    (inherits++)->priv = (sinherits++)->flags;
+	} while (--n > 0);
+	AFREE(sinherits - header.ninherits);
+
+	ctrl->imap = ALLOC(char, header.imapsz);
+	(*readv)(ctrl->imap, ctrl->sectors, header.imapsz, size);
+	size += header.imapsz;
+
+	if (header.progsize != 0) {
+	    /* program */
+	    if (header.flags & CMP_TYPE) {
+		ctrl->prog = Swap::decompress(ctrl->sectors, readv,
+					      header.progsize, size,
+					      &ctrl->progsize);
+	    } else {
+		ctrl->prog = ALLOC(char, header.progsize);
+		(*readv)(ctrl->prog, ctrl->sectors, header.progsize, size);
+	    }
+	    size += header.progsize;
+	}
+
+	if (header.nstrings != 0) {
+	    /* strings */
+	    ctrl->sslength = ALLOC(ssizet, header.nstrings);
+	    if (conv_14) {
+		dstrconst0 *sstrings;
+		unsigned short i;
+
+		sstrings = ALLOCA(dstrconst0, header.nstrings);
+		size += Swap::convert((char *) sstrings, ctrl->sectors,
+				      DSTR0_LAYOUT, (Uint) header.nstrings,
+				      size, readv);
+		for (i = 0; i < header.nstrings; i++) {
+		    ctrl->sslength[i] = sstrings[i].len;
+		}
+		AFREE(sstrings);
+	    } else {
+		size += Swap::convert((char *) ctrl->sslength, ctrl->sectors,
+				      "t", (Uint) header.nstrings, size, readv);
+	    }
+	    if (header.strsize != 0) {
+		if (header.flags & (CMP_TYPE << 2)) {
+		    ctrl->stext = Swap::decompress(ctrl->sectors, readv,
+						   header.strsize, size,
+						   &ctrl->strsize);
+		} else {
+		    ctrl->stext = ALLOC(char, header.strsize);
+		    (*readv)(ctrl->stext, ctrl->sectors, header.strsize, size);
+		}
+		size += header.strsize;
+	    }
+	}
+
+	if (header.nfuncdefs != 0) {
+	    /* function definitions */
+	    ctrl->funcdefs = ALLOC(dfuncdef, UCHAR(header.nfuncdefs));
+	    size += Swap::convert((char *) ctrl->funcdefs, ctrl->sectors,
+				  DF_LAYOUT, (Uint) UCHAR(header.nfuncdefs),
+				  size, readv);
+	}
+
+	if (header.nvardefs != 0) {
+	    /* variable definitions */
+	    ctrl->vardefs = ALLOC(dvardef, UCHAR(header.nvardefs));
+	    size += Swap::convert((char *) ctrl->vardefs, ctrl->sectors,
+				  DV_LAYOUT, (Uint) UCHAR(header.nvardefs),
+				  size, readv);
+	    if (ctrl->nclassvars != 0) {
+		ctrl->classvars = ALLOC(char, ctrl->nclassvars * 3);
+		(*readv)(ctrl->classvars, ctrl->sectors,
+			 ctrl->nclassvars * (Uint) 3, size);
+		size += ctrl->nclassvars * (Uint) 3;
+	    }
+	}
+
+	if (header.nfuncalls != 0) {
+	    /* function calls */
+	    ctrl->funcalls = ALLOC(char, 2 * header.nfuncalls);
+	    (*readv)(ctrl->funcalls, ctrl->sectors, header.nfuncalls * (Uint) 2,
+		     size);
+	    size += header.nfuncalls * (Uint) 2;
+	}
+
+	if (header.nsymbols != 0) {
+	    /* symbol table */
+	    ctrl->symbols = ALLOC(dsymbol, header.nsymbols);
+	    size += Swap::convert((char *) ctrl->symbols, ctrl->sectors,
+				  DSYM_LAYOUT, (Uint) header.nsymbols, size,
+				  readv);
+	}
+
+	if (header.nvariables > UCHAR(header.nvardefs)) {
+	    /* variable types */
+	    ctrl->vtypes = ALLOC(char, header.nvariables -
+				       UCHAR(header.nvardefs));
+	    (*readv)(ctrl->vtypes, ctrl->sectors,
+		     header.nvariables - UCHAR(header.nvardefs), size);
+	}
+    }
+
+    return ctrl;
+}
+
+/*
+ * NAME:	get_prog()
+ * DESCRIPTION:	get the program
+ */
+static void get_prog(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (ctrl->progsize != 0) {
+	if (ctrl->flags & CTRL_PROGCMP) {
+	    ctrl->prog = Swap::decompress(ctrl->sectors, readv, ctrl->progsize,
+					  ctrl->progoffset, &ctrl->progsize);
+	} else {
+	    ctrl->prog = ALLOC(char, ctrl->progsize);
+	    (*readv)(ctrl->prog, ctrl->sectors, ctrl->progsize,
+		     ctrl->progoffset);
+	}
+    }
+}
+
+/*
+ * NAME:	data->get_prog()
+ * DESCRIPTION:	get the program
+ */
+char *d_get_prog(Control *ctrl)
+{
+    if (ctrl->prog == (char *) NULL && ctrl->progsize != 0) {
+	get_prog(ctrl, Swap::readv);
+    }
+    return ctrl->prog;
+}
+
+/*
+ * NAME:	get_stext()
+ * DESCRIPTION:	load strings text
+ */
+static void get_stext(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
+{
+    /* load strings text */
+    if (ctrl->flags & CTRL_STRCMP) {
+	ctrl->stext = Swap::decompress(ctrl->sectors, readv,
+				       ctrl->strsize,
+				       ctrl->stroffset +
+				       ctrl->nstrings * sizeof(ssizet),
+				       &ctrl->strsize);
+    } else {
+	ctrl->stext = ALLOC(char, ctrl->strsize);
+	(*readv)(ctrl->stext, ctrl->sectors, ctrl->strsize,
+		 ctrl->stroffset + ctrl->nstrings * (Uint) sizeof(ssizet));
+    }
+}
+
+/*
+ * NAME:	get_strconsts()
+ * DESCRIPTION:	load string constants
+ */
+static void get_strconsts(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (ctrl->nstrings != 0) {
+	/* load strings */
+	ctrl->sslength = ALLOC(ssizet, ctrl->nstrings);
+	(*readv)((char *) ctrl->sslength, ctrl->sectors,
+		 ctrl->nstrings * (Uint) sizeof(ssizet), ctrl->stroffset);
+	if (ctrl->strsize > 0 && ctrl->stext == (char *) NULL) {
+	    get_stext(ctrl, readv);	/* load strings text */
+	}
+    }
+}
+
+/*
+ * NAME:	data->get_strconst()
+ * DESCRIPTION:	get a string constant
+ */
+String *d_get_strconst(Control *ctrl, int inherit, Uint idx)
+{
+    if (UCHAR(inherit) < ctrl->ninherits - 1) {
+	/* get the proper control block */
+	ctrl = OBJR(ctrl->inherits[UCHAR(inherit)].oindex)->control();
+    }
+
+    if (ctrl->strings == (String **) NULL) {
+	/* make string pointer block */
+	ctrl->strings = ALLOC(String*, ctrl->nstrings);
+	memset(ctrl->strings, '\0', ctrl->nstrings * sizeof(String *));
+
+	if (ctrl->sslength == (ssizet *) NULL) {
+	    get_strconsts(ctrl, Swap::readv);
+	}
+	if (ctrl->ssindex == (Uint *) NULL) {
+	    Uint size;
+	    unsigned short i;
+
+	    ctrl->ssindex = ALLOC(Uint, ctrl->nstrings);
+	    for (size = 0, i = 0; i < ctrl->nstrings; i++) {
+		ctrl->ssindex[i] = size;
+		size += ctrl->sslength[i];
+	    }
+	}
+    }
+
+    if (ctrl->strings[idx] == (String *) NULL) {
+	String *str;
+
+	str = String::alloc(ctrl->stext + ctrl->ssindex[idx],
+			    ctrl->sslength[idx]);
+	ctrl->strings[idx] = str;
+	str->ref();
+    }
+
+    return ctrl->strings[idx];
+}
+
+/*
+ * NAME:	get_funcdefs()
+ * DESCRIPTION:	load function definitions
+ */
+static void get_funcdefs(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (ctrl->nfuncdefs != 0) {
+	ctrl->funcdefs = ALLOC(dfuncdef, ctrl->nfuncdefs);
+	(*readv)((char *) ctrl->funcdefs, ctrl->sectors,
+		 ctrl->nfuncdefs * (Uint) sizeof(dfuncdef), ctrl->funcdoffset);
+    }
+}
+
+/*
+ * NAME:	data->get_funcdefs()
+ * DESCRIPTION:	get function definitions
+ */
+dfuncdef *d_get_funcdefs(Control *ctrl)
+{
+    if (ctrl->funcdefs == (dfuncdef *) NULL && ctrl->nfuncdefs != 0) {
+	get_funcdefs(ctrl, Swap::readv);
+    }
+    return ctrl->funcdefs;
+}
+
+/*
+ * NAME:	get_vardefs()
+ * DESCRIPTION:	load variable definitions
+ */
+static void get_vardefs(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (ctrl->nvardefs != 0) {
+	ctrl->vardefs = ALLOC(dvardef, ctrl->nvardefs);
+	(*readv)((char *) ctrl->vardefs, ctrl->sectors,
+		 ctrl->nvardefs * (Uint) sizeof(dvardef), ctrl->vardoffset);
+	if (ctrl->nclassvars != 0) {
+	    ctrl->classvars = ALLOC(char, ctrl->nclassvars * 3);
+	    (*readv)(ctrl->classvars, ctrl->sectors, ctrl->nclassvars * 3,
+		     ctrl->vardoffset + ctrl->nvardefs * sizeof(dvardef));
+	}
+    }
+}
+
+/*
+ * NAME:	data->get_vardefs()
+ * DESCRIPTION:	get variable definitions
+ */
+dvardef *d_get_vardefs(Control *ctrl)
+{
+    if (ctrl->vardefs == (dvardef *) NULL && ctrl->nvardefs != 0) {
+	get_vardefs(ctrl, Swap::readv);
+    }
+    if (ctrl->cvstrings == (String **) NULL && ctrl->nclassvars != 0) {
+	char *p;
+	dvardef *vars;
+	String **strs;
+	unsigned short n, inherit, u;
+
+	ctrl->cvstrings = strs = ALLOC(String*, ctrl->nvardefs);
+	memset(strs, '\0', ctrl->nvardefs * sizeof(String*));
+	p = ctrl->classvars;
+	for (n = ctrl->nclassvars, vars = ctrl->vardefs; n != 0; vars++) {
+	    if ((vars->type & T_TYPE) == T_CLASS) {
+		inherit = FETCH1U(p);
+		*strs = d_get_strconst(ctrl, inherit, FETCH2U(p, u));
+		(*strs)->ref();
+		--n;
+	    }
+	    strs++;
+	}
+    }
+    return ctrl->vardefs;
+}
+
+/*
+ * NAME:	get_funcalls()
+ * DESCRIPTION:	get function call table
+ */
+static void get_funcalls(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (ctrl->nfuncalls != 0) {
+	ctrl->funcalls = ALLOC(char, 2L * ctrl->nfuncalls);
+	(*readv)((char *) ctrl->funcalls, ctrl->sectors,
+		 ctrl->nfuncalls * (Uint) 2, ctrl->funccoffset);
+    }
+}
+
+/*
+ * NAME:	data->get_funcalls()
+ * DESCRIPTION:	get function call table
+ */
+char *d_get_funcalls(Control *ctrl)
+{
+    if (ctrl->funcalls == (char *) NULL && ctrl->nfuncalls != 0) {
+	get_funcalls(ctrl, Swap::readv);
+    }
+    return ctrl->funcalls;
+}
+
+/*
+ * NAME:	get_symbols()
+ * DESCRIPTION:	get symbol table
+ */
+static void get_symbols(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (ctrl->nsymbols > 0) {
+	ctrl->symbols = ALLOC(dsymbol, ctrl->nsymbols);
+	(*readv)((char *) ctrl->symbols, ctrl->sectors,
+		 ctrl->nsymbols * (Uint) sizeof(dsymbol), ctrl->symboffset);
+    }
+}
+
+/*
+ * NAME:	data->get_symbols()
+ * DESCRIPTION:	get symbol table
+ */
+dsymbol *d_get_symbols(Control *ctrl)
+{
+    if (ctrl->symbols == (dsymbol *) NULL && ctrl->nsymbols > 0) {
+	get_symbols(ctrl, Swap::readv);
+    }
+    return ctrl->symbols;
+}
+
+/*
+ * NAME:	get_vtypes()
+ * DESCRIPTION:	get variable types
+ */
+static void get_vtypes(Control *ctrl, void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (ctrl->nvariables > ctrl->nvardefs) {
+	ctrl->vtypes = ALLOC(char, ctrl->nvariables - ctrl->nvardefs);
+	(*readv)(ctrl->vtypes, ctrl->sectors, ctrl->nvariables - ctrl->nvardefs,
+		 ctrl->vtypeoffset);
+    }
+}
+
+/*
+ * NAME:	data->get_vtypes()
+ * DESCRIPTION:	get variable types
+ */
+char *d_get_vtypes(Control *ctrl)
+{
+    if (ctrl->vtypes == (char *) NULL && ctrl->nvariables > ctrl->nvardefs) {
+	get_vtypes(ctrl, Swap::readv);
+    }
+    return ctrl->vtypes;
+}
+
+/*
+ * NAME:	data->get_progsize()
+ * DESCRIPTION:	get the size of a control block
+ */
+Uint d_get_progsize(Control *ctrl)
+{
+    if (ctrl->progsize != 0 && ctrl->prog == (char *) NULL &&
+	(ctrl->flags & CTRL_PROGCMP)) {
+	get_prog(ctrl, Swap::readv);	/* decompress program */
+    }
+    if (ctrl->strsize != 0 && ctrl->stext == (char *) NULL &&
+	(ctrl->flags & CTRL_STRCMP)) {
+	get_stext(ctrl, Swap::readv);	/* decompress strings */
+    }
+
+    return ctrl->ninherits * sizeof(dinherit) +
+	   ctrl->imapsz +
+	   ctrl->progsize +
+	   ctrl->nstrings * (Uint) sizeof(ssizet) +
+	   ctrl->strsize +
+	   ctrl->nfuncdefs * sizeof(dfuncdef) +
+	   ctrl->nvardefs * sizeof(dvardef) +
+	   ctrl->nclassvars * (Uint) 3 +
+	   ctrl->nfuncalls * (Uint) 2 +
+	   ctrl->nsymbols * (Uint) sizeof(dsymbol) +
+	   ctrl->nvariables - ctrl->nvardefs;
+}
+
+/*
+ * NAME:	data->save_control()
+ * DESCRIPTION:	save the control block
+ */
+static void d_save_control(Control *ctrl)
+{
+    scontrol header;
+    char *prog, *stext, *text;
+    ssizet *sslength;
+    Uint size, i;
+    sinherit *sinherits;
+    dinherit *inherits;
+
+    sslength = NULL;
+    prog = stext = text = NULL;
+
+    /*
+     * Save a control block.
+     */
+
+    /* create header */
+    header.flags = ctrl->flags & CTRL_UNDEFINED;
+    header.version = ctrl->version;
+    header.ninherits = ctrl->ninherits;
+    header.imapsz = ctrl->imapsz;
+    header.compiled = ctrl->compiled;
+    header.comphigh = 0;
+    header.progsize = ctrl->progsize;
+    header.nstrings = ctrl->nstrings;
+    header.strsize = ctrl->strsize;
+    header.nfuncdefs = ctrl->nfuncdefs;
+    header.nvardefs = ctrl->nvardefs;
+    header.nclassvars = ctrl->nclassvars;
+    header.nfuncalls = ctrl->nfuncalls;
+    header.nsymbols = ctrl->nsymbols;
+    header.nvariables = ctrl->nvariables;
+    header.vmapsize = ctrl->vmapsize;
+
+    /* create sector space */
+    if (header.vmapsize != 0) {
+	size = sizeof(scontrol) +
+	       header.vmapsize * (Uint) sizeof(unsigned short);
+    } else {
+	prog = ctrl->prog;
+	if (header.progsize >= CMPLIMIT) {
+	    prog = ALLOC(char, header.progsize);
+	    size = Swap::compress(prog, ctrl->prog, header.progsize);
+	    if (size != 0) {
+		header.flags |= CMP_PRED;
+		header.progsize = size;
+	    } else {
+		FREE(prog);
+		prog = ctrl->prog;
+	    }
+	}
+
+	sslength = ctrl->sslength;
+	stext = ctrl->stext;
+	if (header.nstrings > 0 && sslength == (ssizet *) NULL) {
+	    String **strs;
+	    Uint strsize;
+	    ssizet *l;
+	    char *t;
+
+	    sslength = ALLOC(ssizet, header.nstrings);
+	    if (header.strsize > 0) {
+		stext = ALLOC(char, header.strsize);
+	    }
+
+	    strs = ctrl->strings;
+	    strsize = 0;
+	    l = sslength;
+	    t = stext;
+	    for (i = header.nstrings; i > 0; --i) {
+		strsize += *l = (*strs)->len;
+		memcpy(t, (*strs++)->text, *l);
+		t += *l++;
+	    }
+	}
+
+	text = stext;
+	if (header.strsize >= CMPLIMIT) {
+	    text = ALLOC(char, header.strsize);
+	    size = Swap::compress(text, stext, header.strsize);
+	    if (size != 0) {
+		header.flags |= CMP_PRED << 2;
+		header.strsize = size;
+	    } else {
+		FREE(text);
+		text = stext;
+	    }
+	}
+
+	size = sizeof(scontrol) +
+	       header.ninherits * sizeof(sinherit) +
+	       header.imapsz +
+	       header.progsize +
+	       header.nstrings * (Uint) sizeof(ssizet) +
+	       header.strsize +
+	       UCHAR(header.nfuncdefs) * sizeof(dfuncdef) +
+	       UCHAR(header.nvardefs) * sizeof(dvardef) +
+	       UCHAR(header.nclassvars) * (Uint) 3 +
+	       header.nfuncalls * (Uint) 2 +
+	       header.nsymbols * (Uint) sizeof(dsymbol) +
+	       header.nvariables - UCHAR(header.nvardefs);
+    }
+    ctrl->nsectors = header.nsectors = Swap::alloc(size, ctrl->nsectors,
+						   &ctrl->sectors);
+    OBJ(ctrl->oindex)->cfirst = ctrl->sectors[0];
+
+    /*
+     * Copy everything to the swap device.
+     */
+
+    /* save header */
+    Swap::writev((char *) &header, ctrl->sectors, (Uint) sizeof(scontrol),
+		 (Uint) 0);
+    size = sizeof(scontrol);
+
+    /* save sector map */
+    Swap::writev((char *) ctrl->sectors, ctrl->sectors,
+		 header.nsectors * (Uint) sizeof(Sector), size);
+    size += header.nsectors * (Uint) sizeof(Sector);
+
+    if (header.vmapsize != 0) {
+	/*
+	 * save only vmap
+	 */
+	Swap::writev((char *) ctrl->vmap, ctrl->sectors,
+		  header.vmapsize * (Uint) sizeof(unsigned short), size);
+    } else {
+	/* save inherits */
+	inherits = ctrl->inherits;
+	sinherits = ALLOCA(sinherit, i = header.ninherits);
+	do {
+	    sinherits->oindex = inherits->oindex;
+	    sinherits->progoffset = inherits->progoffset;
+	    sinherits->funcoffset = inherits->funcoffset;
+	    sinherits->varoffset = inherits->varoffset;
+	    sinherits->flags = inherits->priv;
+	    inherits++;
+	    sinherits++;
+	} while (--i > 0);
+	sinherits -= header.ninherits;
+	Swap::writev((char *) sinherits, ctrl->sectors,
+		     header.ninherits * (Uint) sizeof(sinherit), size);
+	size += header.ninherits * sizeof(sinherit);
+	AFREE(sinherits);
+
+	/* save iindices */
+	Swap::writev(ctrl->imap, ctrl->sectors, ctrl->imapsz, size);
+	size += ctrl->imapsz;
+
+	/* save program */
+	if (header.progsize > 0) {
+	    Swap::writev(prog, ctrl->sectors, (Uint) header.progsize, size);
+	    size += header.progsize;
+	    if (prog != ctrl->prog) {
+		FREE(prog);
+	    }
+	}
+
+	/* save string constants */
+	if (header.nstrings > 0) {
+	    Swap::writev((char *) sslength, ctrl->sectors,
+			 header.nstrings * (Uint) sizeof(ssizet), size);
+	    size += header.nstrings * (Uint) sizeof(ssizet);
+	    if (header.strsize > 0) {
+		Swap::writev(text, ctrl->sectors, header.strsize, size);
+		size += header.strsize;
+		if (text != stext) {
+		    FREE(text);
+		}
+		if (stext != ctrl->stext) {
+		    FREE(stext);
+		}
+	    }
+	    if (sslength != ctrl->sslength) {
+		FREE(sslength);
+	    }
+	}
+
+	/* save function definitions */
+	if (UCHAR(header.nfuncdefs) > 0) {
+	    Swap::writev((char *) ctrl->funcdefs, ctrl->sectors,
+			 UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef),
+			 size);
+	    size += UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef);
+	}
+
+	/* save variable definitions */
+	if (UCHAR(header.nvardefs) > 0) {
+	    Swap::writev((char *) ctrl->vardefs, ctrl->sectors,
+			 UCHAR(header.nvardefs) * (Uint) sizeof(dvardef), size);
+	    size += UCHAR(header.nvardefs) * (Uint) sizeof(dvardef);
+	    if (UCHAR(header.nclassvars) > 0) {
+		Swap::writev(ctrl->classvars, ctrl->sectors,
+			     UCHAR(header.nclassvars) * (Uint) 3, size);
+		size += UCHAR(header.nclassvars) * (Uint) 3;
+	    }
+	}
+
+	/* save function call table */
+	if (header.nfuncalls > 0) {
+	    Swap::writev((char *) ctrl->funcalls, ctrl->sectors,
+			 header.nfuncalls * (Uint) 2, size);
+	    size += header.nfuncalls * (Uint) 2;
+	}
+
+	/* save symbol table */
+	if (header.nsymbols > 0) {
+	    Swap::writev((char *) ctrl->symbols, ctrl->sectors,
+			 header.nsymbols * (Uint) sizeof(dsymbol), size);
+	    size += header.nsymbols * sizeof(dsymbol);
+	}
+
+	/* save variable types */
+	if (header.nvariables > UCHAR(header.nvardefs)) {
+	    Swap::writev(ctrl->vtypes, ctrl->sectors,
+			 header.nvariables - UCHAR(header.nvardefs), size);
+	}
+    }
+}
+
+/*
+ * NAME:	data->restore_ctrl()
+ * DESCRIPTION:	restore a control block
+ */
+Control *d_restore_ctrl(Object *obj, Uint instance,
+			void (*readv) (char*, Sector*, Uint, Uint))
+{
+    Control *ctrl;
+
+    ctrl = (Control *) NULL;
+    if (obj->cfirst != SW_UNUSED) {
+	if (!converted) {
+	    ctrl = d_conv_control(obj, instance, readv);
+	} else {
+	    ctrl = load_control(obj, instance, readv);
+	    if (ctrl->vmapsize == 0) {
+		get_prog(ctrl, readv);
+		get_strconsts(ctrl, readv);
+		get_funcdefs(ctrl, readv);
+		get_vardefs(ctrl, readv);
+		get_funcalls(ctrl, readv);
+		get_symbols(ctrl, readv);
+		get_vtypes(ctrl, readv);
+	    }
+	}
+	d_save_control(ctrl);
+	obj->ctrl = ctrl;
+    }
+
+    return ctrl;
+}
+
+/*
+ * NAME:	Control->symb()
+ * DESCRIPTION:	return the entry in the symbol table for func, or NULL
+ */
+dsymbol *ctrl_symb(Control *ctrl, const char *func, unsigned int len)
+{
+    dsymbol *symb;
+    dfuncdef *f;
+    unsigned int i, j;
+    String *str;
+    dsymbol *symtab, *symb1;
+    dinherit *inherits;
+
+    if ((i=ctrl->nsymbols) == 0) {
+	return (dsymbol *) NULL;
+    }
+
+    inherits = ctrl->inherits;
+    symtab = d_get_symbols(ctrl);
+    i = Hashtab::hashstr(func, VFMERGEHASHSZ) % i;
+    symb1 = symb = &symtab[i];
+    ctrl = OBJR(inherits[UCHAR(symb->inherit)].oindex)->control();
+    f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
+    str = d_get_strconst(ctrl, f->inherit, f->index);
+    if (len == str->len && memcmp(func, str->text, len) == 0) {
+	/* found it */
+	return (f->sclass & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
+    }
+    while (symb->next != i && symb->next != (unsigned short) -1) {
+	symb = &symtab[i = symb->next];
+	ctrl = OBJR(inherits[UCHAR(symb->inherit)].oindex)->control();
+	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
+	str = d_get_strconst(ctrl, f->inherit, f->index);
+	if (len == str->len && memcmp(func, str->text, len) == 0) {
+	    /* found it: put symbol first in linked list */
+	    i = symb1->inherit;
+	    j = symb1->index;
+	    symb1->inherit = symb->inherit;
+	    symb1->index = symb->index;
+	    symb->inherit = i;
+	    symb->index = j;
+	    return (f->sclass & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
+	}
+    }
+    return (dsymbol *) NULL;
+}
+
 /*
  * NAME:	Control->undefined()
  * DESCRIPTION:	list the undefined functions in a program
@@ -2292,4 +3408,63 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 
     m->mapSort();
     return m;
+}
+
+/*
+ * NAME:	data->init()
+ * DESCRIPTION:	initialize swapped data handling
+ */
+void d_init_ctrl()
+{
+    chead = ctail = (Control *) NULL;
+    nctrl = 0;
+    conv_14 = conv_15 = FALSE;
+    converted = FALSE;
+}
+
+/*
+ * NAME:	data->init_conv()
+ * DESCRIPTION:	prepare for conversions
+ */
+void d_init_conv_ctrl(bool c14, bool c15)
+{
+    conv_14 = c14;
+    conv_15 = c15;
+}
+
+/*
+ * NAME:	data->converted()
+ * DESCRIPTION:	snapshot conversion is complete
+ */
+void d_converted_ctrl()
+{
+    converted = TRUE;
+}
+
+/*
+ * NAME:	data->swapout()
+ * DESCRIPTION:	Swap out a portion of the control and dataspace blocks in
+ *		memory.  Return the number of dataspace blocks swapped out.
+ */
+void d_swapout_ctrl(unsigned int frag)
+{
+    Sector n;
+    Control *ctrl;
+
+    /* swap out control blocks */
+    ctrl = ctail;
+    for (n = nctrl / frag; n > 0; --n) {
+	Control *prev;
+
+	prev = ctrl->prev;
+	if (ctrl->ndata == 0) {
+	    if (ctrl->sectors == (Sector *) NULL || (ctrl->flags & CTRL_VARMAP))
+	    {
+		d_save_control(ctrl);
+	    }
+	    OBJ(ctrl->oindex)->ctrl = (Control *) NULL;
+	    d_free_control(ctrl);
+	}
+	ctrl = prev;
+    }
 }
