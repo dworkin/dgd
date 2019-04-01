@@ -23,9 +23,9 @@
 # include "object.h"
 # include "xfloat.h"
 # include "data.h"
+# include "control.h"
 # include "interpret.h"
 # include "comm.h"
-# include "control.h"
 # include "table.h"
 # include <float.h>
 # include <math.h>
@@ -474,10 +474,10 @@ bool ext_execute(const Frame *f, int func, Value *val)
 {
     Control *ctrl;
     int i, j, nftypes;
-    const dinherit *inh;
+    const Inherit *inh;
     char *ft, *vt;
-    const dfuncdef *fdef;
-    const dvardef *vdef;
+    const FuncDef *fdef;
+    const VarDef *vdef;
     int result;
 
     if (jit_compile == NULL) {
@@ -507,15 +507,14 @@ bool ext_execute(const Frame *f, int func, Value *val)
 	vt = vtypes;
 	for (inh = ctrl->inherits, i = ctrl->ninherits; i > 0; inh++, --i) {
 	    ctrl = OBJR(inh->oindex)->ctrl;
-	    d_get_prog(ctrl);
+	    ctrl->program();
 	    *ft++ = ctrl->nfuncdefs;
-	    for (fdef = d_get_funcdefs(ctrl), j = ctrl->nfuncdefs; j > 0;
-		 fdef++, --j) {
+	    for (fdef = ctrl->funcs(), j = ctrl->nfuncdefs; j > 0; fdef++, --j)
+	    {
 		*ft++ = PROTO_FTYPE(ctrl->prog + fdef->offset);
 	    }
 	    *vt++ = ctrl->nvardefs;
-	    for (vdef = d_get_vardefs(ctrl), j = ctrl->nvardefs; j > 0;
-		 vdef++, --j) {
+	    for (vdef = ctrl->vars(), j = ctrl->nvardefs; j > 0; vdef++, --j) {
 		*vt++ = vdef->type;
 	    }
 	}

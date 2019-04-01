@@ -23,8 +23,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
 # include "data.h"
+# include "interpret.h"
 # include "call_out.h"
 
 # define CYCBUF_SIZE	128		/* cyclic buffer size, power of 2 */

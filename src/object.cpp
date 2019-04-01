@@ -23,8 +23,9 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "interpret.h"
+# include "control.h"
 # include "data.h"
+# include "interpret.h"
 
 
 class ObjPatch : public ChunkAllocated {
@@ -506,7 +507,7 @@ void Object::discardPlane()
 	/* discard new control blocks */
 	while (clist != (ObjPatch *) NULL) {
 	    obj = &clist->obj;
-	    d_del_control(obj->ctrl);
+	    obj->ctrl->del();
 	    op = clist;
 	    clist = clist->next;
 	    delete op;
@@ -527,7 +528,7 @@ void Object::discardPlane()
 Object *Object::create(char *name, Control *ctrl)
 {
     Object *o;
-    dinherit *inh;
+    Inherit *inh;
     int i;
     Hashtab::Entry **h;
 
@@ -601,7 +602,7 @@ void Object::lightWeight()
 void Object::remove(Frame *f)
 {
     Control *ctrl;
-    dinherit *inh;
+    Inherit *inh;
     int i;
     Object *o;
 
@@ -636,7 +637,7 @@ void Object::remove(Frame *f)
 void Object::upgrade(Control *ctrl, Frame *f)
 {
     Object *obj;
-    dinherit *inh;
+    Inherit *inh;
     int i;
 
     /* allocate upgrade object */
@@ -881,10 +882,10 @@ Control *Object::control()
 	if (BTST(omap, o->index)) {
 	    o->restoreObject(TRUE, FALSE);
 	} else {
-	    o->ctrl = d_load_control(o, insttab[o->index]);
+	    o->ctrl = Control::load(o, insttab[o->index]);
 	}
     } else {
-	d_ref_control(o->ctrl);
+	o->ctrl->ref();
     }
     return ctrl = o->ctrl;
 }
@@ -1094,7 +1095,7 @@ void Object::clean()
 	baseplane.destruct = o->cref;
 
 	/* free control block */
-	d_del_control(o->control());
+	o->control()->del();
 
 	if (o->name != (char *) NULL) {
 	    /* free object name */
@@ -1406,7 +1407,7 @@ void Object::restore(int fd, bool part)
 		    BCLR(omap, i);
 		    --ndobject;
 		}
-		d_restore_ctrl(o, insttab[o->index], &Swap::conv2);
+		Control::restore(o, insttab[o->index], &Swap::conv2);
 		d_swapout(1);
 	    }
 	    i++;

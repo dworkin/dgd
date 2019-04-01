@@ -22,8 +22,9 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
+# include "control.h"
 # include "data.h"
+# include "interpret.h"
 # include "call_out.h"
 # include "parse.h"
 
@@ -1809,16 +1810,6 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
 
 
 /*
- * NAME:	data->set_varmap()
- * DESCRIPTION:	add a variable mapping to a control block
- */
-void d_set_varmap(Control *ctrl, unsigned short *vmap)
-{
-    ctrl->vmapsize = ctrl->nvariables + 1;
-    ctrl->vmap = vmap;
-}
-
-/*
  * NAME:	data->get_varmap()
  * DESCRIPTION:	get the variable mapping for an object
  */
@@ -2618,15 +2609,15 @@ void d_new_variables(Control *ctrl, Value *val)
 {
     unsigned short n;
     char *type;
-    dvardef *var;
+    VarDef *var;
 
     memset(val, '\0', ctrl->nvariables * sizeof(Value));
-    for (n = ctrl->nvariables - ctrl->nvardefs, type = d_get_vtypes(ctrl);
+    for (n = ctrl->nvariables - ctrl->nvardefs, type = ctrl->varTypes();
 	 n != 0; --n, type++) {
 	val->type = *type;
 	val++;
     }
-    for (n = ctrl->nvardefs, var = d_get_vardefs(ctrl); n != 0; --n, var++) {
+    for (n = ctrl->nvardefs, var = ctrl->vars(); n != 0; --n, var++) {
 	if (T_ARITHMETIC(var->type)) {
 	    val->type = var->type;
 	} else {
@@ -3367,7 +3358,7 @@ Sector d_swapout(unsigned int frag)
 	    data = prev;
 	}
 
-	d_swapout_ctrl(frag);
+	Control::swapout(frag);
     }
 
     /* perform garbage collection for one dataspace */
@@ -3642,15 +3633,15 @@ void d_restore_obj(Object *obj, Uint instance, Uint *counttab, bool cactive,
     Dataspace *data;
 
     if (!converted) {
-	ctrl = d_restore_ctrl(obj, instance, Swap::conv);
+	ctrl = Control::restore(obj, instance, Swap::conv);
 	data = d_restore_data(obj, counttab, Swap::conv);
     } else {
-	ctrl = d_restore_ctrl(obj, instance, Swap::dreadv);
+	ctrl = Control::restore(obj, instance, Swap::dreadv);
 	data = d_restore_data(obj, counttab, Swap::dreadv);
     }
 
     if (!cactive) {
-	d_deref_ctrl(ctrl);
+	ctrl->deref();
     }
     if (!dactive) {
 	/* swap this out first */

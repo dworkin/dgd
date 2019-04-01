@@ -23,8 +23,8 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "interpret.h"
 # include "data.h"
+# include "interpret.h"
 # include "comm.h"
 # include "version.h"
 # include <errno.h>

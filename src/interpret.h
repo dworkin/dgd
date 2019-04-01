@@ -215,7 +215,7 @@ struct Frame {
     bool external;		/* TRUE if it's an external call */
     bool sos;			/* stack on stack */
     uindex foffset;		/* program function offset */
-    struct dfuncdef *func;	/* current function */
+    struct FuncDef *func;	/* current function */
     char *prog;			/* start of program */
     char *pc;			/* program counter */
     Value *stack;		/* local value stack */

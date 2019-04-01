@@ -22,9 +22,9 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
-# include "data.h"
 # include "control.h"
+# include "data.h"
+# include "interpret.h"
 # include "table.h"
 
 # ifdef DEBUG
@@ -323,7 +323,7 @@ void i_odest(Frame *prev, Object *obj)
  */
 void i_string(Frame *f, int inherit, unsigned int index)
 {
-    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, inherit, index));
+    PUSH_STRVAL(f, f->p_ctrl->strconst(inherit, index));
 }
 
 /*
@@ -577,7 +577,7 @@ char *i_typename(char *buf, unsigned int type)
  */
 char *i_classname(Frame *f, Uint sclass)
 {
-    return d_get_strconst(f->p_ctrl, sclass >> 16, sclass & 0xffff)->text;
+    return f->p_ctrl->strconst(sclass >> 16, sclass & 0xffff)->text;
 }
 
 /*
@@ -588,7 +588,7 @@ static int instanceof(unsigned int oindex, char *prog, Uint hash)
 {
     char *h;
     unsigned short i;
-    dinherit *inh;
+    Inherit *inh;
     Object *obj;
     Control *ctrl;
 
@@ -1544,7 +1544,7 @@ static unsigned short i_switch_str(Frame *f, char *pc)
 	m = (l + h) >> 1;
 	p = pc + 5 * m;
 	u = FETCH1U(p);
-	cmp = f->sp->string->cmp(d_get_strconst(ctrl, u, FETCH2U(p, u2)));
+	cmp = f->sp->string->cmp(ctrl->strconst(u, FETCH2U(p, u2)));
 	if (cmp == 0) {
 	    return FETCH2U(p, l);
 	} else if (cmp < 0) {
@@ -1613,18 +1613,18 @@ static void i_interpret(Frame *f, char *pc)
 	    continue;
 
 	case I_PUSH_STRING:
-	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, f->p_ctrl->ninherits - 1,
-					  FETCH1U(pc)));
+	    PUSH_STRVAL(f, f->p_ctrl->strconst(f->p_ctrl->ninherits - 1,
+					       FETCH1U(pc)));
 	    continue;
 
 	case I_PUSH_NEAR_STRING:
 	    u = FETCH1U(pc);
-	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH1U(pc)));
+	    PUSH_STRVAL(f, f->p_ctrl->strconst(u, FETCH1U(pc)));
 	    continue;
 
 	case I_PUSH_FAR_STRING:
 	    u = FETCH1U(pc);
-	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH2U(pc, u2)));
+	    PUSH_STRVAL(f, f->p_ctrl->strconst(u, FETCH2U(pc, u2)));
 	    continue;
 
 	case I_PUSH_LOCAL:
@@ -2125,18 +2125,17 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     f.p_index = f.ctrl->inherits[p_ctrli].progoffset;
 
     /* get the function */
-    f.func = &d_get_funcdefs(f.p_ctrl)[funci];
+    f.func = &f.p_ctrl->funcs()[funci];
     if (f.func->sclass & C_UNDEFINED) {
 	error("Undefined function %s",
-	      d_get_strconst(f.p_ctrl, f.func->inherit, f.func->index)->text);
+	      f.p_ctrl->strconst(f.func->inherit, f.func->index)->text);
     }
 
-    pc = d_get_prog(f.p_ctrl) + f.func->offset;
+    pc = f.p_ctrl->program() + f.func->offset;
     if (f.func->sclass & C_TYPECHECKED) {
 	/* typecheck arguments */
 	i_typecheck(prev_f, &f,
-		    d_get_strconst(f.p_ctrl, f.func->inherit,
-				   f.func->index)->text,
+		    f.p_ctrl->strconst(f.func->inherit, f.func->index)->text,
 		    "function", pc, nargs, FALSE);
     }
 
@@ -2149,8 +2148,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 	/* if fewer actual than formal parameters, check for varargs */
 	if (nargs < PROTO_NARGS(pc) && stricttc) {
 	    error("Insufficient arguments for function %s",
-		  d_get_strconst(f.p_ctrl, f.func->inherit,
-				 f.func->index)->text);
+		  f.p_ctrl->strconst(f.func->inherit, f.func->index)->text);
 	}
 
 	/* add missing arguments */
@@ -2210,8 +2208,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     } else if (nargs > n) {
 	if (stricttc) {
 	    error("Too many arguments for function %s",
-		  d_get_strconst(f.p_ctrl, f.func->inherit,
-				 f.func->index)->text);
+		  f.p_ctrl->strconst(f.func->inherit, f.func->index)->text);
 	}
 
 	/* pop superfluous arguments */
@@ -2266,7 +2263,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 
     /* execute code */
     if (!ext_execute(&f, funci, &val)) {
-	d_get_funcalls(f.ctrl);	/* make sure they are available */
+	f.ctrl->funCalls();	/* make sure they are available */
 	f.prog = pc += 2;
 	i_interpret(&f, pc);
 	val = *f.sp++;
@@ -2311,8 +2308,8 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 	    unsigned int len, int call_static, int nargs)
 {
-    dsymbol *symb;
-    dfuncdef *fdef;
+    Symbol *symb;
+    FuncDef *fdef;
     Control *ctrl;
 
     if (lwobj != (Array *) NULL) {
@@ -2382,15 +2379,15 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 
     /* find the function in the symbol table */
     ctrl = obj->control();
-    symb = ctrl_symb(ctrl, func, len);
-    if (symb == (dsymbol *) NULL) {
+    symb = ctrl->symb(func, len);
+    if (symb == (Symbol *) NULL) {
 	/* function doesn't exist in symbol table */
 	i_pop(f, nargs);
 	return FALSE;
     }
 
     ctrl = OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->ctrl;
-    fdef = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
+    fdef = &ctrl->funcs()[UCHAR(symb->index)];
 
     /* check if the function can be called */
     if (!call_static && (fdef->sclass & C_STATIC) &&
@@ -2617,7 +2614,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
     strcpy(str->text + 1, name);
 
     /* function name */
-    PUT_STRVAL(v, d_get_strconst(f->p_ctrl, f->func->inherit, f->func->index));
+    PUT_STRVAL(v, f->p_ctrl->strconst(f->func->inherit, f->func->index));
     v++;
 
     /* line number */

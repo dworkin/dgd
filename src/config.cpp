@@ -24,8 +24,9 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
+# include "control.h"
 # include "data.h"
+# include "interpret.h"
 # include "path.h"
 # include "editor.h"
 # include "call_out.h"
@@ -37,7 +38,6 @@
 # include "node.h"
 # include "parser.h"
 # include "compile.h"
-# include "control.h"
 # include "csupport.h"
 # include "table.h"
 
@@ -438,7 +438,7 @@ static bool conf_restore(int fd, int fd2)
     kf_restore(fd);
     Object::restore(fd, rdflags & FLAGS_PARTIAL);
     d_init_conv(conv_14);
-    d_init_conv_ctrl(conv_14, conv_15);
+    Control::initConv(conv_14, conv_15);
     if (conv_14) {
 	pc_restore(fd);
     }
@@ -1566,7 +1566,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 
     /* initialize swapped data handler */
     d_init();
-    d_init_ctrl();
+    Control::init();
     *fragment = conf[SWAP_FRAGMENT].num;
 
     /* initalize editor */
@@ -1634,7 +1634,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot == (char *) NULL) {
 	    /* initialize mudlib */
 	    d_converted();
-	    d_converted_ctrl();
+	    Control::converted();
 	    try {
 		ErrorContext::push((ErrorContext::Handler) errhandler);
 		call_driver_object(cframe, "initialize", 0);
@@ -1966,7 +1966,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 	break;
 
     case 1:	/* O_PROGSIZE */
-	PUT_INTVAL(v, d_get_progsize(ctrl));
+	PUT_INTVAL(v, ctrl->progSize());
 	break;
 
     case 2:	/* O_DATASIZE */
@@ -2000,7 +2000,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 
     case 6:	/* O_UNDEFINED */
 	if (ctrl->flags & CTRL_UNDEFINED) {
-	    PUT_MAPVAL(v, ctrl_undefined(data, ctrl));
+	    PUT_MAPVAL(v, ctrl->undefined(data));
 	} else {
 	    *v = nil_value;
 	}

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,7 +24,6 @@
 # include "call_out.h"
 # include "editor.h"
 # include "node.h"
-# include "control.h"
 # include "compile.h"
 # endif
 
@@ -81,8 +80,8 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
 	    Frame *xf;
 
 	    for (xf = f; !xf->external; xf = xf->prev) ;
-	    iflag = (strcmp(d_get_strconst(xf->p_ctrl, xf->func->inherit,
-					   xf->func->index)->text,
+	    iflag = (strcmp(xf->p_ctrl->strconst(xf->func->inherit,
+						 xf->func->index)->text,
 			    "inherit_program") == 0);
 	} else {
 	    iflag = FALSE;
@@ -609,7 +608,7 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
     Object *obj;
     bool callable;
     uindex n;
-    dsymbol *symb;
+    Symbol *symb;
     const char *name;
 
     UNREFERENCED_PARAMETER(nargs);
@@ -632,14 +631,14 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
 	return 0;
     }
     f->sp++;
-    symb = ctrl_symb(obj->control(), f->sp->string->text, f->sp->string->len);
+    symb = obj->control()->symb(f->sp->string->text, f->sp->string->len);
     f->sp->string->del();
 
-    if (symb != (dsymbol *) NULL) {
+    if (symb != (Symbol *) NULL) {
 	Object *o;
 
 	o = OBJR(obj->ctrl->inherits[UCHAR(symb->inherit)].oindex);
-	if (!(d_get_funcdefs(o->ctrl)[UCHAR(symb->index)].sclass & C_STATIC) ||
+	if (!(o->ctrl->funcs()[UCHAR(symb->index)].sclass & C_STATIC) ||
 	    callable) {
 	    /*
 	     * function exists and is callable

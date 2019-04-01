@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,11 +22,11 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
+# include "control.h"
 # include "data.h"
+# include "interpret.h"
 # include "table.h"
 # include "node.h"
-# include "control.h"
 # include "codegen.h"
 # include "compile.h"
 
@@ -465,7 +465,7 @@ static int cg_type(node *n, long *l)
 	type = T_ARRAY;
     }
     if (type == T_CLASS) {
-	*l = ctrl_dstring(n->sclass);
+	*l = Control::defString(n->sclass);
     }
     return (type != T_MIXED) ? type : 0;
 }
@@ -552,7 +552,7 @@ static void cg_store(node *n)
 	break;
 
     case N_GLOBAL:
-	if ((n->r.number >> 8) == ctrl_ninherits()) {
+	if ((n->r.number >> 8) == Control::nInherits()) {
 	    code_instr(I_STORE_GLOBAL, n->line);
 	} else {
 	    code_instr(I_STORE_FAR_GLOBAL, n->line);
@@ -573,7 +573,7 @@ static void cg_store(node *n)
 	    break;
 
 	case N_GLOBAL:
-	    if ((n->r.number >> 8) == ctrl_ninherits()) {
+	    if ((n->r.number >> 8) == Control::nInherits()) {
 		code_instr(I_STORE_GLOBAL_INDEX, n->line);
 	    } else {
 		code_instr(I_STORE_FAR_GLOBAL_INDEX, n->line);
@@ -1126,7 +1126,7 @@ static void cg_expr(node *n, int pop)
 
 	case FCALL:
 	    code_instr(I_CALL_FUNC, n->line);
-	    code_word(ctrl_gencall((long) n->r.number));
+	    code_word(Control::genCall((long) n->r.number));
 	    code_byte(i);
 	    break;
 	}
@@ -1151,7 +1151,7 @@ static void cg_expr(node *n, int pop)
 	break;
 
     case N_GLOBAL:
-	if ((n->r.number >> 8) == ctrl_ninherits()) {
+	if ((n->r.number >> 8) == Control::nInherits()) {
 	    code_instr(I_PUSH_GLOBAL, n->line);
 	    code_byte((int) n->r.number);
 	} else {
@@ -1187,7 +1187,7 @@ static void cg_expr(node *n, int pop)
     case N_INSTANCEOF:
 	cg_expr(n->l.left, FALSE);
 	code_instr(I_INSTANCEOF, n->line);
-	l = ctrl_dstring(n->r.right->l.string) & 0xffffffL;
+	l = Control::defString(n->r.right->l.string) & 0xffffffL;
 	code_byte(l >> 16);
 	code_word(l);
 	break;
@@ -1480,7 +1480,7 @@ static void cg_expr(node *n, int pop)
 	break;
 
     case N_STR:
-	l = ctrl_dstring(n->l.string);
+	l = Control::defString(n->l.string);
 	if ((l & 0x01000000L) && (unsigned short) l < 256) {
 	    code_instr(I_PUSH_STRING, n->line);
 	    code_byte((int) l);
@@ -2062,7 +2062,7 @@ static void cg_switch_str(node *n)
     while (i < size) {
 	Int l;
 
-	l = ctrl_dstring(m->l.left->l.string);
+	l = Control::defString(m->l.left->l.string);
 	code_byte((int) (l >> 16));
 	code_word((int) l);
 	switch_table[i++].jump = jump_addr((jmplist *) NULL);

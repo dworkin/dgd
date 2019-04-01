@@ -22,14 +22,14 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
+# include "control.h"
 # include "data.h"
+# include "interpret.h"
 # include "path.h"
 # include "macro.h"
 # include "token.h"
 # include "ppcontrol.h"
 # include "node.h"
-# include "control.h"
 # include "optimize.h"
 # include "codegen.h"
 # include "compile.h"
@@ -479,10 +479,10 @@ bool c_inherit(char *file, node *label, int priv)
 	return FALSE;
     }
 
-    return ctrl_inherit(current->frame, current->file, obj,
-			(label == (node *) NULL) ?
-			 (String *) NULL : label->l.string,
-			priv);
+    return Control::inherit(current->frame, current->file, obj,
+			    (label == (node *) NULL) ?
+			     (String *) NULL : label->l.string,
+			    priv);
 }
 
 extern int yyparse ();
@@ -512,7 +512,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	}
 
 	pp_clear();
-	ctrl_clear();
+	Control::clear();
 	c_clear();
     } else if (current != (context *) NULL) {
 	error("Compilation within compilation");
@@ -536,7 +536,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	ErrorContext::push();
 	for (;;) {
 	    if (c_autodriver() != 0) {
-		ctrl_init();
+		Control::prepare();
 	    } else {
 		Object *aobj;
 
@@ -563,8 +563,8 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 		    error("Upgraded auto object while compiling \"/%s\"",
 			  file_c);
 		}
-		ctrl_init();
-		ctrl_inherit(c.frame, file, aobj, (String *) NULL, FALSE);
+		Control::prepare();
+		Control::inherit(c.frame, file, aobj, (String *) NULL, FALSE);
 	    }
 
 	    if (strs != (String **) NULL) {
@@ -577,7 +577,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	    }
 
 	    cg_init(c.prev != (context *) NULL);
-	    if (yyparse() == 0 && ctrl_chkfuncs()) {
+	    if (yyparse() == 0 && Control::checkFuncs()) {
 		if (obj != (Object *) NULL) {
 		    if (obj->count == 0) {
 			error("Object destructed during recompilation");
@@ -602,7 +602,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	    } else if (nerrors == 0) {
 		/* another try */
 		pp_clear();
-		ctrl_clear();
+		Control::clear();
 		c_clear();
 	    } else {
 		/* compilation failed */
@@ -612,7 +612,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	ErrorContext::pop();
     } catch (...) {
 	pp_clear();
-	ctrl_clear();
+	Control::clear();
 	c_clear();
 	current = c.prev;
 	error((char *) NULL);
@@ -623,10 +623,10 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	/*
 	 * object with inherit statements only (or nothing at all)
 	 */
-	ctrl_create();
+	Control::create();
     }
-    ctrl = ctrl_construct();
-    ctrl_clear();
+    ctrl = Control::construct();
+    Control::clear();
     c_clear();
     current = c.prev;
 
@@ -643,9 +643,9 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 
 	/* recompiled object */
 	obj->upgrade(ctrl, f);
-	vmap = ctrl_varmap(obj->ctrl, ctrl);
+	vmap = ctrl->varmap(obj->ctrl);
 	if (vmap != (unsigned short *) NULL) {
-	    d_set_varmap(ctrl, vmap);
+	    ctrl->setVarmap(vmap);
 	}
     }
     return obj;
@@ -775,7 +775,7 @@ static void c_decl_func(unsigned short sclass, node *type, String *str,
     for (;;) {
 	*p++ = t;
 	if ((t & T_TYPE) == T_CLASS) {
-	    l = ctrl_dstring(type->sclass);
+	    l = Control::defString(type->sclass);
 	    *p++ = l >> 16;
 	    *p++ = l >> 8;
 	    *p++ = l;
@@ -846,10 +846,10 @@ static void c_decl_func(unsigned short sclass, node *type, String *str,
 
     /* define prototype */
     if (function) {
-	ctrl_dfunc(str, proto, fclass);
+	Control::defFunc(str, proto, fclass);
     } else {
 	PROTO_CLASS(proto) |= C_UNDEFINED;
-	ctrl_dproto(str, proto, fclass);
+	Control::defProto(str, proto, fclass);
     }
 }
 
@@ -871,7 +871,7 @@ static void c_decl_var(unsigned short sclass, node *type, String *str,
 	if (sclass & (C_ATOMIC | C_NOMASK | C_VARARGS)) {
 	    c_error("invalid class for variable %s", str->text);
 	}
-	ctrl_dvar(str, sclass, type->mod, type->sclass);
+	Control::defVar(str, sclass, type->mod, type->sclass);
     } else {
 	if (sclass != 0) {
 	    c_error("invalid class for variable %s", str->text);
@@ -914,7 +914,7 @@ static void c_decl_list(unsigned short sclass, node *type, node *list,
 void c_global(unsigned int sclass, node *type, node *n)
 {
     if (!seen_decls) {
-	ctrl_create();
+	Control::create();
 	seen_decls = TRUE;
     }
     c_decl_list(sclass, type, n, TRUE);
@@ -930,7 +930,7 @@ static unsigned short fline;	/* first line of function */
 void c_function(unsigned int sclass, node *type, node *n)
 {
     if (!seen_decls) {
-	ctrl_create();
+	Control::create();
 	seen_decls = TRUE;
     }
     type->mod |= n->mod;
@@ -969,7 +969,7 @@ void c_funcbody(node *n)
     } else {
 	prog = cg_function(fname, n, nvars, nparams, (unsigned short) depth,
 			   &size);
-	ctrl_dprogram(prog, size);
+	Control::defProgram(prog, size);
     }
     node_clear();
     vindex = 0;
@@ -1879,7 +1879,7 @@ node *c_flookup(node *n, int typechecked)
     String *sclass;
     long call;
 
-    proto = ctrl_fcall(n->l.string, &sclass, &call, typechecked);
+    proto = Control::funCall(n->l.string, &sclass, &call, typechecked);
     n->r.right = (proto == (char *) NULL) ? (node *) NULL :
 		  node_fcall(PROTO_FTYPE(proto), sclass, proto, (Int) call);
     return n;
@@ -1895,9 +1895,9 @@ node *c_iflookup(node *n, node *label)
     String *sclass;
     long call;
 
-    proto = ctrl_ifcall(n->l.string, (label != (node *) NULL) ?
+    proto = Control::iFunCall(n->l.string, (label != (node *) NULL) ?
 				     label->l.string->text : (char *) NULL,
-			&sclass, &call);
+			      &sclass, &call);
     n->r.right = (proto == (char *) NULL) ? (node *) NULL :
 		  node_fcall(PROTO_FTYPE(proto), sclass, proto, (Int) call);
     return n;
@@ -1946,7 +1946,7 @@ node *c_global_var(node *n)
     String *sclass;
     long ref;
 
-    n = node_mon(N_GLOBAL, ctrl_var(n->l.string, &ref, &sclass), n);
+    n = node_mon(N_GLOBAL, Control::var(n->l.string, &ref, &sclass), n);
     n->sclass = sclass;
     if (sclass != (String *) NULL) {
 	sclass->ref();

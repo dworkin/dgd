@@ -19,7 +19,6 @@
 
 # define INCLUDE_FILE_IO
 # include "kfun.h"
-# include "control.h"
 
 /*
  * prototypes

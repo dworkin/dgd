@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -379,10 +379,10 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
     static unsigned short count;
     unsigned short i, j, nvars;
     Value *var;
-    dvardef *v;
+    VarDef *v;
     Control *ctrl;
     String *str;
-    dinherit *inh;
+    Inherit *inh;
     char file[STRINGSZ], buf[18], tmp[STRINGSZ + 8], *_tmp;
     savecontext x;
     Float flt;
@@ -436,13 +436,13 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
 		nvars += ctrl->nvardefs;
 		continue;
 	    }
-	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
+	    for (j = ctrl->nvardefs, v = ctrl->vars(); j > 0; --j, v++) {
 		if (!(v->sclass & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT && VAL_TRUE(var)) {
 		    /*
 		     * don't save object values, nil or 0
 		     */
-		    str = d_get_strconst(ctrl, v->inherit, v->index);
+		    str = ctrl->strconst(v->inherit, v->index);
 		    put(&x, str->text, str->len);
 		    put(&x, " ", 1);
 		    switch (var->type) {
@@ -888,10 +888,10 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     unsigned short nvars, checkpoint;
     char *buf;
     Value *var;
-    dvardef *v;
+    VarDef *v;
     Control *ctrl;
     Dataspace *data;
-    dinherit *inh;
+    Inherit *inh;
     restcontext x;
     Object *obj;
     int fd;
@@ -964,7 +964,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 		nvars += ctrl->nvardefs;
 		continue;
 	    }
-	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
+	    for (j = ctrl->nvardefs, v = ctrl->vars(); j > 0; --j, v++) {
 		if (!(v->sclass & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT) {
 		    d_assign_var(data, var,
@@ -1054,7 +1054,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 			}
 
 			if (!(v->sclass & C_STATIC) &&
-			    strcmp(name, d_get_strconst(ctrl, v->inherit,
+			    strcmp(name, ctrl->strconst(v->inherit,
 							v->index)->text) == 0) {
 			    Value tmp;
 
