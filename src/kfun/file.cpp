@@ -210,7 +210,7 @@ static void save_array(savecontext *x, Array *a)
 
     sprintf(buf, "({%d|", a->size);
     put(x, buf, strlen(buf));
-    for (i = a->size, v = d_get_elts(a); i > 0; --i, v++) {
+    for (i = a->size, v = Dataspace::elts(a); i > 0; --i, v++) {
 	switch (v->type) {
 	case T_NIL:
 	    put(x, "nil", 3);
@@ -280,7 +280,7 @@ static void save_mapping(savecontext *x, Array *a)
     /*
      * skip index/value pairs of which either is an object
      */
-    for (i = n = a->size >> 1, v = d_get_elts(a); i > 0; --i) {
+    for (i = n = a->size >> 1, v = Dataspace::elts(a); i > 0; --i) {
 	if (v->type == T_OBJECT || v->type == T_LWOBJECT) {
 	    /* skip object index */
 	    --n;
@@ -420,7 +420,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
     if (f->lwobj != (Array *) NULL) {
 	var = &f->lwobj->elts[2];
     } else {
-	var = d_get_variable(f->data, 0);
+	var = f->data->variable(0);
     }
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
@@ -949,7 +949,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     if (f->lwobj != (Array *) NULL) {
 	var = &f->lwobj->elts[2];
     } else {
-	var = d_get_variable(data, 0);
+	var = data->variable(0);
     }
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
@@ -967,10 +967,10 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 	    for (j = ctrl->nvardefs, v = ctrl->vars(); j > 0; --j, v++) {
 		if (!(v->sclass & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT) {
-		    d_assign_var(data, var,
-				 (v->type == T_INT) ?
-				  &zero_int : (v->type == T_FLOAT) ?
-					       &zero_float : &nil_value);
+		    data->assignVar(var,
+				    (v->type == T_INT) ?
+				     &zero_int : (v->type == T_FLOAT) ?
+						  &zero_float : &nil_value);
 		}
 		var++;
 		nvars++;
@@ -1072,9 +1072,9 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 				restore_error(&x, "value has wrong type");
 			    }
 			    if (f->lwobj != (Array *) NULL) {
-				d_assign_elt(data, f->lwobj, var, &tmp);
+				data->assignElt(f->lwobj, var, &tmp);
 			    } else {
-				d_assign_var(data, var, &tmp);
+				data->assignVar(var, &tmp);
 			    }
 			    if (*buf++ != LF) {
 				restore_error(&x, "'\\n' expected");

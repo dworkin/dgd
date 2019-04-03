@@ -328,7 +328,7 @@ static Array *ext_array_new(Dataspace *data, int size)
  */
 static Value *ext_array_index(Array *a, int i)
 {
-    return &d_get_elts(a)[i];
+    return &Dataspace::elts(a)[i];
 }
 
 /*
@@ -337,7 +337,7 @@ static Value *ext_array_index(Array *a, int i)
  */
 static void ext_array_assign(Dataspace *data, Array *a, int i, Value *val)
 {
-    d_assign_elt(data, a, &d_get_elts(a)[i], val);
+    data->assignElt(a, &Dataspace::elts(a)[i], val);
 }
 
 /*
@@ -393,7 +393,7 @@ static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
 static Value *ext_mapping_enum(Array *m, int i)
 {
     m->mapCompact(m->primary->data);
-    return &d_get_elts(m)[i];
+    return &Dataspace::elts(m)[i];
 }
 
 /*
@@ -575,8 +575,8 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     ext_frame[1] = (voidf *) &ext_frame_dataspace;
     ext_frame[2] = (voidf *) &ext_frame_arg;
     ext_frame[3] = (voidf *) &ext_frame_atomic;
-    ext_data[0] = (voidf *) &d_get_extravar;
-    ext_data[1] = (voidf *) &d_set_extravar;
+    ext_data[0] = (voidf *) &Dataspace::extra;
+    ext_data[1] = (voidf *) &Dataspace::setExtra;
     ext_value[0] = (voidf *) &ext_value_type;
     ext_value[1] = (voidf *) &ext_value_nil;
     ext_value[2] = (voidf *) &ext_value_temp;

@@ -114,7 +114,7 @@ void Control::ref()
 void Control::deref()
 {
     /* swap this out first */
-    if (this != (Control *) NULL && this != ctail) {
+    if (this != ctail) {
 	if (chead == this) {
 	    chead = next;
 	    chead->prev = (Control *) NULL;
@@ -522,7 +522,7 @@ bool Control::compareClass(Uint s1, Control *ctrl, Uint s2)
 /*
  * Compare two prototypes. Return TRUE if equal.
  */
-bool Control::compareProto(char *prot1, Control *ctrl2, char *prot2)
+bool Control::compareProto(char *prot1, Control *ctrl, char *prot2)
 {
     int i;
     char c1, c2;
@@ -574,7 +574,7 @@ bool Control::compareProto(char *prot1, Control *ctrl2, char *prot2)
 	    /* compare class strings */
 	    FETCH3U(prot1, s1);
 	    FETCH3U(prot2, s2);
-	    if (!compareClass(s1, ctrl2, s2)) {
+	    if (!compareClass(s1, ctrl, s2)) {
 		return FALSE;
 	    }
 	}

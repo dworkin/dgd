@@ -24,8 +24,8 @@ class Array;
 class Object;
 struct Value;
 class Control;
-struct Dataplane;
-struct Dataspace;
+class Dataplane;
+class Dataspace;
 struct RLInfo;
 struct Frame;
 

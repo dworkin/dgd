@@ -534,7 +534,7 @@ static void ps_flatten(pnode *pn, pnode *next, Value *v)
 
 	case PN_ARRAY:
 	    v -= pn->len;
-	    i_copy(v, d_get_elts(pn->arr), (unsigned int) pn->len);
+	    i_copy(v, Dataspace::elts(pn->arr), (unsigned int) pn->len);
 	    break;
 
 	case PN_BRANCH:
@@ -623,7 +623,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		a = Array::create(ps->data, len);
 		if (len != 0) {
 		    ps_flatten(pn, next, a->elts + len);
-		    d_ref_imports(a);
+		    Dataspace::refImports(a);
 		}
 		ps->data->parser = (parser *) NULL;
 
@@ -708,7 +708,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 			    if (sub->len != 0) {
 				ps_flatten(sub, next,
 					   v->array->elts + sub->len);
-				d_ref_imports(v->array);
+				Dataspace::refImports(v->array);
 			    }
 			}
 			v++;
@@ -861,7 +861,7 @@ void ps_save(parser *ps)
 	    lrlen -= len;
 	} while (lrlen != 0);
 
-	d_set_extravar(data, &val);
+	Dataspace::setExtra(data, &val);
     }
 }
 
@@ -888,8 +888,9 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	ps->frame = f;
 	same = (ps->source->cmp(source) == 0);
     } else {
-	val = d_get_extravar(data);
-	if (val->type == T_ARRAY && d_get_elts(val->array)->type == T_INT &&
+	val = Dataspace::extra(data);
+	if (val->type == T_ARRAY &&
+	    Dataspace::elts(val->array)->type == T_INT &&
 	    val->array->elts[1].string->cmp(source) == 0 &&
 	    val->array->elts[2].string->text[0] == GRAM_VERSION) {
 	    ps = ps_load(f, val->array->elts);
@@ -933,7 +934,7 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	    if (len >= 0) {
 		a = Array::create(data, len);
 		ps_flatten(pn, pn->next, a->elts + len);
-		d_ref_imports(a);
+		Dataspace::refImports(a);
 	    }
 
 	    /* clean up */

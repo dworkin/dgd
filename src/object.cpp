@@ -479,7 +479,7 @@ void Object::discardPlane()
 		     */
 		    if (op->obj.data != (Dataspace *) NULL) {
 			/* discard new data block */
-			d_del_dataspace(op->obj.data);
+			op->obj.data->del();
 		    }
 		    obj->index = op->obj.index;
 		    if ((op->obj.flags & O_MASTER) &&
@@ -496,7 +496,7 @@ void Object::discardPlane()
 			    obj->data = op->obj.data;
 			} else {
 			    /* discard new initialized data block */
-			    d_del_dataspace(op->obj.data);
+			    op->obj.data->del();
 			}
 		    }
 		}
@@ -862,8 +862,9 @@ void Object::restoreObject(bool cactive, bool dactive)
 {
     BCLR(omap, index);
     --ndobject;
-    d_restore_obj(this, insttab[index], (rcount) ? counttab : (Uint *) NULL,
-		  cactive, dactive);
+    Dataspace::restoreObject(this, insttab[index],
+			     (rcount) ? counttab : (Uint *) NULL, cactive,
+			     dactive);
 }
 
 /*
@@ -899,10 +900,10 @@ Dataspace *Object::dataspace()
 	if (BTST(omap, index)) {
 	    restoreObject(TRUE, TRUE);
 	} else {
-	    data = d_load_dataspace(this);
+	    data = Dataspace::load(this);
 	}
     } else {
-	d_ref_dataspace(data);
+	data->ref();
     }
     return data;
 }
@@ -980,7 +981,7 @@ void Object::clean()
 
 	/* free dataspace block (if it exists) */
 	if (o->data != (Dataspace *) NULL) {
-	    d_del_dataspace(o->data);
+	    o->data->del();
 	}
 
 	if (o->flags & O_MASTER) {
@@ -1054,7 +1055,7 @@ void Object::clean()
 		if (up->count != 0 && up->data == (Dataspace *) NULL &&
 		    up->dfirst != SW_UNUSED) {
 		    /* load dataspace (with old control block) */
-		    up->data = d_load_dataspace(up);
+		    up->data = Dataspace::load(up);
 		}
 	    } else {
 		/* no variable upgrading */
@@ -1083,7 +1084,7 @@ void Object::clean()
 
 	    if (ctrl->ndata != 0) {
 		/* upgrade all dataspaces in memory */
-		d_upgrade_mem(o, up);
+		Dataspace::upgradeMemory(o, up);
 	    }
 	}
     }
@@ -1408,7 +1409,7 @@ void Object::restore(int fd, bool part)
 		    --ndobject;
 		}
 		Control::restore(o, insttab[o->index], &Swap::conv2);
-		d_swapout(1);
+		Dataspace::swapout(1);
 	    }
 	    i++;
 	    --nctrl;
@@ -1426,8 +1427,8 @@ void Object::restore(int fd, bool part)
 		    BCLR(omap, i);
 		    --ndobject;
 		}
-		d_restore_data(o, counttab, &Swap::conv2);
-		d_swapout(1);
+		Dataspace::restore(o, counttab, &Swap::conv2);
+		Dataspace::swapout(1);
 	    }
 	    i++;
 	    --ndata;
@@ -1489,7 +1490,7 @@ bool Object::copy(Uint time)
 	    obj->restoreObject(FALSE, FALSE);
 	    if (time == 0) {
 		Object::clean();
-		d_swapout(1);
+		Dataspace::swapout(1);
 	    }
 	}
     }
@@ -1513,7 +1514,8 @@ bool Object::copy(Uint time)
 	}
 	Object::clean();
 
-	d_converted();
+	Control::converted();
+	Dataspace::converted();
 	dtime = 0;
 	return FALSE;
     } else {

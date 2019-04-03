@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,6 +22,7 @@ public:
     class Backup;			/* array backup chunk */
 
     Array(unsigned short size);
+    Array() { }
     ~Array();
 
     void ref() {
@@ -75,7 +76,7 @@ public:
     Uint objDestrCount;			/* last destructed object count */
     Value *elts;			/* elements */
     class MapHash *hashed;		/* hashed mapping elements */
-    struct arrref *primary;		/* primary reference */
+    struct ArrRef *primary;		/* primary reference */
     Array *prev, *next;			/* per-object linked list */
 
 private:

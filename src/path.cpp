@@ -189,7 +189,7 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
 	 */
 	i = f->sp->array->size;
 	if (i != 0) {
-	    v = d_get_elts(f->sp->array);
+	    v = Dataspace::elts(f->sp->array);
 	    while ((v++)->type == T_STRING) {
 		if (--i == 0) {
 		    *nstr = i = f->sp->array->size;

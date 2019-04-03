@@ -686,7 +686,7 @@ void co_call(Frame *f)
 
 	    try {
 		ErrorContext::push((ErrorContext::Handler) errhandler);
-		str = d_get_call_out(obj->dataspace(), handle, f, &nargs);
+		str = obj->dataspace()->callOut(handle, f, &nargs);
 		if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
 			   nargs)) {
 		    /* function exists */

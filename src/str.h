@@ -35,7 +35,7 @@ public:
     static void merge();
     static void clear();
 
-    struct strref *primary;	/* primary reference */
+    struct StrRef *primary;	/* primary reference */
     Uint refCount;		/* number of references */
     ssizet len;			/* string length */
     char *text;			/* string text */

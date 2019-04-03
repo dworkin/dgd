@@ -33,445 +33,172 @@
 # define COP_REMOVE	1	/* remove callout patch */
 # define COP_REPLACE	2	/* replace callout patch */
 
-struct copatch : public ChunkAllocated {
+class COPatch : public ChunkAllocated {
+public:
+    COPatch(Dataplane *plane, COPatch **c, int type, unsigned int handle,
+	    DCallOut *co, Uint time, unsigned int mtime, uindex *q) :
+	type(type), handle(handle), time(time), mtime(mtime), plane(plane),
+	queue(q) {
+	int i;
+	Value *v;
+
+	/* initialize */
+	if (type == COP_ADD) {
+	    aco = *co;
+	} else {
+	    rco = *co;
+	}
+	for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i > 0; --i) {
+	    i_ref_value(v++);
+	}
+
+	/* add to hash table */
+	next = *c;
+	*c = this;
+    }
+
+    /*
+     * delete a callout patch
+     */
+    static void del(COPatch **c, bool deref) {
+	COPatch *cop;
+	DCallOut *co;
+	int i;
+	Value *v;
+
+	/* remove from hash table */
+	cop = *c;
+	*c = cop->next;
+
+	if (deref) {
+	    /* free referenced callout */
+	    co = (cop->type == COP_ADD) ? &cop->aco : &cop->rco;
+	    v = co->val;
+	    for (i = (co->nargs > 3) ? 4 : co->nargs + 1; i > 0; --i) {
+		i_del_value(v++);
+	    }
+	}
+
+	/* add to free list */
+	delete cop;
+    }
+
+    /*
+     * replace one callout patch with another
+     */
+    void replace(DCallOut *co, Uint time, unsigned int mtime, uindex *q) {
+	int i;
+	Value *v;
+
+	type = COP_REPLACE;
+	aco = *co;
+	for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i > 0; --i) {
+	    i_ref_value(v++);
+	}
+	this->time = time;
+	this->mtime = mtime;
+	queue = q;
+    }
+
+    /*
+     * commit a callout replacement
+     */
+    void commit() {
+	int i;
+	Value *v;
+
+	type = COP_ADD;
+	for (i = (rco.nargs > 3) ? 4 : rco.nargs + 1, v = rco.val; i > 0; --i) {
+	    i_del_value(v++);
+	}
+    }
+
+    /*
+     * remove a callout replacement
+     */
+    void release() {
+	int i;
+	Value *v;
+
+	type = COP_REMOVE;
+	for (i = (aco.nargs > 3) ? 4 : aco.nargs + 1, v = aco.val; i > 0; --i) {
+	    i_del_value(v++);
+	}
+    }
+
+    /*
+     * discard replacement
+     */
+    void discard()
+    {
+	/* force unref of proper component later */
+	type = COP_ADD;
+    }
+
     short type;			/* add, remove, replace */
     uindex handle;		/* callout handle */
     Dataplane *plane;		/* dataplane */
     Uint time;			/* start time */
     unsigned short mtime;	/* start time millisec component */
     uindex *queue;		/* callout queue */
-    copatch *next;		/* next in linked list */
-    dcallout aco;		/* added callout */
-    dcallout rco;		/* removed callout */
+    COPatch *next;		/* next in linked list */
+    DCallOut aco;		/* added callout */
+    DCallOut rco;		/* removed callout */
 };
 
 # define COPCHUNKSZ	32
 
-class coptable : public Allocated {
+class COPTable : public Allocated {
 public:
-    /*
-     * NAME:		coptable()
-     * DESCRIPTION:	initialize copatch table
-     */
-    coptable() {
-	memset(&cop, '\0', COPATCHHTABSZ * sizeof(copatch*));
+    COPTable() {
+	memset(&cop, '\0', COPATCHHTABSZ * sizeof(COPatch*));
     }
 
-    Chunk<copatch, COPCHUNKSZ> chunk;	/* callout patch chunk */
-    copatch *cop[COPATCHHTABSZ];	/* hash table of callout patches */
+    /*
+     * create new callout patch
+     */
+    COPatch *patch(Dataplane *plane, COPatch **c, int type, unsigned int handle,
+	       DCallOut *co, Uint time, unsigned int mtime, uindex *q) {
+	/* allocate */
+	return chunknew (chunk) COPatch(plane, c, type, handle, co, time, mtime,
+					q);
+    }
+
+    COPatch *cop[COPATCHHTABSZ];	/* hash table of callout patches */
+
+private:
+    Chunk<COPatch, COPCHUNKSZ> chunk;	/* callout patch chunk */
 };
 
-struct arrimport {
-    Array **itab;			/* imported array replacement table */
-    Uint itabsz;			/* size of table */
-    Uint narr;				/* # of arrays */
-};
 
 static Dataplane *plist;		/* list of dataplanes */
 static uindex ncallout;			/* # callouts added */
-static Dataspace *ifirst;		/* list of dataspaces with imports */
-
 
 /*
- * NAME:	ref_rhs()
- * DESCRIPTION:	reference the right-hand side in an assignment
+ * create a new dataplane
  */
-static void ref_rhs(Dataspace *data, Value *rhs)
+Dataplane::Dataplane(Dataspace *data, Int level) : level(level)
 {
-    String *str;
-    Array *arr;
-
-    switch (rhs->type) {
-    case T_STRING:
-	str = rhs->string;
-	if (str->primary != (strref *) NULL && str->primary->data == data) {
-	    /* in this object */
-	    str->primary->ref++;
-	    data->plane->flags |= MOD_STRINGREF;
-	} else {
-	    /* not in this object: ref imported string */
-	    data->plane->schange++;
-	}
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-    case T_LWOBJECT:
-	arr = rhs->array;
-	if (arr->primary->data == data) {
-	    /* in this object */
-	    if (arr->primary->arr != (Array *) NULL) {
-		/* swapped in */
-		arr->primary->ref++;
-		data->plane->flags |= MOD_ARRAYREF;
-	    } else {
-		/* ref new array */
-		data->plane->achange++;
-	    }
-	} else {
-	    /* not in this object: ref imported array */
-	    if (data->plane->imports++ == 0 && ifirst != data &&
-		data->iprev == (Dataspace *) NULL) {
-		/* add to imports list */
-		data->iprev = (Dataspace *) NULL;
-		data->inext = ifirst;
-		if (ifirst != (Dataspace *) NULL) {
-		    ifirst->iprev = data;
-		}
-		ifirst = data;
-	    }
-	    data->plane->achange++;
-	}
-	break;
-    }
-}
-
-/*
- * NAME:	del_lhs()
- * DESCRIPTION:	delete the left-hand side in an assignment
- */
-static void del_lhs(Dataspace *data, Value *lhs)
-{
-    String *str;
-    Array *arr;
-
-    switch (lhs->type) {
-    case T_STRING:
-	str = lhs->string;
-	if (str->primary != (strref *) NULL && str->primary->data == data) {
-	    /* in this object */
-	    if (--(str->primary->ref) == 0) {
-		str->primary->str = (String *) NULL;
-		str->primary = (strref *) NULL;
-		str->del();
-		data->plane->schange++;	/* last reference removed */
-	    }
-	    data->plane->flags |= MOD_STRINGREF;
-	} else {
-	    /* not in this object: deref imported string */
-	    data->plane->schange--;
-	}
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-    case T_LWOBJECT:
-	arr = lhs->array;
-	if (arr->primary->data == data) {
-	    /* in this object */
-	    if (arr->primary->arr != (Array *) NULL) {
-		/* swapped in */
-		data->plane->flags |= MOD_ARRAYREF;
-		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
-		    d_get_elts(arr);
-		    arr->primary->arr = (Array *) NULL;
-		    arr->primary = &arr->primary->plane->alocal;
-		    arr->del();
-		    data->plane->achange++;
-		}
-	    } else {
-		/* deref new array */
-		data->plane->achange--;
-	    }
-	} else {
-	    /* not in this object: deref imported array */
-	    data->plane->imports--;
-	    data->plane->achange--;
-	}
-	break;
-    }
-}
-
-
-/*
- * NAME:	data->alloc_call_out()
- * DESCRIPTION:	allocate a new callout
- */
-static uindex d_alloc_call_out(Dataspace *data, uindex handle, Uint time,
-	unsigned short mtime, int nargs, Value *v)
-{
-    dcallout *co;
-
-    if (data->ncallouts == 0) {
-	/*
-	 * the first in this object
-	 */
-	co = data->callouts = ALLOC(dcallout, 1);
-	data->ncallouts = handle = 1;
-	data->plane->flags |= MOD_NEWCALLOUT;
-    } else {
-	if (data->callouts == (dcallout *) NULL) {
-	    d_get_callouts(data);
-	}
-	if (handle != 0) {
-	    /*
-	     * get a specific callout from the free list
-	     */
-	    co = &data->callouts[handle - 1];
-	    if (handle == data->fcallouts) {
-		data->fcallouts = co->co_next;
-	    } else {
-		data->callouts[co->co_prev - 1].co_next = co->co_next;
-		if (co->co_next != 0) {
-		    data->callouts[co->co_next - 1].co_prev = co->co_prev;
-		}
-	    }
-	} else {
-	    handle = data->fcallouts;
-	    if (handle != 0) {
-		/*
-		 * from free list
-		 */
-		co = &data->callouts[handle - 1];
-		if (co->co_next == 0 || co->co_next > handle) {
-		    /* take 1st free callout */
-		    data->fcallouts = co->co_next;
-		} else {
-		    /* take 2nd free callout */
-		    co = &data->callouts[co->co_next - 1];
-		    data->callouts[handle - 1].co_next = co->co_next;
-		    if (co->co_next != 0) {
-			data->callouts[co->co_next - 1].co_prev = handle;
-		    }
-		    handle = co - data->callouts + 1;
-		}
-		data->plane->flags |= MOD_CALLOUT;
-	    } else {
-		/*
-		 * add new callout
-		 */
-		handle = data->ncallouts;
-		co = data->callouts = REALLOC(data->callouts, dcallout, handle,
-					      handle + 1);
-		co += handle;
-		data->ncallouts = ++handle;
-		data->plane->flags |= MOD_NEWCALLOUT;
-	    }
-	}
-    }
-
-    co->time = time;
-    co->mtime = mtime;
-    co->nargs = nargs;
-    memcpy(co->val, v, sizeof(co->val));
-    switch (nargs) {
-    default:
-	ref_rhs(data, &v[3]);
-	/* fall through */
-    case 2:
-	ref_rhs(data, &v[2]);
-	/* fall through */
-    case 1:
-	ref_rhs(data, &v[1]);
-	/* fall through */
-    case 0:
-	ref_rhs(data, &v[0]);
-	break;
-    }
-
-    return handle;
-}
-
-/*
- * NAME:	data->free_call_out()
- * DESCRIPTION:	free a callout
- */
-static void d_free_call_out(Dataspace *data, unsigned int handle)
-{
-    dcallout *co;
-    Value *v;
-    uindex n;
-
-    co = &data->callouts[handle - 1];
-    v = co->val;
-    switch (co->nargs) {
-    default:
-	del_lhs(data, &v[3]);
-	i_del_value(&v[3]);
-	/* fall through */
-    case 2:
-	del_lhs(data, &v[2]);
-	i_del_value(&v[2]);
-	/* fall through */
-    case 1:
-	del_lhs(data, &v[1]);
-	i_del_value(&v[1]);
-	/* fall through */
-    case 0:
-	del_lhs(data, &v[0]);
-	v[0].string->del();
-	break;
-    }
-    v[0] = nil_value;
-
-    n = data->fcallouts;
-    if (n != 0) {
-	data->callouts[n - 1].co_prev = handle;
-    }
-    co->co_next = n;
-    data->fcallouts = handle;
-
-    data->plane->flags |= MOD_CALLOUT;
-}
-
-
-/*
- * NAME:	copatch->new()
- * DESCRIPTION:	create a new callout patch
- */
-static copatch *cop_new(Dataplane *plane, copatch **c, int type,
-	unsigned int handle, dcallout *co, Uint time, unsigned int mtime,
-	uindex *q)
-{
-    copatch *cop;
-    int i;
-    Value *v;
-
-    /* allocate */
-    cop = chunknew (plane->coptab->chunk) copatch;
-
-    /* initialize */
-    cop->type = type;
-    cop->handle = handle;
-    if (type == COP_ADD) {
-	cop->aco = *co;
-    } else {
-	cop->rco = *co;
-    }
-    for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i > 0; --i) {
-	i_ref_value(v++);
-    }
-    cop->time = time;
-    cop->mtime = mtime;
-    cop->plane = plane;
-    cop->queue = q;
-
-    /* add to hash table */
-    cop->next = *c;
-    return *c = cop;
-}
-
-/*
- * NAME:	copatch->del()
- * DESCRIPTION:	delete a callout patch
- */
-static void cop_del(copatch **c, bool del)
-{
-    copatch *cop;
-    dcallout *co;
-    int i;
-    Value *v;
-
-    /* remove from hash table */
-    cop = *c;
-    *c = cop->next;
-
-    if (del) {
-	/* free referenced callout */
-	co = (cop->type == COP_ADD) ? &cop->aco : &cop->rco;
-	v = co->val;
-	for (i = (co->nargs > 3) ? 4 : co->nargs + 1; i > 0; --i) {
-	    i_del_value(v++);
-	}
-    }
-
-    /* add to free list */
-    delete cop;
-}
-
-/*
- * NAME:	copatch->replace()
- * DESCRIPTION:	replace one callout patch with another
- */
-static void cop_replace(copatch *cop, dcallout *co, Uint time,
-	unsigned int mtime, uindex *q)
-{
-    int i;
-    Value *v;
-
-    cop->type = COP_REPLACE;
-    cop->aco = *co;
-    for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i > 0; --i) {
-	i_ref_value(v++);
-    }
-    cop->time = time;
-    cop->mtime = mtime;
-    cop->queue = q;
-}
-
-/*
- * NAME:	copatch->commit()
- * DESCRIPTION:	commit a callout replacement
- */
-static void cop_commit(copatch *cop)
-{
-    int i;
-    Value *v;
-
-    cop->type = COP_ADD;
-    for (i = (cop->rco.nargs > 3) ? 4 : cop->rco.nargs + 1, v = cop->rco.val;
-	 i > 0; --i) {
-	i_del_value(v++);
-    }
-}
-
-/*
- * NAME:	copatch->release()
- * DESCRIPTION:	remove a callout replacement
- */
-static void cop_release(copatch *cop)
-{
-    int i;
-    Value *v;
-
-    cop->type = COP_REMOVE;
-    for (i = (cop->aco.nargs > 3) ? 4 : cop->aco.nargs + 1, v = cop->aco.val;
-	 i > 0; --i) {
-	i_del_value(v++);
-    }
-}
-
-/*
- * NAME:	copatch->discard()
- * DESCRIPTION:	discard replacement
- */
-static void cop_discard(copatch *cop)
-{
-    /* force unref of proper component later */
-    cop->type = COP_ADD;
-}
-
-
-/*
- * NAME:	data->new_plane()
- * DESCRIPTION:	create a new dataplane
- */
-void d_new_plane(Dataspace *data, Int level)
-{
-    Dataplane *p;
     Uint i;
 
-    p = ALLOC(Dataplane, 1);
-
-    p->level = level;
-    p->flags = data->plane->flags;
-    p->schange = data->plane->schange;
-    p->achange = data->plane->achange;
-    p->imports = data->plane->imports;
+    flags = data->plane->flags;
+    schange = data->plane->schange;
+    achange = data->plane->achange;
+    imports = data->plane->imports;
 
     /* copy value information from previous plane */
-    p->original = (Value *) NULL;
-    p->alocal.arr = (Array *) NULL;
-    p->alocal.plane = p;
-    p->alocal.data = data;
-    p->alocal.state = AR_CHANGED;
-    p->coptab = data->plane->coptab;
+    original = (Value *) NULL;
+    alocal.arr = (Array *) NULL;
+    alocal.plane = this;
+    alocal.data = data;
+    alocal.state = AR_CHANGED;
+    coptab = data->plane->coptab;
 
-    if (data->plane->arrays != (arrref *) NULL) {
-	arrref *a, *b;
+    if (data->plane->arrays != (ArrRef *) NULL) {
+	ArrRef *a, *b;
 
-	p->arrays = ALLOC(arrref, i = data->narrays);
-	for (a = p->arrays, b = data->plane->arrays; i != 0; a++, b++, --i) {
+	arrays = ALLOC(ArrRef, i = data->narrays);
+	for (a = arrays, b = data->plane->arrays; i != 0; a++, b++, --i) {
 	    if (b->arr != (Array *) NULL) {
 		*a = *b;
 		a->arr->primary = a;
@@ -481,15 +208,15 @@ void d_new_plane(Dataspace *data, Int level)
 	    }
 	}
     } else {
-	p->arrays = (arrref *) NULL;
+	arrays = (ArrRef *) NULL;
     }
-    p->achunk = (Array::Backup *) NULL;
+    achunk = (Array::Backup *) NULL;
 
-    if (data->plane->strings != (strref *) NULL) {
-	strref *s, *t;
+    if (data->plane->strings != (StrRef *) NULL) {
+	StrRef *s, *t;
 
-	p->strings = ALLOC(strref, i = data->nstrings);
-	for (s = p->strings, t = data->plane->strings; i != 0; s++, t++, --i) {
+	strings = ALLOC(StrRef, i = data->nstrings);
+	for (s = strings, t = data->plane->strings; i != 0; s++, t++, --i) {
 	    if (t->str != (String *) NULL) {
 		*s = *t;
 		s->str->primary = s;
@@ -499,20 +226,19 @@ void d_new_plane(Dataspace *data, Int level)
 	    }
 	}
     } else {
-	p->strings = (strref *) NULL;
+	strings = (StrRef *) NULL;
     }
 
-    p->prev = data->plane;
-    data->plane = p;
-    p->plist = plist;
-    plist = p;
+    prev = data->plane;
+    data->plane = this;
+    plist = ::plist;
+    ::plist = this;
 }
 
 /*
- * NAME:	commit_values()
- * DESCRIPTION:	commit non-swapped arrays among the values
+ * commit non-swapped arrays among the values
  */
-static void commit_values(Value *v, unsigned int n, Int level)
+void Dataplane::commitValues(Value *v, unsigned int n, Int level)
 {
     Array *list, *arr;
 
@@ -556,34 +282,31 @@ static void commit_values(Value *v, unsigned int n, Int level)
 }
 
 /*
- * NAME:	commit_callouts()
- * DESCRIPTION:	commit callout patches to previous plane
+ * commit callout patches to previous plane
  */
-static void commit_callouts(Dataplane *plane, bool merge)
+void Dataplane::commitCallouts(bool merge)
 {
-    Dataplane *prev;
-    copatch **c, **n, *cop;
-    copatch **t, **next;
+    COPatch **c, **n, *cop;
+    COPatch **t, **next;
     int i;
 
-    prev = plane->prev;
-    for (i = COPATCHHTABSZ, t = plane->coptab->cop; --i >= 0; t++) {
-	if (*t != (copatch *) NULL && (*t)->plane == plane) {
+    for (i = COPATCHHTABSZ, t = coptab->cop; --i >= 0; t++) {
+	if (*t != (COPatch *) NULL && (*t)->plane == this) {
 	    /*
 	     * find previous plane in hash chain
 	     */
 	    next = t;
 	    do {
 		next = &(*next)->next;
-	    } while (*next != (copatch *) NULL && (*next)->plane == plane);
+	    } while (*next != (COPatch *) NULL && (*next)->plane == this);
 
 	    c = t;
 	    do {
 		cop = *c;
 		if (cop->type != COP_REMOVE) {
-		    commit_values(cop->aco.val + 1,
-				  (cop->aco.nargs > 3) ? 3 : cop->aco.nargs,
-				  prev->level);
+		    commitValues(cop->aco.val + 1,
+				 (cop->aco.nargs > 3) ? 3 : cop->aco.nargs,
+				 prev->level);
 		}
 
 		if (prev->level == 0) {
@@ -592,30 +315,30 @@ static void commit_callouts(Dataplane *plane, bool merge)
 		     */
 		    switch (cop->type) {
 		    case COP_ADD:
-			co_new(plane->alocal.data->oindex, cop->handle,
-			       cop->time, cop->mtime, cop->queue);
+			co_new(alocal.data->oindex, cop->handle, cop->time,
+			       cop->mtime, cop->queue);
 			--ncallout;
 			break;
 
 		    case COP_REMOVE:
-			co_del(plane->alocal.data->oindex, cop->handle,
-			       cop->rco.time, cop->rco.mtime);
+			co_del(alocal.data->oindex, cop->handle, cop->rco.time,
+			       cop->rco.mtime);
 			ncallout++;
 			break;
 
 		    case COP_REPLACE:
-			co_del(plane->alocal.data->oindex, cop->handle,
-			       cop->rco.time, cop->rco.mtime);
-			co_new(plane->alocal.data->oindex, cop->handle,
-			       cop->time, cop->mtime, cop->queue);
-			cop_commit(cop);
+			co_del(alocal.data->oindex, cop->handle, cop->rco.time,
+			       cop->rco.mtime);
+			co_new(alocal.data->oindex, cop->handle, cop->time,
+			       cop->mtime, cop->queue);
+			cop->commit();
 			break;
 		    }
 
 		    if (next == &cop->next) {
 			next = c;
 		    }
-		    cop_del(c, TRUE);
+		    COPatch::del(c, TRUE);
 		} else {
 		    /*
 		     * commit to previous plane
@@ -623,49 +346,49 @@ static void commit_callouts(Dataplane *plane, bool merge)
 		    cop->plane = prev;
 		    if (merge) {
 			for (n = next;
-			     *n != (copatch *) NULL && (*n)->plane == prev;
+			     *n != (COPatch *) NULL && (*n)->plane == prev;
 			     n = &(*n)->next) {
 			    if (cop->handle == (*n)->handle) {
 				switch (cop->type) {
 				case COP_ADD:
 				    /* turn old remove into replace, del new */
-				    cop_replace(*n, &cop->aco, cop->time,
-						cop->mtime, cop->queue);
+				    (*n)->replace(&cop->aco, cop->time,
+						  cop->mtime, cop->queue);
 				    if (next == &cop->next) {
 					next = c;
 				    }
-				    cop_del(c, TRUE);
+				    COPatch::del(c, TRUE);
 				    break;
 
 				case COP_REMOVE:
 				    if ((*n)->type == COP_REPLACE) {
 					/* turn replace back into remove */
-					cop_release(*n);
+					(*n)->release();
 				    } else {
 					/* del old */
-					cop_del(n, TRUE);
+					COPatch::del(n, TRUE);
 				    }
 				    /* del new */
 				    if (next == &cop->next) {
 					next = c;
 				    }
-				    cop_del(c, TRUE);
+				    COPatch::del(c, TRUE);
 				    break;
 
 				case COP_REPLACE:
 				    if ((*n)->type == COP_REPLACE) {
 					/* merge replaces into old, del new */
-					cop_release(*n);
-					cop_replace(*n, &cop->aco, cop->time,
-						    cop->mtime, cop->queue);
+					(*n)->release();
+					(*n)->replace(&cop->aco, cop->time,
+						      cop->mtime, cop->queue);
 					if (next == &cop->next) {
 					    next = c;
 					}
-					cop_del(c, TRUE);
+					COPatch::del(c, TRUE);
 				    } else {
 					/* make replace into add, remove old */
-					cop_del(n, TRUE);
-					cop_commit(cop);
+					COPatch::del(n, TRUE);
+					cop->commit();
 				    }
 				    break;
 				}
@@ -684,10 +407,9 @@ static void commit_callouts(Dataplane *plane, bool merge)
 }
 
 /*
- * NAME:	data->commit_plane()
- * DESCRIPTION:	commit the current data plane
+ * commit the current data planes
  */
-void d_commit_plane(Int level, Value *retval)
+void Dataplane::commit(Int level, Value *retval)
 {
     Dataplane *p, *commit, **r, **cr;
     Dataspace *data;
@@ -700,7 +422,7 @@ void d_commit_plane(Int level, Value *retval)
      */
     clist = (Dataplane *) NULL;
     cr = &clist;
-    for (r = &plist, p = *r; p != (Dataplane *) NULL && p->level == level;
+    for (r = &::plist, p = *r; p != (Dataplane *) NULL && p->level == level;
 	 r = &p->plist, p = *r) {
 	if (p->prev->level != level - 1) {
 	    /* insert commit plane */
@@ -734,7 +456,7 @@ void d_commit_plane(Int level, Value *retval)
     /*
      * pass 2: commit
      */
-    for (p = plist; p != clist; p = p->plist) {
+    for (p = ::plist; p != clist; p = p->plist) {
 	/*
 	 * commit changes to previous plane
 	 */
@@ -750,15 +472,15 @@ void d_commit_plane(Int level, Value *retval)
 		/* move originals to previous plane */
 		p->prev->original = p->original;
 	    }
-	    commit_values(data->variables, data->nvariables, level - 1);
+	    commitValues(data->variables, data->nvariables, level - 1);
 	}
 
-	if (p->coptab != (coptable *) NULL) {
+	if (p->coptab != (COPTable *) NULL) {
 	    /* commit callout changes */
-	    commit_callouts(p, (p->flags & PLANE_MERGE) != 0);
+	    p->commitCallouts((p->flags & PLANE_MERGE) != 0);
 	    if (p->level == 1) {
 		delete p->coptab;
-		p->coptab = (coptable *) NULL;
+		p->coptab = (COPTable *) NULL;
 	    } else {
 		p->prev->coptab = p->coptab;
 	    }
@@ -766,8 +488,8 @@ void d_commit_plane(Int level, Value *retval)
 
 	Array::commit(&p->achunk, p->prev, (p->flags & PLANE_MERGE) != 0);
 	if (p->flags & PLANE_MERGE) {
-	    if (p->arrays != (arrref *) NULL) {
-		arrref *a;
+	    if (p->arrays != (ArrRef *) NULL) {
+		ArrRef *a;
 
 		/* remove old array refs */
 		for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
@@ -782,8 +504,8 @@ void d_commit_plane(Int level, Value *retval)
 		p->prev->arrays = p->arrays;
 	    }
 
-	    if (p->strings != (strref *) NULL) {
-		strref *s;
+	    if (p->strings != (StrRef *) NULL) {
+		StrRef *s;
 
 		/* remove old string refs */
 		for (s = p->prev->strings, i = data->nstrings; i != 0; s++, --i)
@@ -797,57 +519,56 @@ void d_commit_plane(Int level, Value *retval)
 	    }
 	}
     }
-    commit_values(retval, 1, level - 1);
+    commitValues(retval, 1, level - 1);
 
     /*
      * pass 3: deallocate
      */
-    for (p = plist; p != clist; p = plist) {
+    for (p = ::plist; p != clist; p = ::plist) {
 	p->prev->flags = (p->flags & MOD_ALL) | MOD_SAVE;
 	p->prev->schange = p->schange;
 	p->prev->achange = p->achange;
 	p->prev->imports = p->imports;
 	p->alocal.data->plane = p->prev;
-	plist = p->plist;
-	FREE(p);
+	::plist = p->plist;
+	delete p;
     }
 }
 
 /*
- * NAME:	discard_callouts()
- * DESCRIPTION:	discard callout patches on current plane, restoring old callouts
+ * discard callout patches on current plane, restoring old callouts
  */
-static void discard_callouts(Dataplane *plane)
+void Dataplane::discardCallouts()
 {
-    copatch *cop, **c, **t;
+    COPatch *cop, **c, **t;
     Dataspace *data;
     int i;
 
-    data = plane->alocal.data;
-    for (i = COPATCHHTABSZ, t = plane->coptab->cop; --i >= 0; t++) {
+    data = alocal.data;
+    for (i = COPATCHHTABSZ, t = coptab->cop; --i >= 0; t++) {
 	c = t;
-	while (*c != (copatch *) NULL && (*c)->plane == plane) {
+	while (*c != (COPatch *) NULL && (*c)->plane == this) {
 	    cop = *c;
 	    switch (cop->type) {
 	    case COP_ADD:
-		d_free_call_out(data, cop->handle);
-		cop_del(c, TRUE);
+		data->freeCallOut(cop->handle);
+		COPatch::del(c, TRUE);
 		--ncallout;
 		break;
 
 	    case COP_REMOVE:
-		d_alloc_call_out(data, cop->handle, cop->rco.time,
-				 cop->rco.mtime, cop->rco.nargs, cop->rco.val);
-		cop_del(c, FALSE);
+		data->allocCallOut(cop->handle, cop->rco.time, cop->rco.mtime,
+				   cop->rco.nargs, cop->rco.val);
+		COPatch::del(c, FALSE);
 		ncallout++;
 		break;
 
 	    case COP_REPLACE:
-		d_free_call_out(data, cop->handle);
-		d_alloc_call_out(data, cop->handle, cop->rco.time,
-				 cop->rco.mtime, cop->rco.nargs, cop->rco.val);
-		cop_discard(cop);
-		cop_del(c, TRUE);
+		data->freeCallOut(cop->handle);
+		data->allocCallOut(cop->handle, cop->rco.time, cop->rco.mtime,
+				   cop->rco.nargs, cop->rco.val);
+		cop->discard();
+		COPatch::del(c, TRUE);
 		break;
 	    }
 	}
@@ -855,17 +576,17 @@ static void discard_callouts(Dataplane *plane)
 }
 
 /*
- * NAME:	data->discard_plane()
- * DESCRIPTION:	discard the current data plane without committing it
+ * discard the current data plane without committing it
  */
-void d_discard_plane(Int level)
+void Dataplane::discard(Int level)
 {
     Dataplane *p;
     Dataspace *data;
     Value *v;
     Uint i;
 
-    for (p = plist; p != (Dataplane *) NULL && p->level == level; p = plist) {
+    for (p = ::plist; p != (Dataplane *) NULL && p->level == level; p = ::plist)
+    {
 	/*
 	 * discard changes except for callout mods
 	 */
@@ -882,20 +603,20 @@ void d_discard_plane(Int level)
 	    FREE(p->original);
 	}
 
-	if (p->coptab != (coptable *) NULL) {
+	if (p->coptab != (COPTable *) NULL) {
 	    /* undo callout changes */
-	    discard_callouts(p);
+	    p->discardCallouts();
 	    if (p->prev == &data->base) {
 		delete p->coptab;
-		p->coptab = (coptable *) NULL;
+		p->coptab = (COPTable *) NULL;
 	    } else {
 		p->prev->coptab = p->coptab;
 	    }
 	}
 
 	Array::discard(&p->achunk);
-	if (p->arrays != (arrref *) NULL) {
-	    arrref *a;
+	if (p->arrays != (ArrRef *) NULL) {
+	    ArrRef *a;
 
 	    /* delete new array refs */
 	    for (a = p->arrays, i = data->narrays; i != 0; a++, --i) {
@@ -912,8 +633,8 @@ void d_discard_plane(Int level)
 	    }
 	}
 
-	if (p->strings != (strref *) NULL) {
-	    strref *s;
+	if (p->strings != (StrRef *) NULL) {
+	    StrRef *s;
 
 	    /* delete new string refs */
 	    for (s = p->strings, i = data->nstrings; i != 0; s++, --i) {
@@ -931,146 +652,137 @@ void d_discard_plane(Int level)
 	}
 
 	data->plane = p->prev;
-	plist = p->plist;
-	FREE(p);
+	::plist = p->plist;
+	delete p;
     }
 }
 
-
 /*
- * NAME:	data->commit_arr()
- * DESCRIPTION:	commit array to previous plane
+ * commit array to previous plane
  */
-Array::Backup **d_commit_arr(Array *arr, Dataplane *prev, Dataplane *old)
+Array::Backup **Dataplane::commitArray(Array *arr, Dataplane *old)
 {
-    if (arr->primary->plane != prev) {
+    if (arr->primary->plane != this) {
 	if (arr->hashmod) {
 	    arr->mapCompact(arr->primary->data);
 	}
 
 	if (arr->primary->arr == (Array *) NULL) {
-	    arr->primary = &prev->alocal;
+	    arr->primary = &alocal;
 	} else {
-	    arr->primary->plane = prev;
+	    arr->primary->plane = this;
 	}
-	commit_values(arr->elts, arr->size, prev->level);
+	commitValues(arr->elts, arr->size, level);
     }
 
-    return (prev == old) ? (Array::Backup **) NULL : &prev->achunk;
+    return (this == old) ? (Array::Backup **) NULL : &achunk;
 }
 
 /*
- * NAME:	data->discard_arr()
- * DESCRIPTION:	restore array to previous plane
+ * restore array to previous plane
  */
-void d_discard_arr(Array *arr, Dataplane *plane)
+void Dataplane::discardArray(Array *arr)
 {
     /* swapped-in arrays will be fixed later */
-    arr->primary = &plane->alocal;
+    arr->primary = &alocal;
 }
 
 
 static Dataspace *dhead, *dtail;	/* list of dataspace blocks */
 static Dataspace *gcdata;		/* next dataspace to garbage collect */
+static Dataspace *ifirst;		/* list of dataspaces with imports */
 static Sector ndata;			/* # dataspace blocks */
 
 /*
- * NAME:	data->alloc_dataspace()
- * DESCRIPTION:	allocate a new dataspace block
+ * allocate a new dataspace block
  */
-static Dataspace *d_alloc_dataspace(Object *obj)
+Dataspace::Dataspace(Object *obj)
 {
-    Dataspace *data;
-
-    data = ALLOC(Dataspace, 1);
     if (dhead != (Dataspace *) NULL) {
 	/* insert at beginning of list */
-	dhead->prev = data;
-	data->prev = (Dataspace *) NULL;
-	data->next = dhead;
-	dhead = data;
-	data->gcprev = gcdata->gcprev;
-	data->gcnext = gcdata;
-	data->gcprev->gcnext = data;
-	gcdata->gcprev = data;
+	dhead->prev = this;
+	prev = (Dataspace *) NULL;
+	next = dhead;
+	dhead = this;
+	gcprev = gcdata->gcprev;
+	gcnext = gcdata;
+	gcprev->gcnext = this;
+	gcdata->gcprev = this;
     } else {
 	/* list was empty */
-	data->prev = data->next = (Dataspace *) NULL;
-	dhead = dtail = data;
-	gcdata = data;
-	data->gcprev = data->gcnext = data;
+	prev = next = (Dataspace *) NULL;
+	dhead = dtail = this;
+	gcdata = this;
+	gcprev = gcnext = this;
     }
     ndata++;
 
-    data->iprev = (Dataspace *) NULL;
-    data->inext = (Dataspace *) NULL;
-    data->flags = 0;
+    iprev = (Dataspace *) NULL;
+    inext = (Dataspace *) NULL;
+    flags = 0;
 
-    data->oindex = obj->index;
-    data->ctrl = (Control *) NULL;
+    oindex = obj->index;
+    ctrl = (Control *) NULL;
 
     /* sectors */
-    data->nsectors = 0;
-    data->sectors = (Sector *) NULL;
+    nsectors = 0;
+    sectors = (Sector *) NULL;
 
     /* variables */
-    data->nvariables = 0;
-    data->variables = (Value *) NULL;
-    data->svariables = (svalue *) NULL;
+    nvariables = 0;
+    variables = (Value *) NULL;
+    svariables = (SValue *) NULL;
 
     /* arrays */
-    data->narrays = 0;
-    data->eltsize = 0;
-    data->sarrays = (sarray *) NULL;
-    data->saindex = (Uint *) NULL;
-    data->selts = (svalue *) NULL;
-    data->alist.prev = data->alist.next = &data->alist;
+    narrays = 0;
+    eltsize = 0;
+    sarrays = (SArray *) NULL;
+    saindex = (Uint *) NULL;
+    selts = (SValue *) NULL;
+    alist.prev = alist.next = &alist;
 
     /* strings */
-    data->nstrings = 0;
-    data->strsize = 0;
-    data->sstrings = (sstring *) NULL;
-    data->ssindex = (Uint *) NULL;
-    data->stext = (char *) NULL;
+    nstrings = 0;
+    strsize = 0;
+    sstrings = (SString *) NULL;
+    ssindex = (Uint *) NULL;
+    stext = (char *) NULL;
 
     /* callouts */
-    data->ncallouts = 0;
-    data->fcallouts = 0;
-    data->callouts = (dcallout *) NULL;
-    data->scallouts = (scallout *) NULL;
+    ncallouts = 0;
+    fcallouts = 0;
+    callouts = (DCallOut *) NULL;
+    scallouts = (SCallOut *) NULL;
 
     /* value plane */
-    data->base.level = 0;
-    data->base.flags = 0;
-    data->base.schange = 0;
-    data->base.achange = 0;
-    data->base.imports = 0;
-    data->base.alocal.arr = (Array *) NULL;
-    data->base.alocal.plane = &data->base;
-    data->base.alocal.data = data;
-    data->base.alocal.state = AR_CHANGED;
-    data->base.arrays = (arrref *) NULL;
-    data->base.strings = (strref *) NULL;
-    data->base.coptab = (class coptable *) NULL;
-    data->base.prev = (Dataplane *) NULL;
-    data->base.plist = (Dataplane *) NULL;
-    data->plane = &data->base;
+    base.level = 0;
+    base.flags = 0;
+    base.schange = 0;
+    base.achange = 0;
+    base.imports = 0;
+    base.alocal.arr = (Array *) NULL;
+    base.alocal.plane = &base;
+    base.alocal.data = this;
+    base.alocal.state = AR_CHANGED;
+    base.arrays = (ArrRef *) NULL;
+    base.strings = (StrRef *) NULL;
+    base.coptab = (class COPTable *) NULL;
+    base.prev = (Dataplane *) NULL;
+    base.plist = (Dataplane *) NULL;
+    plane = &base;
 
     /* parse_string data */
-    data->parser = (struct parser *) NULL;
-
-    return data;
+    parser = (struct parser *) NULL;
 }
 
 /*
- * NAME:	data->new_dataspace()
- * DESCRIPTION:	create a new dataspace block
+ * create a new dataspace block
  */
-Dataspace *d_new_dataspace(Object *obj)
+Dataspace *Dataspace::create(Object *obj)
 {
     Dataspace *data;
 
-    data = d_alloc_dataspace(obj);
+    data = new Dataspace(obj);
     data->base.flags = MOD_VARIABLE;
     data->ctrl = obj->control();
     data->ctrl->ndata++;
@@ -1080,59 +792,78 @@ Dataspace *d_new_dataspace(Object *obj)
 }
 
 /*
- * NAME:	data->ref_dataspace()
- * DESCRIPTION:	reference data block
+ * reference data block
  */
-void d_ref_dataspace(Dataspace *data)
+void Dataspace::ref()
 {
-    if (data != dhead) {
+    if (this != dhead) {
 	/* move to head of list */
-	data->prev->next = data->next;
-	if (data->next != (Dataspace *) NULL) {
-	    data->next->prev = data->prev;
+	prev->next = next;
+	if (next != (Dataspace *) NULL) {
+	    next->prev = prev;
 	} else {
-	    dtail = data->prev;
+	    dtail = prev;
 	}
-	data->prev = (Dataspace *) NULL;
-	data->next = dhead;
-	dhead->prev = data;
-	dhead = data;
+	prev = (Dataspace *) NULL;
+	next = dhead;
+	dhead->prev = this;
+	dhead = this;
     }
 }
 
 /*
- * NAME:	data->free_values()
- * DESCRIPTION:	free values in a dataspace block
+ * dereference data block
  */
-static void d_free_values(Dataspace *data)
+void Dataspace::deref()
+{
+    /* swap this out first */
+    if (this != dtail) {
+	if (dhead == this) {
+	    dhead = next;
+	    dhead->prev = (Dataspace *) NULL;
+	} else {
+	    prev->next = next;
+	    next->prev = prev;
+	}
+	dtail->next = this;
+	prev = dtail;
+	next = (Dataspace *) NULL;
+	dtail = this;
+    }
+}
+
+/*
+ * free values in a dataspace block
+ */
+void Dataspace::freeValues()
 {
     Uint i;
 
     /* free parse_string data */
-    if (data->parser != (struct parser *) NULL) {
-	ps_del(data->parser);
-	data->parser = (struct parser *) NULL;
+    if (parser != (struct parser *) NULL) {
+	ps_del(parser);
+	parser = (struct parser *) NULL;
     }
 
     /* free variables */
-    if (data->variables != (Value *) NULL) {
+    if (variables != (Value *) NULL) {
 	Value *v;
 
-	for (i = data->nvariables, v = data->variables; i > 0; --i, v++) {
+	for (i = nvariables, v = variables; i > 0; --i, v++) {
 	    i_del_value(v);
 	}
 
-	FREE(data->variables);
-	data->variables = (Value *) NULL;
+	FREE(variables);
+	variables = (Value *) NULL;
     }
 
     /* free callouts */
-    if (data->callouts != (dcallout *) NULL) {
-	dcallout *co;
+    if (callouts != (DCallOut *) NULL) {
+	DCallOut *co;
 	Value *v;
 	int j;
 
-	for (i = data->ncallouts, co = data->callouts; i > 0; --i, co++) {
+	for (i = ncallouts, co = callouts; i > 0; --i, co++) {
 	    v = co->val;
 	    if (v->type == T_STRING) {
 		j = 1 + co->nargs;
@@ -1145,171 +876,1535 @@ static void d_free_values(Dataspace *data)
 	    }
 	}
 
-	FREE(data->callouts);
-	data->callouts = (dcallout *) NULL;
+	FREE(callouts);
+	callouts = (DCallOut *) NULL;
     }
 
     /* free arrays */
-    if (data->base.arrays != (arrref *) NULL) {
-	arrref *a;
+    if (base.arrays != (ArrRef *) NULL) {
+	ArrRef *a;
 
-	for (i = data->narrays, a = data->base.arrays; i > 0; --i, a++) {
+	for (i = narrays, a = base.arrays; i > 0; --i, a++) {
 	    if (a->arr != (Array *) NULL) {
 		a->arr->del();
 	    }
 	}
 
-	FREE(data->base.arrays);
-	data->base.arrays = (arrref *) NULL;
+	FREE(base.arrays);
+	base.arrays = (ArrRef *) NULL;
     }
 
     /* free strings */
-    if (data->base.strings != (strref *) NULL) {
-	strref *s;
+    if (base.strings != (StrRef *) NULL) {
+	StrRef *s;
 
-	for (i = data->nstrings, s = data->base.strings; i > 0; --i, s++) {
+	for (i = nstrings, s = base.strings; i > 0; --i, s++) {
 	    if (s->str != (String *) NULL) {
-		s->str->primary = (strref *) NULL;
+		s->str->primary = (StrRef *) NULL;
 		s->str->del();
 	    }
 	}
 
-	FREE(data->base.strings);
-	data->base.strings = (strref *) NULL;
+	FREE(base.strings);
+	base.strings = (StrRef *) NULL;
     }
 
     /* free any left-over arrays */
-    if (data->alist.next != &data->alist) {
-	data->alist.prev->next = data->alist.next;
-	data->alist.next->prev = data->alist.prev;
-	data->alist.next->freelist();
-	data->alist.prev = data->alist.next = &data->alist;
+    if (alist.next != &alist) {
+	alist.prev->next = alist.next;
+	alist.next->prev = alist.prev;
+	alist.next->freelist();
+	alist.prev = alist.next = &alist;
     }
 }
 
 /*
- * NAME:	data->free_dataspace()
- * DESCRIPTION:	remove the dataspace block from memory
+ * remove the dataspace block from memory
  */
-void d_free_dataspace(Dataspace *data)
+Dataspace::~Dataspace()
 {
     /* free values */
-    d_free_values(data);
+    freeValues();
 
     /* delete sectors */
-    if (data->sectors != (Sector *) NULL) {
-	FREE(data->sectors);
+    if (sectors != (Sector *) NULL) {
+	FREE(sectors);
     }
 
     /* free scallouts */
-    if (data->scallouts != (scallout *) NULL) {
-	FREE(data->scallouts);
+    if (scallouts != (SCallOut *) NULL) {
+	FREE(scallouts);
     }
 
     /* free sarrays */
-    if (data->sarrays != (sarray *) NULL) {
-	if (data->selts != (svalue *) NULL) {
-	    FREE(data->selts);
+    if (sarrays != (SArray *) NULL) {
+	if (selts != (SValue *) NULL) {
+	    FREE(selts);
 	}
-	if (data->saindex != (Uint *) NULL) {
-	    FREE(data->saindex);
+	if (saindex != (Uint *) NULL) {
+	    FREE(saindex);
 	}
-	FREE(data->sarrays);
+	FREE(sarrays);
     }
 
     /* free sstrings */
-    if (data->sstrings != (sstring *) NULL) {
-	if (data->stext != (char *) NULL) {
-	    FREE(data->stext);
+    if (sstrings != (SString *) NULL) {
+	if (stext != (char *) NULL) {
+	    FREE(stext);
 	}
-	if (data->ssindex != (Uint *) NULL) {
-	    FREE(data->ssindex);
+	if (ssindex != (Uint *) NULL) {
+	    FREE(ssindex);
 	}
-	FREE(data->sstrings);
+	FREE(sstrings);
     }
 
     /* free svariables */
-    if (data->svariables != (svalue *) NULL) {
-	FREE(data->svariables);
+    if (svariables != (SValue *) NULL) {
+	FREE(svariables);
     }
 
-    if (data->ctrl != (Control *) NULL) {
-	data->ctrl->ndata--;
+    if (ctrl != (Control *) NULL) {
+	ctrl->ndata--;
     }
 
-    if (data != dhead) {
-	data->prev->next = data->next;
+    if (this != dhead) {
+	prev->next = next;
     } else {
-	dhead = data->next;
+	dhead = next;
 	if (dhead != (Dataspace *) NULL) {
 	    dhead->prev = (Dataspace *) NULL;
 	}
     }
-    if (data != dtail) {
-	data->next->prev = data->prev;
+    if (this != dtail) {
+	next->prev = prev;
     } else {
-	dtail = data->prev;
+	dtail = prev;
 	if (dtail != (Dataspace *) NULL) {
 	    dtail->next = (Dataspace *) NULL;
 	}
     }
-    data->gcprev->gcnext = data->gcnext;
-    data->gcnext->gcprev = data->gcprev;
-    if (data == gcdata) {
-	gcdata = (data != data->gcnext) ? data->gcnext : (Dataspace *) NULL;
+    gcprev->gcnext = gcnext;
+    gcnext->gcprev = gcprev;
+    if (this == gcdata) {
+	gcdata = (this != gcnext) ? gcnext : (Dataspace *) NULL;
     }
     --ndata;
-
-    FREE(data);
 }
 
 /*
- * NAME:	data->del_dataspace()
- * DESCRIPTION:	delete a dataspace block from swap and memory
+ * delete a dataspace block from swap and memory
  */
-void d_del_dataspace(Dataspace *data)
+void Dataspace::del()
 {
-    if (data->iprev != (Dataspace *) NULL) {
-	data->iprev->inext = data->inext;
-	if (data->inext != (Dataspace *) NULL) {
-	    data->inext->iprev = data->iprev;
+    if (iprev != (Dataspace *) NULL) {
+	iprev->inext = inext;
+	if (inext != (Dataspace *) NULL) {
+	    inext->iprev = iprev;
 	}
-    } else if (ifirst == data) {
-	ifirst = data->inext;
+    } else if (ifirst == this) {
+	ifirst = inext;
 	if (ifirst != (Dataspace *) NULL) {
 	    ifirst->iprev = (Dataspace *) NULL;
 	}
     }
 
-    if (data->ncallouts != 0) {
+    if (ncallouts != 0) {
 	Uint n;
-	dcallout *co;
+	DCallOut *co;
 	unsigned short dummy;
 
 	/*
 	 * remove callouts from callout table
 	 */
-	if (data->callouts == (dcallout *) NULL) {
-	    d_get_callouts(data);
+	if (callouts == (DCallOut *) NULL) {
+	    loadCallouts();
 	}
-	for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
+	for (n = ncallouts, co = callouts + n; n > 0; --n) {
 	    if ((--co)->val[0].type == T_STRING) {
-		d_del_call_out(data, n, &dummy);
+		delCallOut(n, &dummy);
 	    }
 	}
     }
-    if (data->sectors != (Sector *) NULL) {
-	Swap::wipev(data->sectors, data->nsectors);
-	Swap::delv(data->sectors, data->nsectors);
+    if (sectors != (Sector *) NULL) {
+	Swap::wipev(sectors, nsectors);
+	Swap::delv(sectors, nsectors);
     }
-    d_free_dataspace(data);
+    delete this;
+}
+
+
+struct SDataspace {
+    Sector nsectors;		/* number of sectors in data space */
+    short flags;		/* dataspace flags: compression */
+    unsigned short nvariables;	/* number of variables */
+    Uint narrays;		/* number of array values */
+    Uint eltsize;		/* total size of array elements */
+    Uint nstrings;		/* number of strings */
+    Uint strsize;		/* total size of strings */
+    uindex ncallouts;		/* number of callouts */
+    uindex fcallouts;		/* first free callout */
+};
+
+static char sd_layout[] = "dssiiiiuu";
+
+struct SValue {
+    char type;			/* object, number, string, array */
+    char pad;			/* 0 */
+    uindex oindex;		/* index in object table */
+    union {
+	Int number;		/* number */
+	Uint string;		/* string */
+	Uint objcnt;		/* object creation count */
+	Uint array;		/* array */
+    };
+};
+
+static char sv_layout[] = "ccui";
+
+struct SArray {
+    Uint tag;			/* unique value for each array */
+    Uint ref;			/* refcount */
+    char type;			/* array type */
+    unsigned short size;	/* size of array */
+};
+
+static char sa_layout[] = "iics";
+
+struct SArray0 {
+    Uint index;			/* index in array value table */
+    char type;			/* array type */
+    unsigned short size;	/* size of array */
+    Uint ref;			/* refcount */
+    Uint tag;			/* unique value for each array */
+};
+
+static char sa0_layout[] = "icsii";
+
+struct SString {
+    Uint ref;			/* refcount */
+    ssizet len;			/* length of string */
+};
+
+static char ss_layout[] = "it";
+
+struct SString0 {
+    Uint index;			/* index in string text table */
+    ssizet len;			/* length of string */
+    Uint ref;			/* refcount */
+};
+
+static char ss0_layout[] = "iti";
+
+struct SCallOut {
+    Uint time;			/* time of call */
+    unsigned short htime;	/* time of call, high word */
+    unsigned short mtime;	/* time of call milliseconds */
+    uindex nargs;		/* number of arguments */
+    SValue val[4];		/* function name, 3 direct arguments */
+};
+
+static char sco_layout[] = "issu[ccui][ccui][ccui][ccui]";
+
+# define co_prev	time
+# define co_next	nargs
+
+static bool conv_14;			/* convert arrays & strings? */
+static bool convDone;			/* conversion complete? */
+
+/*
+ * load the dataspace header block
+ */
+Dataspace *Dataspace::_load(Object *obj,
+			    void (*readv) (char*, Sector*, Uint, Uint))
+{
+    SDataspace header;
+    Dataspace *data;
+    Uint size;
+
+    data = new Dataspace(obj);
+    data->ctrl = obj->control();
+    data->ctrl->ndata++;
+
+    /* header */
+    (*readv)((char *) &header, &obj->dfirst, (Uint) sizeof(SDataspace),
+	     (Uint) 0);
+    data->nsectors = header.nsectors;
+    data->sectors = ALLOC(Sector, header.nsectors);
+    data->sectors[0] = obj->dfirst;
+    size = header.nsectors * (Uint) sizeof(Sector);
+    if (header.nsectors > 1) {
+	(*readv)((char *) data->sectors, data->sectors, size,
+		 (Uint) sizeof(SDataspace));
+    }
+    size += sizeof(SDataspace);
+
+    data->flags = header.flags;
+
+    /* variables */
+    data->varoffset = size;
+    data->nvariables = header.nvariables;
+    size += data->nvariables * (Uint) sizeof(SValue);
+
+    /* arrays */
+    data->arroffset = size;
+    data->narrays = header.narrays;
+    data->eltsize = header.eltsize;
+    size += header.narrays * (Uint) sizeof(SArray) +
+	    header.eltsize * sizeof(SValue);
+
+    /* strings */
+    data->stroffset = size;
+    data->nstrings = header.nstrings;
+    data->strsize = header.strsize;
+    size += header.nstrings * sizeof(SString) + header.strsize;
+
+    /* callouts */
+    data->cooffset = size;
+    data->ncallouts = header.ncallouts;
+    data->fcallouts = header.fcallouts;
+
+    return data;
 }
 
 /*
- * NAME:	data->ref_imports()
- * DESCRIPTION:	check the elements of an array for imports
+ * load the dataspace header block of an object from swap
  */
-void d_ref_imports(Array *arr)
+Dataspace *Dataspace::load(Object *obj)
+{
+    Dataspace *data;
+
+    data = _load(obj, Swap::readv);
+
+    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->master)->update &&
+	obj->count != 0) {
+	data->upgradeClone();
+    }
+
+    return data;
+}
+
+/*
+ * convert old sarrays
+ */
+Uint Dataspace::convSArray0(SArray *sa, Sector *s, Uint n, Uint size)
+{
+    SArray0 *osa;
+    Uint i;
+
+    osa = ALLOC(SArray0, n);
+    size = Swap::convert((char *) osa, s, sa0_layout, n, size, &Swap::conv);
+    for (i = 0; i < n; i++) {
+	sa->tag = osa->tag;
+	sa->ref = osa->ref;
+	sa->type = osa->type;
+	(sa++)->size = (osa++)->size;
+    }
+    FREE(osa - n);
+    return size;
+}
+
+/*
+ * convert old sstrings
+ */
+Uint Dataspace::convSString0(SString *ss, Sector *s, Uint n, Uint size)
+{
+    SString0 *oss;
+    Uint i;
+
+    oss = ALLOC(SString0, n);
+    size = Swap::convert((char *) oss, s, ss0_layout, n, size, &Swap::conv);
+    for (i = 0; i < n; i++) {
+	ss->ref = oss->ref;
+	(ss++)->len = (oss++)->len;
+    }
+    FREE(oss - n);
+    return size;
+}
+
+/*
+ * convert dataspace
+ */
+Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
+			   void (*readv) (char*, Sector*, Uint, Uint))
+{
+    SDataspace header;
+    Dataspace *data;
+    Uint size;
+    unsigned int n;
+
+    UNREFERENCED_PARAMETER(counttab);
+
+    data = new Dataspace(obj);
+
+    /*
+     * restore from snapshot
+     */
+    size = Swap::convert((char *) &header, &obj->dfirst, sd_layout, (Uint) 1,
+			 (Uint) 0, readv);
+    data->nvariables = header.nvariables;
+    data->narrays = header.narrays;
+    data->eltsize = header.eltsize;
+    data->nstrings = header.nstrings;
+    data->strsize = header.strsize;
+    data->ncallouts = header.ncallouts;
+    data->fcallouts = header.fcallouts;
+
+    /* sectors */
+    data->sectors = ALLOC(Sector, data->nsectors = header.nsectors);
+    data->sectors[0] = obj->dfirst;
+    for (n = 0; n < header.nsectors; n++) {
+	size += Swap::convert((char *) (data->sectors + n), data->sectors, "d",
+			      (Uint) 1, size, readv);
+    }
+
+    /* variables */
+    data->svariables = ALLOC(SValue, header.nvariables);
+    size += Swap::convert((char *) data->svariables, data->sectors, sv_layout,
+			  (Uint) header.nvariables, size, readv);
+
+    if (header.narrays != 0) {
+	/* arrays */
+	data->sarrays = ALLOC(SArray, header.narrays);
+	if (conv_14) {
+	    size += convSArray0(data->sarrays, data->sectors, header.narrays,
+				size);
+	} else {
+	    size += Swap::convert((char *) data->sarrays, data->sectors,
+				  sa_layout, header.narrays, size, readv);
+	}
+	if (header.eltsize != 0) {
+	    data->selts = ALLOC(SValue, header.eltsize);
+	    size += Swap::convert((char *) data->selts, data->sectors,
+				  sv_layout, header.eltsize, size, readv);
+	}
+    }
+
+    if (header.nstrings != 0) {
+	/* strings */
+	data->sstrings = ALLOC(SString, header.nstrings);
+	if (conv_14) {
+	    size += convSString0(data->sstrings, data->sectors,
+				 (Uint) header.nstrings, size);
+	} else {
+	    size += Swap::convert((char *) data->sstrings, data->sectors,
+				  ss_layout, header.nstrings, size, readv);
+	}
+	if (header.strsize != 0) {
+	    if (header.flags & CMP_TYPE) {
+		data->stext = Swap::decompress(data->sectors, readv,
+					       header.strsize, size,
+					       &data->strsize);
+	    } else {
+		data->stext = ALLOC(char, header.strsize);
+		(*readv)(data->stext, data->sectors, header.strsize, size);
+	    }
+	    size += header.strsize;
+	}
+    }
+
+    if (header.ncallouts != 0) {
+	unsigned short dummy;
+
+	/* callouts */
+	co_time(&dummy);
+	data->scallouts = ALLOC(SCallOut, header.ncallouts);
+	Swap::convert((char *) data->scallouts, data->sectors, sco_layout,
+		      (Uint) header.ncallouts, size, readv);
+    }
+
+    data->ctrl = obj->control();
+    data->ctrl->ndata++;
+
+    return data;
+}
+
+/*
+ * load strings for dataspace
+ */
+void Dataspace::loadStrings(void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (nstrings != 0) {
+	/* load strings */
+	sstrings = ALLOC(SString, nstrings);
+	(*readv)((char *) sstrings, sectors, nstrings * sizeof(SString),
+		 stroffset);
+	if (strsize > 0) {
+	    /* load strings text */
+	    if (flags & DATA_STRCMP) {
+		stext = Swap::decompress(sectors, readv, strsize,
+				         stroffset + nstrings * sizeof(SString),
+					 &strsize);
+	    } else {
+		stext = ALLOC(char, strsize);
+		(*readv)(stext, sectors, strsize,
+			 stroffset + nstrings * sizeof(SString));
+	    }
+	}
+    }
+}
+
+/*
+ * get a string from the dataspace
+ */
+String *Dataspace::string(Uint idx)
+{
+    if (plane->strings == (StrRef *) NULL ||
+	plane->strings[idx].str == (String *) NULL) {
+	String *str;
+	StrRef *s;
+	Dataplane *p;
+	Uint i;
+
+	if (sstrings == (SString *) NULL) {
+	    loadStrings(Swap::readv);
+	}
+	if (ssindex == (Uint *) NULL) {
+	    Uint size;
+
+	    ssindex = ALLOC(Uint, nstrings);
+	    for (size = 0, i = 0; i < nstrings; i++) {
+		ssindex[i] = size;
+		size += sstrings[i].len;
+	    }
+	}
+
+	str = String::alloc(stext + ssindex[idx], sstrings[idx].len);
+	p = plane;
+
+	do {
+	    if (p->strings == (StrRef *) NULL) {
+		/* initialize string pointers */
+		s = p->strings = ALLOC(StrRef, nstrings);
+		for (i = nstrings; i > 0; --i) {
+		    (s++)->str = (String *) NULL;
+		}
+	    }
+	    s = &p->strings[idx];
+	    s->str = str;
+	    s->str->ref();
+	    s->data = this;
+	    s->ref = sstrings[idx].ref;
+	    p = p->prev;
+	} while (p != (Dataplane *) NULL);
+
+	str->primary = &plane->strings[idx];
+	return str;
+    }
+    return plane->strings[idx].str;
+}
+
+/*
+ * load arrays for dataspace
+ */
+void Dataspace::loadArrays(void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (narrays != 0) {
+	/* load arrays */
+	sarrays = ALLOC(SArray, narrays);
+	(*readv)((char *) sarrays, sectors, narrays * (Uint) sizeof(SArray),
+		 arroffset);
+    }
+}
+
+/*
+ * get an array from the dataspace
+ */
+Array *Dataspace::array(Uint idx)
+{
+    if (plane->arrays == (ArrRef *) NULL ||
+	plane->arrays[idx].arr == (Array *) NULL) {
+	Array *arr;
+	ArrRef *a;
+	Dataplane *p;
+	Uint i;
+
+	if (sarrays == (SArray *) NULL) {
+	    /* load arrays */
+	    loadArrays(Swap::readv);
+	}
+
+	arr = Array::alloc(sarrays[idx].size);
+	arr->tag = sarrays[idx].tag;
+	p = plane;
+
+	do {
+	    if (p->arrays == (ArrRef *) NULL) {
+		/* create array pointers */
+		a = p->arrays = ALLOC(ArrRef, narrays);
+		for (i = narrays; i > 0; --i) {
+		    (a++)->arr = (Array *) NULL;
+		}
+	    }
+	    a = &p->arrays[idx];
+	    a->arr = arr;
+	    a->arr->ref();
+	    a->plane = &base;
+	    a->data = this;
+	    a->state = AR_UNCHANGED;
+	    a->ref = sarrays[idx].ref;
+	    p = p->prev;
+	} while (p != (Dataplane *) NULL);
+
+	arr->primary = &plane->arrays[idx];
+	arr->prev = &alist;
+	arr->next = alist.next;
+	arr->next->prev = arr;
+	alist.next = arr;
+	return arr;
+    }
+    return plane->arrays[idx].arr;
+}
+
+/*
+ * get values from the Dataspace
+ */
+void Dataspace::loadValues(SValue *sv, Value *v, int n)
+{
+    while (n > 0) {
+	v->modified = FALSE;
+	switch (v->type = sv->type) {
+	case T_NIL:
+	    v->number = 0;
+	    break;
+
+	case T_INT:
+	    v->number = sv->number;
+	    break;
+
+	case T_STRING:
+	    v->string = string(sv->string);
+	    v->string->ref();
+	    break;
+
+	case T_FLOAT:
+	case T_OBJECT:
+	    v->oindex = sv->oindex;
+	    v->objcnt = sv->objcnt;
+	    break;
+
+	case T_ARRAY:
+	case T_MAPPING:
+	case T_LWOBJECT:
+	    v->array = array(sv->array);
+	    v->array->ref();
+	    break;
+	}
+	sv++;
+	v++;
+	--n;
+    }
+}
+
+/*
+ * initialize variables in a dataspace block
+ */
+void Dataspace::newVars(Control *ctrl, Value *val)
+{
+    unsigned short n;
+    char *type;
+    VarDef *var;
+
+    memset(val, '\0', ctrl->nvariables * sizeof(Value));
+    for (n = ctrl->nvariables - ctrl->nvardefs, type = ctrl->varTypes();
+	 n != 0; --n, type++) {
+	val->type = *type;
+	val++;
+    }
+    for (n = ctrl->nvardefs, var = ctrl->vars(); n != 0; --n, var++) {
+	if (T_ARITHMETIC(var->type)) {
+	    val->type = var->type;
+	} else {
+	    val->type = nil_type;
+	}
+	val++;
+    }
+}
+
+/*
+ * load variables
+ */
+void Dataspace::loadVars(void (*readv) (char*, Sector*, Uint, Uint))
+{
+    svariables = ALLOC(SValue, nvariables);
+    (*readv)((char *) svariables, sectors, nvariables * (Uint) sizeof(SValue),
+	     varoffset);
+}
+
+/*
+ * get a variable from the dataspace
+ */
+Value *Dataspace::variable(unsigned int idx)
+{
+    if (variables == (Value *) NULL) {
+	/* create room for variables */
+	variables = ALLOC(Value, nvariables);
+	if (nsectors == 0 && svariables == (SValue *) NULL) {
+	    /* new datablock */
+	    newVars(ctrl, variables);
+	    variables[nvariables - 1] = nil_value;	/* extra var */
+	} else {
+	    /*
+	     * variables must be loaded from swap
+	     */
+	    if (svariables == (SValue *) NULL) {
+		/* load svalues */
+		loadVars(Swap::readv);
+	    }
+	    loadValues(svariables, variables, nvariables);
+	}
+    }
+
+    return &variables[idx];
+}
+
+/*
+ * load elements
+ */
+void Dataspace::loadElts(void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (eltsize != 0) {
+	/* load array elements */
+	selts = ALLOC(SValue, eltsize);
+	(*readv)((char *) selts, sectors, eltsize * sizeof(SValue),
+		 arroffset + narrays * sizeof(SArray));
+    }
+}
+
+/*
+ * get the elements of an array
+ */
+Value *Dataspace::elts(Array *arr)
+{
+    Value *v;
+
+    v = arr->elts;
+    if (v == (Value *) NULL && arr->size != 0) {
+	Dataspace *data;
+	Uint idx;
+
+	data = arr->primary->data;
+	if (data->selts == (SValue *) NULL) {
+	    data->loadElts(Swap::readv);
+	}
+	if (data->saindex == (Uint *) NULL) {
+	    Uint size;
+
+	    data->saindex = ALLOC(Uint, data->narrays);
+	    for (size = 0, idx = 0; idx < data->narrays; idx++) {
+		data->saindex[idx] = size;
+		size += data->sarrays[idx].size;
+	    }
+	}
+
+	v = arr->elts = ALLOC(Value, arr->size);
+	idx = data->saindex[arr->primary - data->plane->arrays];
+	data->loadValues(&data->selts[idx], v, arr->size);
+    }
+
+    return v;
+}
+
+/*
+ * load callouts from swap
+ */
+void Dataspace::_loadCallouts(void (*readv) (char*, Sector*, Uint, Uint))
+{
+    if (ncallouts != 0) {
+	scallouts = ALLOC(SCallOut, ncallouts);
+	(*readv)((char *) scallouts, sectors,
+		 ncallouts * (Uint) sizeof(SCallOut), cooffset);
+    }
+}
+
+/*
+ * load callouts from swap
+ */
+void Dataspace::loadCallouts()
+{
+    SCallOut *sco;
+    DCallOut *co;
+    uindex n;
+
+    if (scallouts == (SCallOut *) NULL) {
+	_loadCallouts(Swap::readv);
+    }
+    sco = scallouts;
+    co = callouts = ALLOC(DCallOut, ncallouts);
+
+    for (n = ncallouts; n > 0; --n) {
+	co->time = sco->time;
+	co->mtime = sco->mtime;
+	co->nargs = sco->nargs;
+	if (sco->val[0].type == T_STRING) {
+	    loadValues(sco->val, co->val,
+		       (sco->nargs > 3) ? 4 : sco->nargs + 1);
+	} else {
+	    co->val[0] = nil_value;
+	}
+	sco++;
+	co++;
+    }
+}
+
+
+class SaveData {
+public:
+    SaveData() {
+	narr = 0;
+	nstr = 0;
+	arrsize = 0;
+	strsize = 0;
+	alist.prev = alist.next = &alist;
+    }
+
+    /*
+     * count the number of arrays and strings in an object
+     */
+    void count(Value *v, Uint n) {
+	Object *obj;
+	Value *elts;
+	Uint count;
+
+	while (n > 0) {
+	    switch (v->type) {
+	    case T_STRING:
+		if (v->string->put(nstr) == nstr) {
+		    nstr++;
+		    strsize += v->string->len;
+		}
+		break;
+
+	    case T_ARRAY:
+		if (v->array->put(narr) == narr) {
+		    arrCount(v->array);
+		}
+		break;
+
+	    case T_MAPPING:
+		if (v->array->put(narr) == narr) {
+		    if (v->array->hashmod) {
+			v->array->mapCompact(v->array->primary->data);
+		    }
+		    arrCount(v->array);
+		}
+		break;
+
+	    case T_LWOBJECT:
+		elts = Dataspace::elts(v->array);
+		if (elts->type == T_OBJECT) {
+		    obj = OBJ(elts->oindex);
+		    count = obj->count;
+		    if (elts[1].type == T_INT) {
+			/* convert to new LWO type */
+			elts[1].type = T_FLOAT;
+			elts[1].oindex = FALSE;
+		    }
+		    if (v->array->put(narr) == narr) {
+			if (elts->objcnt == count &&
+			    elts[1].objcnt != obj->update) {
+			    Dataspace::upgradeLWO(v->array, obj);
+			}
+			arrCount(v->array);
+		    }
+		} else if (v->array->put(narr) == narr) {
+		    arrCount(v->array);
+		}
+		break;
+	    }
+
+	    v++;
+	    --n;
+	}
+    }
+
+    /*
+     * save the values in an object
+     */
+    void save(SValue *sv, Value *v, unsigned short n) {
+	Uint i;
+
+	while (n > 0) {
+	    sv->pad = '\0';
+	    switch (sv->type = v->type) {
+	    case T_NIL:
+		sv->oindex = 0;
+		sv->number = 0;
+		break;
+
+	    case T_INT:
+		sv->oindex = 0;
+		sv->number = v->number;
+		break;
+
+	    case T_STRING:
+		i = v->string->put(nstr);
+		sv->oindex = 0;
+		sv->string = i;
+		if (sstrings[i].ref++ == 0) {
+		    /* new string value */
+		    sstrings[i].len = v->string->len;
+		    memcpy(stext + strsize, v->string->text, v->string->len);
+		    strsize += v->string->len;
+		}
+		break;
+
+	    case T_FLOAT:
+	    case T_OBJECT:
+		sv->oindex = v->oindex;
+		sv->objcnt = v->objcnt;
+		break;
+
+	    case T_ARRAY:
+	    case T_MAPPING:
+	    case T_LWOBJECT:
+		i = v->array->put(narr);
+		sv->oindex = 0;
+		sv->array = i;
+		if (sarrays[i].ref++ == 0) {
+		    /* new array value */
+		    sarrays[i].type = sv->type;
+		}
+		break;
+	    }
+	    sv++;
+	    v++;
+	    --n;
+	}
+    }
+
+    Uint narr;				/* # of arrays */
+    Uint nstr;				/* # of strings */
+    Uint arrsize;			/* # of array elements */
+    Uint strsize;			/* total string size */
+    SArray *sarrays;			/* save arrays */
+    SValue *selts;			/* save array elements */
+    SString *sstrings;			/* save strings */
+    char *stext;			/* save string elements */
+    Array alist;			/* linked list sentinel */
+
+private:
+    /*
+     * count the number of arrays and strings in an array
+     */
+    void arrCount(Array *arr) {
+	arr->prev->next = arr->next;
+	arr->next->prev = arr->prev;
+	arr->prev = &alist;
+	arr->next = alist.next;
+	arr->next->prev = arr;
+	alist.next = arr;
+	narr++;
+    }
+};
+
+/*
+ * save modified values as svalues
+ */
+void Dataspace::saveValues(SValue *sv, Value *v, unsigned short n)
+{
+    while (n > 0) {
+	if (v->modified) {
+	    sv->pad = '\0';
+	    switch (sv->type = v->type) {
+	    case T_NIL:
+		sv->oindex = 0;
+		sv->number = 0;
+		break;
+
+	    case T_INT:
+		sv->oindex = 0;
+		sv->number = v->number;
+		break;
+
+	    case T_STRING:
+		sv->oindex = 0;
+		sv->string = v->string->primary - base.strings;
+		break;
+
+	    case T_FLOAT:
+	    case T_OBJECT:
+		sv->oindex = v->oindex;
+		sv->objcnt = v->objcnt;
+		break;
+
+	    case T_ARRAY:
+	    case T_MAPPING:
+	    case T_LWOBJECT:
+		sv->oindex = 0;
+		sv->array = v->array->primary - base.arrays;
+		break;
+	    }
+	    v->modified = FALSE;
+	}
+	sv++;
+	v++;
+	--n;
+    }
+}
+
+/*
+ * save all values in a dataspace block
+ */
+bool Dataspace::save(bool swap)
+{
+    SDataspace header;
+    Uint n;
+
+    if (parser != (struct parser *) NULL && !(OBJ(oindex)->flags & O_SPECIAL)) {
+	ps_save(parser);
+    }
+    if (swap && (base.flags & MOD_SAVE)) {
+	base.flags |= MOD_ALL;
+    } else if (!(base.flags & MOD_ALL)) {
+	return FALSE;
+    }
+
+    if (svariables != (SValue *) NULL && base.achange == 0 &&
+	base.schange == 0 && !(base.flags & MOD_NEWCALLOUT)) {
+	bool mod;
+
+	/*
+	 * No strings/arrays added or deleted. Check individual variables and
+	 * array elements.
+	 */
+	if (base.flags & MOD_VARIABLE) {
+	    /*
+	     * variables changed
+	     */
+	    saveValues(svariables, variables, nvariables);
+	    if (swap) {
+		Swap::writev((char *) svariables, sectors,
+			     nvariables * (Uint) sizeof(SValue), varoffset);
+	    }
+	}
+	if (base.flags & MOD_ARRAYREF) {
+	    SArray *sa;
+	    ArrRef *a;
+
+	    /*
+	     * references to arrays changed
+	     */
+	    sa = sarrays;
+	    a = base.arrays;
+	    mod = FALSE;
+	    for (n = narrays; n > 0; --n) {
+		if (a->arr != (Array *) NULL && sa->ref != (a->ref & ~ARR_MOD))
+		{
+		    sa->ref = a->ref & ~ARR_MOD;
+		    mod = TRUE;
+		}
+		sa++;
+		a++;
+	    }
+	    if (mod && swap) {
+		Swap::writev((char *) sarrays, sectors,
+			     narrays * sizeof(SArray), arroffset);
+	    }
+	}
+	if (base.flags & MOD_ARRAY) {
+	    ArrRef *a;
+	    Uint idx;
+
+	    /*
+	     * array elements changed
+	     */
+	    a = base.arrays;
+	    for (n = 0; n < narrays; n++) {
+		if (a->arr != (Array *) NULL && (a->ref & ARR_MOD)) {
+		    a->ref &= ~ARR_MOD;
+		    idx = saindex[n];
+		    saveValues(&selts[idx], a->arr->elts, a->arr->size);
+		    if (swap) {
+			Swap::writev((char *) &selts[idx], sectors,
+				     a->arr->size * (Uint) sizeof(SValue),
+				     arroffset + narrays * sizeof(SArray) +
+							  idx * sizeof(SValue));
+		    }
+		}
+		a++;
+	    }
+	}
+	if (base.flags & MOD_STRINGREF) {
+	    SString *ss;
+	    StrRef *s;
+
+	    /*
+	     * string references changed
+	     */
+	    ss = sstrings;
+	    s = base.strings;
+	    mod = FALSE;
+	    for (n = nstrings; n > 0; --n) {
+		if (s->str != (String *) NULL && ss->ref != s->ref) {
+		    ss->ref = s->ref;
+		    mod = TRUE;
+		}
+		ss++;
+		s++;
+	    }
+	    if (mod && swap) {
+		Swap::writev((char *) sstrings, sectors,
+			     nstrings * sizeof(SString), stroffset);
+	    }
+	}
+	if (base.flags & MOD_CALLOUT) {
+	    SCallOut *sco;
+	    DCallOut *co;
+
+	    sco = scallouts;
+	    co = callouts;
+	    for (n = ncallouts; n > 0; --n) {
+		sco->time = co->time;
+		sco->htime = 0;
+		sco->mtime = co->mtime;
+		sco->nargs = co->nargs;
+		if (co->val[0].type == T_STRING) {
+		    co->val[0].modified = TRUE;
+		    co->val[1].modified = TRUE;
+		    co->val[2].modified = TRUE;
+		    co->val[3].modified = TRUE;
+		    saveValues(sco->val, co->val,
+			       (co->nargs > 3) ? 4 : co->nargs + 1);
+		} else {
+		    sco->val[0].type = T_NIL;
+		}
+		sco++;
+		co++;
+	    }
+
+	    if (swap) {
+		/* save new (?) fcallouts value */
+		Swap::writev((char *) &fcallouts, sectors,
+			     (Uint) sizeof(uindex),
+			  (Uint) ((char *)&header.fcallouts - (char *)&header));
+
+		/* save scallouts */
+		Swap::writev((char *) scallouts, sectors,
+			     ncallouts * (Uint) sizeof(SCallOut), cooffset);
+	    }
+	}
+    } else {
+	SaveData save;
+	char *text;
+	Uint size;
+	Array *arr;
+	SArray *sarr;
+
+	/*
+	 * count the number and sizes of strings and arrays
+	 */
+	Array::merge();
+	String::merge();
+
+	variable(0);
+	if (svariables == (SValue *) NULL) {
+	    svariables = ALLOC(SValue, nvariables);
+	}
+	save.count(variables, nvariables);
+
+	if (ncallouts > 0) {
+	    DCallOut *co;
+
+	    if (callouts == (DCallOut *) NULL) {
+		loadCallouts();
+	    }
+	    /* remove empty callouts at the end */
+	    for (n = ncallouts, co = callouts + n; n > 0; --n) {
+		if ((--co)->val[0].type == T_STRING) {
+		    break;
+		}
+		if (fcallouts == n) {
+		    /* first callout in the free list */
+		    fcallouts = co->co_next;
+		} else {
+		    /* connect previous to next */
+		    callouts[co->co_prev - 1].co_next = co->co_next;
+		    if (co->co_next != 0) {
+			/* connect next to previous */
+			callouts[co->co_next - 1].co_prev = co->co_prev;
+		    }
+		}
+	    }
+	    ncallouts = n;
+	    if (n == 0) {
+		/* all callouts removed */
+		FREE(callouts);
+		callouts = (DCallOut *) NULL;
+	    } else {
+		/* process callouts */
+		for (co = callouts; n > 0; --n, co++) {
+		    if (co->val[0].type == T_STRING) {
+			save.count(co->val,
+				   (co->nargs > 3) ? 4 : co->nargs + 1);
+		    }
+		}
+	    }
+	}
+
+	for (arr = save.alist.prev; arr != &save.alist; arr = arr->prev) {
+	    save.arrsize += arr->size;
+	    save.count(elts(arr), arr->size);
+	}
+
+	/* fill in header */
+	header.flags = 0;
+	header.nvariables = nvariables;
+	header.narrays = save.narr;
+	header.eltsize = save.arrsize;
+	header.nstrings = save.nstr;
+	header.strsize = save.strsize;
+	header.ncallouts = ncallouts;
+	header.fcallouts = fcallouts;
+
+	/*
+	 * put everything in a saveable form
+	 */
+	save.sstrings = sstrings =
+			REALLOC(sstrings, SString, 0, header.nstrings);
+	memset(save.sstrings, '\0', save.nstr * sizeof(SString));
+	save.stext = stext = REALLOC(stext, char, 0, header.strsize);
+	save.sarrays = sarrays = REALLOC(sarrays, SArray, 0, header.narrays);
+	memset(save.sarrays, '\0', save.narr * sizeof(SArray));
+	save.selts = selts = REALLOC(selts, SValue, 0, header.eltsize);
+	save.narr = 0;
+	save.nstr = 0;
+	save.arrsize = 0;
+	save.strsize = 0;
+	scallouts = REALLOC(scallouts, SCallOut, 0, header.ncallouts);
+
+	save.save(svariables, variables, nvariables);
+	if (header.ncallouts > 0) {
+	    SCallOut *sco;
+	    DCallOut *co;
+
+	    sco = scallouts;
+	    co = callouts;
+	    for (n = ncallouts; n > 0; --n) {
+		sco->time = co->time;
+		sco->htime = 0;
+		sco->mtime = co->mtime;
+		sco->nargs = co->nargs;
+		if (co->val[0].type == T_STRING) {
+		    save.save(sco->val, co->val,
+			      (co->nargs > 3) ? 4 : co->nargs + 1);
+		} else {
+		    sco->val[0].type = T_NIL;
+		}
+		sco++;
+		co++;
+	    }
+	}
+	for (arr = save.alist.prev, sarr = save.sarrays; arr != &save.alist;
+	     arr = arr->prev, sarr++) {
+	    sarr->size = arr->size;
+	    sarr->tag = arr->tag;
+	    save.save(save.selts + save.arrsize, arr->elts, arr->size);
+	    save.arrsize += arr->size;
+	}
+	if (arr->next != &save.alist) {
+	    alist.next->prev = arr->prev;
+	    arr->prev->next = alist.next;
+	    alist.next = arr->next;
+	    arr->next->prev = &alist;
+	}
+
+	/* clear merge tables */
+	Array::clear();
+	String::clear();
+
+	if (swap) {
+	    text = save.stext;
+	    if (header.strsize >= CMPLIMIT) {
+		text = ALLOC(char, header.strsize);
+		size = Swap::compress(text, save.stext, header.strsize);
+		if (size != 0) {
+		    header.flags |= CMP_PRED;
+		    header.strsize = size;
+		} else {
+		    FREE(text);
+		    text = save.stext;
+		}
+	    }
+
+	    /* create sector space */
+	    size = sizeof(SDataspace) +
+		   (header.nvariables + header.eltsize) * sizeof(SValue) +
+		   header.narrays * sizeof(SArray) +
+		   header.nstrings * sizeof(SString) +
+		   header.strsize +
+		   header.ncallouts * (Uint) sizeof(SCallOut);
+	    header.nsectors = Swap::alloc(size, nsectors, &sectors);
+	    nsectors = header.nsectors;
+	    OBJ(oindex)->dfirst = sectors[0];
+
+	    /* save header */
+	    size = sizeof(SDataspace);
+	    Swap::writev((char *) &header, sectors, size, (Uint) 0);
+	    Swap::writev((char *) sectors, sectors,
+			 header.nsectors * (Uint) sizeof(Sector), size);
+	    size += header.nsectors * (Uint) sizeof(Sector);
+
+	    /* save variables */
+	    varoffset = size;
+	    Swap::writev((char *) svariables, sectors,
+			 nvariables * (Uint) sizeof(SValue), size);
+	    size += nvariables * (Uint) sizeof(SValue);
+
+	    /* save arrays */
+	    arroffset = size;
+	    if (header.narrays > 0) {
+		Swap::writev((char *) save.sarrays, sectors,
+			     header.narrays * sizeof(SArray), size);
+		size += header.narrays * sizeof(SArray);
+		if (header.eltsize > 0) {
+		    Swap::writev((char *) save.selts, sectors,
+				 header.eltsize * sizeof(SValue), size);
+		    size += header.eltsize * sizeof(SValue);
+		}
+	    }
+
+	    /* save strings */
+	    stroffset = size;
+	    if (header.nstrings > 0) {
+		Swap::writev((char *) save.sstrings, sectors,
+			     header.nstrings * sizeof(SString), size);
+		size += header.nstrings * sizeof(SString);
+		if (header.strsize > 0) {
+		    Swap::writev(text, sectors, header.strsize, size);
+		    size += header.strsize;
+		    if (text != save.stext) {
+			FREE(text);
+		    }
+		}
+	    }
+
+	    /* save callouts */
+	    cooffset = size;
+	    if (header.ncallouts > 0) {
+		Swap::writev((char *) scallouts, sectors,
+			     header.ncallouts * (Uint) sizeof(SCallOut), size);
+	    }
+	}
+
+	freeValues();
+	if (saindex != (Uint *) NULL) {
+	    FREE(saindex);
+	    saindex = NULL;
+	}
+	if (ssindex != (Uint *) NULL) {
+	    FREE(ssindex);
+	    ssindex = NULL;
+	}
+
+	flags = header.flags;
+	narrays = header.narrays;
+	eltsize = header.eltsize;
+	nstrings = header.nstrings;
+	strsize = save.strsize;
+
+	base.schange = 0;
+	base.achange = 0;
+    }
+
+    if (swap) {
+	base.flags = 0;
+    } else {
+	base.flags = MOD_SAVE;
+    }
+    return TRUE;
+}
+
+/*
+ * fix objects in dataspace
+ */
+void Dataspace::fixObjs(SValue *v, Uint n, Uint *ctab)
+{
+    while (n != 0) {
+	if (v->type == T_OBJECT) {
+	    if (v->objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
+		/* fix object count */
+		v->objcnt = OBJ(v->oindex)->count;
+	    } else {
+		/* destructed object; mark as invalid */
+		v->oindex = 0;
+		v->objcnt = 1;
+	    }
+	}
+	v++;
+	--n;
+    }
+}
+
+/*
+ * fix a dataspace
+ */
+void Dataspace::fix(Uint *counttab)
+{
+    SCallOut *sco;
+    unsigned int n;
+
+    fixObjs(svariables, (Uint) nvariables, counttab);
+    fixObjs(selts, eltsize, counttab);
+    for (n = ncallouts, sco = scallouts; n > 0; --n, sco++) {
+	if (sco->val[0].type == T_STRING) {
+	    if (sco->nargs > 3) {
+		fixObjs(sco->val, (Uint) 4, counttab);
+	    } else {
+		fixObjs(sco->val, sco->nargs + (Uint) 1, counttab);
+	    }
+	}
+    }
+}
+
+/*
+ * restore a dataspace
+ */
+Dataspace *Dataspace::restore(Object *obj, Uint *counttab,
+			      void (*readv) (char*, Sector*, Uint, Uint))
+{
+    Dataspace *data;
+
+    data = (Dataspace *) NULL;
+    if (OBJ(obj->index)->count != 0 && OBJ(obj->index)->dfirst != SW_UNUSED) {
+	if (!convDone) {
+	    data = conv(obj, counttab, readv);
+	} else {
+	    data = _load(obj, readv);
+	    data->loadVars(readv);
+	    data->loadArrays(readv);
+	    data->loadElts(readv);
+	    data->loadStrings(readv);
+	    data->_loadCallouts(readv);
+	}
+	obj->data = data;
+	if (counttab != (Uint *) NULL) {
+	    data->fix(counttab);
+	}
+
+	if (!(obj->flags & O_MASTER) &&
+	    obj->update != OBJ(obj->master)->update) {
+	    /* handle object upgrading right away */
+	    data->upgradeClone();
+	}
+	data->base.flags |= MOD_ALL;
+    }
+
+    return data;
+}
+
+
+/*
+ * reference the right-hand side in an assignment
+ */
+void Dataspace::refRhs(Value *rhs)
+{
+    String *str;
+    Array *arr;
+
+    switch (rhs->type) {
+    case T_STRING:
+	str = rhs->string;
+	if (str->primary != (StrRef *) NULL && str->primary->data == this) {
+	    /* in this object */
+	    str->primary->ref++;
+	    plane->flags |= MOD_STRINGREF;
+	} else {
+	    /* not in this object: ref imported string */
+	    plane->schange++;
+	}
+	break;
+
+    case T_ARRAY:
+    case T_MAPPING:
+    case T_LWOBJECT:
+	arr = rhs->array;
+	if (arr->primary->data == this) {
+	    /* in this object */
+	    if (arr->primary->arr != (Array *) NULL) {
+		/* swapped in */
+		arr->primary->ref++;
+		plane->flags |= MOD_ARRAYREF;
+	    } else {
+		/* ref new array */
+		plane->achange++;
+	    }
+	} else {
+	    /* not in this object: ref imported array */
+	    if (plane->imports++ == 0 && ifirst != this &&
+		iprev == (Dataspace *) NULL) {
+		/* add to imports list */
+		iprev = (Dataspace *) NULL;
+		inext = ifirst;
+		if (ifirst != (Dataspace *) NULL) {
+		    ifirst->iprev = this;
+		}
+		ifirst = this;
+	    }
+	    plane->achange++;
+	}
+	break;
+    }
+}
+
+/*
+ * delete the left-hand side in an assignment
+ */
+void Dataspace::delLhs(Value *lhs)
+{
+    String *str;
+    Array *arr;
+
+    switch (lhs->type) {
+    case T_STRING:
+	str = lhs->string;
+	if (str->primary != (StrRef *) NULL && str->primary->data == this) {
+	    /* in this object */
+	    if (--(str->primary->ref) == 0) {
+		str->primary->str = (String *) NULL;
+		str->primary = (StrRef *) NULL;
+		str->del();
+		plane->schange++;	/* last reference removed */
+	    }
+	    plane->flags |= MOD_STRINGREF;
+	} else {
+	    /* not in this object: deref imported string */
+	    plane->schange--;
+	}
+	break;
+
+    case T_ARRAY:
+    case T_MAPPING:
+    case T_LWOBJECT:
+	arr = lhs->array;
+	if (arr->primary->data == this) {
+	    /* in this object */
+	    if (arr->primary->arr != (Array *) NULL) {
+		/* swapped in */
+		plane->flags |= MOD_ARRAYREF;
+		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
+		    elts(arr);
+		    arr->primary->arr = (Array *) NULL;
+		    arr->primary = &arr->primary->plane->alocal;
+		    arr->del();
+		    plane->achange++;
+		}
+	    } else {
+		/* deref new array */
+		plane->achange--;
+	    }
+	} else {
+	    /* not in this object: deref imported array */
+	    plane->imports--;
+	    plane->achange--;
+	}
+	break;
+    }
+}
+
+/*
+ * check the elements of an array for imports
+ */
+void Dataspace::refImports(Array *arr)
 {
     Dataspace *data;
     unsigned short n;
@@ -1334,23 +2429,21 @@ void d_ref_imports(Array *arr)
 }
 
 /*
- * NAME:	data->assign_var()
- * DESCRIPTION:	assign a value to a variable
+ * assign a value to a variable
  */
-void d_assign_var(Dataspace *data, Value *var, Value *val)
+void Dataspace::assignVar(Value *var, Value *val)
 {
-    if (var >= data->variables && var < data->variables + data->nvariables) {
-	if (data->plane->level != 0 &&
-	    data->plane->original == (Value *) NULL) {
+    if (var >= variables && var < variables + nvariables) {
+	if (plane->level != 0 && plane->original == (Value *) NULL) {
 	    /*
 	     * back up variables
 	     */
-	    i_copy(data->plane->original = ALLOC(Value, data->nvariables),
-		   data->variables, data->nvariables);
+	    i_copy(plane->original = ALLOC(Value, nvariables), variables,
+		   nvariables);
 	}
-	ref_rhs(data, val);
-	del_lhs(data, var);
-	data->plane->flags |= MOD_VARIABLE;
+	refRhs(val);
+	delLhs(var);
+	plane->flags |= MOD_VARIABLE;
     }
 
     i_ref_value(val);
@@ -1361,30 +2454,27 @@ void d_assign_var(Dataspace *data, Value *var, Value *val)
 }
 
 /*
- * NAME:	data->get_extravar()
- * DESCRIPTION:	get an object's special value
+ * get an object's special value
  */
-Value *d_get_extravar(Dataspace *data)
+Value *Dataspace::extra(Dataspace *data)
 {
-    return d_get_variable(data, data->nvariables - 1);
+    return data->variable(data->nvariables - 1);
 }
 
 /*
- * NAME:	data->set_extravar()
- * DESCRIPTION:	set an object's special value
+ * set an object's special value
  */
-void d_set_extravar(Dataspace *data, Value *val)
+void Dataspace::setExtra(Dataspace *data, Value *val)
 {
-    d_assign_var(data, d_get_variable(data, data->nvariables - 1), val);
+    data->assignVar(data->variable(data->nvariables - 1), val);
 }
 
 /*
- * NAME:	data->wipe_extravar()
- * DESCRIPTION:	wipe out an object's special value
+ * wipe out an object's special value
  */
-void d_wipe_extravar(Dataspace *data)
+void Dataspace::wipeExtra(Dataspace *data)
 {
-    d_assign_var(data, d_get_variable(data, data->nvariables - 1), &nil_value);
+    data->assignVar(data->variable(data->nvariables - 1), &nil_value);
 
     if (data->parser != (struct parser *) NULL) {
 	/*
@@ -1396,16 +2486,17 @@ void d_wipe_extravar(Dataspace *data)
 }
 
 /*
- * NAME:	data->assign_elt()
- * DESCRIPTION:	assign a value to an array element
+ * assign a value to an array element
  */
-void d_assign_elt(Dataspace *data, Array *arr, Value *elt, Value *val)
+void Dataspace::assignElt(Array *arr, Value *elt, Value *val)
 {
-    if (data->plane->level != arr->primary->data->plane->level) {
+    Dataspace *data;
+
+    if (plane->level != arr->primary->data->plane->level) {
 	/*
 	 * bring dataspace of imported array up to the current plane level
 	 */
-	d_new_plane(arr->primary->data, data->plane->level);
+	new Dataplane(arr->primary->data, plane->level);
     }
 
     data = arr->primary->data;
@@ -1429,8 +2520,8 @@ void d_assign_elt(Dataspace *data, Array *arr, Value *elt, Value *val)
 	    arr->primary->ref |= ARR_MOD;
 	    data->plane->flags |= MOD_ARRAY;
 	}
-	ref_rhs(data, val);
-	del_lhs(data, elt);
+	data->refRhs(val);
+	data->delLhs(elt);
     } else {
 	if (T_INDEXED(val->type) && data != val->array->primary->data) {
 	    /* mark as imported */
@@ -1459,12 +2550,11 @@ void d_assign_elt(Dataspace *data, Array *arr, Value *elt, Value *val)
 }
 
 /*
- * NAME:	data->change_map()
- * DESCRIPTION:	mark a mapping as changed in size
+ * mark a mapping as changed in size
  */
-void d_change_map(Array *map)
+void Dataspace::changeMap(Array *map)
 {
-    arrref *a;
+    ArrRef *a;
 
     a = map->primary;
     if (a->state == AR_UNCHANGED) {
@@ -1475,11 +2565,138 @@ void d_change_map(Array *map)
 
 
 /*
- * NAME:	data->new_call_out()
- * DESCRIPTION:	add a new callout
+ * allocate a new callout
  */
-uindex d_new_call_out(Dataspace *data, String *func, Int delay,
-	unsigned int mdelay, Frame *f, int nargs)
+uindex Dataspace::allocCallOut(uindex handle, Uint time, unsigned short mtime,
+			       int nargs, Value *v)
+{
+    DCallOut *co;
+
+    if (ncallouts == 0) {
+	/*
+	 * the first in this object
+	 */
+	co = callouts = ALLOC(DCallOut, 1);
+	ncallouts = handle = 1;
+	plane->flags |= MOD_NEWCALLOUT;
+    } else {
+	if (callouts == (DCallOut *) NULL) {
+	    loadCallouts();
+	}
+	if (handle != 0) {
+	    /*
+	     * get a specific callout from the free list
+	     */
+	    co = &callouts[handle - 1];
+	    if (handle == fcallouts) {
+		fcallouts = co->co_next;
+	    } else {
+		callouts[co->co_prev - 1].co_next = co->co_next;
+		if (co->co_next != 0) {
+		    callouts[co->co_next - 1].co_prev = co->co_prev;
+		}
+	    }
+	} else {
+	    handle = fcallouts;
+	    if (handle != 0) {
+		/*
+		 * from free list
+		 */
+		co = &callouts[handle - 1];
+		if (co->co_next == 0 || co->co_next > handle) {
+		    /* take 1st free callout */
+		    fcallouts = co->co_next;
+		} else {
+		    /* take 2nd free callout */
+		    co = &callouts[co->co_next - 1];
+		    callouts[handle - 1].co_next = co->co_next;
+		    if (co->co_next != 0) {
+			callouts[co->co_next - 1].co_prev = handle;
+		    }
+		    handle = co - callouts + 1;
+		}
+		plane->flags |= MOD_CALLOUT;
+	    } else {
+		/*
+		 * add new callout
+		 */
+		handle = ncallouts;
+		co = callouts = REALLOC(callouts, DCallOut, handle, handle + 1);
+		co += handle;
+		ncallouts = ++handle;
+		plane->flags |= MOD_NEWCALLOUT;
+	    }
+	}
+    }
+
+    co->time = time;
+    co->mtime = mtime;
+    co->nargs = nargs;
+    memcpy(co->val, v, sizeof(co->val));
+    switch (nargs) {
+    default:
+	refRhs(&v[3]);
+	/* fall through */
+    case 2:
+	refRhs(&v[2]);
+	/* fall through */
+    case 1:
+	refRhs(&v[1]);
+	/* fall through */
+    case 0:
+	refRhs(&v[0]);
+	break;
+    }
+
+    return handle;
+}
+
+/*
+ * free a callout
+ */
+void Dataspace::freeCallOut(unsigned int handle)
+{
+    DCallOut *co;
+    Value *v;
+    uindex n;
+
+    co = &callouts[handle - 1];
+    v = co->val;
+    switch (co->nargs) {
+    default:
+	delLhs(&v[3]);
+	i_del_value(&v[3]);
+	/* fall through */
+    case 2:
+	delLhs(&v[2]);
+	i_del_value(&v[2]);
+	/* fall through */
+    case 1:
+	delLhs(&v[1]);
+	i_del_value(&v[1]);
+	/* fall through */
+    case 0:
+	delLhs(&v[0]);
+	v[0].string->del();
+	break;
+    }
+    v[0] = nil_value;
+
+    n = fcallouts;
+    if (n != 0) {
+	callouts[n - 1].co_prev = handle;
+    }
+    co->co_next = n;
+    fcallouts = handle;
+
+    plane->flags |= MOD_CALLOUT;
+}
+
+/*
+ * add a new callout
+ */
+uindex Dataspace::newCallOut(String *func, Int delay, unsigned int mdelay,
+			     Frame *f, int nargs)
 {
     Uint ct, t;
     unsigned short m;
@@ -1507,45 +2724,43 @@ uindex d_new_call_out(Dataspace *data, String *func, Int delay,
     default:
 	v[1] = f->sp[0];
 	v[2] = f->sp[1];
-	PUT_ARRVAL(&v[3], Array::create(data, nargs - 2));
+	PUT_ARRVAL(&v[3], Array::create(this, nargs - 2));
 	memcpy(v[3].array->elts, f->sp + 2, (nargs - 2) * sizeof(Value));
-	d_ref_imports(v[3].array);
+	refImports(v[3].array);
 	break;
     }
     f->sp += nargs;
-    handle = d_alloc_call_out(data, 0, ct, m, nargs, v);
+    handle = allocCallOut(0, ct, m, nargs, v);
 
-    if (data->plane->level == 0) {
+    if (plane->level == 0) {
 	/*
 	 * add normal callout
 	 */
-	co_new(data->oindex, handle, t, m, q);
+	co_new(oindex, handle, t, m, q);
     } else {
-	Dataplane *plane;
-	copatch **c, *cop;
-	dcallout *co;
-	copatch **cc;
+	COPatch **c, *cop;
+	DCallOut *co;
+	COPatch **cc;
 
 	/*
 	 * add callout patch
 	 */
-	plane = data->plane;
-	if (plane->coptab == (coptable *) NULL) {
-	    plane->coptab = new coptable;
+	if (plane->coptab == (COPTable *) NULL) {
+	    plane->coptab = new COPTable;
 	}
-	co = &data->callouts[handle - 1];
+	co = &callouts[handle - 1];
 	cc = c = &plane->coptab->cop[handle % COPATCHHTABSZ];
 	for (;;) {
 	    cop = *c;
-	    if (cop == (copatch *) NULL || cop->plane != plane) {
+	    if (cop == (COPatch *) NULL || cop->plane != plane) {
 		/* add new */
-		cop_new(plane, cc, COP_ADD, handle, co, t, m, q);
+		plane->coptab->patch(plane, cc, COP_ADD, handle, co, t, m, q);
 		break;
 	    }
 
 	    if (cop->handle == handle) {
 		/* replace removed */
-		cop_replace(cop, co, t, m, q);
+		cop->replace(co, t, m, q);
 		break;
 	    }
 
@@ -1559,24 +2774,23 @@ uindex d_new_call_out(Dataspace *data, String *func, Int delay,
 }
 
 /*
- * NAME:	data->del_call_out()
- * DESCRIPTION:	remove a callout
+ * remove a callout
  */
-Int d_del_call_out(Dataspace *data, Uint handle, unsigned short *mtime)
+Int Dataspace::delCallOut(Uint handle, unsigned short *mtime)
 {
-    dcallout *co;
+    DCallOut *co;
     Int t;
 
     *mtime = 0xffff;
-    if (handle == 0 || handle > data->ncallouts) {
+    if (handle == 0 || handle > ncallouts) {
 	/* no such callout */
 	return -1;
     }
-    if (data->callouts == (dcallout *) NULL) {
-	d_get_callouts(data);
+    if (callouts == (DCallOut *) NULL) {
+	loadCallouts();
     }
 
-    co = &data->callouts[handle - 1];
+    co = &callouts[handle - 1];
     if (co->val[0].type != T_STRING) {
 	/* invalid callout */
 	return -1;
@@ -1584,70 +2798,66 @@ Int d_del_call_out(Dataspace *data, Uint handle, unsigned short *mtime)
 
     *mtime = co->mtime;
     t = co_remaining(co->time, mtime);
-    if (data->plane->level == 0) {
+    if (plane->level == 0) {
 	/*
 	 * remove normal callout
 	 */
-	co_del(data->oindex, (uindex) handle, co->time, co->mtime);
+	co_del(oindex, (uindex) handle, co->time, co->mtime);
     } else {
-	Dataplane *plane;
-	copatch **c, *cop;
-	copatch **cc;
+	COPatch **c, *cop;
+	COPatch **cc;
 
 	/*
 	 * add/remove callout patch
 	 */
 	--ncallout;
 
-	plane = data->plane;
-	if (plane->coptab == (coptable *) NULL) {
-	    plane->coptab = new coptable;
+	if (plane->coptab == (COPTable *) NULL) {
+	    plane->coptab = new COPTable;
 	}
 	cc = c = &plane->coptab->cop[handle % COPATCHHTABSZ];
 	for (;;) {
 	    cop = *c;
-	    if (cop == (copatch *) NULL || cop->plane != plane) {
+	    if (cop == (COPatch *) NULL || cop->plane != plane) {
 		/* delete new */
-		cop_new(plane, cc, COP_REMOVE, (uindex) handle, co, (Uint) 0, 0,
-			(uindex *) NULL);
+		plane->coptab->patch(plane, cc, COP_REMOVE, (uindex) handle, co,
+				     (Uint) 0, 0, (uindex *) NULL);
 		break;
 	    }
 	    if (cop->handle == handle) {
 		/* delete existing */
 		if (cop->type == COP_REPLACE) {
-		    cop_release(cop);
+		    cop->release();
 		} else {
-		    cop_del(c, TRUE);
+		    COPatch::del(c, TRUE);
 		}
 		break;
 	    }
 	    c = &cop->next;
 	}
     }
-    d_free_call_out(data, (uindex) handle);
+    freeCallOut((uindex) handle);
 
     return t;
 }
 
 /*
- * NAME:	data->get_call_out()
- * DESCRIPTION:	get a callout
+ * get a callout
  */
-String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
-	int *nargs)
+String *Dataspace::callOut(unsigned int handle, Frame *f, int *nargs)
 {
     String *str;
-    dcallout *co;
+    DCallOut *co;
     Value *v, *o;
     uindex n;
 
-    if (data->callouts == (dcallout *) NULL) {
-	d_get_callouts(data);
+    if (callouts == (DCallOut *) NULL) {
+	loadCallouts();
     }
 
-    co = &data->callouts[handle - 1];
+    co = &callouts[handle - 1];
     v = co->val;
-    del_lhs(data, &v[0]);
+    delLhs(&v[0]);
     str = v[0].string;
 
     i_grow_stack(f, (*nargs = co->nargs) + 1);
@@ -1655,13 +2865,13 @@ String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
 
     switch (co->nargs) {
     case 3:
-	del_lhs(data, &v[3]);
+	delLhs(&v[3]);
 	*--f->sp = v[3];
     case 2:
-	del_lhs(data, &v[2]);
+	delLhs(&v[2]);
 	*--f->sp = v[2];
     case 1:
-	del_lhs(data, &v[1]);
+	delLhs(&v[1]);
 	*--f->sp = v[1];
     case 0:
 	break;
@@ -1669,14 +2879,14 @@ String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
     default:
 	n = co->nargs - 2;
 	f->sp -= n;
-	memcpy(f->sp, d_get_elts(v[3].array), n * sizeof(Value));
-	del_lhs(data, &v[3]);
+	memcpy(f->sp, elts(v[3].array), n * sizeof(Value));
+	delLhs(&v[3]);
 	FREE(v[3].array->elts);
 	v[3].array->elts = (Value *) NULL;
 	v[3].array->del();
-	del_lhs(data, &v[2]);
+	delLhs(&v[2]);
 	*--f->sp = v[2];
-	del_lhs(data, &v[1]);
+	delLhs(&v[1]);
 	*--f->sp = v[1];
 	break;
     }
@@ -1691,7 +2901,7 @@ String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
 	    break;
 
 	case T_LWOBJECT:
-	    o = d_get_elts(v->array);
+	    o = Dataspace::elts(v->array);
 	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		v->array->del();
 		*v = nil_value;
@@ -1701,62 +2911,61 @@ String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
     }
 
     co->val[0] = nil_value;
-    n = data->fcallouts;
+    n = fcallouts;
     if (n != 0) {
-	data->callouts[n - 1].co_prev = handle;
+	callouts[n - 1].co_prev = handle;
     }
     co->co_next = n;
-    data->fcallouts = handle;
+    fcallouts = handle;
 
-    data->plane->flags |= MOD_CALLOUT;
+    plane->flags |= MOD_CALLOUT;
     return str;
 }
 
 /*
- * NAME:	data->list_callouts()
- * DESCRIPTION:	list all call_outs in an object
+ * list all call_outs in an object
  */
-Array *d_list_callouts(Dataspace *host, Dataspace *data)
+Array *Dataspace::listCallouts(Dataspace *data)
 {
     uindex n, count, size;
-    dcallout *co;
+    DCallOut *co;
     Value *v, *v2, *elts;
     Array *list, *a;
     uindex max_args;
     Float flt;
 
-    if (data->ncallouts == 0) {
-	return Array::create(host, 0);
+    if (ncallouts == 0) {
+	return Array::create(data, 0);
     }
-    if (data->callouts == (dcallout *) NULL) {
-	d_get_callouts(data);
+    if (callouts == (DCallOut *) NULL) {
+	loadCallouts();
     }
 
     /* get the number of callouts in this object */
-    count = data->ncallouts;
-    for (n = data->fcallouts; n != 0; n = data->callouts[n - 1].co_next) {
+    count = ncallouts;
+    for (n = fcallouts; n != 0; n = callouts[n - 1].co_next) {
 	--count;
     }
     if (count > conf_array_size()) {
 	return (Array *) NULL;
     }
 
-    list = Array::create(host, count);
+    list = Array::create(data, count);
     elts = list->elts;
     max_args = conf_array_size() - 3;
 
-    for (co = data->callouts; count > 0; co++) {
+    for (co = callouts; count > 0; co++) {
 	if (co->val[0].type == T_STRING) {
 	    size = co->nargs;
 	    if (size > max_args) {
 		/* unlikely, but possible */
 		size = max_args;
 	    }
-	    a = Array::create(host, size + 3L);
+	    a = Array::create(data, size + 3L);
 	    v = a->elts;
 
 	    /* handle */
-	    PUT_INTVAL(v, co - data->callouts + 1);
+	    PUT_INTVAL(v, co - callouts + 1);
 	    v++;
 	    /* function */
 	    PUT_STRVAL(v, co->val[0].string);
@@ -1784,7 +2993,7 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
 
 	    default:
 		n = size - 2;
-		for (v2 = d_get_elts(co->val[3].array) + n; n > 0; --n) {
+		for (v2 = this->elts(co->val[3].array) + n; n > 0; --n) {
 		    *v++ = *--v2;
 		}
 		*v++ = co->val[2];
@@ -1795,7 +3004,7 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
 		i_ref_value(--v);
 		--size;
 	    }
-	    d_ref_imports(a);
+	    refImports(a);
 
 	    /* put in list */
 	    PUT_ARRVAL(elts, a);
@@ -1810,10 +3019,10 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
 
 
 /*
- * NAME:	data->get_varmap()
- * DESCRIPTION:	get the variable mapping for an object
+ * get the variable mapping for an object
  */
-static unsigned short *d_get_varmap(Object **obj, Uint update, unsigned short *nvariables)
+unsigned short *Dataspace::varmap(Object **obj, Uint update,
+				  unsigned short *nvariables)
 {
     Object *tmpl;
     unsigned short nvar, *vmap;
@@ -1850,18 +3059,16 @@ static unsigned short *d_get_varmap(Object **obj, Uint update, unsigned short *n
 }
 
 /*
- * NAME:	data->upgrade_data()
- * DESCRIPTION:	upgrade the dataspace for one object
+ * upgrade the dataspace for one object
  */
-void d_upgrade_data(Dataspace *data, unsigned int nvar, unsigned short *vmap,
-	Object *tmpl)
+void Dataspace::upgrade(unsigned int nvar, unsigned short *vmap, Object *tmpl)
 {
     Value *v;
     unsigned short n;
     Value *vars;
 
     /* make sure variables are in memory */
-    vars = d_get_variable(data, 0);
+    vars = variable(0);
 
     /* map variables */
     for (n = nvar, v = ALLOC(Value, n); n > 0; --n) {
@@ -1882,7 +3089,7 @@ void d_upgrade_data(Dataspace *data, unsigned int nvar, unsigned short *vmap,
 	    *v = vars[*vmap];
 	    i_ref_value(v);
 	    v->modified = TRUE;
-	    ref_rhs(data, v++);
+	    refRhs(v++);
 	    break;
 	}
 	vmap++;
@@ -1890,34 +3097,33 @@ void d_upgrade_data(Dataspace *data, unsigned int nvar, unsigned short *vmap,
     vars = v - nvar;
 
     /* deref old values */
-    v = data->variables;
-    for (n = data->nvariables; n > 0; --n) {
-	del_lhs(data, v);
+    v = variables;
+    for (n = nvariables; n > 0; --n) {
+	delLhs(v);
 	i_del_value(v++);
     }
 
     /* replace old with new */
-    FREE(data->variables);
-    data->variables = vars;
+    FREE(variables);
+    variables = vars;
 
-    data->base.flags |= MOD_VARIABLE;
-    if (data->nvariables != nvar) {
-	if (data->svariables != (struct svalue *) NULL) {
-	    FREE(data->svariables);
-	    data->svariables = (struct svalue *) NULL;
+    base.flags |= MOD_VARIABLE;
+    if (nvariables != nvar) {
+	if (svariables != (SValue *) NULL) {
+	    FREE(svariables);
+	    svariables = (SValue *) NULL;
 	}
-	data->nvariables = nvar;
-	data->base.achange++;	/* force rebuild on swapout */
+	nvariables = nvar;
+	base.achange++;	/* force rebuild on swapout */
     }
 
-    OBJ(data->oindex)->upgraded(tmpl);
+    OBJ(oindex)->upgraded(tmpl);
 }
 
 /*
- * NAME:	data->upgrade_clone()
- * DESCRIPTION:	upgrade a clone object
+ * upgrade a clone object
  */
-void d_upgrade_clone(Dataspace *data)
+void Dataspace::upgradeClone()
 {
     Object *obj;
     unsigned short *vmap, nvar;
@@ -1926,23 +3132,22 @@ void d_upgrade_clone(Dataspace *data)
     /*
      * the program for the clone was upgraded since last swapin
      */
-    obj = OBJ(data->oindex);
+    obj = OBJ(oindex);
     update = obj->update;
     obj = OBJ(obj->master);
-    vmap = d_get_varmap(&obj, update, &nvar);
-    d_upgrade_data(data, nvar, vmap, obj);
+    vmap = varmap(&obj, update, &nvar);
+    upgrade(nvar, vmap, obj);
     if (vmap != obj->ctrl->vmap) {
 	FREE(vmap);
     }
 }
 
 /*
- * NAME:	data->upgrade_lwobj()
- * DESCRIPTION:	upgrade a non-persistent object
+ * upgrade a non-persistent object
  */
-Object *d_upgrade_lwobj(Array *lwobj, Object *obj)
+Object *Dataspace::upgradeLWO(Array *lwobj, Object *obj)
 {
-    arrref *a;
+    ArrRef *a;
     unsigned short n;
     Value *v;
     Uint update;
@@ -1951,7 +3156,7 @@ Object *d_upgrade_lwobj(Array *lwobj, Object *obj)
 
     a = lwobj->primary;
     update = obj->update;
-    vmap = d_get_varmap(&obj, (Uint) lwobj->elts[1].number, &nvar);
+    vmap = varmap(&obj, (Uint) lwobj->elts[1].number, &nvar);
     --nvar;
 
     /* map variables */
@@ -1978,7 +3183,7 @@ Object *d_upgrade_lwobj(Array *lwobj, Object *obj)
 	default:
 	    *v = vars[*vmap];
 	    if (a->arr != (Array *) NULL) {
-		ref_rhs(a->data, v);
+		a->data->refRhs(v);
 	    }
 	    i_ref_value(v);
 	    (v++)->modified = TRUE;
@@ -2007,7 +3212,7 @@ Object *d_upgrade_lwobj(Array *lwobj, Object *obj)
 
 	/* deref old values */
 	for (n = lwobj->size - 2; n > 0; --n) {
-	    del_lhs(a->data, v);
+	    a->data->delLhs(v);
 	    i_del_value(v++);
 	}
     } else {
@@ -2025,12 +3230,16 @@ Object *d_upgrade_lwobj(Array *lwobj, Object *obj)
     return obj;
 }
 
+struct ArrImport {
+    Array **itab;			/* imported array replacement table */
+    Uint itabsz;			/* size of table */
+    Uint narr;				/* # of arrays */
+};
+
 /*
- * NAME:	data->import()
- * DESCRIPTION:	copy imported arrays to current dataspace
+ * copy imported arrays to current dataspace
  */
-static void d_import(arrimport *imp, Dataspace *data, Value *val,
-	unsigned short n)
+void Dataspace::import(ArrImport *imp, Value *val, unsigned short n)
 {
     Array *import, *a;
 
@@ -2041,7 +3250,7 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 		Uint i, j;
 
 		a = val->array;
-		if (a->primary->data != data) {
+		if (a->primary->data != this) {
 		    /*
 		     * imported array
 		     */
@@ -2075,7 +3284,7 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 				 * copy elements
 				 */
 				i_copy(a->elts = ALLOC(Value, a->size),
-				       d_get_elts(val->array), a->size);
+				       elts(val->array), a->size);
 			    }
 
 			    /*
@@ -2101,15 +3310,15 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 			    a->put(imp->narr++);
 			}
 
-			a->primary = &data->base.alocal;
+			a->primary = &base.alocal;
 			if (a->size == 0) {
 			    /*
 			     * put empty array in dataspace
 			     */
-			    a->prev = &data->alist;
-			    a->next = data->alist.next;
+			    a->prev = &alist;
+			    a->next = alist.next;
 			    a->next->prev = a;
-			    data->alist.next = a;
+			    alist.next = a;
 			} else {
 			    /*
 			     * import elements too
@@ -2157,10 +3366,10 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 	}
 	a = import;
 	import = import->next;
-	a->prev = &data->alist;
-	a->next = data->alist.next;
+	a->prev = &alist;
+	a->next = alist.next;
 	a->next->prev = a;
-	data->alist.next = a;
+	alist.next = a;
 
 	/* import array elements */
 	val = a->elts;
@@ -2169,14 +3378,13 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 }
 
 /*
- * NAME:	data->export()
- * DESCRIPTION:	handle exporting of arrays shared by more than one object
+ * handle exporting of arrays shared by more than one object
  */
-void d_export()
+void Dataspace::xport()
 {
     Dataspace *data;
     Uint n;
-    arrimport imp;
+    ArrImport imp;
 
     if (ifirst != (Dataspace *) NULL) {
 	imp.itab = ALLOC(Array*, imp.itabsz = 64);
@@ -2188,10 +3396,10 @@ void d_export()
 		imp.narr = 0;
 
 		if (data->variables != (Value *) NULL) {
-		    d_import(&imp, data, data->variables, data->nvariables);
+		    data->import(&imp, data->variables, data->nvariables);
 		}
-		if (data->base.arrays != (arrref *) NULL) {
-		    arrref *a;
+		if (data->base.arrays != (ArrRef *) NULL) {
+		    ArrRef *a;
 
 		    for (n = data->narrays, a = data->base.arrays; n > 0;
 			 --n, a++) {
@@ -2199,23 +3407,21 @@ void d_export()
 			    if (a->arr->hashed != (MapHash *) NULL) {
 				/* mapping */
 				a->arr->mapRemoveHash();
-				d_import(&imp, data, a->arr->elts,
-					 a->arr->size);
+				data->import(&imp, a->arr->elts, a->arr->size);
 			    } else if (a->arr->elts != (Value *) NULL) {
-				d_import(&imp, data, a->arr->elts,
-					 a->arr->size);
+				data->import(&imp, a->arr->elts, a->arr->size);
 			    }
 			}
 		    }
 		}
-		if (data->callouts != (dcallout *) NULL) {
-		    dcallout *co;
+		if (data->callouts != (DCallOut *) NULL) {
+		    DCallOut *co;
 
 		    co = data->callouts;
 		    for (n = data->ncallouts; n > 0; --n) {
 			if (co->val[0].type == T_STRING) {
-			    d_import(&imp, data, co->val,
-				     (co->nargs > 3) ? 4 : co->nargs + 1);
+			    data->import(&imp, co->val,
+					 (co->nargs > 3) ? 4 : co->nargs + 1);
 			}
 			co++;
 		    }
@@ -2231,1112 +3437,39 @@ void d_export()
 }
 
 
-struct sdataspace {
-    Sector nsectors;		/* number of sectors in data space */
-    short flags;		/* dataspace flags: compression */
-    unsigned short nvariables;	/* number of variables */
-    Uint narrays;		/* number of array values */
-    Uint eltsize;		/* total size of array elements */
-    Uint nstrings;		/* number of strings */
-    Uint strsize;		/* total size of strings */
-    uindex ncallouts;		/* number of callouts */
-    uindex fcallouts;		/* first free callout */
-};
-
-static char sd_layout[] = "dssiiiiuu";
-
-struct svalue {
-    char type;			/* object, number, string, array */
-    char pad;			/* 0 */
-    uindex oindex;		/* index in object table */
-    union {
-	Int number;		/* number */
-	Uint string;		/* string */
-	Uint objcnt;		/* object creation count */
-	Uint array;		/* array */
-    };
-};
-
-static char sv_layout[] = "ccui";
-
-struct sarray {
-    Uint tag;			/* unique value for each array */
-    Uint ref;			/* refcount */
-    char type;			/* array type */
-    unsigned short size;	/* size of array */
-};
-
-static char sa_layout[] = "iics";
-
-struct sarray0 {
-    Uint index;			/* index in array value table */
-    char type;			/* array type */
-    unsigned short size;	/* size of array */
-    Uint ref;			/* refcount */
-    Uint tag;			/* unique value for each array */
-};
-
-static char sa0_layout[] = "icsii";
-
-struct sstring {
-    Uint ref;			/* refcount */
-    ssizet len;			/* length of string */
-};
-
-static char ss_layout[] = "it";
-
-struct sstring0 {
-    Uint index;			/* index in string text table */
-    ssizet len;			/* length of string */
-    Uint ref;			/* refcount */
-};
-
-static char ss0_layout[] = "iti";
-
-struct scallout {
-    Uint time;			/* time of call */
-    unsigned short htime;	/* time of call, high word */
-    unsigned short mtime;	/* time of call milliseconds */
-    uindex nargs;		/* number of arguments */
-    svalue val[4];		/* function name, 3 direct arguments */
-};
-
-static char sco_layout[] = "issu[ccui][ccui][ccui][ccui]";
-
-class savedata {
-public:
-    savedata() : alist(0) { }
-
-    Uint narr;				/* # of arrays */
-    Uint nstr;				/* # of strings */
-    Uint arrsize;			/* # of array elements */
-    Uint strsize;			/* total string size */
-    sarray *sarrays;			/* save arrays */
-    svalue *selts;			/* save array elements */
-    sstring *sstrings;			/* save strings */
-    char *stext;			/* save string elements */
-    Array alist;			/* linked list sentinel */
-};
-
-static bool conv_14;			/* convert arrays & strings? */
-static bool converted;			/* conversion complete? */
-
 /*
- * NAME:	data->init()
- * DESCRIPTION:	initialize swapped data handling
+ * initialize swapped data handling
  */
-void d_init()
+void Dataspace::init()
 {
     dhead = dtail = (Dataspace *) NULL;
     gcdata = (Dataspace *) NULL;
     ndata = 0;
     conv_14 = FALSE;
-    converted = FALSE;
+    convDone = FALSE;
 }
 
 /*
- * NAME:	data->init_conv()
- * DESCRIPTION:	prepare for conversions
+ * prepare for conversions
  */
-void d_init_conv(bool c14)
+void Dataspace::initConv(bool c14)
 {
     conv_14 = c14;
 }
 
 /*
- * NAME:	load_dataspace()
- * DESCRIPTION:	load the dataspace header block
+ * snapshot conversion is complete
  */
-static Dataspace *load_dataspace(Object *obj, void (*readv) (char*, Sector*, Uint, Uint))
+void Dataspace::converted()
 {
-    sdataspace header;
-    Dataspace *data;
-    Uint size;
-
-    data = d_alloc_dataspace(obj);
-    data->ctrl = obj->control();
-    data->ctrl->ndata++;
-
-    /* header */
-    (*readv)((char *) &header, &obj->dfirst, (Uint) sizeof(sdataspace),
-	     (Uint) 0);
-    data->nsectors = header.nsectors;
-    data->sectors = ALLOC(Sector, header.nsectors);
-    data->sectors[0] = obj->dfirst;
-    size = header.nsectors * (Uint) sizeof(Sector);
-    if (header.nsectors > 1) {
-	(*readv)((char *) data->sectors, data->sectors, size,
-		 (Uint) sizeof(sdataspace));
-    }
-    size += sizeof(sdataspace);
-
-    data->flags = header.flags;
-
-    /* variables */
-    data->varoffset = size;
-    data->nvariables = header.nvariables;
-    size += data->nvariables * (Uint) sizeof(svalue);
-
-    /* arrays */
-    data->arroffset = size;
-    data->narrays = header.narrays;
-    data->eltsize = header.eltsize;
-    size += header.narrays * (Uint) sizeof(sarray) +
-	    header.eltsize * sizeof(svalue);
-
-    /* strings */
-    data->stroffset = size;
-    data->nstrings = header.nstrings;
-    data->strsize = header.strsize;
-    size += header.nstrings * sizeof(sstring) + header.strsize;
-
-    /* callouts */
-    data->cooffset = size;
-    data->ncallouts = header.ncallouts;
-    data->fcallouts = header.fcallouts;
-
-    return data;
+    convDone = TRUE;
 }
 
 /*
- * NAME:	data->load_dataspace()
- * DESCRIPTION:	load the dataspace header block of an object from swap
+ * Swap out a portion of the control and dataspace blocks in
+ * memory.  Return the number of dataspace blocks swapped out.
  */
-Dataspace *d_load_dataspace(Object *obj)
-{
-    Dataspace *data;
-
-    data = load_dataspace(obj, Swap::readv);
-
-    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->master)->update &&
-	obj->count != 0) {
-	d_upgrade_clone(data);
-    }
-
-    return data;
-}
-
-/*
- * NAME:	get_strings()
- * DESCRIPTION:	load strings for dataspace
- */
-static void get_strings(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
-{
-    if (data->nstrings != 0) {
-	/* load strings */
-	data->sstrings = ALLOC(sstring, data->nstrings);
-	(*readv)((char *) data->sstrings, data->sectors,
-		 data->nstrings * sizeof(sstring), data->stroffset);
-	if (data->strsize > 0) {
-	    /* load strings text */
-	    if (data->flags & DATA_STRCMP) {
-		data->stext = Swap::decompress(data->sectors, readv,
-					       data->strsize,
-					       data->stroffset +
-					       data->nstrings * sizeof(sstring),
-					       &data->strsize);
-	    } else {
-		data->stext = ALLOC(char, data->strsize);
-		(*readv)(data->stext, data->sectors, data->strsize,
-			 data->stroffset + data->nstrings * sizeof(sstring));
-	    }
-	}
-    }
-}
-
-/*
- * NAME:	data->get_string()
- * DESCRIPTION:	get a string from the dataspace
- */
-static String *d_get_string(Dataspace *data, Uint idx)
-{
-    if (data->plane->strings == (strref *) NULL ||
-	data->plane->strings[idx].str == (String *) NULL) {
-	String *str;
-	strref *s;
-	Dataplane *p;
-	Uint i;
-
-	if (data->sstrings == (sstring *) NULL) {
-	    get_strings(data, Swap::readv);
-	}
-	if (data->ssindex == (Uint *) NULL) {
-	    Uint size;
-
-	    data->ssindex = ALLOC(Uint, data->nstrings);
-	    for (size = 0, i = 0; i < data->nstrings; i++) {
-		data->ssindex[i] = size;
-		size += data->sstrings[i].len;
-	    }
-	}
-
-	str = String::alloc(data->stext + data->ssindex[idx],
-			    data->sstrings[idx].len);
-	p = data->plane;
-
-	do {
-	    if (p->strings == (strref *) NULL) {
-		/* initialize string pointers */
-		s = p->strings = ALLOC(strref, data->nstrings);
-		for (i = data->nstrings; i > 0; --i) {
-		    (s++)->str = (String *) NULL;
-		}
-	    }
-	    s = &p->strings[idx];
-	    s->str = str;
-	    s->str->ref();
-	    s->data = data;
-	    s->ref = data->sstrings[idx].ref;
-	    p = p->prev;
-	} while (p != (Dataplane *) NULL);
-
-	str->primary = &data->plane->strings[idx];
-	return str;
-    }
-    return data->plane->strings[idx].str;
-}
-
-/*
- * NAME:	get_arrays()
- * DESCRIPTION:	load arrays for dataspace
- */
-static void get_arrays(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
-{
-    if (data->narrays != 0) {
-	/* load arrays */
-	data->sarrays = ALLOC(sarray, data->narrays);
-	(*readv)((char *) data->sarrays, data->sectors,
-		 data->narrays * (Uint) sizeof(sarray), data->arroffset);
-    }
-}
-
-/*
- * NAME:	data->get_array()
- * DESCRIPTION:	get an array from the dataspace
- */
-static Array *d_get_array(Dataspace *data, Uint idx)
-{
-    if (data->plane->arrays == (arrref *) NULL ||
-	data->plane->arrays[idx].arr == (Array *) NULL) {
-	Array *arr;
-	arrref *a;
-	Dataplane *p;
-	Uint i;
-
-	if (data->sarrays == (sarray *) NULL) {
-	    /* load arrays */
-	    get_arrays(data, Swap::readv);
-	}
-
-	arr = Array::alloc(data->sarrays[idx].size);
-	arr->tag = data->sarrays[idx].tag;
-	p = data->plane;
-
-	do {
-	    if (p->arrays == (arrref *) NULL) {
-		/* create array pointers */
-		a = p->arrays = ALLOC(arrref, data->narrays);
-		for (i = data->narrays; i > 0; --i) {
-		    (a++)->arr = (Array *) NULL;
-		}
-	    }
-	    a = &p->arrays[idx];
-	    a->arr = arr;
-	    a->arr->ref();
-	    a->plane = &data->base;
-	    a->data = data;
-	    a->state = AR_UNCHANGED;
-	    a->ref = data->sarrays[idx].ref;
-	    p = p->prev;
-	} while (p != (Dataplane *) NULL);
-
-	arr->primary = &data->plane->arrays[idx];
-	arr->prev = &data->alist;
-	arr->next = data->alist.next;
-	arr->next->prev = arr;
-	data->alist.next = arr;
-	return arr;
-    }
-    return data->plane->arrays[idx].arr;
-}
-
-/*
- * NAME:	data->get_values()
- * DESCRIPTION:	get values from the Dataspace
- */
-static void d_get_values(Dataspace *data, svalue *sv, Value *v, int n)
-{
-    while (n > 0) {
-	v->modified = FALSE;
-	switch (v->type = sv->type) {
-	case T_NIL:
-	    v->number = 0;
-	    break;
-
-	case T_INT:
-	    v->number = sv->number;
-	    break;
-
-	case T_STRING:
-	    v->string = d_get_string(data, sv->string);
-	    v->string->ref();
-	    break;
-
-	case T_FLOAT:
-	case T_OBJECT:
-	    v->oindex = sv->oindex;
-	    v->objcnt = sv->objcnt;
-	    break;
-
-	case T_ARRAY:
-	case T_MAPPING:
-	case T_LWOBJECT:
-	    v->array = d_get_array(data, sv->array);
-	    v->array->ref();
-	    break;
-	}
-	sv++;
-	v++;
-	--n;
-    }
-}
-
-/*
- * NAME:	data->new_variables()
- * DESCRIPTION:	initialize variables in a dataspace block
- */
-void d_new_variables(Control *ctrl, Value *val)
-{
-    unsigned short n;
-    char *type;
-    VarDef *var;
-
-    memset(val, '\0', ctrl->nvariables * sizeof(Value));
-    for (n = ctrl->nvariables - ctrl->nvardefs, type = ctrl->varTypes();
-	 n != 0; --n, type++) {
-	val->type = *type;
-	val++;
-    }
-    for (n = ctrl->nvardefs, var = ctrl->vars(); n != 0; --n, var++) {
-	if (T_ARITHMETIC(var->type)) {
-	    val->type = var->type;
-	} else {
-	    val->type = nil_type;
-	}
-	val++;
-    }
-}
-
-/*
- * NAME:	get_variables()
- * DESCRIPTION:	load variables
- */
-static void get_variables(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
-{
-    data->svariables = ALLOC(svalue, data->nvariables);
-    (*readv)((char *) data->svariables, data->sectors,
-	     data->nvariables * (Uint) sizeof(svalue), data->varoffset);
-}
-
-/*
- * NAME:	data->get_variable()
- * DESCRIPTION:	get a variable from the dataspace
- */
-Value *d_get_variable(Dataspace *data, unsigned int idx)
-{
-    if (data->variables == (Value *) NULL) {
-	/* create room for variables */
-	data->variables = ALLOC(Value, data->nvariables);
-	if (data->nsectors == 0 && data->svariables == (svalue *) NULL) {
-	    /* new datablock */
-	    d_new_variables(data->ctrl, data->variables);
-	    data->variables[data->nvariables - 1] = nil_value;	/* extra var */
-	} else {
-	    /*
-	     * variables must be loaded from swap
-	     */
-	    if (data->svariables == (svalue *) NULL) {
-		/* load svalues */
-		get_variables(data, Swap::readv);
-	    }
-	    d_get_values(data, data->svariables, data->variables,
-			 data->nvariables);
-	}
-    }
-
-    return &data->variables[idx];
-}
-
-/*
- * NAME:	get_elts()
- * DESCRIPTION:	load elements
- */
-static void get_elts(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
-{
-    if (data->eltsize != 0) {
-	/* load array elements */
-	data->selts = (svalue *) ALLOC(svalue, data->eltsize);
-	(*readv)((char *) data->selts, data->sectors,
-		 data->eltsize * sizeof(svalue),
-		 data->arroffset + data->narrays * sizeof(sarray));
-    }
-}
-
-/*
- * NAME:	data->get_elts()
- * DESCRIPTION:	get the elements of an array
- */
-Value *d_get_elts(Array *arr)
-{
-    Value *v;
-
-    v = arr->elts;
-    if (v == (Value *) NULL && arr->size != 0) {
-	Dataspace *data;
-	Uint idx;
-
-	data = arr->primary->data;
-	if (data->selts == (svalue *) NULL) {
-	    get_elts(data, Swap::readv);
-	}
-	if (data->saindex == (Uint *) NULL) {
-	    Uint size;
-
-	    data->saindex = ALLOC(Uint, data->narrays);
-	    for (size = 0, idx = 0; idx < data->narrays; idx++) {
-		data->saindex[idx] = size;
-		size += data->sarrays[idx].size;
-	    }
-	}
-
-	v = arr->elts = ALLOC(Value, arr->size);
-	idx = data->saindex[arr->primary - data->plane->arrays];
-	d_get_values(data, &data->selts[idx], v, arr->size);
-    }
-
-    return v;
-}
-
-/*
- * NAME:	get_callouts()
- * DESCRIPTION:	load callouts from swap
- */
-static void get_callouts(Dataspace *data, void (*readv) (char*, Sector*, Uint, Uint))
-{
-    if (data->ncallouts != 0) {
-	data->scallouts = ALLOC(scallout, data->ncallouts);
-	(*readv)((char *) data->scallouts, data->sectors,
-		 data->ncallouts * (Uint) sizeof(scallout), data->cooffset);
-    }
-}
-
-/*
- * NAME:	data->get_callouts()
- * DESCRIPTION:	load callouts from swap
- */
-void d_get_callouts(Dataspace *data)
-{
-    scallout *sco;
-    dcallout *co;
-    uindex n;
-
-    if (data->scallouts == (scallout *) NULL) {
-	get_callouts(data, Swap::readv);
-    }
-    sco = data->scallouts;
-    co = data->callouts = ALLOC(dcallout, data->ncallouts);
-
-    for (n = data->ncallouts; n > 0; --n) {
-	co->time = sco->time;
-	co->mtime = sco->mtime;
-	co->nargs = sco->nargs;
-	if (sco->val[0].type == T_STRING) {
-	    d_get_values(data, sco->val, co->val,
-			 (sco->nargs > 3) ? 4 : sco->nargs + 1);
-	} else {
-	    co->val[0] = nil_value;
-	}
-	sco++;
-	co++;
-    }
-}
-
-/*
- * NAME:	data->arrcount()
- * DESCRIPTION:	count the number of arrays and strings in an array
- */
-static void d_arrcount(savedata *save, Array *arr)
-{
-    arr->prev->next = arr->next;
-    arr->next->prev = arr->prev;
-    arr->prev = &save->alist;
-    arr->next = save->alist.next;
-    arr->next->prev = arr;
-    save->alist.next = arr;
-    save->narr++;
-}
-
-/*
- * NAME:	data->count()
- * DESCRIPTION:	count the number of arrays and strings in an object
- */
-static void d_count(savedata *save, Value *v, Uint n)
-{
-    Object *obj;
-    Value *elts;
-    Uint count;
-
-    while (n > 0) {
-	switch (v->type) {
-	case T_STRING:
-	    if (v->string->put(save->nstr) == save->nstr) {
-		save->nstr++;
-		save->strsize += v->string->len;
-	    }
-	    break;
-
-	case T_ARRAY:
-	    if (v->array->put(save->narr) == save->narr) {
-		d_arrcount(save, v->array);
-	    }
-	    break;
-
-	case T_MAPPING:
-	    if (v->array->put(save->narr) == save->narr) {
-		if (v->array->hashmod) {
-		    v->array->mapCompact(v->array->primary->data);
-		}
-		d_arrcount(save, v->array);
-	    }
-	    break;
-
-	case T_LWOBJECT:
-	    elts = d_get_elts(v->array);
-	    if (elts->type == T_OBJECT) {
-		obj = OBJ(elts->oindex);
-		count = obj->count;
-		if (elts[1].type == T_INT) {
-		    /* convert to new LWO type */
-		    elts[1].type = T_FLOAT;
-		    elts[1].oindex = FALSE;
-		}
-		if (v->array->put(save->narr) == save->narr) {
-		    if (elts->objcnt == count && elts[1].objcnt != obj->update)
-		    {
-			d_upgrade_lwobj(v->array, obj);
-		    }
-		    d_arrcount(save, v->array);
-		}
-	    } else if (v->array->put(save->narr) == save->narr) {
-		d_arrcount(save, v->array);
-	    }
-	    break;
-	}
-
-	v++;
-	--n;
-    }
-}
-
-/*
- * NAME:	data->save()
- * DESCRIPTION:	save the values in an object
- */
-static void d_save(savedata *save, svalue *sv, Value *v, unsigned short n)
-{
-    Uint i;
-
-    while (n > 0) {
-	sv->pad = '\0';
-	switch (sv->type = v->type) {
-	case T_NIL:
-	    sv->oindex = 0;
-	    sv->number = 0;
-	    break;
-
-	case T_INT:
-	    sv->oindex = 0;
-	    sv->number = v->number;
-	    break;
-
-	case T_STRING:
-	    i = v->string->put(save->nstr);
-	    sv->oindex = 0;
-	    sv->string = i;
-	    if (save->sstrings[i].ref++ == 0) {
-		/* new string value */
-		save->sstrings[i].len = v->string->len;
-		memcpy(save->stext + save->strsize, v->string->text,
-		       v->string->len);
-		save->strsize += v->string->len;
-	    }
-	    break;
-
-	case T_FLOAT:
-	case T_OBJECT:
-	    sv->oindex = v->oindex;
-	    sv->objcnt = v->objcnt;
-	    break;
-
-	case T_ARRAY:
-	case T_MAPPING:
-	case T_LWOBJECT:
-	    i = v->array->put(save->narr);
-	    sv->oindex = 0;
-	    sv->array = i;
-	    if (save->sarrays[i].ref++ == 0) {
-		/* new array value */
-		save->sarrays[i].type = sv->type;
-	    }
-	    break;
-	}
-	sv++;
-	v++;
-	--n;
-    }
-}
-
-/*
- * NAME:	data->put_values()
- * DESCRIPTION:	save modified values as svalues
- */
-static void d_put_values(Dataspace *data, svalue *sv, Value *v, unsigned short n)
-{
-    while (n > 0) {
-	if (v->modified) {
-	    sv->pad = '\0';
-	    switch (sv->type = v->type) {
-	    case T_NIL:
-		sv->oindex = 0;
-		sv->number = 0;
-		break;
-
-	    case T_INT:
-		sv->oindex = 0;
-		sv->number = v->number;
-		break;
-
-	    case T_STRING:
-		sv->oindex = 0;
-		sv->string = v->string->primary - data->base.strings;
-		break;
-
-	    case T_FLOAT:
-	    case T_OBJECT:
-		sv->oindex = v->oindex;
-		sv->objcnt = v->objcnt;
-		break;
-
-	    case T_ARRAY:
-	    case T_MAPPING:
-	    case T_LWOBJECT:
-		sv->oindex = 0;
-		sv->array = v->array->primary - data->base.arrays;
-		break;
-	    }
-	    v->modified = FALSE;
-	}
-	sv++;
-	v++;
-	--n;
-    }
-}
-
-/*
- * NAME:	data->save_dataspace()
- * DESCRIPTION:	save all values in a dataspace block
- */
-static bool d_save_dataspace(Dataspace *data, bool swap)
-{
-    sdataspace header;
-    Uint n;
-
-    if (data->parser != (struct parser *) NULL &&
-	!(OBJ(data->oindex)->flags & O_SPECIAL)) {
-	ps_save(data->parser);
-    }
-    if (swap && (data->base.flags & MOD_SAVE)) {
-	data->base.flags |= MOD_ALL;
-    } else if (!(data->base.flags & MOD_ALL)) {
-	return FALSE;
-    }
-
-    if (data->svariables != (svalue *) NULL && data->base.achange == 0 &&
-	data->base.schange == 0 && !(data->base.flags & MOD_NEWCALLOUT)) {
-	bool mod;
-
-	/*
-	 * No strings/arrays added or deleted. Check individual variables and
-	 * array elements.
-	 */
-	if (data->base.flags & MOD_VARIABLE) {
-	    /*
-	     * variables changed
-	     */
-	    d_put_values(data, data->svariables, data->variables,
-			 data->nvariables);
-	    if (swap) {
-		Swap::writev((char *) data->svariables, data->sectors,
-			     data->nvariables * (Uint) sizeof(svalue),
-			     data->varoffset);
-	    }
-	}
-	if (data->base.flags & MOD_ARRAYREF) {
-	    sarray *sa;
-	    arrref *a;
-
-	    /*
-	     * references to arrays changed
-	     */
-	    sa = data->sarrays;
-	    a = data->base.arrays;
-	    mod = FALSE;
-	    for (n = data->narrays; n > 0; --n) {
-		if (a->arr != (Array *) NULL && sa->ref != (a->ref & ~ARR_MOD))
-		{
-		    sa->ref = a->ref & ~ARR_MOD;
-		    mod = TRUE;
-		}
-		sa++;
-		a++;
-	    }
-	    if (mod && swap) {
-		Swap::writev((char *) data->sarrays, data->sectors,
-			     data->narrays * sizeof(sarray), data->arroffset);
-	    }
-	}
-	if (data->base.flags & MOD_ARRAY) {
-	    arrref *a;
-	    Uint idx;
-
-	    /*
-	     * array elements changed
-	     */
-	    a = data->base.arrays;
-	    for (n = 0; n < data->narrays; n++) {
-		if (a->arr != (Array *) NULL && (a->ref & ARR_MOD)) {
-		    a->ref &= ~ARR_MOD;
-		    idx = data->saindex[n];
-		    d_put_values(data, &data->selts[idx], a->arr->elts,
-				 a->arr->size);
-		    if (swap) {
-			Swap::writev((char *) &data->selts[idx], data->sectors,
-				     a->arr->size * (Uint) sizeof(svalue),
-				     data->arroffset +
-					      data->narrays * sizeof(sarray) +
-					      idx * sizeof(svalue));
-		    }
-		}
-		a++;
-	    }
-	}
-	if (data->base.flags & MOD_STRINGREF) {
-	    sstring *ss;
-	    strref *s;
-
-	    /*
-	     * string references changed
-	     */
-	    ss = data->sstrings;
-	    s = data->base.strings;
-	    mod = FALSE;
-	    for (n = data->nstrings; n > 0; --n) {
-		if (s->str != (String *) NULL && ss->ref != s->ref) {
-		    ss->ref = s->ref;
-		    mod = TRUE;
-		}
-		ss++;
-		s++;
-	    }
-	    if (mod && swap) {
-		Swap::writev((char *) data->sstrings, data->sectors,
-			     data->nstrings * sizeof(sstring),
-			     data->stroffset);
-	    }
-	}
-	if (data->base.flags & MOD_CALLOUT) {
-	    scallout *sco;
-	    dcallout *co;
-
-	    sco = data->scallouts;
-	    co = data->callouts;
-	    for (n = data->ncallouts; n > 0; --n) {
-		sco->time = co->time;
-		sco->htime = 0;
-		sco->mtime = co->mtime;
-		sco->nargs = co->nargs;
-		if (co->val[0].type == T_STRING) {
-		    co->val[0].modified = TRUE;
-		    co->val[1].modified = TRUE;
-		    co->val[2].modified = TRUE;
-		    co->val[3].modified = TRUE;
-		    d_put_values(data, sco->val, co->val,
-				 (co->nargs > 3) ? 4 : co->nargs + 1);
-		} else {
-		    sco->val[0].type = T_NIL;
-		}
-		sco++;
-		co++;
-	    }
-
-	    if (swap) {
-		/* save new (?) fcallouts value */
-		Swap::writev((char *) &data->fcallouts, data->sectors,
-			     (Uint) sizeof(uindex),
-			  (Uint) ((char *)&header.fcallouts - (char *)&header));
-
-		/* save scallouts */
-		Swap::writev((char *) data->scallouts, data->sectors,
-			     data->ncallouts * (Uint) sizeof(scallout),
-			     data->cooffset);
-	    }
-	}
-    } else {
-	savedata save;
-	char *text;
-	Uint size;
-	Array *arr;
-	sarray *sarr;
-
-	/*
-	 * count the number and sizes of strings and arrays
-	 */
-	Array::merge();
-	String::merge();
-	save.narr = 0;
-	save.nstr = 0;
-	save.arrsize = 0;
-	save.strsize = 0;
-	save.alist.prev = save.alist.next = &save.alist;
-
-	d_get_variable(data, 0);
-	if (data->svariables == (svalue *) NULL) {
-	    data->svariables = ALLOC(svalue, data->nvariables);
-	}
-	d_count(&save, data->variables, data->nvariables);
-
-	if (data->ncallouts > 0) {
-	    dcallout *co;
-
-	    if (data->callouts == (dcallout *) NULL) {
-		d_get_callouts(data);
-	    }
-	    /* remove empty callouts at the end */
-	    for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
-		if ((--co)->val[0].type == T_STRING) {
-		    break;
-		}
-		if (data->fcallouts == n) {
-		    /* first callout in the free list */
-		    data->fcallouts = co->co_next;
-		} else {
-		    /* connect previous to next */
-		    data->callouts[co->co_prev - 1].co_next = co->co_next;
-		    if (co->co_next != 0) {
-			/* connect next to previous */
-			data->callouts[co->co_next - 1].co_prev = co->co_prev;
-		    }
-		}
-	    }
-	    data->ncallouts = n;
-	    if (n == 0) {
-		/* all callouts removed */
-		FREE(data->callouts);
-		data->callouts = (dcallout *) NULL;
-	    } else {
-		/* process callouts */
-		for (co = data->callouts; n > 0; --n, co++) {
-		    if (co->val[0].type == T_STRING) {
-			d_count(&save, co->val,
-				(co->nargs > 3) ? 4 : co->nargs + 1);
-		    }
-		}
-	    }
-	}
-
-	for (arr = save.alist.prev; arr != &save.alist; arr = arr->prev) {
-	    save.arrsize += arr->size;
-	    d_count(&save, d_get_elts(arr), arr->size);
-	}
-
-	/* fill in header */
-	header.flags = 0;
-	header.nvariables = data->nvariables;
-	header.narrays = save.narr;
-	header.eltsize = save.arrsize;
-	header.nstrings = save.nstr;
-	header.strsize = save.strsize;
-	header.ncallouts = data->ncallouts;
-	header.fcallouts = data->fcallouts;
-
-	/*
-	 * put everything in a saveable form
-	 */
-	save.sstrings = data->sstrings =
-			REALLOC(data->sstrings, sstring, 0, header.nstrings);
-	memset(save.sstrings, '\0', save.nstr * sizeof(sstring));
-	save.stext = data->stext =
-		     REALLOC(data->stext, char, 0, header.strsize);
-	save.sarrays = data->sarrays =
-		       REALLOC(data->sarrays, sarray, 0, header.narrays);
-	memset(save.sarrays, '\0', save.narr * sizeof(sarray));
-	save.selts = data->selts =
-		     REALLOC(data->selts, svalue, 0, header.eltsize);
-	save.narr = 0;
-	save.nstr = 0;
-	save.arrsize = 0;
-	save.strsize = 0;
-	data->scallouts = REALLOC(data->scallouts, scallout, 0,
-				  header.ncallouts);
-
-	d_save(&save, data->svariables, data->variables, data->nvariables);
-	if (header.ncallouts > 0) {
-	    scallout *sco;
-	    dcallout *co;
-
-	    sco = data->scallouts;
-	    co = data->callouts;
-	    for (n = data->ncallouts; n > 0; --n) {
-		sco->time = co->time;
-		sco->htime = 0;
-		sco->mtime = co->mtime;
-		sco->nargs = co->nargs;
-		if (co->val[0].type == T_STRING) {
-		    d_save(&save, sco->val, co->val,
-			   (co->nargs > 3) ? 4 : co->nargs + 1);
-		} else {
-		    sco->val[0].type = T_NIL;
-		}
-		sco++;
-		co++;
-	    }
-	}
-	for (arr = save.alist.prev, sarr = save.sarrays; arr != &save.alist;
-	     arr = arr->prev, sarr++) {
-	    sarr->size = arr->size;
-	    sarr->tag = arr->tag;
-	    d_save(&save, save.selts + save.arrsize, arr->elts, arr->size);
-	    save.arrsize += arr->size;
-	}
-	if (arr->next != &save.alist) {
-	    data->alist.next->prev = arr->prev;
-	    arr->prev->next = data->alist.next;
-	    data->alist.next = arr->next;
-	    arr->next->prev = &data->alist;
-	}
-
-	/* clear merge tables */
-	Array::clear();
-	String::clear();
-
-	if (swap) {
-	    text = save.stext;
-	    if (header.strsize >= CMPLIMIT) {
-		text = ALLOC(char, header.strsize);
-		size = Swap::compress(text, save.stext, header.strsize);
-		if (size != 0) {
-		    header.flags |= CMP_PRED;
-		    header.strsize = size;
-		} else {
-		    FREE(text);
-		    text = save.stext;
-		}
-	    }
-
-	    /* create sector space */
-	    size = sizeof(sdataspace) +
-		   (header.nvariables + header.eltsize) * sizeof(svalue) +
-		   header.narrays * sizeof(sarray) +
-		   header.nstrings * sizeof(sstring) +
-		   header.strsize +
-		   header.ncallouts * (Uint) sizeof(scallout);
-	    header.nsectors = Swap::alloc(size, data->nsectors, &data->sectors);
-	    data->nsectors = header.nsectors;
-	    OBJ(data->oindex)->dfirst = data->sectors[0];
-
-	    /* save header */
-	    size = sizeof(sdataspace);
-	    Swap::writev((char *) &header, data->sectors, size, (Uint) 0);
-	    Swap::writev((char *) data->sectors, data->sectors,
-			 header.nsectors * (Uint) sizeof(Sector), size);
-	    size += header.nsectors * (Uint) sizeof(Sector);
-
-	    /* save variables */
-	    data->varoffset = size;
-	    Swap::writev((char *) data->svariables, data->sectors,
-			 data->nvariables * (Uint) sizeof(svalue), size);
-	    size += data->nvariables * (Uint) sizeof(svalue);
-
-	    /* save arrays */
-	    data->arroffset = size;
-	    if (header.narrays > 0) {
-		Swap::writev((char *) save.sarrays, data->sectors,
-			     header.narrays * sizeof(sarray), size);
-		size += header.narrays * sizeof(sarray);
-		if (header.eltsize > 0) {
-		    Swap::writev((char *) save.selts, data->sectors,
-				 header.eltsize * sizeof(svalue), size);
-		    size += header.eltsize * sizeof(svalue);
-		}
-	    }
-
-	    /* save strings */
-	    data->stroffset = size;
-	    if (header.nstrings > 0) {
-		Swap::writev((char *) save.sstrings, data->sectors,
-			     header.nstrings * sizeof(sstring), size);
-		size += header.nstrings * sizeof(sstring);
-		if (header.strsize > 0) {
-		    Swap::writev(text, data->sectors, header.strsize, size);
-		    size += header.strsize;
-		    if (text != save.stext) {
-			FREE(text);
-		    }
-		}
-	    }
-
-	    /* save callouts */
-	    data->cooffset = size;
-	    if (header.ncallouts > 0) {
-		Swap::writev((char *) data->scallouts, data->sectors,
-			     header.ncallouts * (Uint) sizeof(scallout), size);
-	    }
-	}
-
-	d_free_values(data);
-	if (data->saindex != (Uint *) NULL) {
-	    FREE(data->saindex);
-	    data->saindex = NULL;
-	}
-	if (data->ssindex != (Uint *) NULL) {
-	    FREE(data->ssindex);
-	    data->ssindex = NULL;
-	}
-
-	data->flags = header.flags;
-	data->narrays = header.narrays;
-	data->eltsize = header.eltsize;
-	data->nstrings = header.nstrings;
-	data->strsize = save.strsize;
-
-	data->base.schange = 0;
-	data->base.achange = 0;
-    }
-
-    if (swap) {
-	data->base.flags = 0;
-    } else {
-	data->base.flags = MOD_SAVE;
-    }
-    return TRUE;
-}
-
-/*
- * NAME:	data->swapout()
- * DESCRIPTION:	Swap out a portion of the control and dataspace blocks in
- *		memory.  Return the number of dataspace blocks swapped out.
- */
-Sector d_swapout(unsigned int frag)
+Sector Dataspace::swapout(unsigned int frag)
 {
     Sector n, count;
     Dataspace *data;
@@ -3350,11 +3483,11 @@ Sector d_swapout(unsigned int frag)
 	    Dataspace *prev;
 
 	    prev = data->prev;
-	    if (d_save_dataspace(data, TRUE)) {
+	    if (data->save(TRUE)) {
 		count++;
 	    }
 	    OBJ(data->oindex)->data = (Dataspace *) NULL;
-	    d_free_dataspace(data);
+	    delete data;
 	    data = prev;
 	}
 
@@ -3363,7 +3496,7 @@ Sector d_swapout(unsigned int frag)
 
     /* perform garbage collection for one dataspace */
     if (gcdata != (Dataspace *) NULL) {
-	if (d_save_dataspace(gcdata, (frag != 0)) && frag != 0) {
+	if (gcdata->save(frag != 0) && frag != 0) {
 	    count++;
 	}
 	gcdata = gcdata->gcnext;
@@ -3373,11 +3506,10 @@ Sector d_swapout(unsigned int frag)
 }
 
 /*
- * NAME:	data->upgrade_mem()
- * DESCRIPTION:	upgrade all obj and all objects cloned from obj that have
- *		dataspaces in memory
+ * upgrade all obj and all objects cloned from obj that have
+ * dataspaces in memory
  */
-void d_upgrade_mem(Object *tmpl, Object *newob)
+void Dataspace::upgradeMemory(Object *tmpl, Object *newob)
 {
     Dataspace *data;
     Uint nvar;
@@ -3394,7 +3526,7 @@ void d_upgrade_mem(Object *tmpl, Object *newob)
 	    obj->count != 0) {
 	    /* upgrade clone */
 	    if (nvar != 0) {
-		d_upgrade_data(data, nvar, vmap, tmpl);
+		data->upgrade(nvar, vmap, tmpl);
 	    }
 	    data->ctrl->ndata--;
 	    data->ctrl = newob->ctrl;
@@ -3404,268 +3536,26 @@ void d_upgrade_mem(Object *tmpl, Object *newob)
 }
 
 /*
- * NAME:	data->conv_sarray0()
- * DESCRIPTION:	convert old sarrays
+ * restore an object
  */
-static Uint d_conv_sarray0(sarray *sa, Sector *s, Uint n, Uint size)
-{
-    sarray0 *osa;
-    Uint i;
-
-    osa = ALLOC(sarray0, n);
-    size = Swap::convert((char *) osa, s, sa0_layout, n, size, &Swap::conv);
-    for (i = 0; i < n; i++) {
-	sa->tag = osa->tag;
-	sa->ref = osa->ref;
-	sa->type = osa->type;
-	(sa++)->size = (osa++)->size;
-    }
-    FREE(osa - n);
-    return size;
-}
-
-/*
- * NAME:	data->conv_sstring0()
- * DESCRIPTION:	convert old sstrings
- */
-static Uint d_conv_sstring0(sstring *ss, Sector *s, Uint n, Uint size)
-{
-    sstring0 *oss;
-    Uint i;
-
-    oss = ALLOC(sstring0, n);
-    size = Swap::convert((char *) oss, s, ss0_layout, n, size, &Swap::conv);
-    for (i = 0; i < n; i++) {
-	ss->ref = oss->ref;
-	(ss++)->len = (oss++)->len;
-    }
-    FREE(oss - n);
-    return size;
-}
-
-/*
- * NAME:	data->fixobjs()
- * DESCRIPTION:	fix objects in dataspace
- */
-static void d_fixobjs(svalue *v, Uint n, Uint *ctab)
-{
-    while (n != 0) {
-	if (v->type == T_OBJECT) {
-	    if (v->objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
-		/* fix object count */
-		v->objcnt = OBJ(v->oindex)->count;
-	    } else {
-		/* destructed object; mark as invalid */
-		v->oindex = 0;
-		v->objcnt = 1;
-	    }
-	}
-	v++;
-	--n;
-    }
-}
-
-/*
- * NAME:	data->fixdata()
- * DESCRIPTION:	fix a dataspace
- */
-static void d_fixdata(Dataspace *data, Uint *counttab)
-{
-    scallout *sco;
-    unsigned int n;
-
-    d_fixobjs(data->svariables, (Uint) data->nvariables, counttab);
-    d_fixobjs(data->selts, data->eltsize, counttab);
-    for (n = data->ncallouts, sco = data->scallouts; n > 0; --n, sco++) {
-	if (sco->val[0].type == T_STRING) {
-	    if (sco->nargs > 3) {
-		d_fixobjs(sco->val, (Uint) 4, counttab);
-	    } else {
-		d_fixobjs(sco->val, sco->nargs + (Uint) 1, counttab);
-	    }
-	}
-    }
-}
-
-/*
- * NAME:	data->conv_datapace()
- * DESCRIPTION:	convert dataspace
- */
-static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
-				   void (*readv) (char*, Sector*, Uint, Uint))
-{
-    sdataspace header;
-    Dataspace *data;
-    Uint size;
-    unsigned int n;
-
-    UNREFERENCED_PARAMETER(counttab);
-
-    data = d_alloc_dataspace(obj);
-
-    /*
-     * restore from snapshot
-     */
-    size = Swap::convert((char *) &header, &obj->dfirst, sd_layout, (Uint) 1,
-			 (Uint) 0, readv);
-    data->nvariables = header.nvariables;
-    data->narrays = header.narrays;
-    data->eltsize = header.eltsize;
-    data->nstrings = header.nstrings;
-    data->strsize = header.strsize;
-    data->ncallouts = header.ncallouts;
-    data->fcallouts = header.fcallouts;
-
-    /* sectors */
-    data->sectors = ALLOC(Sector, data->nsectors = header.nsectors);
-    data->sectors[0] = obj->dfirst;
-    for (n = 0; n < header.nsectors; n++) {
-	size += Swap::convert((char *) (data->sectors + n), data->sectors, "d",
-			      (Uint) 1, size, readv);
-    }
-
-    /* variables */
-    data->svariables = ALLOC(svalue, header.nvariables);
-    size += Swap::convert((char *) data->svariables, data->sectors, sv_layout,
-			  (Uint) header.nvariables, size, readv);
-
-    if (header.narrays != 0) {
-	/* arrays */
-	data->sarrays = ALLOC(sarray, header.narrays);
-	if (conv_14) {
-	    size += d_conv_sarray0(data->sarrays, data->sectors,
-				   header.narrays, size);
-	} else {
-	    size += Swap::convert((char *) data->sarrays, data->sectors,
-				  sa_layout, header.narrays, size, readv);
-	}
-	if (header.eltsize != 0) {
-	    data->selts = ALLOC(svalue, header.eltsize);
-	    size += Swap::convert((char *) data->selts, data->sectors,
-				  sv_layout, header.eltsize, size, readv);
-	}
-    }
-
-    if (header.nstrings != 0) {
-	/* strings */
-	data->sstrings = ALLOC(sstring, header.nstrings);
-	if (conv_14) {
-	    size += d_conv_sstring0(data->sstrings, data->sectors,
-				    (Uint) header.nstrings, size);
-	} else {
-	    size += Swap::convert((char *) data->sstrings, data->sectors,
-				  ss_layout, header.nstrings, size, readv);
-	}
-	if (header.strsize != 0) {
-	    if (header.flags & CMP_TYPE) {
-		data->stext = Swap::decompress(data->sectors, readv,
-					       header.strsize, size,
-					       &data->strsize);
-	    } else {
-		data->stext = ALLOC(char, header.strsize);
-		(*readv)(data->stext, data->sectors, header.strsize, size);
-	    }
-	    size += header.strsize;
-	}
-    }
-
-    if (header.ncallouts != 0) {
-	unsigned short dummy;
-
-	/* callouts */
-	co_time(&dummy);
-	data->scallouts = ALLOC(scallout, header.ncallouts);
-	Swap::convert((char *) data->scallouts, data->sectors, sco_layout,
-		      (Uint) header.ncallouts, size, readv);
-    }
-
-    data->ctrl = obj->control();
-    data->ctrl->ndata++;
-
-    return data;
-}
-
-/*
- * NAME:	data->restore_data()
- * DESCRIPTION:	restore a dataspace
- */
-Dataspace *d_restore_data(Object *obj, Uint *counttab,
-			  void (*readv) (char*, Sector*, Uint, Uint))
-{
-    Dataspace *data;
-
-    data = (Dataspace *) NULL;
-    if (OBJ(obj->index)->count != 0 && OBJ(obj->index)->dfirst != SW_UNUSED) {
-	if (!converted) {
-	    data = d_conv_dataspace(obj, counttab, readv);
-	} else {
-	    data = load_dataspace(obj, readv);
-	    get_variables(data, readv);
-	    get_arrays(data, readv);
-	    get_elts(data, readv);
-	    get_strings(data, readv);
-	    get_callouts(data, readv);
-	}
-	obj->data = data;
-	if (counttab != (Uint *) NULL) {
-	    d_fixdata(data, counttab);
-	}
-
-	if (!(obj->flags & O_MASTER) &&
-	    obj->update != OBJ(obj->master)->update) {
-	    /* handle object upgrading right away */
-	    d_upgrade_clone(data);
-	}
-	data->base.flags |= MOD_ALL;
-    }
-
-    return data;
-}
-
-/*
- * NAME:	data->restore_obj()
- * DESCRIPTION:	restore an object
- */
-void d_restore_obj(Object *obj, Uint instance, Uint *counttab, bool cactive,
-		   bool dactive)
+void Dataspace::restoreObject(Object *obj, Uint instance, Uint *counttab,
+			      bool cactive, bool dactive)
 {
     Control *ctrl;
     Dataspace *data;
 
-    if (!converted) {
+    if (!convDone) {
 	ctrl = Control::restore(obj, instance, Swap::conv);
-	data = d_restore_data(obj, counttab, Swap::conv);
+	data = Dataspace::restore(obj, counttab, Swap::conv);
     } else {
 	ctrl = Control::restore(obj, instance, Swap::dreadv);
-	data = d_restore_data(obj, counttab, Swap::dreadv);
+	data = Dataspace::restore(obj, counttab, Swap::dreadv);
     }
 
-    if (!cactive) {
+    if (!cactive && ctrl != (Control *) NULL) {
 	ctrl->deref();
     }
-    if (!dactive) {
-	/* swap this out first */
-	if (data != (Dataspace *) NULL && data != dtail) {
-	    if (dhead == data) {
-		dhead = data->next;
-		dhead->prev = (Dataspace *) NULL;
-	    } else {
-		data->prev->next = data->next;
-		data->next->prev = data->prev;
-	    }
-	    dtail->next = data;
-	    data->prev = dtail;
-	    data->next = (Dataspace *) NULL;
-	    dtail = data;
-	}
+    if (!dactive && data != (Dataspace *) NULL) {
+	data->deref();
     }
-}
-
-/*
- * NAME:	data->converted()
- * DESCRIPTION:	snapshot conversion is complete
- */
-void d_converted()
-{
-    converted = TRUE;
 }

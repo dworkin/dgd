@@ -190,11 +190,11 @@ int kf_call_touch(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_LWOBJECT) {
-	elts = d_get_elts(f->sp->array);
+	elts = Dataspace::elts(f->sp->array);
 	GET_FLT(&elts[1], flt);
 	flt.high = TRUE;
 	PUT_FLTVAL(&val, flt);
-	d_assign_elt(f->data, f->sp->array, &elts[1], &val);
+	f->data->assignElt(f->sp->array, &elts[1], &val);
 	f->sp->array->del();
 	PUT_INTVAL(f->sp, TRUE);
     } else {
@@ -1262,8 +1262,8 @@ int kf_call_out(Frame *f, int nargs, kfunc *kf)
 
     i_add_ticks(f, nargs);
     if (OBJR(f->oindex)->count != 0 &&
-	(handle=d_new_call_out(f->data, f->sp[nargs - 1].string, delay,
-			       mdelay, f, nargs - 2)) != 0) {
+	(handle=f->data->newCallOut(f->sp[nargs - 1].string, delay,
+				    mdelay, f, nargs - 2)) != 0) {
 	/* pop duration */
 	f->sp++;
     } else {
@@ -1302,7 +1302,7 @@ int kf_remove_call_out(Frame *f, int n, kfunc *kf)
 	error("remove_call_out() in non-persistent object");
     }
     i_add_ticks(f, 10);
-    delay = d_del_call_out(f->data, (Uint) f->sp->number, &mdelay);
+    delay = f->data->delCallOut((Uint) f->sp->number, &mdelay);
     if (mdelay != 0xffff) {
 	Float::itof(delay, &flt1);
 	Float::itof(mdelay, &flt2);
@@ -1645,7 +1645,7 @@ int kf_extend_function(Frame *f, int nargs, kfunc *kf)
 
     --nargs;
     if (f->sp[nargs].type != T_LWOBJECT ||
-	(elts=d_get_elts(a=f->sp[nargs].array))[0].type != T_INT ||
+	(elts=Dataspace::elts(a=f->sp[nargs].array))[0].type != T_INT ||
 	elts[0].number != BUILTIN_FUNCTION) {
 	error("Bad argument 1 for kfun *");
     }
@@ -1695,7 +1695,7 @@ int kf_call_function(Frame *f, int nargs, kfunc *kf)
 
     --nargs;
     if (f->sp[nargs].type != T_LWOBJECT ||
-	(elts=d_get_elts(a=f->sp[nargs].array))[0].type != T_INT ||
+	(elts=Dataspace::elts(a=f->sp[nargs].array))[0].type != T_INT ||
 	elts[0].number != BUILTIN_FUNCTION) {
 	error("Bad argument 1 for kfun *");
     }
@@ -1712,7 +1712,7 @@ int kf_call_function(Frame *f, int nargs, kfunc *kf)
     case T_LWOBJECT:
 	obj = NULL;
 	lwobj = elts[3].array;
-	v = d_get_elts(lwobj);
+	v = Dataspace::elts(lwobj);
 	if (v->type == T_OBJECT && DESTRUCTED(v)) {
 	    error("Function in destructed object");
 	}

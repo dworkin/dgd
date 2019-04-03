@@ -81,8 +81,8 @@ public:
      */
     void remove(Dataspace *data, Array *m) {
 	if (add) {
-	    d_assign_elt(data, m, &idx, &nil_value);
-	    d_assign_elt(data, m, &val, &nil_value);
+	    data->assignElt(m, &idx, &nil_value);
+	    data->assignElt(m, &val, &nil_value);
 	}
 	delete this;
     }
@@ -100,21 +100,21 @@ public:
 		 * index is destructed object
 		 */
 		if (add) {
-		    d_assign_elt(data, m, &val, &nil_value);
+		    data->assignElt(m, &val, &nil_value);
 		}
 		return TRUE;
 	    }
 	    break;
 
 	case T_LWOBJECT:
-	    v = d_get_elts(idx.array);
+	    v = Dataspace::elts(idx.array);
 	    if (v->type == T_OBJECT && DESTRUCTED(v)) {
 		/*
 		 * index is destructed object
 		 */
 		if (add) {
-		    d_assign_elt(data, m, &idx, &nil_value);
-		    d_assign_elt(data, m, &val, &nil_value);
+		    data->assignElt(m, &idx, &nil_value);
+		    data->assignElt(m, &val, &nil_value);
 		}
 		return TRUE;
 	    }
@@ -127,21 +127,21 @@ public:
 		 * value is destructed object
 		 */
 		if (add) {
-		    d_assign_elt(data, m, &idx, &nil_value);
+		    data->assignElt(m, &idx, &nil_value);
 		}
 		return TRUE;
 	    }
 	    break;
 
 	case T_LWOBJECT:
-	    v = d_get_elts(val.array);
+	    v = Dataspace::elts(val.array);
 	    if (v->type == T_OBJECT && DESTRUCTED(v)) {
 		/*
 		 * value is destructed object
 		 */
 		if (add) {
-		    d_assign_elt(data, m, &idx, &nil_value);
-		    d_assign_elt(data, m, &val, &nil_value);
+		    data->assignElt(m, &idx, &nil_value);
+		    data->assignElt(m, &val, &nil_value);
 		}
 		return TRUE;
 	    }
@@ -404,7 +404,7 @@ public:
 	    /*
 	     * commit
 	     */
-	    ac = (Backup **) d_commit_arr(ab->arr, plane, ab->plane);
+	    ac = (Backup **) plane->commitArray(ab->arr, ab->plane);
 	    if (merge) {
 		if (ac != (Backup **) NULL) {
 		    /* backup on previous plane */
@@ -417,7 +417,7 @@ public:
 	    /*
 	     * discard
 	     */
-	    d_discard_arr(ab->arr, ab->plane);
+	    ab->plane->discardArray(ab->arr);
 	    ab->discard();
 	}
 
@@ -725,7 +725,7 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
     Value *v2, *o;
     unsigned short n;
 
-    v2 = d_get_elts(a);
+    v2 = Dataspace::elts(a);
     if (a->objDestrCount == Object::objDestrCount) {
 	/*
 	 * no need to check for destructed objects
@@ -741,14 +741,14 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
 	    switch (v2->type) {
 	    case T_OBJECT:
 		if (DESTRUCTED(v2)) {
-		    d_assign_elt(data, a, v2, &nil_value);
+		    data->assignElt(a, v2, &nil_value);
 		}
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v2->array);
+		o = Dataspace::elts(v2->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
-		    d_assign_elt(data, a, v2, &nil_value);
+		    data->assignElt(a, v2, &nil_value);
 		}
 		break;
 	    }
@@ -765,9 +765,9 @@ Array *Array::add(Dataspace *data, Array *a2)
     Array *a;
 
     a = create(data, (long) size + a2->size);
-    i_copy(a->elts, d_get_elts(this), size);
-    i_copy(a->elts + size, d_get_elts(a2), a2->size);
-    d_ref_imports(a);
+    i_copy(a->elts, Dataspace::elts(this), size);
+    i_copy(a->elts + size, Dataspace::elts(a2), a2->size);
+    Dataspace::refImports(a);
 
     return a;
 }
@@ -912,8 +912,8 @@ Array *Array::sub(Dataspace *data, Array *a2)
 	 * Return a copy of the first array.
 	 */
 	a3 = create(data, size);
-	i_copy(a3->elts, d_get_elts(this), size);
-	d_ref_imports(a3);
+	i_copy(a3->elts, Dataspace::elts(this), size);
+	Dataspace::refImports(a3);
 	return a3;
     }
 
@@ -928,7 +928,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
     copytmp(data, v2 = ALLOCA(Value, a2->size), a2);
     qsort(v2, a2->size, sizeof(Value), cmp);
 
-    v1 = d_get_elts(this);
+    v1 = Dataspace::elts(this);
     v3 = a3->elts;
     if (objDestrCount == Object::objDestrCount) {
 	for (n = size; n > 0; --n) {
@@ -948,15 +948,15 @@ Array *Array::sub(Dataspace *data, Array *a2)
 	    case T_OBJECT:
 		if (DESTRUCTED(v1)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(primary->data, this, v1, &nil_value);
+		    primary->data->assignElt(this, v1, &nil_value);
 		}
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v1->array);
+		o = Dataspace::elts(v1->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(primary->data, this, v1, &nil_value);
+		    primary->data->assignElt(this, v1, &nil_value);
 		}
 		break;
 	    }
@@ -978,7 +978,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 	a3->elts = (Value *) NULL;
     }
 
-    d_ref_imports(a3);
+    Dataspace::refImports(a3);
     return a3;
 }
 
@@ -1003,7 +1003,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
     copytmp(data, v2 = ALLOCA(Value, a2->size), a2);
     qsort(v2, a2->size, sizeof(Value), cmp);
 
-    v1 = d_get_elts(this);
+    v1 = Dataspace::elts(this);
     v3 = a3->elts;
     if (objDestrCount == Object::objDestrCount) {
 	for (n = size; n > 0; --n) {
@@ -1023,15 +1023,15 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 	    case T_OBJECT:
 		if (DESTRUCTED(v1)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(primary->data, this, v1, &nil_value);
+		    primary->data->assignElt(this, v1, &nil_value);
 		}
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v1->array);
+		o = Dataspace::elts(v1->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(primary->data, this, v1, &nil_value);
+		    primary->data->assignElt(this, v1, &nil_value);
 		}
 		break;
 	    }
@@ -1053,7 +1053,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 	a3->elts = (Value *) NULL;
     }
 
-    d_ref_imports(a3);
+    Dataspace::refImports(a3);
     return a3;
 }
 
@@ -1070,15 +1070,15 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
     if (size == 0) {
 	/* ({ }) | array */
 	a3 = create(data, a2->size);
-	i_copy(a3->elts, d_get_elts(a2), a2->size);
-	d_ref_imports(a3);
+	i_copy(a3->elts, Dataspace::elts(a2), a2->size);
+	Dataspace::refImports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array | ({ }) */
 	a3 = create(data, size);
-	i_copy(a3->elts, d_get_elts(this), size);
-	d_ref_imports(a3);
+	i_copy(a3->elts, Dataspace::elts(this), size);
+	Dataspace::refImports(a3);
 	return a3;
     }
 
@@ -1090,7 +1090,7 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
     qsort(v1, size, sizeof(Value), cmp);
 
     v = v3;
-    v2 = d_get_elts(a2);
+    v2 = Dataspace::elts(a2);
     if (a2->objDestrCount == Object::objDestrCount) {
 	for (n = a2->size; n > 0; --n) {
 	    if (search(v2, v1, size, 1, FALSE) < 0) {
@@ -1108,15 +1108,15 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
 	    case T_OBJECT:
 		if (DESTRUCTED(v2)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(a2->primary->data, a2, v2, &nil_value);
+		    a2->primary->data->assignElt(a2, v2, &nil_value);
 		}
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v2->array);
+		o = Dataspace::elts(v2->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(a2->primary->data, a2, v2, &nil_value);
+		    a2->primary->data->assignElt(a2, v2, &nil_value);
 		}
 		break;
 	    }
@@ -1142,7 +1142,7 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
     i_copy(a3->elts + size, v3, n);
     AFREE(v3);
 
-    d_ref_imports(a3);
+    Dataspace::refImports(a3);
     return a3;
 }
 
@@ -1160,15 +1160,15 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
     if (size == 0) {
 	/* ({ }) ^ array */
 	a3 = create(data, a2->size);
-	i_copy(a3->elts, d_get_elts(a2), a2->size);
-	d_ref_imports(a3);
+	i_copy(a3->elts, Dataspace::elts(a2), a2->size);
+	Dataspace::refImports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array ^ ({ }) */
 	a3 = create(data, size);
-	i_copy(a3->elts, d_get_elts(this), size);
-	d_ref_imports(a3);
+	i_copy(a3->elts, Dataspace::elts(this), size);
+	Dataspace::refImports(a3);
 	return a3;
     }
 
@@ -1231,7 +1231,7 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
     AFREE(v2);
     AFREE(v1);
 
-    d_ref_imports(a3);
+    Dataspace::refImports(a3);
     return a3;
 }
 
@@ -1268,8 +1268,9 @@ Array *Array::range(Dataspace *data, long l1, long l2)
     }
 
     range = create(data, l2 - l1 + 1);
-    i_copy(range->elts, d_get_elts(this) + l1, (unsigned short) (l2 - l1 + 1));
-    d_ref_imports(range);
+    i_copy(range->elts, Dataspace::elts(this) + l1,
+	   (unsigned short) (l2 - l1 + 1));
+    Dataspace::refImports(range);
     return range;
 }
 
@@ -1347,7 +1348,7 @@ void Array::mapDehash(Dataspace *data, bool clean)
 	 * remove destructed objects from array part
 	 */
 	sz = 0;
-	v1 = v2 = d_get_elts(this);
+	v1 = v2 = Dataspace::elts(this);
 	for (i = size; i > 0; i -= 2) {
 	    switch (v2->type) {
 	    case T_OBJECT:
@@ -1355,20 +1356,20 @@ void Array::mapDehash(Dataspace *data, bool clean)
 		    /*
 		     * index is destructed object
 		     */
-		    d_assign_elt(data, this, v2 + 1, &nil_value);
+		    data->assignElt(this, v2 + 1, &nil_value);
 		    v2 += 2;
 		    continue;
 		}
 		break;
 
 	    case T_LWOBJECT:
-		v3 = d_get_elts(v2->array);
+		v3 = Dataspace::elts(v2->array);
 		if (v3->type == T_OBJECT && DESTRUCTED(v3)) {
 		    /*
 		     * index is destructed object
 		     */
-		    d_assign_elt(data, this, v2++, &nil_value);
-		    d_assign_elt(data, this, v2++, &nil_value);
+		    data->assignElt(this, v2++, &nil_value);
+		    data->assignElt(this, v2++, &nil_value);
 		    continue;
 		}
 		break;
@@ -1379,20 +1380,20 @@ void Array::mapDehash(Dataspace *data, bool clean)
 		    /*
 		     * value is destructed object
 		     */
-		    d_assign_elt(data, this, v2, &nil_value);
+		    data->assignElt(this, v2, &nil_value);
 		    v2 += 2;
 		    continue;
 		}
 		break;
 
 	    case T_LWOBJECT:
-		v3 = d_get_elts(v2[1].array);
+		v3 = Dataspace::elts(v2[1].array);
 		if (v3->type == T_OBJECT && DESTRUCTED(v3)) {
 		    /*
 		     * value is destructed object
 		     */
-		    d_assign_elt(data, this, v2++, &nil_value);
-		    d_assign_elt(data, this, v2++, &nil_value);
+		    data->assignElt(this, v2++, &nil_value);
+		    data->assignElt(this, v2++, &nil_value);
 		    continue;
 		}
 		break;
@@ -1404,7 +1405,7 @@ void Array::mapDehash(Dataspace *data, bool clean)
 	}
 
 	if (sz != size) {
-	    d_change_map(this);
+	    Dataspace::changeMap(this);
 	    size = sz;
 	    if (sz == 0) {
 		FREE(elts);
@@ -1422,7 +1423,7 @@ void Array::mapDehash(Dataspace *data, bool clean)
 	sz = hashed->collect(v2, (clean) ? this : (Array *) NULL, data);
 
 	if (j != hashed->size) {
-	    d_change_map(this);
+	    Dataspace::changeMap(this);
 	}
 	hashmod = FALSE;
 
@@ -1585,7 +1586,7 @@ Array *Array::mapAdd(Dataspace *data, Array *m2)
 	m3->elts = (Value *) NULL;
     }
 
-    d_ref_imports(m3);
+    Dataspace::refImports(m3);
     return m3;
 }
 
@@ -1609,7 +1610,7 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
     if (a2->size == 0) {
 	/* subtract empty array */
 	i_copy(m3->elts, elts, size);
-	d_ref_imports(m3);
+	Dataspace::refImports(m3);
 	return m3;
     }
 
@@ -1671,7 +1672,7 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
 	m3->elts = (Value *) NULL;
     }
 
-    d_ref_imports(m3);
+    Dataspace::refImports(m3);
     return m3;
 }
 
@@ -1752,7 +1753,7 @@ Array *Array::mapIntersect(Dataspace *data, Array *a2)
 	m3->elts = (Value *) NULL;
     }
 
-    d_ref_imports(m3);
+    Dataspace::refImports(m3);
     return m3;
 }
 
@@ -1828,7 +1829,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 		    e->idx.objcnt = val->objcnt;	/* refresh */
 		}
 		if (e->add) {
-		    d_assign_elt(data, this, &e->val, elt);
+		    data->assignElt(this, &e->val, elt);
 		    return &e->val;
 		} else {
 		    /* "real" assignment later in array part */
@@ -1862,7 +1863,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 	int n;
 	Value *v;
 
-	n = search(val, d_get_elts(this), size, 2, FALSE);
+	n = search(val, Dataspace::elts(this), size, 2, FALSE);
 	if (n >= 0) {
 	    /*
 	     * found in the array
@@ -1874,7 +1875,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 		/*
 		 * change the element
 		 */
-		d_assign_elt(data, this, v + 1, elt);
+		data->assignElt(this, v + 1, elt);
 		if (val->type == T_OBJECT) {
 		    v->modified = TRUE;
 		    v->objcnt = val->objcnt;	/* refresh */
@@ -1884,8 +1885,8 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 		/*
 		 * delete the element
 		 */
-		d_assign_elt(data, this, v, &nil_value);
-		d_assign_elt(data, this, v + 1, &nil_value);
+		data->assignElt(this, v, &nil_value);
+		data->assignElt(this, v + 1, &nil_value);
 
 		size -= 2;
 		if (size == 0) {
@@ -1896,7 +1897,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 		    /* move tail */
 		    memmove(v, v + 2, (size - n) * sizeof(Value));
 		}
-		d_change_map(this);
+		Dataspace::changeMap(this);
 		return &nil_value;
 	    }
 	    val = v;
@@ -1937,11 +1938,11 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 
 	if (add) {
 	    e->add = TRUE;
-	    d_assign_elt(data, this, &e->idx, val);
-	    d_assign_elt(data, this, &e->val, elt);
+	    data->assignElt(this, &e->idx, val);
+	    data->assignElt(this, &e->val, elt);
 	    hashed->sizemod++;
 	    hashmod = TRUE;
-	    d_change_map(this);
+	    Dataspace::changeMap(this);
 	} else {
 	    e->idx = *val;
 	    e->val = *elt;
@@ -1983,7 +1984,7 @@ Array *Array::mapRange(Dataspace *data, Value *v1, Value *v2)
     range = mapCreate(data, to -= from);
     i_copy(range->elts, elts + from, to);
 
-    d_ref_imports(range);
+    Dataspace::refImports(range);
     return range;
 }
 
@@ -2004,7 +2005,7 @@ Array *Array::mapIndices(Dataspace *data)
 	*v1++ = *v2;
     }
 
-    d_ref_imports(indices);
+    Dataspace::refImports(indices);
     return indices;
 }
 
@@ -2025,7 +2026,7 @@ Array *Array::mapValues(Dataspace *data)
 	*v1++ = *v2;
     }
 
-    d_ref_imports(values);
+    Dataspace::refImports(values);
     return values;
 }
 
@@ -2047,7 +2048,7 @@ Array *Array::lwoCreate(Dataspace *data, Object *obj)
     flt.high = FALSE;
     flt.low = obj->update;
     PUT_FLTVAL(&a->elts[1], flt);
-    d_new_variables(ctrl, a->elts + 2);
+    Dataspace::newVars(ctrl, a->elts + 2);
     a->tag = atag++;
     a->objDestrCount = Object::objDestrCount;
     a->primary = &data->plane->alocal;
@@ -2074,6 +2075,6 @@ Array *Array::lwoCopy(Dataspace *data)
     copy->next = data->alist.next;
     copy->next->prev = copy;
     data->alist.next = copy;
-    d_ref_imports(copy);
+    Dataspace::refImports(copy);
     return copy;
 }

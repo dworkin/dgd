@@ -294,7 +294,7 @@ void conf_dump(bool incr, bool boot)
     if (!incr) {
 	Object::copy(0);
     }
-    d_swapout(1);
+    Dataspace::swapout(1);
     dflags = 0;
     if (Object::dobjects() > 0) {
 	dflags |= FLAGS_PARTIAL;
@@ -437,7 +437,7 @@ static bool conf_restore(int fd, int fd2)
     Swap::restore(fd, secsize);
     kf_restore(fd);
     Object::restore(fd, rdflags & FLAGS_PARTIAL);
-    d_init_conv(conv_14);
+    Dataspace::initConv(conv_14);
     Control::initConv(conv_14, conv_15);
     if (conv_14) {
 	pc_restore(fd);
@@ -1565,7 +1565,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	       (unsigned int) conf[SECTOR_SIZE].num);
 
     /* initialize swapped data handler */
-    d_init();
+    Dataspace::init();
     Control::init();
     *fragment = conf[SWAP_FRAGMENT].num;
 
@@ -1633,8 +1633,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	Alloc::dynamicMode();
 	if (snapshot == (char *) NULL) {
 	    /* initialize mudlib */
-	    d_converted();
 	    Control::converted();
+	    Dataspace::converted();
 	    try {
 		ErrorContext::push((ErrorContext::Handler) errhandler);
 		call_driver_object(cframe, "initialize", 0);
@@ -1982,7 +1982,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 
     case 4:	/* O_CALLOUTS */
 	if (O_HASDATA(obj)) {
-	    a = d_list_callouts(data, obj->dataspace());
+	    a = data->listCallouts(obj->dataspace());
 	    if (a != (Array *) NULL) {
 		PUT_ARRVAL(v, a);
 	    } else {

@@ -133,7 +133,7 @@ void i_copy(Value *v, Value *w, unsigned int len)
 	    break;
 
 	case T_LWOBJECT:
-	    o = d_get_elts(w->array);
+	    o = Dataspace::elts(w->array);
 	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		*v++ = nil_value;
 		w++;
@@ -212,7 +212,7 @@ void i_push_value(Frame *f, Value *v)
 	break;
 
     case T_LWOBJECT:
-	o = d_get_elts(v->array);
+	o = Dataspace::elts(v->array);
 	if (o->type == T_OBJECT && DESTRUCTED(o)) {
 	    /*
 	     * can't wipe out the original, since it may be a value from a
@@ -346,7 +346,7 @@ void i_aggregate(Frame *f, unsigned int size)
 	do {
 	    *--elts = *v++;
 	} while (--size != 0);
-	d_ref_imports(a);
+	Dataspace::refImports(a);
 	f->sp = v;
     }
     PUSH_ARRVAL(f, a);
@@ -383,7 +383,7 @@ void i_map_aggregate(Frame *f, unsigned int size)
 	    a->del();
 	    error((char *) NULL);
 	}
-	d_ref_imports(a);
+	Dataspace::refImports(a);
     }
     PUSH_MAPVAL(f, a);
 }
@@ -410,7 +410,7 @@ int i_spread(Frame *f, int n)
 	i_add_ticks(f, n);
 	f->sp++;
 	i_grow_stack(f, n);
-	for (i = 0, v = d_get_elts(a); i < n; i++, v++) {
+	for (i = 0, v = Dataspace::elts(a); i < n; i++, v++) {
 	    i_push_value(f, v);
 	}
 	a->del();
@@ -424,7 +424,7 @@ int i_spread(Frame *f, int n)
 	i_add_ticks(f, n);
 	i_grow_stack(f, n);
 	f->sp++;
-	for (i = 0, v = d_get_elts(a); i < n; i++, v++) {
+	for (i = 0, v = Dataspace::elts(a); i < n; i++, v++) {
 	    i_push_value(f, v);
 	}
 	--f->sp;
@@ -444,7 +444,7 @@ void i_global(Frame *f, int inherit, int index)
     inherit = UCHAR(f->ctrl->imap[f->p_index + inherit]);
     inherit = f->ctrl->inherits[inherit].varoffset;
     if (f->lwobj == (Array *) NULL) {
-	i_push_value(f, d_get_variable(f->data, inherit + index));
+	i_push_value(f, f->data->variable(inherit + index));
     } else {
 	i_push_value(f, &f->lwobj->elts[2 + inherit + index]);
     }
@@ -493,7 +493,7 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	if (ival->type != T_INT) {
 	    error("Non-numeric array index");
 	}
-	*val = d_get_elts(aval->array)[aval->array->index(ival->number)];
+	*val = Dataspace::elts(aval->array)[aval->array->index(ival->number)];
 	break;
 
     case T_MAPPING:
@@ -527,7 +527,7 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	break;
 
     case T_LWOBJECT:
-	ival = d_get_elts(val->array);
+	ival = Dataspace::elts(val->array);
 	if (ival->type == T_OBJECT && DESTRUCTED(ival)) {
 	    *val = nil_value;
 	    break;
@@ -652,7 +652,7 @@ void i_cast(Frame *f, Value *val, unsigned int type, Uint sclass)
 	    }
 	    return;
 	} else if (val->type == T_LWOBJECT) {
-	    elts = d_get_elts(val->array);
+	    elts = Dataspace::elts(val->array);
 	    if (elts->type == T_OBJECT) {
 		if (!i_instanceof(f, elts->oindex, sclass)) {
 		    error("Value is not of object type /%s",
@@ -692,7 +692,7 @@ static void i_store_local(Frame *f, int local, Value *val, Value *verify)
     var = (local < 0) ? f->fp + local : f->argp + local;
     if (verify == NULL ||
 	(var->type == T_STRING && var->string == verify->string)) {
-	d_assign_var(f->data, var, val);
+	f->data->assignVar(var, val);
     }
 }
 
@@ -709,16 +709,16 @@ void i_store_global(Frame *f, int inherit, int index, Value *val, Value *verify)
     inherit = f->ctrl->imap[f->p_index + inherit];
     offset = f->ctrl->inherits[inherit].varoffset + index;
     if (f->lwobj == NULL) {
-	var = d_get_variable(f->data, offset);
+	var = f->data->variable(offset);
 	if (verify == NULL ||
 	    (var->type == T_STRING && var->string == verify->string)) {
-	    d_assign_var(f->data, var, val);
+	    f->data->assignVar(var, val);
 	}
     } else {
 	var = &f->lwobj->elts[2 + offset];
 	if (verify == NULL ||
 	    (var->type == T_STRING && var->string == verify->string)) {
-	    d_assign_elt(f->data, f->lwobj, var, val);
+	    f->data->assignElt(f->lwobj, var, val);
 	}
     }
 }
@@ -753,10 +753,10 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	    error("Non-numeric array index");
 	}
 	arr = aval->array;
-	aval = &d_get_elts(arr)[arr->index(ival->number)];
+	aval = &Dataspace::elts(arr)[arr->index(ival->number)];
 	if (var->type != T_STRING ||
 	    (aval->type == T_STRING && var->string == aval->string)) {
-	    d_assign_elt(f->data, arr, aval, val);
+	    f->data->assignElt(arr, aval, val);
 	}
 	arr->del();
 	break;
@@ -1033,9 +1033,9 @@ void i_lvalues(Frame *f, int n)
 				   sclass);
 			}
 			--nspread;
-			d_assign_elt(f->data, f->sp[1].array,
+			f->data->assignElt(f->sp[1].array,
 				     &f->sp[1].array->elts[offset + nspread],
-				     &f->sp->array->elts[nassign]);
+					   &f->sp->array->elts[nassign]);
 		    }
 		}
 	    }
@@ -1310,7 +1310,7 @@ void i_typecheck(Frame *f, Frame *prog_f, const char *name, const char *ftype,
 			      nargs - i, name);
 		    }
 		} else {
-		    elts = d_get_elts(f->sp[i].array);
+		    elts = Dataspace::elts(f->sp[i].array);
 		    if (elts->type == T_OBJECT) {
 			if (!i_instanceof(prog_f, elts->oindex, sclass)) {
 			    error("Bad object argument %d for function %s",
@@ -1715,7 +1715,7 @@ static void i_interpret(Frame *f, char *pc)
 		if (u > f->sp->array->size) {
 		    error("Wrong number of lvalues");
 		}
-		d_get_elts(f->sp->array);
+		Dataspace::elts(f->sp->array);
 		i_stores(f, 0, u);
 	    }
 	    pc = f->pc;
@@ -2201,7 +2201,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 	do {
 	    *--v = *prev_f->sp++;
 	} while (--nargs > 0);
-	d_ref_imports(a);
+	Dataspace::refImports(a);
 	PUSH_ARRVAL(prev_f, a);
 	nargs = n;
 	pc += PROTO_SIZE(pc);
@@ -2229,14 +2229,14 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     f.level = prev_f->level;
     if ((f.func->sclass & C_ATOMIC) && !prev_f->atomic) {
 	Object::newPlane();
-	d_new_plane(f.data, ++f.level);
+	new Dataplane(f.data, ++f.level);
 	f.atomic = TRUE;
 	if (!f.rlim->noticks) {
 	    f.rlim->ticks >>= 1;
 	}
     } else {
 	if (f.level != f.data->plane->level) {
-	    d_new_plane(f.data, f.level);
+	    new Dataplane(f.data, f.level);
 	}
 	f.atomic = prev_f->atomic;
     }
@@ -2292,7 +2292,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     *--prev_f->sp = val;
 
     if ((f.func->sclass & C_ATOMIC) && !prev_f->atomic) {
-	d_commit_plane(f.level, &val);
+	Dataplane::commit(f.level, &val);
 	Object::commitPlane();
 	if (!f.rlim->noticks) {
 	    f.rlim->ticks *= 2;
@@ -2325,7 +2325,7 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 	    oindex = lwobj->elts[0].oindex;
 	    obj = OBJR(oindex);
 	    if (obj->update != flt.low) {
-		d_upgrade_lwobj(lwobj, obj);
+		Dataspace::upgradeLWO(lwobj, obj);
 	    }
 	}
 	if (flt.high != FALSE) {
@@ -2334,7 +2334,7 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 	     */
 	    flt.high = FALSE;
 	    PUT_FLTVAL(&val, flt);
-	    d_assign_elt(f->data, lwobj, &lwobj->elts[1], &val);
+	    f->data->assignElt(lwobj, &lwobj->elts[1], &val);
 	    PUSH_LWOVAL(f, lwobj);
 	    PUSH_STRVAL(f, String::create(func, len));
 	    call_driver_object(f, "touch", 2);
@@ -2365,7 +2365,7 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 	    }
 	    i_del_value(f->sp++);
 	} else {
-	    obj->data = d_new_dataspace(obj);
+	    obj->data = Dataspace::create(obj);
 	    if (func != (char *) NULL &&
 		i_call(f, obj, (Array *) NULL, creator, clen, TRUE, 0)) {
 		i_del_value(f->sp++);
@@ -2631,7 +2631,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
 	i_ref_value(args);
 	--n;
     }
-    d_ref_imports(a);
+    Dataspace::refImports(a);
 
     return a;
 }
@@ -2775,7 +2775,7 @@ Frame *i_restore(Frame *ftop, Int level)
 	f->rlim->ticks *= 2;
     }
     i_set_sp(ftop, f->sp);
-    d_discard_plane(ftop->level);
+    Dataplane::discard(ftop->level);
     Object::discardPlane();
 
     return f;

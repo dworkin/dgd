@@ -178,7 +178,7 @@ static void addtoflush(user *usr, Array *arr)
     usr->extra->ref();
 
     /* remember initial buffer */
-    if (d_get_elts(arr)[1].type == T_STRING) {
+    if (Dataspace::elts(arr)[1].type == T_STRING) {
 	usr->outbuf = arr->elts[1].string;
 	usr->outbuf->ref();
     }
@@ -204,12 +204,12 @@ static Array *comm_setup(user *usr, Frame *f, Object *obj)
 	i_del_value(f->sp++);
     }
 
-    d_wipe_extravar(data = obj->dataspace());
+    Dataspace::wipeExtra(data = obj->dataspace());
     arr = Array::create(data, 3);
     arr->elts[0] = zero_int;
     arr->elts[1] = arr->elts[2] = nil_value;
     PUT_ARRVAL_NOREF(&val, arr);
-    d_set_extravar(data, &val);
+    Dataspace::setExtra(data, &val);
 
     usr->oindex = obj->index;
     obj->flags |= O_USER;
@@ -271,7 +271,7 @@ static user *comm_new(Frame *f, Object *obj, connection *conn, int flags)
 
 	arr->elts[0].number = CF_ECHO;
 	PUT_STRVAL_NOREF(&val, String::create(init, sizeof(init)));
-	d_assign_elt(obj->data, arr, &arr->elts[1], &val);
+	obj->data->assignElt(arr, &arr->elts[1], &val);
     }
     nusers++;
 
@@ -301,7 +301,7 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned short port)
     for (usr = outbound; ; usr = usr->flush) {
 	if (usr == (user *) NULL) {
 	    usr = comm_new(f, obj, (connection *) NULL, 0);
-	    arr = d_get_extravar(obj->data)->array;
+	    arr = Dataspace::extra(obj->data)->array;
 	    usr->flush = outbound;
 	    outbound = usr;
 	    break;
@@ -317,9 +317,9 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned short port)
     }
 
     PUT_INTVAL(&val, -1);
-    d_assign_elt(obj->data, arr, &arr->elts[0], &val);
+    obj->data->assignElt(arr, &arr->elts[0], &val);
     PUT_STRVAL_NOREF(&val, String::create((char *) host, len));
-    d_assign_elt(obj->data, arr, &arr->elts[1], &val);
+    obj->data->assignElt(arr, &arr->elts[1], &val);
     usr->flags |= CF_FLUSH;
     usr->extra = arr;
     usr->extra->ref();
@@ -354,7 +354,7 @@ void comm_connect_dgram(Frame *f, Object *obj, int uport, char *addr,
     for (usr = outbound; ; usr = usr->flush) {
 	if (usr == (user *) NULL) {
 	    usr = comm_new(f, obj, (connection *) NULL, 0);
-	    arr = d_get_extravar(obj->data)->array;
+	    arr = Dataspace::extra(obj->data)->array;
 	    usr->flush = outbound;
 	    outbound = usr;
 	    break;
@@ -370,9 +370,9 @@ void comm_connect_dgram(Frame *f, Object *obj, int uport, char *addr,
     }
 
     PUT_INTVAL(&val, uport);
-    d_assign_elt(obj->data, arr, &arr->elts[0], &val);
+    obj->data->assignElt(arr, &arr->elts[0], &val);
     PUT_STRVAL_NOREF(&val, String::create((char *) host, len));
-    d_assign_elt(obj->data, arr, &arr->elts[1], &val);
+    obj->data->assignElt(arr, &arr->elts[1], &val);
     usr->flags |= CF_UDPDATA | CF_FLUSH;
     usr->extra = arr;
     usr->extra->ref();
@@ -392,7 +392,7 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
     if (!destruct) {
 	/* if not destructing, make sure the connection terminates */
 	if (!(usr->flags & CF_FLUSH)) {
-	    addtoflush(usr, d_get_extravar(data)->array);
+	    addtoflush(usr, Dataspace::extra(data)->array);
 	}
 	obj->flags &= ~O_USER;
     }
@@ -413,7 +413,7 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
     if (destruct) {
 	/* if destructing, don't disconnect if there's an error in close() */
 	if (!(usr->flags & CF_FLUSH)) {
-	    addtoflush(usr, d_get_extravar(data)->array);
+	    addtoflush(usr, Dataspace::extra(data)->array);
 	}
 	obj->flags &= ~O_USER;
     }
@@ -438,7 +438,7 @@ void comm_challenge(Object *obj, String *str)
     if (usr->flags & CF_UDPDATA) {
 	error("Datagram channel already established");
     }
-    arr = d_get_extravar(data = obj->data)->array;
+    arr = Dataspace::extra(data = obj->data)->array;
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, arr);
     }
@@ -449,7 +449,7 @@ void comm_challenge(Object *obj, String *str)
     }
     usr->flags |= CF_OUTPUT;
     PUT_STRVAL_NOREF(&val, str);
-    d_assign_elt(data, arr, v, &val);
+    data->assignElt(arr, v, &val);
 }
 
 /*
@@ -465,7 +465,7 @@ static int comm_write(user *usr, Object *obj, String *str, char *text,
     ssizet osdone, olen;
     Value val;
 
-    arr = d_get_extravar(data = obj->dataspace())->array;
+    arr = Dataspace::extra(data = obj->dataspace())->array;
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, arr);
     }
@@ -499,7 +499,7 @@ static int comm_write(user *usr, Object *obj, String *str, char *text,
     }
 
     PUT_STRVAL_NOREF(&val, str);
-    d_assign_elt(data, arr, v, &val);
+    data->assignElt(arr, v, &val);
     return len;
 }
 
@@ -600,7 +600,7 @@ int comm_udpsend(Object *obj, String *str)
 	error("Datagram channel not established");
     }
 
-    arr = d_get_extravar(data = obj->data)->array;
+    arr = Dataspace::extra(data = obj->data)->array;
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, arr);
     }
@@ -611,7 +611,7 @@ int comm_udpsend(Object *obj, String *str)
     }
     usr->flags |= CF_OUTPUT;
     PUT_STRVAL_NOREF(&val, str);
-    d_assign_elt(data, arr, v, &val);
+    data->assignElt(arr, v, &val);
 
     return str->len;
 }
@@ -629,8 +629,8 @@ bool comm_echo(Object *obj, int echo)
 
     usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
-	arr = d_get_extravar(data = obj->data)->array;
-	v = d_get_elts(arr);
+	arr = Dataspace::extra(data = obj->data)->array;
+	v = Dataspace::elts(arr);
 	if (echo != (v->number & CF_ECHO) >> 1) {
 	    Value val;
 
@@ -639,7 +639,7 @@ bool comm_echo(Object *obj, int echo)
 	    }
 	    val = *v;
 	    val.number ^= CF_ECHO;
-	    d_assign_elt(data, arr, v, &val);
+	    data->assignElt(arr, v, &val);
 	}
 	return TRUE;
     }
@@ -658,8 +658,8 @@ void comm_block(Object *obj, int block)
     Value *v;
 
     usr = &users[EINDEX(obj->etabi)];
-    arr = d_get_extravar(data = obj->data)->array;
-    v = d_get_elts(arr);
+    arr = Dataspace::extra(data = obj->data)->array;
+    v = Dataspace::elts(arr);
     if (block != (v->number & CF_BLOCKED) >> 4) {
 	Value val;
 
@@ -668,7 +668,7 @@ void comm_block(Object *obj, int block)
 	}
 	val = *v;
 	val.number ^= CF_BLOCKED;
-	d_assign_elt(data, arr, v, &val);
+	data->assignElt(arr, v, &val);
     }
 }
 
@@ -683,7 +683,7 @@ static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
 
     UNREFERENCED_PARAMETER(obj);
 
-    v = d_get_elts(arr);
+    v = Dataspace::elts(arr);
 
     if (v[1].type == T_STRING) {
 	if (conn_wrdone(usr->conn)) {
@@ -697,7 +697,7 @@ static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
 		    usr->flags &= ~CF_OUTPUT;
 		    usr->flags |= CF_ODONE;
 		    odone++;
-		    d_assign_elt(data, arr, &v[1], &nil_value);
+		    data->assignElt(arr, &v[1], &nil_value);
 		}
 		usr->osdone = n;
 	    } else {
@@ -716,7 +716,7 @@ static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
 	} else if (conn_udp(usr->conn, v[2].string->text, v[2].string->len)) {
 	    usr->flags |= CF_UDP;
 	}
-	d_assign_elt(data, arr, &v[2], &nil_value);
+	data->assignElt(arr, &v[2], &nil_value);
     }
 }
 
@@ -751,8 +751,8 @@ void comm_flush()
 		fatal("can't connect to server");
 	    }
 
-	    d_assign_elt(obj->data, arr, &arr->elts[0], &zero_int);
-	    d_assign_elt(obj->data, arr, &arr->elts[1], &nil_value);
+	    obj->data->assignElt(arr, &arr->elts[0], &zero_int);
+	    obj->data->assignElt(arr, &arr->elts[1], &nil_value);
 	    arr->del();
 	    usr->flags &= ~CF_FLUSH;
 	} else {
@@ -817,7 +817,7 @@ void comm_flush()
 	 * disconnect
 	 */
 	if ((obj->flags & O_SPECIAL) != O_USER) {
-	    d_wipe_extravar(obj->data);
+	    Dataspace::wipeExtra(obj->data);
 	    if (usr->conn != (connection *) NULL) {
 		conn_del(usr->conn);
 	    }
@@ -879,7 +879,7 @@ static void comm_taccept(Frame *f, connection *conn, int port)
     }
 
     usr->flags |= CF_PROMPT;
-    addtoflush(usr, d_get_extravar(obj->dataspace())->array);
+    addtoflush(usr, Dataspace::extra(obj->dataspace())->array);
     this_user = obj->index;
     if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	i_del_value(f->sp++);
@@ -1081,7 +1081,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    usr->flags &= ~CF_OPENDING;
 		    if (!(usr->flags & CF_FLUSH)) {
 			addtoflush(usr,
-				   d_get_extravar(obj->dataspace())->array);
+				   Dataspace::extra(obj->dataspace())->array);
 		    }
 		    old_user = this_user;
 		    this_user = obj->index;
@@ -1118,7 +1118,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		Dataspace *data;
 
 		data = obj->dataspace();
-		comm_uflush(usr, obj, data, d_get_extravar(data)->array);
+		comm_uflush(usr, obj, data, Dataspace::extra(data)->array);
 	    }
 	    if (usr->flags & CF_ODONE) {
 		/* callback */
@@ -1362,7 +1362,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		}
 		usr->flags |= CF_PROMPT;
 		if (!(usr->flags & CF_FLUSH)) {
-		    addtoflush(usr, d_get_extravar(obj->dataspace())->array);
+		    addtoflush(usr, Dataspace::extra(obj->dataspace())->array);
 		}
 	    } else {
 		/*

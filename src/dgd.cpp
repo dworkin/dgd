@@ -80,13 +80,13 @@ void interrupt()
 void endtask()
 {
     comm_flush();
-    d_export();
+    Dataspace::xport();
     Object::clean();
     i_clear();
     ed_clear();
     ErrorContext::clearException();
 
-    co_swapcount(d_swapout(fragment));
+    co_swapcount(Dataspace::swapout(fragment));
 
     if (Object::stop) {
 	comm_clear();
@@ -100,7 +100,7 @@ void endtask()
 	/*
 	 * swap out everything and possibly extend the static memory area
 	 */
-	d_swapout(1);
+	Dataspace::swapout(1);
 	Array::freeall();
 	String::clean();
 	Alloc::purge();
@@ -201,7 +201,7 @@ int dgd_main(int argc, char **argv)
 	    timeout = co_time(&mtime);
 	    if (timeout > rtime || (timeout == rtime && mtime >= rmtime)) {
 		rebuild = Object::copy(timeout);
-		co_swapcount(d_swapout(fragment));
+		co_swapcount(Dataspace::swapout(fragment));
 		if (rebuild) {
 		    rtime = timeout + 1;
 		    rmtime = mtime;

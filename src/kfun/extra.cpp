@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -267,7 +267,7 @@ int kf_implode(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, i);
     if (i != 0) {
 	len = (i - 1) * (long) slen;	/* size of all separators */
-	for (v = d_get_elts(f->sp[1].array); i > 0; v++, --i) {
+	for (v = Dataspace::elts(f->sp[1].array); i > 0; v++, --i) {
 	    if (v->type != T_STRING) {
 		/* not a (string *) */
 		return 1;

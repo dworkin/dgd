@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -3441,7 +3441,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 		/* simple term */
 		v++;
 		len = v->array->size;
-		e2 = d_get_elts(v->array) + len;
+		e2 = Dataspace::elts(v->array) + len;
 		break;
 
 	    case SUM_ALLOCATE_NIL:
@@ -3475,7 +3475,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 		} else {
 		    /* subrange */
 		    len = v->number - v[1].number + 1;
-		    e2 = d_get_elts(v[2].array) + v->number + 1;
+		    e2 = Dataspace::elts(v[2].array) + v->number + 1;
 		    v += 2;
 		    break;
 		}
@@ -3488,7 +3488,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	}
 
 	f->sp = v - 1;
-	d_ref_imports(a);
+	Dataspace::refImports(a);
 	PUT_ARRVAL(f->sp, a);
     } else {
 	/* integers only */
