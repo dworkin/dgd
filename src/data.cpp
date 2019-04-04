@@ -250,6 +250,27 @@ static Dataplane *plist;		/* list of dataplanes */
 static uindex ncallout;			/* # callouts added */
 
 /*
+ * create the base dataplane
+ */
+Dataplane::Dataplane(Dataspace *data)
+{
+    level = 0;
+    flags = 0;
+    schange = 0;
+    achange = 0;
+    imports = 0;
+    alocal.arr = (Array *) NULL;
+    alocal.plane = this;
+    alocal.data = data;
+    alocal.state = AR_CHANGED;
+    arrays = (ArrRef *) NULL;
+    strings = (StrRef *) NULL;
+    coptab = (COPTable *) NULL;
+    prev = (Dataplane *) NULL;
+    plist = (Dataplane *) NULL;
+}
+
+/*
  * create a new dataplane
  */
 Dataplane::Dataplane(Dataspace *data, Int level) : level(level)
@@ -771,7 +792,7 @@ static Sector ndata;			/* # dataspace blocks */
 /*
  * allocate a new dataspace block
  */
-Dataspace::Dataspace(Object *obj)
+Dataspace::Dataspace(Object *obj) : base(this)
 {
     if (dhead != (Dataspace *) NULL) {
 	/* insert at beginning of list */
@@ -814,7 +835,6 @@ Dataspace::Dataspace(Object *obj)
     sarrays = (SArray *) NULL;
     saindex = (Uint *) NULL;
     selts = (SValue *) NULL;
-    alist.prev = alist.next = &alist;
 
     /* strings */
     nstrings = 0;
@@ -830,20 +850,6 @@ Dataspace::Dataspace(Object *obj)
     scallouts = (SCallOut *) NULL;
 
     /* value plane */
-    base.level = 0;
-    base.flags = 0;
-    base.schange = 0;
-    base.achange = 0;
-    base.imports = 0;
-    base.alocal.arr = (Array *) NULL;
-    base.alocal.plane = &base;
-    base.alocal.data = this;
-    base.alocal.state = AR_CHANGED;
-    base.arrays = (ArrRef *) NULL;
-    base.strings = (StrRef *) NULL;
-    base.coptab = (class COPTable *) NULL;
-    base.prev = (Dataplane *) NULL;
-    base.plist = (Dataplane *) NULL;
     plane = &base;
 
     /* parse_string data */
@@ -1729,7 +1735,6 @@ public:
 	nstr = 0;
 	arrsize = 0;
 	strsize = 0;
-	alist.prev = alist.next = &alist;
     }
 
     /*

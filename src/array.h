@@ -22,7 +22,9 @@ public:
     class Backup;			/* array backup chunk */
 
     Array(unsigned short size);
-    Array() { }
+    Array() {
+	prev = next = this;		/* alist sentinel */
+    }
     ~Array();
 
     void ref() {

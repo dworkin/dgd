@@ -57,8 +57,8 @@ struct DCallOut {
 
 class Dataplane : public Allocated {
 public:
+    Dataplane(Dataspace *data);
     Dataplane(Dataspace *data, Int level);
-    Dataplane() { }
 
     Array::Backup **commitArray(Array *arr, Dataplane *old);
     void discardArray(Array *arr);
@@ -81,13 +81,14 @@ public:
     class COPTable *coptab;	/* callout patch table */
 
     Dataplane *prev;		/* previous in per-dataspace linked list */
-    Dataplane *plist;		/* next in per-level linked list */
 
 private:
     void commitCallouts(bool merge);
     void discardCallouts();
 
     static void commitValues(Value *v, unsigned int n, Int level);
+
+    Dataplane *plist;		/* next in per-level linked list */
 };
 
 class Dataspace : public Allocated {
