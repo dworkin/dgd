@@ -713,7 +713,7 @@ String *c_objecttype(node *n)
 	    p = f->sp->string->text;
 	}
 	path_resolve(path, p);
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     } else {
 	path_resolve(path, n->l.string->text);
     }
@@ -1225,7 +1225,7 @@ node *c_endrlimits(node *n1, node *n2, node *n3)
 	call_driver_object(f, "compile_rlimits", 1);
 	n1 = node_bin(N_RLIMITS, VAL_TRUE(f->sp), node_bin(N_PAIR, 0, n1, n2),
 		      n3);
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     }
 
     if (n3 != (node *) NULL) {
@@ -2571,7 +2571,7 @@ void c_error(const char *format, ...)
 	PUSH_STRVAL(f, String::create(buf, strlen(buf)));
 
 	call_driver_object(f, "compile_error", 3);
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     } else {
 	/* there is no driver object to call; show the error on stderr */
 	sprintf(buf, "%s, %u: ", tk_filename(), tk_line());

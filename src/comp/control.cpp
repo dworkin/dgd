@@ -904,7 +904,7 @@ bool Control::inherit(Frame *f, char *from, Object *obj, String *label,
 		f->sp->oindex = obj->index;
 		f->sp->objcnt = ocount = obj->count;
 		call_driver_object(f, "recompile", 1);
-		i_del_value(f->sp++);
+		(f->sp++)->del();
 		obj = OBJR(obj->index);
 		if (obj->count != ocount) {
 		    return FALSE;	/* recompile this object */

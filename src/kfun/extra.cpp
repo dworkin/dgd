@@ -1413,7 +1413,7 @@ int kf_crypt(Frame *f, int nargs, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     kf_xcrypt(f, nargs, &val);
-    i_ref_value(&val);
+    val.ref();
     i_pop(f, nargs);
     *--f->sp = val;
     return 0;

@@ -201,7 +201,7 @@ static Array *comm_setup(user *usr, Frame *f, Object *obj)
     /* initialize dataspace before the object receives the user role */
     if (!O_HASDATA(obj) &&
 	i_call(f, obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     }
 
     Dataspace::wipeExtra(data = obj->dataspace());
@@ -402,7 +402,7 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
 	this_user = obj->index;
 	PUSH_INTVAL(f, destruct);
 	if (i_call(f, obj, (Array *) NULL, "close", 5, TRUE, 1)) {
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	}
 	this_user = olduser;
 	ErrorContext::pop();
@@ -882,7 +882,7 @@ static void comm_taccept(Frame *f, connection *conn, int port)
     addtoflush(usr, Dataspace::extra(obj->dataspace())->array);
     this_user = obj->index;
     if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     }
     endtask();
     this_user = OBJ_NONE;
@@ -914,7 +914,7 @@ static void comm_baccept(Frame *f, connection *conn, int port)
 
     this_user = obj->index;
     if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     }
     endtask();
     this_user = OBJ_NONE;
@@ -947,7 +947,7 @@ static void comm_daccept(Frame *f, connection *conn, int port)
 
     this_user = obj->index;
     if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     }
     endtask();
     this_user = OBJ_NONE;
@@ -1093,7 +1093,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			PUSH_INTVAL(f, errcode);
 			if (i_call(f, obj, (Array *) NULL, "unconnected", 11,
 				   TRUE, 1)) {
-			    i_del_value(f->sp++);
+			    (f->sp++)->del();
 			}
 			endtask();
 		    } else if (retval > 0) {
@@ -1102,7 +1102,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			 */
 			if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0))
 			{
-			    i_del_value(f->sp++);
+			    (f->sp++)->del();
 			}
 			endtask();
 		    }
@@ -1127,7 +1127,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		this_user = obj->index;
 		if (i_call(f, obj, (Array *) NULL, "message_done", 12, TRUE, 0))
 		{
-		    i_del_value(f->sp++);
+		    (f->sp++)->del();
 		    endtask();
 		}
 
@@ -1378,7 +1378,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			this_user = obj->index;
 			if (i_call(f, obj, (Array *) NULL, "receive_datagram",
 				   16, TRUE, 1)) {
-			    i_del_value(f->sp++);
+			    (f->sp++)->del();
 			    endtask();
 			}
 			this_user = OBJ_NONE;
@@ -1391,7 +1391,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    this_user = obj->index;
 		    if (i_call(f, obj, (Array *) NULL, "datagram_attach", 15,
 			       TRUE, 0)) {
-			i_del_value(f->sp++);
+			(f->sp++)->del();
 			endtask();
 		    }
 		    this_user = OBJ_NONE;
@@ -1416,7 +1416,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	    this_user = obj->index;
 	    if (i_call(f, obj, (Array *) NULL, "receive_message", 15, TRUE, 1))
 	    {
-		i_del_value(f->sp++);
+		(f->sp++)->del();
 		endtask();
 	    }
 	    this_user = OBJ_NONE;

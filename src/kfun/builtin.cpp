@@ -1472,8 +1472,8 @@ int kf_rangeft(Frame *f, int n, kfunc *kf)
 
     if (f->sp[2].type == T_MAPPING) {
 	a = f->sp[2].array->mapRange(f->data, &f->sp[1], f->sp);
-	i_del_value(f->sp++);
-	i_del_value(f->sp++);
+	(f->sp++)->del();
+	(f->sp++)->del();
 	i_add_ticks(f, f->sp->array->size);
 	f->sp->array->del();
 	PUT_ARR(f->sp, a);
@@ -1550,7 +1550,7 @@ int kf_rangef(Frame *f, int n, kfunc *kf)
 
     if (f->sp[1].type == T_MAPPING) {
 	a = f->sp[1].array->mapRange(f->data, f->sp, (Value *) NULL);
-	i_del_value(f->sp++);
+	(f->sp++)->del();
 	i_add_ticks(f, f->sp->array->size);
 	f->sp->array->del();
 	PUT_MAP(f->sp, a);
@@ -1620,7 +1620,7 @@ int kf_ranget(Frame *f, int n, kfunc *kf)
 
     if (f->sp[1].type == T_MAPPING) {
 	a = f->sp[1].array->mapRange(f->data, (Value *) NULL, f->sp);
-	i_del_value(f->sp++);
+	(f->sp++)->del();
 	i_add_ticks(f, f->sp->array->size);
 	f->sp->array->del();
 	PUT_MAP(f->sp, a);
@@ -3482,7 +3482,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	    }
 
 	    e1 -= len;
-	    i_copy(e1, e2 - len, len);
+	    Value::copy(e1, e2 - len, len);
 	    v->array->del();
 	    size -= len;
 	}

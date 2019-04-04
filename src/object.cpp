@@ -619,7 +619,7 @@ void Object::remove(Frame *f)
     PUSH_INTVAL(f, ctrl->compiled);
     PUSH_INTVAL(f, index);
     if (i_call_critical(f, "remove_program", 3, TRUE)) {
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     }
 
     /* remove references to inherited objects too */

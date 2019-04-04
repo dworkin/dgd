@@ -1685,7 +1685,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	Alloc::finish();
 	return FALSE;
     }
-    i_del_value(cframe->sp++);
+    (cframe->sp++)->del();
     endtask();
     ErrorContext::pop();		/* remove guard */
 

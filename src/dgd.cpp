@@ -217,7 +217,7 @@ int dgd_main(int argc, char **argv)
 	    try {
 		ErrorContext::push((ErrorContext::Handler) errhandler);
 		call_driver_object(cframe, "interrupt", 0);
-		i_del_value(cframe->sp++);
+		(cframe->sp++)->del();
 		ErrorContext::pop();
 	    } catch (...) { }
 	    endtask();

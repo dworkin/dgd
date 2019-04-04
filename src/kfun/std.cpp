@@ -163,7 +163,7 @@ int kf_call_other(Frame *f, int nargs, kfunc *kf)
 	val = &nil_value;	/* function doesn't exist */
     }
     (f->sp++)->string->del();
-    i_del_value(f->sp);
+    f->sp->del();
     *f->sp = *val;
     return 0;
 }
@@ -365,7 +365,7 @@ int kf_clone_object(Frame *f, int n, kfunc *kf)
     obj = obj->clone();
     PUT_OBJ(f->sp, obj);
     if (i_call(f, obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     }
     return 0;
 }
@@ -437,7 +437,7 @@ int kf_new_object(Frame *f, int n, kfunc *kf)
 	PUT_LWOVAL(f->sp, Array::lwoCreate(f->data, obj));
 	if (i_call(f, (Object *) NULL, f->sp->array, (char *) NULL, 0, TRUE,
 		   0)) {
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	}
     } else {
 	a = f->sp->array->lwoCopy(f->data);
@@ -1005,7 +1005,7 @@ int kf_typeof(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_del_value(f->sp);
+    f->sp->del();
     PUT_INTVAL(f->sp, (f->sp->type == T_LWOBJECT) ? T_OBJECT : f->sp->type);
     return 0;
 }
@@ -1734,7 +1734,7 @@ int kf_call_function(Frame *f, int nargs, kfunc *kf)
 	nargs += n;
 	w = elts + a->size;
 	do {
-	    i_ref_value(--w);
+	    (--w)->ref();
 	    *v++ = *w;
 	} while (--n != 0);
     }

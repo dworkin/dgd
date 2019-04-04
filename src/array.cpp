@@ -71,8 +71,8 @@ public:
     }
     ~MapElt() {
 	if (add) {
-	    i_del_value(&idx);
-	    i_del_value(&val);
+	    idx.del();
+	    val.del();
 	}
     }
 
@@ -342,7 +342,7 @@ public:
 	    unsigned short i;
 
 	    for (v = original, i = size; i != 0; v++, --i) {
-		i_del_value(v);
+		v->del();
 	    }
 	    FREE(original);
 	}
@@ -358,7 +358,7 @@ public:
 
 	if (arr->elts != (Value *) NULL) {
 	    for (v = arr->elts, i = arr->size; i != 0; v++, --i) {
-		i_del_value(v);
+		v->del();
 	    }
 	    FREE(arr->elts);
 	}
@@ -549,7 +549,7 @@ void Array::del()
 
 	    if ((v=a->elts) != (Value *) NULL) {
 		for (i = a->size; i > 0; --i) {
-		    i_del_value(v++);
+		    (v++)->del();
 		}
 		FREE(a->elts);
 	    }
@@ -765,8 +765,8 @@ Array *Array::add(Dataspace *data, Array *a2)
     Array *a;
 
     a = create(data, (long) size + a2->size);
-    i_copy(a->elts, Dataspace::elts(this), size);
-    i_copy(a->elts + size, Dataspace::elts(a2), a2->size);
+    Value::copy(a->elts, Dataspace::elts(this), size);
+    Value::copy(a->elts + size, Dataspace::elts(a2), a2->size);
     Dataspace::refImports(a);
 
     return a;
@@ -912,7 +912,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 	 * Return a copy of the first array.
 	 */
 	a3 = create(data, size);
-	i_copy(a3->elts, Dataspace::elts(this), size);
+	Value::copy(a3->elts, Dataspace::elts(this), size);
 	Dataspace::refImports(a3);
 	return a3;
     }
@@ -936,7 +936,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 		/*
 		 * not found in subtrahend: copy to result array
 		 */
-		i_ref_value(v1);
+		v1->ref();
 		*v3++ = *v1;
 	    }
 	    v1++;
@@ -964,7 +964,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 		/*
 		 * not found in subtrahend: copy to result array
 		 */
-		i_ref_value(v1);
+		v1->ref();
 		*v3++ = *v1;
 	    }
 	    v1++;
@@ -1011,7 +1011,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 		/*
 		 * element is in both arrays: copy to result array
 		 */
-		i_ref_value(v1);
+		v1->ref();
 		*v3++ = *v1;
 	    }
 	    v1++;
@@ -1039,7 +1039,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 		/*
 		 * element is in both arrays: copy to result array
 		 */
-		i_ref_value(v1);
+		v1->ref();
 		*v3++ = *v1;
 	    }
 	    v1++;
@@ -1070,14 +1070,14 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
     if (size == 0) {
 	/* ({ }) | array */
 	a3 = create(data, a2->size);
-	i_copy(a3->elts, Dataspace::elts(a2), a2->size);
+	Value::copy(a3->elts, Dataspace::elts(a2), a2->size);
 	Dataspace::refImports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array | ({ }) */
 	a3 = create(data, size);
-	i_copy(a3->elts, Dataspace::elts(this), size);
+	Value::copy(a3->elts, Dataspace::elts(this), size);
 	Dataspace::refImports(a3);
 	return a3;
     }
@@ -1138,8 +1138,8 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
     }
 
     a3 = create(data, (long) size + n);
-    i_copy(a3->elts, elts, size);
-    i_copy(a3->elts + size, v3, n);
+    Value::copy(a3->elts, elts, size);
+    Value::copy(a3->elts + size, v3, n);
     AFREE(v3);
 
     Dataspace::refImports(a3);
@@ -1160,14 +1160,14 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
     if (size == 0) {
 	/* ({ }) ^ array */
 	a3 = create(data, a2->size);
-	i_copy(a3->elts, Dataspace::elts(a2), a2->size);
+	Value::copy(a3->elts, Dataspace::elts(a2), a2->size);
 	Dataspace::refImports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array ^ ({ }) */
 	a3 = create(data, size);
-	i_copy(a3->elts, Dataspace::elts(this), size);
+	Value::copy(a3->elts, Dataspace::elts(this), size);
 	Dataspace::refImports(a3);
 	return a3;
     }
@@ -1225,8 +1225,8 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
     }
 
     a3 = create(data, (long) num + n);
-    i_copy(a3->elts, v3, num);
-    i_copy(a3->elts + num, v2, n);
+    Value::copy(a3->elts, v3, num);
+    Value::copy(a3->elts + num, v2, n);
     AFREE(v3);
     AFREE(v2);
     AFREE(v1);
@@ -1268,8 +1268,8 @@ Array *Array::range(Dataspace *data, long l1, long l2)
     }
 
     range = create(data, l2 - l1 + 1);
-    i_copy(range->elts, Dataspace::elts(this) + l1,
-	   (unsigned short) (l2 - l1 + 1));
+    Value::copy(range->elts, Dataspace::elts(this) + l1,
+		(unsigned short) (l2 - l1 + 1));
     Dataspace::refImports(range);
     return range;
 }
@@ -1314,7 +1314,7 @@ void Array::mapSort()
 	    sz += 2;
 	} else {
 	    /* delete index and skip zero value */
-	    i_del_value(v);
+	    v->del();
 	    v += 2;
 	}
     }
@@ -1533,11 +1533,11 @@ Array *Array::mapAdd(Dataspace *data, Array *m2)
 	c = cmp(v1, v2);
 	if (c < 0) {
 	    /* the smaller element is in mapping */
-	    i_copy(v3, v1, 2);
+	    Value::copy(v3, v1, 2);
 	    v1 += 2; v3 += 2; n1 -= 2;
 	} else {
 	    /* the smaller - or overriding - element is in m2 */
-	    i_copy(v3, v2, 2);
+	    Value::copy(v3, v2, 2);
 	    v3 += 2;
 	    if (c == 0) {
 		/* equal elements? */
@@ -1556,7 +1556,7 @@ Array *Array::mapAdd(Dataspace *data, Array *m2)
 			if (n == 0 || !T_INDEXED(v->type) ||
 			    v->array->tag != v1->array->tag) {
 			    /* not in m2 */
-			    i_copy(v3, v1, 2);
+			    Value::copy(v3, v1, 2);
 			    v3 += 2;
 			    break;
 			}
@@ -1574,10 +1574,10 @@ Array *Array::mapAdd(Dataspace *data, Array *m2)
     }
 
     /* copy tail part of mapping */
-    i_copy(v3, v1, n1);
+    Value::copy(v3, v1, n1);
     v3 += n1;
     /* copy tail part of m2 */
-    i_copy(v3, v2, n2);
+    Value::copy(v3, v2, n2);
     v3 += n2;
 
     m3->size = v3 - m3->elts;
@@ -1609,7 +1609,7 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
     }
     if (a2->size == 0) {
 	/* subtract empty array */
-	i_copy(m3->elts, elts, size);
+	Value::copy(m3->elts, elts, size);
 	Dataspace::refImports(m3);
 	return m3;
     }
@@ -1624,7 +1624,7 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
 	c = cmp(v1, v2);
 	if (c < 0) {
 	    /* the smaller element is in mapping */
-	    i_copy(v3, v1, 2);
+	    Value::copy(v3, v1, 2);
 	    v1 += 2; v3 += 2; n1 -= 2;
 	} else if (c > 0) {
 	    /* the smaller element is in a2 */
@@ -1646,7 +1646,7 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
 		    if (n == 0 || !T_INDEXED(v->type) ||
 			v->array->tag != v1->array->tag) {
 			/* not in a2 */
-			i_copy(v3, v1, 2);
+			Value::copy(v3, v1, 2);
 			v3 += 2;
 			break;
 		    }
@@ -1663,7 +1663,7 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
     AFREE(v2 - (a2->size - n2));
 
     /* copy tail part of mapping */
-    i_copy(v3, v1, n1);
+    Value::copy(v3, v1, n1);
     v3 += n1;
 
     m3->size = v3 - m3->elts;
@@ -1732,14 +1732,14 @@ Array *Array::mapIntersect(Dataspace *data, Array *a2)
 		    }
 		    if (v->array == v1->array) {
 			/* also in a2 */
-			i_copy(v3, v1, 2);
+			Value::copy(v3, v1, 2);
 			v3 += 2; v1 += 2; n1 -= 2;
 			break;
 		    }
 		}
 	    } else {
 		/* equal */
-		i_copy(v3, v1, 2);
+		Value::copy(v3, v1, 2);
 		v3 += 2; v1 += 2; n1 -= 2;
 	    }
 	    v2++; --n2;
@@ -1982,7 +1982,7 @@ Array *Array::mapRange(Dataspace *data, Value *v1, Value *v2)
 
     /* copy subrange */
     range = mapCreate(data, to -= from);
-    i_copy(range->elts, elts + from, to);
+    Value::copy(range->elts, elts + from, to);
 
     Dataspace::refImports(range);
     return range;
@@ -2001,7 +2001,7 @@ Array *Array::mapIndices(Dataspace *data)
     indices = create(data, n = size >> 1);
     v1 = indices->elts;
     for (v2 = elts; n > 0; v2 += 2, --n) {
-	i_ref_value(v2);
+	v2->ref();
 	*v1++ = *v2;
     }
 
@@ -2022,7 +2022,7 @@ Array *Array::mapValues(Dataspace *data)
     values = create(data, n = size >> 1);
     v1 = values->elts;
     for (v2 = elts + 1; n > 0; v2 += 2, --n) {
-	i_ref_value(v2);
+	v2->ref();
 	*v1++ = *v2;
     }
 
@@ -2067,7 +2067,7 @@ Array *Array::lwoCopy(Dataspace *data)
     Array *copy;
 
     copy = alloc(size);
-    i_copy(copy->elts = ALLOC(Value, size), elts, size);
+    Value::copy(copy->elts = ALLOC(Value, size), elts, size);
     copy->tag = atag++;
     copy->objDestrCount = Object::objDestrCount;
     copy->primary = &data->plane->alocal;

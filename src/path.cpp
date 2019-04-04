@@ -119,7 +119,7 @@ char *path_ed_read(char *buf, char *file)
 	PUSH_STRVAL(f, String::create(file, strlen(file)));
 	call_driver_object(f, "path_read", 1);
 	if (f->sp->type != T_STRING) {
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	    return (char *) NULL;
 	}
 	path_resolve(buf, f->sp->string->text);
@@ -143,7 +143,7 @@ char *path_ed_write(char *buf, char *file)
 	PUSH_STRVAL(f, String::create(file, strlen(file)));
 	call_driver_object(f, "path_write", 1);
 	if (f->sp->type != T_STRING) {
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	    return (char *) NULL;
 	}
 	path_resolve(buf, f->sp->string->text);
@@ -208,6 +208,6 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
 	}
     }
 
-    i_del_value(f->sp++);
+    (f->sp++)->del();
     return (char *) NULL;
 }

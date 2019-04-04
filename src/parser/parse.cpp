@@ -534,7 +534,7 @@ static void ps_flatten(pnode *pn, pnode *next, Value *v)
 
 	case PN_ARRAY:
 	    v -= pn->len;
-	    i_copy(v, Dataspace::elts(pn->arr), (unsigned int) pn->len);
+	    Value::copy(v, Dataspace::elts(pn->arr), (unsigned int) pn->len);
 	    break;
 
 	case PN_BRANCH:
@@ -657,7 +657,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		    /*
 		     * wrong return type: block branch
 		     */
-		    i_del_value(ps->frame->sp++);
+		    (ps->frame->sp++)->del();
 		    return -1;
 		}
 

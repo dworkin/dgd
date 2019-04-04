@@ -690,7 +690,7 @@ void co_call(Frame *f)
 		if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
 			   nargs)) {
 		    /* function exists */
-		    i_del_value(f->sp++);
+		    (f->sp++)->del();
 		}
 		(f->sp++)->string->del();
 		ErrorContext::pop();

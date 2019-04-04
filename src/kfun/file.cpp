@@ -743,7 +743,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 	/* restore the values */
 	while (i > 0) {
 	    buf = restore_value(x, buf, v);
-	    i_ref_value(v++);
+	    (v++)->ref();
 	    if (*buf++ != ',') {
 		restore_error(x, "',' expected");
 	    }
@@ -795,12 +795,12 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	/* restore the values */
 	while (i > 0) {
 	    buf = restore_value(x, buf, v);
-	    i_ref_value(v++);
+	    (v++)->ref();
 	    if (*buf++ != ':') {
 		restore_error(x, "':' expected");
 	    }
 	    buf = restore_value(x, buf, v);
-	    i_ref_value(v++);
+	    (v++)->ref();
 	    if (*buf++ != ',') {
 		restore_error(x, "',' expected");
 	    }
@@ -1067,8 +1067,8 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 				(!VAL_NIL(&tmp) || !T_POINTER(v->type)) &&
 				(tmp.type != T_ARRAY || (v->type & T_REF) == 0))
 			    {
-				i_ref_value(&tmp);
-				i_del_value(&tmp);
+				tmp.ref();
+				tmp.del();
 				restore_error(&x, "value has wrong type");
 			    }
 			    if (f->lwobj != (Array *) NULL) {

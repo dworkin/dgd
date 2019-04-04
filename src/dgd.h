@@ -22,7 +22,7 @@
 class String;
 class Array;
 class Object;
-struct Value;
+class Value;
 class Control;
 class Dataplane;
 class Dataspace;

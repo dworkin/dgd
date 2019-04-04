@@ -73,83 +73,6 @@ void i_init(char *create, bool flag)
 }
 
 /*
- * NAME:	interpret->ref_value()
- * DESCRIPTION:	reference a value
- */
-void i_ref_value(Value *v)
-{
-    switch (v->type) {
-    case T_STRING:
-	v->string->ref();
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-    case T_LWOBJECT:
-	v->array->ref();
-	break;
-    }
-}
-
-/*
- * NAME:	interpret->del_value()
- * DESCRIPTION:	dereference a value (not an lvalue)
- */
-void i_del_value(Value *v)
-{
-    switch (v->type) {
-    case T_STRING:
-	v->string->del();
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-    case T_LWOBJECT:
-	v->array->del();
-	break;
-    }
-}
-
-/*
- * NAME:	interpret->copy()
- * DESCRIPTION:	copy values from one place to another
- */
-void i_copy(Value *v, Value *w, unsigned int len)
-{
-    Value *o;
-
-    for ( ; len != 0; --len) {
-	switch (w->type) {
-	case T_STRING:
-	    w->string->ref();
-	    break;
-
-	case T_OBJECT:
-	    if (DESTRUCTED(w)) {
-		*v++ = nil_value;
-		w++;
-		continue;
-	    }
-	    break;
-
-	case T_LWOBJECT:
-	    o = Dataspace::elts(w->array);
-	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
-		*v++ = nil_value;
-		w++;
-		continue;
-	    }
-	    /* fall through */
-	case T_ARRAY:
-	case T_MAPPING:
-	    w->array->ref();
-	    break;
-	}
-	*v++ = *w++;
-    }
-}
-
-/*
  * NAME:	interpret->grow_stack()
  * DESCRIPTION:	check if there is room on the stack for new values; if not,
  *		make space
@@ -238,17 +161,7 @@ void i_pop(Frame *f, int n)
     Value *v;
 
     for (v = f->sp; --n >= 0; v++) {
-	switch (v->type) {
-	case T_STRING:
-	    v->string->del();
-	    break;
-
-	case T_ARRAY:
-	case T_MAPPING:
-	case T_LWOBJECT:
-	    v->array->del();
-	    break;
-	}
+	v->del();
     }
     f->sp = v;
 }
@@ -499,14 +412,14 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
     case T_MAPPING:
 	*val = *aval->array->mapIndex(f->data, ival, NULL, NULL);
 	if (!keep) {
-	    i_del_value(ival);
+	    ival->del();
 	}
 	break;
 
     case T_LWOBJECT:
 	i_operator(f, aval->array, "[]", 1, val, ival, (Value *) NULL);
 	if (!keep) {
-	    i_del_value(ival);
+	    ival->del();
 	    aval->array->del();
 	}
 	return;
@@ -767,15 +680,15 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	    var = NULL;
 	}
 	arr->mapIndex(f->data, ival, val, var);
-	i_del_value(ival);
+	ival->del();
 	arr->del();
 	break;
 
     case T_LWOBJECT:
 	arr = aval->array;
 	i_operator(f, arr, "[]=", 2, var, ival, val);
-	i_del_value(var);
-	i_del_value(ival);
+	var->del();
+	ival->del();
 	arr->del();
 	break;
 
@@ -827,8 +740,8 @@ static void i_stores(Frame *f, int skip, int assign)
 
 	case I_STORE_INDEX:
 	case I_STORE_INDEX | I_POP_BIT:
-	    i_del_value(&f->sp[1]);
-	    i_del_value(&f->sp[2]);
+	    f->sp[1].del();
+	    f->sp[2].del();
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
 	    break;
@@ -838,8 +751,8 @@ static void i_stores(Frame *f, int skip, int assign)
 	case I_STORE_GLOBAL_INDEX:
 	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
 	    pc++;
-	    i_del_value(&f->sp[1]);
-	    i_del_value(&f->sp[2]);
+	    f->sp[1].del();
+	    f->sp[2].del();
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
 	    break;
@@ -847,18 +760,18 @@ static void i_stores(Frame *f, int skip, int assign)
 	case I_STORE_FAR_GLOBAL_INDEX:
 	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
 	    pc += 2;
-	    i_del_value(&f->sp[1]);
-	    i_del_value(&f->sp[2]);
+	    f->sp[1].del();
+	    f->sp[2].del();
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
 	    break;
 
 	case I_STORE_INDEX_INDEX:
 	case I_STORE_INDEX_INDEX | I_POP_BIT:
-	    i_del_value(&f->sp[1]);
-	    i_del_value(&f->sp[2]);
-	    i_del_value(&f->sp[3]);
-	    i_del_value(&f->sp[4]);
+	    f->sp[1].del();
+	    f->sp[2].del();
+	    f->sp[3].del();
+	    f->sp[4].del();
 	    f->sp[4] = f->sp[0];
 	    f->sp += 4;
 	    break;
@@ -971,8 +884,8 @@ static void i_stores(Frame *f, int skip, int assign)
 		f->sp[1].string->del();
 		f->sp[2].string->del();
 	    } else {
-		i_del_value(f->sp + 3);
-		i_del_value(f->sp + 4);
+		(f->sp + 3)->del();
+		(f->sp + 4)->del();
 	    }
 	    f->sp[4] = f->sp[0];
 	    f->sp += 4;
@@ -1111,7 +1024,7 @@ static void i_check_rlimits(Frame *f)
     if (!VAL_TRUE(f->sp)) {
 	error("Illegal use of rlimits");
     }
-    i_del_value(f->sp++);
+    (f->sp++)->del();
 }
 
 /*
@@ -1196,18 +1109,7 @@ Frame *i_set_sp(Frame *ftop, Value *sp)
 	    if (v == f->fp) {
 		break;
 	    }
-	    switch (v->type) {
-	    case T_STRING:
-		v->string->del();
-		break;
-
-	    case T_ARRAY:
-	    case T_MAPPING:
-	    case T_LWOBJECT:
-		v->array->del();
-		break;
-	    }
-	    v++;
+	    (v++)->del();
 	}
 
 	if (f->lwobj != (Array *) NULL) {
@@ -1798,8 +1700,8 @@ static void i_interpret(Frame *f, char *pc)
 		f->sp[1].string->del();
 		f->sp[2].string->del();
 	    } else {
-		i_del_value(f->sp + 3);
-		i_del_value(f->sp + 4);
+		(f->sp + 3)->del();
+		(f->sp + 4)->del();
 	    }
 	    f->sp[4] = f->sp[0];
 	    f->sp += 4;
@@ -1813,7 +1715,7 @@ static void i_interpret(Frame *f, char *pc)
 		}
 		pc = p;
 	    }
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	    continue;
 
 	case I_JUMP_NONZERO:
@@ -1824,7 +1726,7 @@ static void i_interpret(Frame *f, char *pc)
 		}
 		pc = p;
 	    }
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	    continue;
 
 	case I_JUMP:
@@ -1853,7 +1755,7 @@ static void i_interpret(Frame *f, char *pc)
 		CHECK_LOOP_TICKS();
 	    }
 	    pc = p;
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	    continue;
 
 	case I_CALL_KFUNC:
@@ -2046,7 +1948,7 @@ static void i_interpret(Frame *f, char *pc)
 
 	if (instr & I_POP_BIT) {
 	    /* pop the result of the last operation (never an lvalue) */
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	}
     }
 }
@@ -2343,7 +2245,7 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 		flt.high = TRUE;
 		PUT_FLT(&lwobj->elts[1], flt);
 	    }
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	}
 	if (lwobj->elts[0].type == T_INT) {
 	    /* no user-callable functions within (right?) */
@@ -2363,12 +2265,12 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 	    if (VAL_TRUE(f->sp)) {
 		obj->flags &= ~O_TOUCHED;	/* preserve though call */
 	    }
-	    i_del_value(f->sp++);
+	    (f->sp++)->del();
 	} else {
 	    obj->data = Dataspace::create(obj);
 	    if (func != (char *) NULL &&
 		i_call(f, obj, (Array *) NULL, creator, clen, TRUE, 0)) {
-		i_del_value(f->sp++);
+		(f->sp++)->del();
 	    }
 	}
     }
@@ -2628,7 +2530,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
     /* arguments */
     while (n > 0) {
 	*v++ = *--args;
-	i_ref_value(args);
+	args->ref();
 	--n;
     }
     Dataspace::refImports(a);
@@ -2730,7 +2632,7 @@ void i_runtime_error(Frame *f, Int depth)
 	if (f->sp->type == T_STRING) {
 	    ErrorContext::setException(f->sp->string);
 	}
-	i_del_value(f->sp++);
+	(f->sp++)->del();
     }
 }
 
@@ -2754,7 +2656,7 @@ void i_atomic_error(Frame *ftop, Int level)
 	if (ftop->sp->type == T_STRING) {
 	    ErrorContext::setException(ftop->sp->string);
 	}
-	i_del_value(ftop->sp++);
+	(ftop->sp++)->del();
     }
 }
 

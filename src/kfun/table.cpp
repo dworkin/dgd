@@ -95,7 +95,7 @@ static int kf_callgate(Frame *f, int nargs, kfunc *kf)
 
     val = nil_value;
     (kf->ext)(f, nargs, &val);
-    i_ref_value(&val);
+    val.ref();
     i_pop(f, nargs);
     *--f->sp = val;
     if (kf->lval) {
@@ -362,7 +362,7 @@ int kf_encrypt(Frame *f, int nargs, kfunc *func)
     }
     val = nil_value;
     (kfenc[n].ext)(f, nargs - 1, &val);
-    i_ref_value(&val);
+    val.ref();
     i_pop(f, nargs);
     *--f->sp = val;
     return 0;
@@ -385,7 +385,7 @@ int kf_decrypt(Frame *f, int nargs, kfunc *func)
     }
     val = nil_value;
     (kfdec[n].ext)(f, nargs - 1, &val);
-    i_ref_value(&val);
+    val.ref();
     i_pop(f, nargs);
     *--f->sp = val;
     return 0;
@@ -408,7 +408,7 @@ int kf_hash_string(Frame *f, int nargs, kfunc *func)
     }
     val = nil_value;
     (kfhsh[n].ext)(f, nargs - 1, &val);
-    i_ref_value(&val);
+    val.ref();
     i_pop(f, nargs);
     *--f->sp = val;
     return 0;

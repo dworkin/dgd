@@ -230,9 +230,6 @@ struct Frame {
 };
 
 extern void	i_init		(char*, bool);
-extern void	i_ref_value	(Value*);
-extern void	i_del_value	(Value*);
-extern void	i_copy		(Value*, Value*, unsigned int);
 extern void	i_grow_stack	(Frame*, int);
 extern void	i_push_value	(Frame*, Value*);
 extern void	i_pop		(Frame*, int);

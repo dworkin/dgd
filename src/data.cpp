@@ -29,6 +29,81 @@
 # include "parse.h"
 
 
+/*
+ * reference a value
+ */
+void Value::ref()
+{
+    switch (type) {
+    case T_STRING:
+	string->ref();
+	break;
+
+    case T_ARRAY:
+    case T_MAPPING:
+    case T_LWOBJECT:
+	array->ref();
+	break;
+    }
+}
+
+/*
+ * dereference a value
+ */
+void Value::del()
+{
+    switch (type) {
+    case T_STRING:
+	string->del();
+	break;
+
+    case T_ARRAY:
+    case T_MAPPING:
+    case T_LWOBJECT:
+	array->del();
+	break;
+    }
+}
+
+/*
+ * copy values from one place to another
+ */
+void Value::copy(Value *v, Value *w, unsigned int len)
+{
+    Value *o;
+
+    for ( ; len != 0; --len) {
+	switch (w->type) {
+	case T_STRING:
+	    w->string->ref();
+	    break;
+
+	case T_OBJECT:
+	    if (DESTRUCTED(w)) {
+		*v++ = nil_value;
+		w++;
+		continue;
+	    }
+	    break;
+
+	case T_LWOBJECT:
+	    o = Dataspace::elts(w->array);
+	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
+		*v++ = nil_value;
+		w++;
+		continue;
+	    }
+	    /* fall through */
+	case T_ARRAY:
+	case T_MAPPING:
+	    w->array->ref();
+	    break;
+	}
+	*v++ = *w++;
+    }
+}
+
+
 # define COP_ADD	0	/* add callout patch */
 # define COP_REMOVE	1	/* remove callout patch */
 # define COP_REPLACE	2	/* replace callout patch */
@@ -49,7 +124,7 @@ public:
 	    rco = *co;
 	}
 	for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i > 0; --i) {
-	    i_ref_value(v++);
+	    (v++)->ref();
 	}
 
 	/* add to hash table */
@@ -75,7 +150,7 @@ public:
 	    co = (cop->type == COP_ADD) ? &cop->aco : &cop->rco;
 	    v = co->val;
 	    for (i = (co->nargs > 3) ? 4 : co->nargs + 1; i > 0; --i) {
-		i_del_value(v++);
+		(v++)->del();
 	    }
 	}
 
@@ -93,7 +168,7 @@ public:
 	type = COP_REPLACE;
 	aco = *co;
 	for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i > 0; --i) {
-	    i_ref_value(v++);
+	    (v++)->ref();
 	}
 	this->time = time;
 	this->mtime = mtime;
@@ -109,7 +184,7 @@ public:
 
 	type = COP_ADD;
 	for (i = (rco.nargs > 3) ? 4 : rco.nargs + 1, v = rco.val; i > 0; --i) {
-	    i_del_value(v++);
+	    (v++)->del();
 	}
     }
 
@@ -122,7 +197,7 @@ public:
 
 	type = COP_REMOVE;
 	for (i = (aco.nargs > 3) ? 4 : aco.nargs + 1, v = aco.val; i > 0; --i) {
-	    i_del_value(v++);
+	    (v++)->del();
 	}
     }
 
@@ -465,7 +540,7 @@ void Dataplane::commit(Int level, Value *retval)
 	    if (p->level == 1 || p->prev->original != (Value *) NULL) {
 		/* free backed-up variable values */
 		for (v = p->original, i = data->nvariables; i != 0; v++, --i) {
-		    i_del_value(v);
+		    v->del();
 		}
 		FREE(p->original);
 	    } else {
@@ -596,7 +671,7 @@ void Dataplane::discard(Int level)
 	if (p->original != (Value *) NULL) {
 	    /* restore original variable values */
 	    for (v = data->variables, i = data->nvariables; i != 0; --i, v++) {
-		i_del_value(v);
+		v->del();
 	    }
 	    memcpy(data->variables, p->original,
 		   data->nvariables * sizeof(Value));
@@ -850,7 +925,7 @@ void Dataspace::freeValues()
 	Value *v;
 
 	for (i = nvariables, v = variables; i > 0; --i, v++) {
-	    i_del_value(v);
+	    v->del();
 	}
 
 	FREE(variables);
@@ -871,7 +946,7 @@ void Dataspace::freeValues()
 		    j = 4;
 		}
 		do {
-		    i_del_value(v++);
+		    (v++)->del();
 		} while (--j > 0);
 	    }
 	}
@@ -2438,16 +2513,16 @@ void Dataspace::assignVar(Value *var, Value *val)
 	    /*
 	     * back up variables
 	     */
-	    i_copy(plane->original = ALLOC(Value, nvariables), variables,
-		   nvariables);
+	    Value::copy(plane->original = ALLOC(Value, nvariables), variables,
+			nvariables);
 	}
 	refRhs(val);
 	delLhs(var);
 	plane->flags |= MOD_VARIABLE;
     }
 
-    i_ref_value(val);
-    i_del_value(var);
+    val->ref();
+    var->del();
 
     *var = *val;
     var->modified = TRUE;
@@ -2542,8 +2617,8 @@ void Dataspace::assignElt(Array *arr, Value *elt, Value *val)
 	}
     }
 
-    i_ref_value(val);
-    i_del_value(elt);
+    val->ref();
+    elt->del();
 
     *elt = *val;
     elt->modified = TRUE;
@@ -2665,15 +2740,15 @@ void Dataspace::freeCallOut(unsigned int handle)
     switch (co->nargs) {
     default:
 	delLhs(&v[3]);
-	i_del_value(&v[3]);
+	v[3].del();
 	/* fall through */
     case 2:
 	delLhs(&v[2]);
-	i_del_value(&v[2]);
+	v[2].del();
 	/* fall through */
     case 1:
 	delLhs(&v[1]);
-	i_del_value(&v[1]);
+	v[1].del();
 	/* fall through */
     case 0:
 	delLhs(&v[0]);
@@ -3001,7 +3076,7 @@ Array *Dataspace::listCallouts(Dataspace *data)
 		break;
 	    }
 	    while (size > 0) {
-		i_ref_value(--v);
+		(--v)->ref();
 		--size;
 	    }
 	    refImports(a);
@@ -3087,7 +3162,7 @@ void Dataspace::upgrade(unsigned int nvar, unsigned short *vmap, Object *tmpl)
 
 	default:
 	    *v = vars[*vmap];
-	    i_ref_value(v);
+	    v->ref();
 	    v->modified = TRUE;
 	    refRhs(v++);
 	    break;
@@ -3100,7 +3175,7 @@ void Dataspace::upgrade(unsigned int nvar, unsigned short *vmap, Object *tmpl)
     v = variables;
     for (n = nvariables; n > 0; --n) {
 	delLhs(v);
-	i_del_value(v++);
+	(v++)->del();
     }
 
     /* replace old with new */
@@ -3185,7 +3260,7 @@ Object *Dataspace::upgradeLWO(Array *lwobj, Object *obj)
 	    if (a->arr != (Array *) NULL) {
 		a->data->refRhs(v);
 	    }
-	    i_ref_value(v);
+	    v->ref();
 	    (v++)->modified = TRUE;
 	    break;
 	}
@@ -3213,12 +3288,12 @@ Object *Dataspace::upgradeLWO(Array *lwobj, Object *obj)
 	/* deref old values */
 	for (n = lwobj->size - 2; n > 0; --n) {
 	    a->data->delLhs(v);
-	    i_del_value(v++);
+	    (v++)->del();
 	}
     } else {
 	/* deref old values */
 	for (n = lwobj->size - 2; n > 0; --n) {
-	    i_del_value(v++);
+	    (v++)->del();
 	}
     }
 
@@ -3283,8 +3358,8 @@ void Dataspace::import(ArrImport *imp, Value *val, unsigned short n)
 				/*
 				 * copy elements
 				 */
-				i_copy(a->elts = ALLOC(Value, a->size),
-				       elts(val->array), a->size);
+				Value::copy(a->elts = ALLOC(Value, a->size),
+					    elts(val->array), a->size);
 			    }
 
 			    /*

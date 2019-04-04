@@ -31,7 +31,12 @@ struct ArrRef {
     Uint ref;			/* # of refs */
 };
 
-struct Value {
+class Value {
+public:
+    void ref();
+    void del();
+    static void copy(Value*, Value*, unsigned int);
+
     char type;			/* value type */
     bool modified;		/* dirty bit */
     uindex oindex;		/* index in object table */
