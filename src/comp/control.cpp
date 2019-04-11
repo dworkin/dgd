@@ -2100,7 +2100,7 @@ void Control::makeVarTypes()
 		if (T_ARITHMETIC(var->type)) {
 		    *type++ = var->type;
 		} else {
-		    *type++ = nil_value.type;
+		    *type++ = Value::nil.type;
 		}
 	    }
 	}

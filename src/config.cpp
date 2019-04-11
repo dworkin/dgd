@@ -1986,7 +1986,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 	    if (a != (Array *) NULL) {
 		PUT_ARRVAL(v, a);
 	    } else {
-		*v = nil_value;
+		*v = Value::nil;
 	    }
 	} else {
 	    PUT_ARRVAL(v, Array::create(data, 0));
@@ -2002,7 +2002,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 	if (ctrl->flags & CTRL_UNDEFINED) {
 	    PUT_MAPVAL(v, ctrl->undefined(data));
 	} else {
-	    *v = nil_value;
+	    *v = Value::nil;
 	}
 	break;
 

@@ -129,7 +129,7 @@ int kf_call_other(Frame *f, int nargs, kfunc *kf)
     val = &f->sp[nargs - 1];
     if (val->type == T_STRING) {
 	*--f->sp = *val;
-	*val = nil_value;	/* erase old copy */
+	*val = Value::nil;	/* erase old copy */
 	call_driver_object(f, "call_object", 1);
 	*val = *f->sp++;
     }
@@ -152,7 +152,7 @@ int kf_call_other(Frame *f, int nargs, kfunc *kf)
 	 * call from destructed object
 	 */
 	i_pop(f, nargs);
-	*--f->sp = nil_value;
+	*--f->sp = Value::nil;
 	return 0;
     }
 
@@ -160,7 +160,7 @@ int kf_call_other(Frame *f, int nargs, kfunc *kf)
 	       FALSE, nargs - 2)) {
 	val = f->sp++;		/* function exists */
     } else {
-	val = &nil_value;	/* function doesn't exist */
+	val = &Value::nil;	/* function doesn't exist */
     }
     (f->sp++)->string->del();
     f->sp->del();
@@ -232,7 +232,7 @@ int kf_this_object(Frame *f, int n, kfunc *kf)
 	    PUT_LWOVAL(f->sp, f->lwobj);
 	}
     } else {
-	*f->sp = nil_value;
+	*f->sp = Value::nil;
     }
     return 0;
 }
@@ -257,7 +257,7 @@ int kf_previous_object(Frame *f, int nargs, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (nargs == 0) {
-	*--f->sp = nil_value;
+	*--f->sp = Value::nil;
     } else if (f->sp->number < 0) {
 	return 1;
     }
@@ -275,7 +275,7 @@ int kf_previous_object(Frame *f, int nargs, kfunc *kf)
 	}
     }
 
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -299,7 +299,7 @@ int kf_previous_program(Frame *f, int nargs, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (nargs == 0) {
-	*--f->sp = nil_value;
+	*--f->sp = Value::nil;
     } else if (f->sp->number < 0) {
 	return 1;
     }
@@ -311,7 +311,7 @@ int kf_previous_program(Frame *f, int nargs, kfunc *kf)
 	str->text[0] = '/';
 	strcpy(str->text + 1, prog);
     } else {
-	*f->sp = nil_value;
+	*f->sp = Value::nil;
     }
     return 0;
 }
@@ -577,7 +577,7 @@ int kf_find_object(Frame *f, int n, kfunc *kf)
     if (path_string(path, f->sp->string->text,
 		    f->sp->string->len) == (char *) NULL) {
 	f->sp->string->del();
-	*f->sp = nil_value;
+	*f->sp = Value::nil;
 	return 0;
     }
     i_add_ticks(f, 2);
@@ -586,7 +586,7 @@ int kf_find_object(Frame *f, int n, kfunc *kf)
     if (obj != (Object *) NULL) {
 	PUT_OBJVAL(f->sp, obj);
     } else {
-	*f->sp = nil_value;
+	*f->sp = Value::nil;
     }
     return 0;
 }
@@ -627,7 +627,7 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
 	/* no user-probeable functions within (right?) */
 	(f->sp++)->array->del();
 	f->sp->string->del();
-	*f->sp = nil_value;
+	*f->sp = Value::nil;
 	return 0;
     }
     f->sp++;
@@ -651,7 +651,7 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
 	    return 0;
 	}
     }
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -677,7 +677,7 @@ int kf_this_user(Frame *f, int n, kfunc *kf)
     if (obj != (Object *) NULL) {
 	PUSH_OBJVAL(f, obj);
     } else {
-	*--f->sp = nil_value;
+	*--f->sp = Value::nil;
     }
     return 0;
 }
@@ -711,7 +711,7 @@ int kf_query_ip_number(Frame *f, int n, kfunc *kf)
 	f->sp->array->del();
     }
 
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -744,7 +744,7 @@ int kf_query_ip_name(Frame *f, int n, kfunc *kf)
 	f->sp->array->del();
     }
 
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -819,7 +819,7 @@ int kf_allocate(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, f->sp->number);
     PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->number));
     for (i = f->sp->array->size, v = f->sp->array->elts; i > 0; --i, v++) {
-	*v = nil_value;
+	*v = Value::nil;
     }
     return 0;
 }
@@ -850,7 +850,7 @@ int kf_allocate_int(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, f->sp->number);
     PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->number));
     for (i = f->sp->array->size, v = f->sp->array->elts; i > 0; --i, v++) {
-	*v = zero_int;
+	*v = Value::zeroInt;
     }
     return 0;
 }
@@ -881,7 +881,7 @@ int kf_allocate_float(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, f->sp->number);
     PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->number));
     for (i = f->sp->array->size, v = f->sp->array->elts; i > 0; --i, v++) {
-	*v = zero_float;
+	*v = Value::zeroFloat;
     }
     return 0;
 }
@@ -1133,7 +1133,7 @@ int kf_datagram_challenge(Frame *f, int n, kfunc *kf)
 	}
     }
     f->sp->string->del();
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -1161,7 +1161,7 @@ int kf_block_input(Frame *f, int n, kfunc *kf)
 	    comm_block(obj, f->sp->number != 0);
 	}
     }
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -1333,7 +1333,7 @@ int kf_swapout(Frame *f, int n, kfunc *kf)
 
     Object::swapout();
 
-    *--f->sp = nil_value;
+    *--f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -1361,7 +1361,7 @@ int kf_dump_state(Frame *f, int nargs, kfunc *kf)
     } else {
 	incr = (f->sp->number != 0);
     }
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
 
     Object::dumpState(incr);
 
@@ -1412,7 +1412,7 @@ int kf_connect(Frame *f, int nargs, kfunc *kf)
 
     comm_connect(f, obj, f->sp->string->text, port);
     f->sp->string->del();
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -1476,7 +1476,7 @@ int kf_connect_datagram(Frame *f, int nargs, kfunc *kf)
 
     comm_connect_dgram(f, obj, f->sp[1].number, f->sp->string->text, port);
     (f->sp++)->string->del();
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -1509,7 +1509,7 @@ int kf_shutdown(Frame *f, int nargs, kfunc *kf)
     }
     Object::finish(boot);
 
-    *--f->sp = nil_value;
+    *--f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -1541,7 +1541,7 @@ int kf_status(Frame *f, int nargs, kfunc *kf)
 	switch (f->sp->type) {
 	case T_INT:
 	    if (f->sp->number != 0) {
-		*f->sp = nil_value;
+		*f->sp = Value::nil;
 		return 0;
 	    }
 	    a = conf_status(f);
@@ -1609,7 +1609,7 @@ int kf_new_function(Frame *f, int nargs, kfunc *kf)
 	    PUT_LWOVAL(&elts[3], f->lwobj);
 	}
     } else {
-	elts[3] = nil_value;	/* postpone error until function is called */
+	elts[3] = Value::nil;	/* postpone error until function is called */
     }
     v = f->sp;
     elts += a->size;

@@ -1583,7 +1583,8 @@ node *c_case(node *n1, node *n2)
 	    }
 	}
 	/* compare type with other cases */
-	if (n1->l.number != 0 || n2 != (node *) NULL || nil_type != T_INT) {
+	if (n1->l.number != 0 || n2 != (node *) NULL ||
+	    Value::nil.type != T_INT) {
 	    if (switch_list->type == T_MIXED) {
 		switch_list->type = T_INT;
 	    } else if (switch_list->type != T_INT) {

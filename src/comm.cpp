@@ -206,8 +206,8 @@ static Array *comm_setup(user *usr, Frame *f, Object *obj)
 
     Dataspace::wipeExtra(data = obj->dataspace());
     arr = Array::create(data, 3);
-    arr->elts[0] = zero_int;
-    arr->elts[1] = arr->elts[2] = nil_value;
+    arr->elts[0] = Value::zeroInt;
+    arr->elts[1] = arr->elts[2] = Value::nil;
     PUT_ARRVAL_NOREF(&val, arr);
     Dataspace::setExtra(data, &val);
 
@@ -697,7 +697,7 @@ static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
 		    usr->flags &= ~CF_OUTPUT;
 		    usr->flags |= CF_ODONE;
 		    odone++;
-		    data->assignElt(arr, &v[1], &nil_value);
+		    data->assignElt(arr, &v[1], &Value::nil);
 		}
 		usr->osdone = n;
 	    } else {
@@ -716,7 +716,7 @@ static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
 	} else if (conn_udp(usr->conn, v[2].string->text, v[2].string->len)) {
 	    usr->flags |= CF_UDP;
 	}
-	data->assignElt(arr, &v[2], &nil_value);
+	data->assignElt(arr, &v[2], &Value::nil);
     }
 }
 
@@ -751,8 +751,8 @@ void comm_flush()
 		fatal("can't connect to server");
 	    }
 
-	    obj->data->assignElt(arr, &arr->elts[0], &zero_int);
-	    obj->data->assignElt(arr, &arr->elts[1], &nil_value);
+	    obj->data->assignElt(arr, &arr->elts[0], &Value::zeroInt);
+	    obj->data->assignElt(arr, &arr->elts[1], &Value::nil);
 	    arr->del();
 	    usr->flags &= ~CF_FLUSH;
 	} else {

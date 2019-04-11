@@ -37,6 +37,8 @@ public:
     void del();
     static void copy(Value*, Value*, unsigned int);
 
+    static void init(bool stricttc);
+
     char type;			/* value type */
     bool modified;		/* dirty bit */
     uindex oindex;		/* index in object table */
@@ -46,7 +48,42 @@ public:
 	String *string;		/* string */
 	Array *array;		/* array or mapping */
     };
+
+    static Value zeroInt, zeroFloat, nil;
 };
+
+# define T_TYPE		0x0f	/* type mask */
+# define T_NIL		0x00
+# define T_INT		0x01
+# define T_FLOAT	0x02
+# define T_STRING	0x03
+# define T_OBJECT	0x04
+# define T_ARRAY	0x05	/* value type only */
+# define T_MAPPING	0x06
+# define T_LWOBJECT	0x07	/* runtime only */
+# define T_CLASS	0x07	/* typechecking only */
+# define T_MIXED	0x08	/* declaration type only */
+# define T_VOID		0x09	/* function return type only */
+# define T_LVALUE	0x0a	/* address of a value */
+
+# define T_VARARGS	0x10	/* or'ed with declaration type */
+# define T_ELLIPSIS	0x10	/* or'ed with declaration type */
+
+# define T_REF		0xf0	/* reference count mask */
+# define REFSHIFT	4
+
+# define T_ARITHMETIC(t) ((t) <= T_FLOAT)
+# define T_ARITHSTR(t)	((t) <= T_STRING)
+# define T_POINTER(t)	((t) >= T_STRING)
+# define T_INDEXED(t)	((t) >= T_ARRAY)   /* T_ARRAY, T_MAPPING, T_LWOBJECT */
+
+# define TYPENAMES	{ "nil", "int", "float", "string", "object", \
+			  "array", "mapping", "object", "mixed", "void" }
+# define TNBUFSIZE	24
+
+# define VAL_NIL(v)	((v)->type == Value::nil.type && (v)->number == 0)
+# define VAL_TRUE(v)	((v)->number != 0 || (v)->type > T_FLOAT ||	\
+			 ((v)->type == T_FLOAT && (v)->oindex != 0))
 
 struct DCallOut {
     Uint time;			/* time of call */

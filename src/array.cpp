@@ -65,8 +65,8 @@ public:
     MapElt(Uint hashval, MapElt *next) {
 	this->hashval = hashval;
 	add = FALSE;
-	idx = nil_value;
-	val = nil_value;
+	idx = Value::nil;
+	val = Value::nil;
 	this->next = next;
     }
     ~MapElt() {
@@ -81,8 +81,8 @@ public:
      */
     void remove(Dataspace *data, Array *m) {
 	if (add) {
-	    data->assignElt(m, &idx, &nil_value);
-	    data->assignElt(m, &val, &nil_value);
+	    data->assignElt(m, &idx, &Value::nil);
+	    data->assignElt(m, &val, &Value::nil);
 	}
 	delete this;
     }
@@ -100,7 +100,7 @@ public:
 		 * index is destructed object
 		 */
 		if (add) {
-		    data->assignElt(m, &val, &nil_value);
+		    data->assignElt(m, &val, &Value::nil);
 		}
 		return TRUE;
 	    }
@@ -113,8 +113,8 @@ public:
 		 * index is destructed object
 		 */
 		if (add) {
-		    data->assignElt(m, &idx, &nil_value);
-		    data->assignElt(m, &val, &nil_value);
+		    data->assignElt(m, &idx, &Value::nil);
+		    data->assignElt(m, &val, &Value::nil);
 		}
 		return TRUE;
 	    }
@@ -127,7 +127,7 @@ public:
 		 * value is destructed object
 		 */
 		if (add) {
-		    data->assignElt(m, &idx, &nil_value);
+		    data->assignElt(m, &idx, &Value::nil);
 		}
 		return TRUE;
 	    }
@@ -140,8 +140,8 @@ public:
 		 * value is destructed object
 		 */
 		if (add) {
-		    data->assignElt(m, &idx, &nil_value);
-		    data->assignElt(m, &val, &nil_value);
+		    data->assignElt(m, &idx, &Value::nil);
+		    data->assignElt(m, &val, &Value::nil);
 		}
 		return TRUE;
 	    }
@@ -517,7 +517,7 @@ Array *Array::createNil(Dataspace *data, long size)
 
     a = create(data, size);
     for (i = size, v = a->elts; i != 0; --i, v++) {
-	*v = nil_value;
+	*v = Value::nil;
     }
     return a;
 }
@@ -741,14 +741,14 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
 	    switch (v2->type) {
 	    case T_OBJECT:
 		if (DESTRUCTED(v2)) {
-		    data->assignElt(a, v2, &nil_value);
+		    data->assignElt(a, v2, &Value::nil);
 		}
 		break;
 
 	    case T_LWOBJECT:
 		o = Dataspace::elts(v2->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
-		    data->assignElt(a, v2, &nil_value);
+		    data->assignElt(a, v2, &Value::nil);
 		}
 		break;
 	    }
@@ -948,7 +948,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 	    case T_OBJECT:
 		if (DESTRUCTED(v1)) {
 		    /* replace destructed object by nil */
-		    primary->data->assignElt(this, v1, &nil_value);
+		    primary->data->assignElt(this, v1, &Value::nil);
 		}
 		break;
 
@@ -956,7 +956,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 		o = Dataspace::elts(v1->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
-		    primary->data->assignElt(this, v1, &nil_value);
+		    primary->data->assignElt(this, v1, &Value::nil);
 		}
 		break;
 	    }
@@ -1023,7 +1023,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 	    case T_OBJECT:
 		if (DESTRUCTED(v1)) {
 		    /* replace destructed object by nil */
-		    primary->data->assignElt(this, v1, &nil_value);
+		    primary->data->assignElt(this, v1, &Value::nil);
 		}
 		break;
 
@@ -1031,7 +1031,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 		o = Dataspace::elts(v1->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
-		    primary->data->assignElt(this, v1, &nil_value);
+		    primary->data->assignElt(this, v1, &Value::nil);
 		}
 		break;
 	    }
@@ -1108,7 +1108,7 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
 	    case T_OBJECT:
 		if (DESTRUCTED(v2)) {
 		    /* replace destructed object by nil */
-		    a2->primary->data->assignElt(a2, v2, &nil_value);
+		    a2->primary->data->assignElt(a2, v2, &Value::nil);
 		}
 		break;
 
@@ -1116,7 +1116,7 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
 		o = Dataspace::elts(v2->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
-		    a2->primary->data->assignElt(a2, v2, &nil_value);
+		    a2->primary->data->assignElt(a2, v2, &Value::nil);
 		}
 		break;
 	    }
@@ -1356,7 +1356,7 @@ void Array::mapDehash(Dataspace *data, bool clean)
 		    /*
 		     * index is destructed object
 		     */
-		    data->assignElt(this, v2 + 1, &nil_value);
+		    data->assignElt(this, v2 + 1, &Value::nil);
 		    v2 += 2;
 		    continue;
 		}
@@ -1368,8 +1368,8 @@ void Array::mapDehash(Dataspace *data, bool clean)
 		    /*
 		     * index is destructed object
 		     */
-		    data->assignElt(this, v2++, &nil_value);
-		    data->assignElt(this, v2++, &nil_value);
+		    data->assignElt(this, v2++, &Value::nil);
+		    data->assignElt(this, v2++, &Value::nil);
 		    continue;
 		}
 		break;
@@ -1380,7 +1380,7 @@ void Array::mapDehash(Dataspace *data, bool clean)
 		    /*
 		     * value is destructed object
 		     */
-		    data->assignElt(this, v2, &nil_value);
+		    data->assignElt(this, v2, &Value::nil);
 		    v2 += 2;
 		    continue;
 		}
@@ -1392,8 +1392,8 @@ void Array::mapDehash(Dataspace *data, bool clean)
 		    /*
 		     * value is destructed object
 		     */
-		    data->assignElt(this, v2++, &nil_value);
-		    data->assignElt(this, v2++, &nil_value);
+		    data->assignElt(this, v2++, &Value::nil);
+		    data->assignElt(this, v2++, &Value::nil);
 		    continue;
 		}
 		break;
@@ -1845,7 +1845,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 		hashed->remove(p, data, this);
 
 		if (add) {
-		    return &nil_value;
+		    return &Value::nil;
 		}
 
 		/* change array part also */
@@ -1885,8 +1885,8 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 		/*
 		 * delete the element
 		 */
-		data->assignElt(this, v, &nil_value);
-		data->assignElt(this, v + 1, &nil_value);
+		data->assignElt(this, v, &Value::nil);
+		data->assignElt(this, v + 1, &Value::nil);
 
 		size -= 2;
 		if (size == 0) {
@@ -1898,7 +1898,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 		    memmove(v, v + 2, (size - n) * sizeof(Value));
 		}
 		Dataspace::changeMap(this);
-		return &nil_value;
+		return &Value::nil;
 	    }
 	    val = v;
 	    elt = v + 1;
@@ -1907,7 +1907,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
     }
 
     if (elt == (Value *) NULL) {
-	return &nil_value;	/* not found */
+	return &Value::nil;	/* not found */
     }
 
     if (!hash) {

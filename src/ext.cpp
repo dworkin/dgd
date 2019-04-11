@@ -85,7 +85,7 @@ static int ext_value_type(Value *val)
  */
 static Value *ext_value_nil()
 {
-    return &nil_value;
+    return &Value::nil;
 }
 
 /*

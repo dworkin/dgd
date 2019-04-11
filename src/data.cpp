@@ -29,6 +29,18 @@
 # include "parse.h"
 
 
+Value Value::zeroInt = { T_INT, TRUE };
+Value Value::zeroFloat = { T_FLOAT, TRUE };
+Value Value::nil = { T_NIL, TRUE };
+
+/*
+ * initialize nil value
+ */
+void Value::init(bool stricttc)
+{
+    Value::nil.type = (stricttc) ? T_NIL : T_INT;
+}
+
 /*
  * reference a value
  */
@@ -80,7 +92,7 @@ void Value::copy(Value *v, Value *w, unsigned int len)
 
 	case T_OBJECT:
 	    if (DESTRUCTED(w)) {
-		*v++ = nil_value;
+		*v++ = Value::nil;
 		w++;
 		continue;
 	    }
@@ -89,7 +101,7 @@ void Value::copy(Value *v, Value *w, unsigned int len)
 	case T_LWOBJECT:
 	    o = Dataspace::elts(w->array);
 	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
-		*v++ = nil_value;
+		*v++ = Value::nil;
 		w++;
 		continue;
 	    }
@@ -1595,7 +1607,7 @@ void Dataspace::newVars(Control *ctrl, Value *val)
 	if (T_ARITHMETIC(var->type)) {
 	    val->type = var->type;
 	} else {
-	    val->type = nil_type;
+	    val->type = Value::nil.type;
 	}
 	val++;
     }
@@ -1622,7 +1634,7 @@ Value *Dataspace::variable(unsigned int idx)
 	if (nsectors == 0 && svariables == (SValue *) NULL) {
 	    /* new datablock */
 	    newVars(ctrl, variables);
-	    variables[nvariables - 1] = nil_value;	/* extra var */
+	    variables[nvariables - 1] = Value::nil;	/* extra var */
 	} else {
 	    /*
 	     * variables must be loaded from swap
@@ -1720,7 +1732,7 @@ void Dataspace::loadCallouts()
 	    loadValues(sco->val, co->val,
 		       (sco->nargs > 3) ? 4 : sco->nargs + 1);
 	} else {
-	    co->val[0] = nil_value;
+	    co->val[0] = Value::nil;
 	}
 	sco++;
 	co++;
@@ -2554,7 +2566,7 @@ void Dataspace::setExtra(Dataspace *data, Value *val)
  */
 void Dataspace::wipeExtra(Dataspace *data)
 {
-    data->assignVar(data->variable(data->nvariables - 1), &nil_value);
+    data->assignVar(data->variable(data->nvariables - 1), &Value::nil);
 
     if (data->parser != (struct parser *) NULL) {
 	/*
@@ -2760,7 +2772,7 @@ void Dataspace::freeCallOut(unsigned int handle)
 	v[0].string->del();
 	break;
     }
-    v[0] = nil_value;
+    v[0] = Value::nil;
 
     n = fcallouts;
     if (n != 0) {
@@ -2976,7 +2988,7 @@ String *Dataspace::callOut(unsigned int handle, Frame *f, int *nargs)
 	switch (v->type) {
 	case T_OBJECT:
 	    if (DESTRUCTED(v)) {
-		*v = nil_value;
+		*v = Value::nil;
 	    }
 	    break;
 
@@ -2984,13 +2996,13 @@ String *Dataspace::callOut(unsigned int handle, Frame *f, int *nargs)
 	    o = Dataspace::elts(v->array);
 	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		v->array->del();
-		*v = nil_value;
+		*v = Value::nil;
 	    }
 	    break;
 	}
     }
 
-    co->val[0] = nil_value;
+    co->val[0] = Value::nil;
     n = fcallouts;
     if (n != 0) {
 	callouts[n - 1].co_prev = handle;
@@ -3154,15 +3166,15 @@ void Dataspace::upgrade(unsigned int nvar, unsigned short *vmap, Object *tmpl)
     for (n = nvar, v = ALLOC(Value, n); n > 0; --n) {
 	switch (*vmap) {
 	case NEW_INT:
-	    *v++ = zero_int;
+	    *v++ = Value::zeroInt;
 	    break;
 
 	case NEW_FLOAT:
-	    *v++ = zero_float;
+	    *v++ = Value::zeroFloat;
 	    break;
 
 	case NEW_POINTER:
-	    *v++ = nil_value;
+	    *v++ = Value::nil;
 	    break;
 
 	default:
@@ -3249,15 +3261,15 @@ Object *Dataspace::upgradeLWO(Array *lwobj, Object *obj)
     for (n = nvar; n > 0; --n) {
 	switch (*vmap) {
 	case NEW_INT:
-	    *v++ = zero_int;
+	    *v++ = Value::zeroInt;
 	    break;
 
 	case NEW_FLOAT:
-	    *v++ = zero_float;
+	    *v++ = Value::zeroFloat;
 	    break;
 
 	case NEW_POINTER:
-	    *v++ = nil_value;
+	    *v++ = Value::nil;
 	    break;
 
 	default:

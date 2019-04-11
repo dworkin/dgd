@@ -93,7 +93,7 @@ static int kf_callgate(Frame *f, int nargs, kfunc *kf)
 {
     Value val;
 
-    val = nil_value;
+    val = Value::nil;
     (kf->ext)(f, nargs, &val);
     val.ref();
     i_pop(f, nargs);
@@ -360,7 +360,7 @@ int kf_encrypt(Frame *f, int nargs, kfunc *func)
     if (n < 0) {
 	error("Unknown cipher");
     }
-    val = nil_value;
+    val = Value::nil;
     (kfenc[n].ext)(f, nargs - 1, &val);
     val.ref();
     i_pop(f, nargs);
@@ -383,7 +383,7 @@ int kf_decrypt(Frame *f, int nargs, kfunc *func)
     if (n < 0) {
 	error("Unknown cipher");
     }
-    val = nil_value;
+    val = Value::nil;
     (kfdec[n].ext)(f, nargs - 1, &val);
     val.ref();
     i_pop(f, nargs);
@@ -406,7 +406,7 @@ int kf_hash_string(Frame *f, int nargs, kfunc *func)
     if (n < 0) {
 	error("Unknown hash algorithm");
     }
-    val = nil_value;
+    val = Value::nil;
     (kfhsh[n].ext)(f, nargs - 1, &val);
     val.ref();
     i_pop(f, nargs);

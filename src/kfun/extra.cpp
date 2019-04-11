@@ -748,7 +748,7 @@ int kf_parse_string(Frame *f, int nargs, kfunc *kf)
 	PUT_ARRVAL(f->sp, a);
     } else {
 	/* parsing failed */
-	*f->sp = nil_value;
+	*f->sp = Value::nil;
     }
     return 0;
 }

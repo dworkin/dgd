@@ -58,14 +58,14 @@ int kf_editor(Frame *f, int nargs, kfunc *kf)
 	ed_new(obj);
     }
     if (nargs == 0) {
-	*--f->sp = nil_value;
+	*--f->sp = Value::nil;
     } else {
 	str = ed_command(obj, f->sp->string->text);
 	f->sp->string->del();
 	if (str != (String *) NULL) {
 	    PUT_STR(f->sp, str);
 	} else {
-	    *f->sp = nil_value;
+	    *f->sp = Value::nil;
 	}
     }
     return 0;
@@ -102,7 +102,7 @@ int kf_query_editor(Frame *f, int n, kfunc *kf)
 	f->sp->array->del();
     }
 
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -496,7 +496,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
     }
 
     f->sp->string->del();
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -734,7 +734,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 
     ac_put(x, T_ARRAY, a = Array::create(x->f->data, val->number));
     for (i = a->size, v = a->elts; i > 0; --i) {
-	*v++ = nil_value;
+	*v++ = Value::nil;
     }
     i = a->size;
     v = a->elts;
@@ -786,7 +786,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 
     ac_put(x, T_MAPPING, a = Array::mapCreate(x->f->data, val->number << 1));
     for (i = a->size, v = a->elts; i > 0; --i) {
-	*v++ = nil_value;
+	*v++ = Value::nil;
     }
     i = a->size;
     v = a->elts;
@@ -844,7 +844,7 @@ static char *restore_value(restcontext *x, char *buf, Value *val)
 	if (buf[1] != 'i' || buf[2] != 'l') {
 	    restore_error(x, "nil expected");
 	}
-	*val = nil_value;
+	*val = Value::nil;
 	return buf + 3;
 
     case '#':
@@ -969,8 +969,8 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 		    var->type != T_LWOBJECT) {
 		    data->assignVar(var,
 				    (v->type == T_INT) ?
-				     &zero_int : (v->type == T_FLOAT) ?
-						  &zero_float : &nil_value);
+				     &Value::zeroInt : (v->type == T_FLOAT) ?
+					    &Value::zeroFloat : &Value::nil);
 		}
 		var++;
 		nvars++;
@@ -1218,7 +1218,7 @@ int kf_read_file(Frame *f, int nargs, kfunc *kf)
     }
 
     f->sp->string->del();
-    *f->sp = nil_value;
+    *f->sp = Value::nil;
 
     if (size < 0) {
 	/* size has to be >= 0 */

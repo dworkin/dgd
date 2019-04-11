@@ -1562,7 +1562,7 @@ int kf_rangef(Frame *f, int n, kfunc *kf)
 	if (VAL_NIL(f->sp)) {
 	    kf_argerror(KF_RANGEF, 2);
 	}
-	*--f->sp = nil_value;
+	*--f->sp = Value::nil;
 	kf_op_ternary(f, KF_RANGEF);
 
 	return 0;
@@ -1634,7 +1634,7 @@ int kf_ranget(Frame *f, int n, kfunc *kf)
 	}
 	--f->sp;
 	f->sp[0] = f->sp[1];
-	f->sp[1] = nil_value;
+	f->sp[1] = Value::nil;
 	kf_op_ternary(f, KF_RANGET);
 
 	return 0;
@@ -1699,8 +1699,8 @@ int kf_range(Frame *f, int n, kfunc *kf)
     }
     if (f->sp->type == T_LWOBJECT &&
 	f->sp->array->elts[0].type == T_OBJECT) {
-	*--f->sp = nil_value;
-	*--f->sp = nil_value;
+	*--f->sp = Value::nil;
+	*--f->sp = Value::nil;
 	kf_op_ternary(f, KF_RANGE);
 
 	return 0;
@@ -2453,7 +2453,7 @@ int kf_statuso_idx(Frame *f, int nargs, kfunc *kf)
 	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    n = f->sp[1].array->elts[0].oindex;
 	    f->sp[1].array->del();
-	    f->sp[1] = nil_value;
+	    f->sp[1] = Value::nil;
 	} else {
 	    /* no user-visible parts within (right?) */
 	    error("Index on bad type");
@@ -2517,7 +2517,7 @@ int kf_nil(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    *--f->sp = nil_value;
+    *--f->sp = Value::nil;
     return 0;
 }
 # endif
@@ -3447,21 +3447,21 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	    case SUM_ALLOCATE_NIL:
 		v++;
 		for (len = v->number; len > 0; --len) {
-		    *--e1 = nil_value;
+		    *--e1 = Value::nil;
 		}
 		continue;
 
 	    case SUM_ALLOCATE_INT:
 		v++;
 		for (len = v->number; len > 0; --len) {
-		    *--e1 = zero_int;
+		    *--e1 = Value::zeroInt;
 		}
 		continue;
 
 	    case SUM_ALLOCATE_FLT:
 		v++;
 		for (len = v->number; len > 0; --len) {
-		    *--e1 = zero_float;
+		    *--e1 = Value::zeroFloat;
 		}
 		continue;
 

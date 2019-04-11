@@ -42,11 +42,6 @@ static unsigned int clen;	/* creator function name length */
 static bool stricttc;		/* strict typechecking */
 static char ihash[INHASHSZ];	/* instanceof hashtable */
 
-int nil_type;			/* type of nil value */
-Value zero_int = { T_INT, TRUE };
-Value zero_float = { T_FLOAT, TRUE };
-Value nil_value = { T_NIL, TRUE };
-
 /*
  * NAME:	interpret->init()
  * DESCRIPTION:	initialize the interpreter
@@ -69,7 +64,7 @@ void i_init(char *create, bool flag)
     clen = strlen(create);
     stricttc = flag;
 
-    nil_value.type = nil_type = (stricttc) ? T_NIL : T_INT;
+    Value::init(stricttc);
 }
 
 /*
@@ -130,7 +125,7 @@ void i_push_value(Frame *f, Value *v)
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
 	     */
-	    *f->sp = nil_value;
+	    *f->sp = Value::nil;
 	}
 	break;
 
@@ -141,7 +136,7 @@ void i_push_value(Frame *f, Value *v)
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
 	     */
-	    *f->sp = nil_value;
+	    *f->sp = Value::nil;
 	    break;
 	}
 	/* fall through */
@@ -186,7 +181,7 @@ void i_odest(Frame *prev, Object *obj)
 	    switch (v->type) {
 	    case T_OBJECT:
 		if (v->oindex == index) {
-		    *v = nil_value;
+		    *v = Value::nil;
 		}
 		break;
 
@@ -194,7 +189,7 @@ void i_odest(Frame *prev, Object *obj)
 		if (v->array->elts[0].type == T_OBJECT &&
 		    v->array->elts[0].oindex == index) {
 		    v->array->del();
-		    *v = nil_value;
+		    *v = Value::nil;
 		}
 		break;
 	    }
@@ -212,7 +207,7 @@ void i_odest(Frame *prev, Object *obj)
 		switch (v->type) {
 		case T_OBJECT:
 		    if (v->oindex == index) {
-			*v = nil_value;
+			*v = Value::nil;
 		    }
 		    break;
 
@@ -220,7 +215,7 @@ void i_odest(Frame *prev, Object *obj)
 		    if (v->array->elts[0].type == T_OBJECT &&
 			v->array->elts[0].oindex == index) {
 			v->array->del();
-			*v = nil_value;
+			*v = Value::nil;
 		    }
 		    break;
 		}
@@ -435,14 +430,14 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 
     case T_OBJECT:
 	if (DESTRUCTED(val)) {
-	    *val = nil_value;
+	    *val = Value::nil;
 	}
 	break;
 
     case T_LWOBJECT:
 	ival = Dataspace::elts(val->array);
 	if (ival->type == T_OBJECT && DESTRUCTED(ival)) {
-	    *val = nil_value;
+	    *val = Value::nil;
 	    break;
 	}
 	/* fall through */
@@ -821,7 +816,7 @@ static void i_stores(Frame *f, int skip, int assign)
 
 	case I_STORE_INDEX:
 	case I_STORE_INDEX | I_POP_BIT:
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->array->elts[assign - 1])) {
 		f->sp[2].string->del();
@@ -834,7 +829,7 @@ static void i_stores(Frame *f, int skip, int assign)
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
 	    u = FETCH1S(pc);
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->array->elts[assign - 1])) {
 		i_store_local(f, (short) u, &val, &f->sp[2]);
@@ -848,7 +843,7 @@ static void i_stores(Frame *f, int skip, int assign)
 	case I_STORE_GLOBAL_INDEX:
 	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->array->elts[assign - 1])) {
 		i_store_global(f, f->p_ctrl->ninherits - 1, u, &val, &f->sp[2]);
@@ -863,7 +858,7 @@ static void i_stores(Frame *f, int skip, int assign)
 	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->array->elts[assign - 1])) {
 		i_store_global(f, u, u2, &val, &f->sp[2]);
@@ -876,7 +871,7 @@ static void i_stores(Frame *f, int skip, int assign)
 
 	case I_STORE_INDEX_INDEX:
 	case I_STORE_INDEX_INDEX | I_POP_BIT:
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->array->elts[assign - 1])) {
 		f->sp[1] = val;
@@ -1642,7 +1637,7 @@ static void i_interpret(Frame *f, char *pc)
 
 	case I_STORE_INDEX:
 	case I_STORE_INDEX | I_POP_BIT:
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		f->sp[2].string->del();
 		val.string->del();
@@ -1654,7 +1649,7 @@ static void i_interpret(Frame *f, char *pc)
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
 	    u = FETCH1S(pc);
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_local(f, (short) u, &val, f->sp + 2);
 		f->sp[2].string->del();
@@ -1667,7 +1662,7 @@ static void i_interpret(Frame *f, char *pc)
 	case I_STORE_GLOBAL_INDEX:
 	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_global(f, f->p_ctrl->ninherits - 1, u, &val, f->sp + 2);
 		f->sp[2].string->del();
@@ -1681,7 +1676,7 @@ static void i_interpret(Frame *f, char *pc)
 	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_global(f, u, u2, &val, f->sp + 2);
 		f->sp[2].string->del();
@@ -1693,7 +1688,7 @@ static void i_interpret(Frame *f, char *pc)
 
 	case I_STORE_INDEX_INDEX:
 	case I_STORE_INDEX_INDEX | I_POP_BIT:
-	    val = nil_value;
+	    val = Value::nil;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		f->sp[1] = val;
 		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, f->sp + 1);
@@ -1902,7 +1897,7 @@ static void i_interpret(Frame *f, char *pc)
 		i_interpret(f, pc);
 		ErrorContext::pop();
 		pc = f->pc;
-		*--f->sp = nil_value;
+		*--f->sp = Value::nil;
 	    } catch (...) {
 		/* error */
 		f->pc = p;
@@ -2069,18 +2064,18 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 	while (nargs < n) {
 	    switch (i=FETCH1U(pc)) {
 	    case T_INT:
-		*--prev_f->sp = zero_int;
+		*--prev_f->sp = Value::zeroInt;
 		break;
 
 	    case T_FLOAT:
-		*--prev_f->sp = zero_float;
-		    break;
+		*--prev_f->sp = Value::zeroFloat;
+		break;
 
 	    default:
 		if ((i & T_TYPE) == T_CLASS) {
 		    pc += 3;
 		}
-		*--prev_f->sp = nil_value;
+		*--prev_f->sp = Value::nil;
 		break;
 	    }
 	    nargs++;
@@ -2159,7 +2154,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 # endif
     if (n > 0) {
 	do {
-	    *--f.sp = nil_value;
+	    *--f.sp = Value::nil;
 	} while (--n > 0);
     }
 
