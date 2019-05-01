@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -73,9 +73,6 @@ bool pp_init(char *file, char **id, String **strs, int nstr, int level)
     mc_init();
     special_define();
     mc_define("__DGD__", "\x0091\x009", -1);	/* HT 1 HT */
-#ifdef NETWORK_EXTENSIONS
-    mc_define("__NETWORK_EXTENSIONS__", (char *) NULL, -1);
-#endif
     pps_init();
     include_level = level;
     ifs = &top;

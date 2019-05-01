@@ -103,32 +103,29 @@ static config conf[] = {
 # define OBJECTS	19
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
-# define PORTS		20
-				{ "ports",		INT_CONST, FALSE, FALSE,
-							1, 32 },
-# define SECTOR_SIZE	21
+# define SECTOR_SIZE	20
 				{ "sector_size",	INT_CONST, FALSE, FALSE,
 							512, 65535 },
-# define STATIC_CHUNK	22
+# define STATIC_CHUNK	21
 				{ "static_chunk",	INT_CONST },
-# define SWAP_FILE	23
+# define SWAP_FILE	22
 				{ "swap_file",		STRING_CONST },
-# define SWAP_FRAGMENT	24
+# define SWAP_FRAGMENT	23
 				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
 							0, SW_UNUSED },
-# define SWAP_SIZE	25
+# define SWAP_SIZE	24
 				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
-# define TELNET_PORT	26
+# define TELNET_PORT	25
 				{ "telnet_port",	'[', FALSE, FALSE,
 							1, USHRT_MAX },
-# define TYPECHECKING	27
+# define TYPECHECKING	26
 				{ "typechecking",	INT_CONST, FALSE, FALSE,
 							0, 2 },
-# define USERS		28
+# define USERS		27
 				{ "users",		INT_CONST, FALSE, FALSE,
 							0, EINDEX_MAX },
-# define NR_OPTIONS	29
+# define NR_OPTIONS	28
 };
 
 
@@ -1088,13 +1085,6 @@ static bool conf_config()
 	    l != DATAGRAM_PORT && l != DATAGRAM_USERS) {
 	    char buffer[64];
 
-#ifndef NETWORK_EXTENSIONS
-	    /* don't complain about the ports option not being
-	       specified if the network extensions are disabled */
-	    if (l == PORTS) {
-		continue;
-	    }
-#endif
 	    sprintf(buffer, "unspecified option %s", conf[l].name);
 	    conferr(buffer);
 	    return FALSE;
