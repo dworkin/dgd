@@ -238,7 +238,7 @@ int P_chdir(const char *dir)
     return 0;
 }
 
-static long d;
+static intptr_t d;
 static struct _finddata_t fdata;
 
 /*
