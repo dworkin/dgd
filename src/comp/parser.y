@@ -506,11 +506,11 @@ stmt
 
 		      if ($3->mod != T_INT && $3->mod != T_MIXED) {
 			  c_error("bad type for stack rlimit (%s)",
-				  i_typename(tnbuf, $3->mod));
+				  Value::typeName(tnbuf, $3->mod));
 		      }
 		      if ($5->mod != T_INT && $5->mod != T_MIXED) {
 			  c_error("bad type for ticks rlimit (%s)",
-				  i_typename(tnbuf, $5->mod));
+				  Value::typeName(tnbuf, $5->mod));
 		      }
 		  }
 		  c_startrlimits();
@@ -747,7 +747,7 @@ prefix_exp
 			  char tnbuf[TNBUFSIZE];
 
 			  c_error("bad argument type for ~ (%s)",
-				  i_typename(tnbuf, $$->mod));
+				  Value::typeName(tnbuf, $$->mod));
 		      }
 		      $$ = node_mon(N_NEG, T_MIXED, $$);
 		  }
@@ -980,7 +980,7 @@ static bool t_unary(node *n, const char *name)
     t_void(n);
     if (typechecking && !T_ARITHMETIC(n->mod) && n->mod != T_MIXED) {
 	c_error("bad argument type for %s (%s)", name,
-		i_typename(tnbuf, n->mod));
+		Value::typeName(tnbuf, n->mod));
 	n->mod = T_MIXED;
 	return FALSE;
     }
@@ -1118,19 +1118,20 @@ static node *cast(node *n, node *type)
 
 	if (type->mod == T_MIXED || (type->mod & T_TYPE) == T_VOID) {
 	    /* (mixed), (void), (void *) */
-	    c_error("cannot cast to %s", i_typename(buffer, type->mod));
+	    c_error("cannot cast to %s", Value::typeName(buffer, type->mod));
 	    n->mod = T_MIXED;
 	} else if ((type->mod & T_REF) < (n->mod & T_REF)) {
 	    /* (mixed *) of (mixed **) */
 	    c_error("illegal cast of array type (%s)",
-		    i_typename(buffer, n->mod));
+		    Value::typeName(buffer, n->mod));
 	} else if ((n->mod & T_TYPE) != T_MIXED &&
 		   ((type->mod & T_TYPE) != T_CLASS ||
 		    ((n->mod & T_TYPE) != T_OBJECT &&
 		     (n->mod & T_TYPE) != T_CLASS) ||
 		    (type->mod & T_REF) != (n->mod & T_REF))) {
 	    /* can only cast from mixed, or object/class to class */
-	    c_error("cast of invalid type (%s)", i_typename(buffer, n->mod));
+	    c_error("cast of invalid type (%s)",
+		    Value::typeName(buffer, n->mod));
 	} else {
 	    if ((type->mod & T_REF) == 0 || (n->mod & T_REF) == 0) {
 		/* runtime cast */
@@ -1183,7 +1184,7 @@ static node *idx(node *n1, node *n2)
 	if (typechecking) {
 	    type = n1->mod - (1 << REFSHIFT);
 	    if (n2->mod != T_INT && n2->mod != T_MIXED) {
-		c_error("bad index type (%s)", i_typename(tnbuf, n2->mod));
+		c_error("bad index type (%s)", Value::typeName(tnbuf, n2->mod));
 	    }
 	    if (type != T_MIXED) {
 		/* you can't trust these arrays */
@@ -1201,13 +1202,13 @@ static node *idx(node *n1, node *n2)
 	 * string
 	 */
 	if (typechecking && n2->mod != T_INT && n2->mod != T_MIXED) {
-	    c_error("bad index type (%s)", i_typename(tnbuf, n2->mod));
+	    c_error("bad index type (%s)", Value::typeName(tnbuf, n2->mod));
 	}
 	type = T_INT;
     } else {
 	if (typechecking && n1->mod != T_OBJECT && n1->mod != T_CLASS &&
 	    n1->mod != T_MAPPING && n1->mod != T_MIXED) {
-	    c_error("bad indexed type (%s)", i_typename(tnbuf, n1->mod));
+	    c_error("bad indexed type (%s)", Value::typeName(tnbuf, n1->mod));
 	}
 	type = T_MIXED;
     }
@@ -1246,15 +1247,15 @@ static node *range(node *n1, node *n2, node *n3)
 
 	/* indices */
 	if (n2 != (node *) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
-	    c_error("bad index type (%s)", i_typename(tnbuf, n2->mod));
+	    c_error("bad index type (%s)", Value::typeName(tnbuf, n2->mod));
 	}
 	if (n3 != (node *) NULL && n3->mod != T_INT && n3->mod != T_MIXED) {
-	    c_error("bad index type (%s)", i_typename(tnbuf, n3->mod));
+	    c_error("bad index type (%s)", Value::typeName(tnbuf, n3->mod));
 	}
 	/* range */
 	if ((n1->mod & T_REF) == 0 && n1->mod != T_STRING && n1->mod != T_MIXED)
 	{
-	    c_error("bad indexed type (%s)", i_typename(tnbuf, n1->mod));
+	    c_error("bad indexed type (%s)", Value::typeName(tnbuf, n1->mod));
 	}
 	type = n1->mod;
     }
@@ -1281,7 +1282,8 @@ static node *bini(int op, node *n1, node *n2, const char *name)
 	type = T_INT;
     } else if (typechecking && n1->mod != T_MIXED) {
 	c_error("bad argument types for %s (%s, %s)", name,
-		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
+		Value::typeName(tnbuf1, n1->mod),
+		Value::typeName(tnbuf2, n2->mod));
     }
     if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
@@ -1338,7 +1340,8 @@ static node *bina(int op, node *n1, node *n2, const char *name)
 	}
     } else if (typechecking && n1->mod != T_MIXED) {
 	c_error("bad argument types for %s (%s, %s)", name,
-		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
+		Value::typeName(tnbuf1, n1->mod),
+		Value::typeName(tnbuf2, n2->mod));
     }
 
     return node_bin(op, type, n1, n2);
@@ -1478,7 +1481,8 @@ static node *add(int op, node *n1, node *n2, const char *name)
 	type = T_MIXED;
 	if (typechecking) {
 	    c_error("bad argument types for %s (%s, %s)", name,
-		    i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
+		    Value::typeName(tnbuf1, n1->mod),
+		    Value::typeName(tnbuf2, n2->mod));
 	}
     } else if (type == T_INT) {
 	op++;
@@ -1532,8 +1536,8 @@ static node *sub(int op, node *n1, node *n2, const char *name)
 	    type = T_MIXED;
 	    if (typechecking) {
 		c_error("bad argument types for %s (%s, %s)", name,
-			i_typename(tnbuf1, n1->mod),
-			i_typename(tnbuf2, n2->mod));
+			Value::typeName(tnbuf1, n1->mod),
+			Value::typeName(tnbuf2, n2->mod));
 	    }
 	}
     } else if (type == T_INT) {
@@ -1689,7 +1693,8 @@ static node *rel(int op, node *n1, node *n2, const char *name)
 	((n1->mod != n2->mod && n2->mod != T_MIXED) || !T_ARITHSTR(n1->mod) ||
 	 (!T_ARITHSTR(n2->mod) && n2->mod != T_MIXED))) {
 	c_error("bad argument types for %s (%s, %s)", name,
-		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
+		Value::typeName(tnbuf1, n1->mod),
+		Value::typeName(tnbuf2, n2->mod));
     } else if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
     }
@@ -1760,7 +1765,8 @@ static node *eq(node *n1, node *n2)
 	(!c_nil(n2) || !T_POINTER(n1->mod))) {
 	if (typechecking) {
 	    c_error("incompatible types for equality (%s, %s)",
-		    i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
+		    Value::typeName(tnbuf1, n1->mod),
+		    Value::typeName(tnbuf2, n2->mod));
 	}
     } else if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
@@ -1978,8 +1984,8 @@ static node *assign(node *n1, node *n2)
 		}
 	    } else if (type != T_MIXED) {
 		c_error("incompatible types for = (%s, %s)",
-			i_typename(tnbuf1, n1->mod),
-			i_typename(tnbuf2, type));
+			Value::typeName(tnbuf1, n1->mod),
+			Value::typeName(tnbuf2, type));
 		type = T_MIXED;
 	    }
 
@@ -1994,8 +2000,8 @@ static node *assign(node *n1, node *n2)
 		}
 		if (c_tmatch(m->mod, type) == T_NIL) {
 		    c_error("incompatible types for = (%s, %s)",
-			    i_typename(tnbuf1, m->mod),
-			    i_typename(tnbuf2, type));
+			    Value::typeName(tnbuf1, m->mod),
+			    Value::typeName(tnbuf2, type));
 		}
 	    }
 	}
@@ -2012,8 +2018,8 @@ static node *assign(node *n1, node *n2)
 	     */
 	    if (c_tmatch(n1->mod, n2->mod) == T_NIL) {
 		c_error("incompatible types for = (%s, %s)",
-			i_typename(tnbuf1, n1->mod),
-			i_typename(tnbuf2, n2->mod));
+			Value::typeName(tnbuf1, n1->mod),
+			Value::typeName(tnbuf2, n2->mod));
 	    } else if ((n1->mod != T_MIXED && n2->mod == T_MIXED) ||
 		       (n1->mod == T_CLASS &&
 			(n2->mod != T_CLASS ||

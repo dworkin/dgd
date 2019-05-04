@@ -757,7 +757,7 @@ static void c_decl_func(unsigned short sclass, node *type, String *str,
 	typechecked = TRUE;
 	if (t != T_VOID && (t & T_TYPE) == T_VOID) {
 	    c_error("invalid type for function %s (%s)", str->text,
-		    i_typename(tnbuf, t));
+		    Value::typeName(tnbuf, t));
 	    t = T_MIXED;
 	}
     }
@@ -803,7 +803,7 @@ static void c_decl_func(unsigned short sclass, node *type, String *str,
 	    t = T_MIXED;
 	} else if ((t & T_TYPE) == T_VOID) {
 	    c_error("invalid type for parameter %s (%s)", type->l.string->text,
-		    i_typename(tnbuf, t));
+		    Value::typeName(tnbuf, t));
 	    t = T_MIXED;
 	} else if (typechecked && t != T_MIXED) {
 	    /* only bother to typecheck functions with non-mixed arguments */
@@ -864,7 +864,7 @@ static void c_decl_var(unsigned short sclass, node *type, String *str,
 
     if ((type->mod & T_TYPE) == T_VOID) {
 	c_error("invalid type for variable %s (%s)", str->text,
-		i_typename(tnbuf, type->mod));
+		Value::typeName(tnbuf, type->mod));
 	type->mod = T_MIXED;
     }
     if (global) {
@@ -1292,7 +1292,8 @@ void c_startswitch(node *n, int typechecked)
     switch_list->type = T_MIXED;
     if (typechecked &&
 	n->mod != T_INT && n->mod != T_STRING && n->mod != T_MIXED) {
-	c_error("bad switch expression type (%s)", i_typename(tnbuf, n->mod));
+	c_error("bad switch expression type (%s)",
+		Value::typeName(tnbuf, n->mod));
 	switch_list->type = T_NIL;
     }
     switch_list->dflt = FALSE;
@@ -1381,7 +1382,7 @@ node *c_endswitch(node *expr, node *stmt)
 	} else if (expr->mod != T_MIXED && expr->mod != switch_list->type &&
 		   switch_list->type != T_MIXED) {
 	    c_error("wrong switch expression type (%s)",
-		    i_typename(tnbuf, expr->mod));
+		    Value::typeName(tnbuf, expr->mod));
 	} else {
 	    /*
 	     * get the labels in an array, and sort them
@@ -1739,7 +1740,8 @@ node *c_return(node *n, int typechecked)
 	     * type error
 	     */
 	    c_error("returned value doesn't match %s (%s)",
-		    i_typename(tnbuf1, ftype), i_typename(tnbuf2, n->mod));
+		    Value::typeName(tnbuf1, ftype),
+		    Value::typeName(tnbuf2, n->mod));
 	} else if ((ftype != T_MIXED && n->mod == T_MIXED) ||
 		   (ftype == T_CLASS &&
 		    (n->mod != T_CLASS || fclass->cmp(n->sclass) != 0))) {
@@ -2069,7 +2071,7 @@ static node *funcall(node *call, node *args, int funcptr)
 		}
 		if (typechecked && c_tmatch(t, *argp) == T_NIL) {
 		    c_error("bad argument %d for function %s (needs %s)", n,
-			    fname, i_typename(tnbuf, *argp));
+			    fname, Value::typeName(tnbuf, *argp));
 		}
 		n++;
 		argp += ((*argp & T_TYPE) == T_CLASS) ? 4 : 1;
@@ -2085,7 +2087,7 @@ static node *funcall(node *call, node *args, int funcptr)
 		   c_tmatch((*arg)->mod, t) == T_NIL &&
 		   (!c_nil(*arg) || !T_POINTER(t))) {
 	    c_error("bad argument %d for function %s (needs %s)", n, fname,
-		    i_typename(tnbuf, t));
+		    Value::typeName(tnbuf, t));
 	}
 
 	if (n == nargs && ellipsis) {

@@ -701,7 +701,7 @@ int kf_old_sscanf(Frame *f, int nargs, kfunc *kf)
 # endif
     n = FETCH1U(pc);
     f->pc = pc;
-    i_lvalues(f, n);
+    f->lvalues(n);
 
     return 0;
 }
@@ -1414,7 +1414,7 @@ int kf_crypt(Frame *f, int nargs, kfunc *kf)
 
     kf_xcrypt(f, nargs, &val);
     val.ref();
-    i_pop(f, nargs);
+    f->pop(nargs);
     *--f->sp = val;
     return 0;
 }

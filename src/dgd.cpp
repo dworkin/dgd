@@ -58,7 +58,7 @@ bool call_driver_object(Frame *f, const char *func, int narg)
 	dindex = driver->index;
 	dcount = driver->count;
     }
-    if (!i_call(f, driver, (Array *) NULL, func, strlen(func), TRUE, narg)) {
+    if (!f->call(driver, (Array *) NULL, func, strlen(func), TRUE, narg)) {
 	fatal("missing function in driver object: %s", func);
     }
     return TRUE;
@@ -82,7 +82,7 @@ void endtask()
     comm_flush();
     Dataspace::xport();
     Object::clean();
-    i_clear();
+    Frame::clear();
     ed_clear();
     ErrorContext::clearException();
 
@@ -149,7 +149,7 @@ void endtask()
 void errhandler(Frame *f, Int depth)
 {
     UNREFERENCED_PARAMETER(depth);
-    i_runtime_error(f, (Int) 0);
+    Frame::runtimeError(f, (Int) 0);
 }
 
 /*

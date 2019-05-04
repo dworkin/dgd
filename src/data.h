@@ -36,6 +36,7 @@ public:
     void ref();
     void del();
     static void copy(Value*, Value*, unsigned int);
+    static char *typeName(char *buf, unsigned int type);
 
     static void init(bool stricttc);
 

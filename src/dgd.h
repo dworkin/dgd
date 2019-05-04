@@ -26,7 +26,6 @@ class Value;
 class Control;
 class Dataplane;
 class Dataspace;
-struct RLInfo;
 struct Frame;
 
 # include "config.h"

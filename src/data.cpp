@@ -115,6 +115,32 @@ void Value::copy(Value *v, Value *w, unsigned int len)
     }
 }
 
+/*
+ * return the name of the type
+ */
+char *Value::typeName(char *buf, unsigned int type)
+{
+    static const char *name[] = TYPENAMES;
+
+    if ((type & T_TYPE) == T_CLASS) {
+	type = (type & T_REF) | T_OBJECT;
+    }
+    strcpy(buf, name[type & T_TYPE]);
+    type &= T_REF;
+    type >>= REFSHIFT;
+    if (type > 0) {
+	char *p;
+
+	p = buf + strlen(buf);
+	*p++ = ' ';
+	do {
+	    *p++ = '*';
+	} while (--type > 0);
+	*p = '\0';
+    }
+    return buf;
+}
+
 
 # define COP_ADD	0	/* add callout patch */
 # define COP_REMOVE	1	/* remove callout patch */
@@ -2952,7 +2978,7 @@ String *Dataspace::callOut(unsigned int handle, Frame *f, int *nargs)
     delLhs(&v[0]);
     str = v[0].string;
 
-    i_grow_stack(f, (*nargs = co->nargs) + 1);
+    f->growStack((*nargs = co->nargs) + 1);
     *--f->sp = v[0];
 
     switch (co->nargs) {

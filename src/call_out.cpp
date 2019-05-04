@@ -687,8 +687,8 @@ void co_call(Frame *f)
 	    try {
 		ErrorContext::push((ErrorContext::Handler) errhandler);
 		str = obj->dataspace()->callOut(handle, f, &nargs);
-		if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
-			   nargs)) {
+		if (f->call(obj, (Array *) NULL, str->text, str->len, TRUE,
+			    nargs)) {
 		    /* function exists */
 		    (f->sp++)->del();
 		}

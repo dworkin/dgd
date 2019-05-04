@@ -1580,7 +1580,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     }
 
     /* initialize interpreter */
-    i_init(conf[CREATE].str, conf[TYPECHECKING].num == 2);
+    Frame::init(conf[CREATE].str, conf[TYPECHECKING].num == 2);
 
     /* initialize compiler */
     c_init(conf[AUTO_OBJECT].str,
@@ -1873,11 +1873,11 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 22:	/* ST_STACKDEPTH */
-	PUT_INTVAL(v, i_get_depth(f));
+	PUT_INTVAL(v, f->getDepth());
 	break;
 
     case 23:	/* ST_TICKS */
-	PUT_INTVAL(v, i_get_ticks(f));
+	PUT_INTVAL(v, f->getTicks());
 	break;
 
     case 24:	/* ST_DATAGRAMPORTS */

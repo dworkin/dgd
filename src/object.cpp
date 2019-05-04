@@ -328,7 +328,7 @@ void Object::commitPlane()
 		}
 		if (op->obj.count == 0 && obj->count != 0) {
 		    /* remove object from stackframe above atomic function */
-		    i_odest(cframe, obj);
+		    cframe->objDest(obj);
 		}
 
 		if (prev == &baseplane) {
@@ -618,7 +618,7 @@ void Object::remove(Frame *f)
     strcpy(f->sp->string->text + 1, name);
     PUSH_INTVAL(f, ctrl->compiled);
     PUSH_INTVAL(f, index);
-    if (i_call_critical(f, "remove_program", 3, TRUE)) {
+    if (f->callCritical("remove_program", 3, TRUE)) {
 	(f->sp++)->del();
     }
 
@@ -702,7 +702,7 @@ void Object::del(Frame *f)
 	/* can happen if object selfdestructs in close()-on-destruct */
 	error("Destructing destructed object");
     }
-    i_odest(f, this);	/* wipe out occurrences on the stack */
+    f->objDest(this);	/* wipe out occurrences on the stack */
     if (data == (Dataspace *) NULL && dfirst != SW_UNUSED) {
 	dataspace();	/* load dataspace now */
     }

@@ -96,7 +96,7 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
     }
     if (nargs != 0) {
 	AFREE(strs - nargs);
-	i_pop(f, nargs);
+	f->pop(nargs);
     }
     f->sp->string->del();
     PUT_OBJVAL(f->sp, obj);
@@ -151,13 +151,13 @@ int kf_call_other(Frame *f, int nargs, kfunc *kf)
 	/*
 	 * call from destructed object
 	 */
-	i_pop(f, nargs);
+	f->pop(nargs);
 	*--f->sp = Value::nil;
 	return 0;
     }
 
-    if (i_call(f, obj, lwobj, val[-1].string->text, val[-1].string->len,
-	       FALSE, nargs - 2)) {
+    if (f->call(obj, lwobj, val[-1].string->text, val[-1].string->len, FALSE,
+		nargs - 2)) {
 	val = f->sp++;		/* function exists */
     } else {
 	val = &Value::nil;	/* function doesn't exist */
@@ -262,7 +262,7 @@ int kf_previous_object(Frame *f, int nargs, kfunc *kf)
 	return 1;
     }
 
-    prev = i_prev_object(f, (int) f->sp->number);
+    prev = f->prevObject((int) f->sp->number);
     if (prev != (Frame *) NULL) {
 	obj = OBJR(prev->oindex);
 	if (obj->count != 0) {
@@ -304,7 +304,7 @@ int kf_previous_program(Frame *f, int nargs, kfunc *kf)
 	return 1;
     }
 
-    prog = i_prev_program(f, (int) f->sp->number);
+    prog = f->prevProgram((int) f->sp->number);
     if (prog != (char *) NULL) {
 	PUT_STRVAL(f->sp,
 		   str = String::create((char *) NULL, strlen(prog) + 1L));
@@ -332,7 +332,7 @@ int kf_call_trace(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUSH_ARRVAL(f, i_call_trace(f));
+    PUSH_ARRVAL(f, f->callTrace());
     return 0;
 }
 # endif
@@ -364,7 +364,7 @@ int kf_clone_object(Frame *f, int n, kfunc *kf)
     }
     obj = obj->clone();
     PUT_OBJ(f->sp, obj);
-    if (i_call(f, obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
+    if (f->call(obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
 	(f->sp++)->del();
     }
     return 0;
@@ -435,8 +435,7 @@ int kf_new_object(Frame *f, int n, kfunc *kf)
 	}
 
 	PUT_LWOVAL(f->sp, Array::lwoCreate(f->data, obj));
-	if (i_call(f, (Object *) NULL, f->sp->array, (char *) NULL, 0, TRUE,
-		   0)) {
+	if (f->call((Object *) NULL, f->sp->array, (char *) NULL, 0, TRUE, 0)) {
 	    (f->sp++)->del();
 	}
     } else {
@@ -500,7 +499,7 @@ int kf_instanceof(Frame *f, int nargs, kfunc *kf)
     if (builtin != (char *) NULL) {
 	instance = (strcmp(builtin, buffer) == 0);
     } else {
-	instance = i_instancestr(oindex, buffer);
+	instance = Frame::instanceOf(oindex, buffer);
     }
     f->sp->string->del();
     PUT_INTVAL(f->sp, instance);
@@ -1268,7 +1267,7 @@ int kf_call_out(Frame *f, int nargs, kfunc *kf)
 	f->sp++;
     } else {
 	/* no call_out was started: pop all arguments */
-	i_pop(f, nargs - 1);
+	f->pop(nargs - 1);
 	handle = 0;
     }
     f->sp->string->del();
@@ -1726,7 +1725,7 @@ int kf_call_function(Frame *f, int nargs, kfunc *kf)
     /* insert bound arguments on the stack */
     n = a->size - 5;
     if (n != 0) {
-	i_grow_stack(f, n);
+	f->growStack(n);
 	memmove(f->sp - n, f->sp, nargs * sizeof(Value));
 	f->sp -= n;
 
@@ -1739,8 +1738,8 @@ int kf_call_function(Frame *f, int nargs, kfunc *kf)
 	} while (--n != 0);
     }
 
-    if (!i_call(f, obj, lwobj, elts[4].string->text, elts[4].string->len,
-		TRUE, nargs)) {
+    if (!f->call(obj, lwobj, elts[4].string->text, elts[4].string->len, TRUE,
+		 nargs)) {
 	error("Function not found");
     }
 

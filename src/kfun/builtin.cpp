@@ -36,7 +36,7 @@ static void kf_argerror(int kfun, int n)
  */
 static void kf_op_unary(Frame *f, int kfun)
 {
-    if (!i_call(f, (Object *) NULL, f->sp->array, kftab[kfun].name,
+    if (!f->call((Object *) NULL, f->sp->array, kftab[kfun].name,
 		strlen(kftab[kfun].name), TRUE, 0)) {
 	kf_argerror(kfun, 1);
     }
@@ -60,8 +60,8 @@ static void kf_op_binary(Frame *f, int kfun)
 	kf_argerror(kfun, 2);
     }
 
-    if (!i_call(f, (Object *) NULL, f->sp[1].array, kftab[kfun].name,
-		strlen(kftab[kfun].name), TRUE, 1)) {
+    if (!f->call((Object *) NULL, f->sp[1].array, kftab[kfun].name,
+		 strlen(kftab[kfun].name), TRUE, 1)) {
 	kf_argerror(kfun, 1);
     }
     if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
@@ -84,8 +84,8 @@ static void kf_op_compare(Frame *f, int kfun)
 	kf_argerror(kfun, 2);
     }
 
-    if (!i_call(f, (Object *) NULL, f->sp[1].array, kftab[kfun].name,
-		strlen(kftab[kfun].name), TRUE, 1)) {
+    if (!f->call((Object *) NULL, f->sp[1].array, kftab[kfun].name,
+		 strlen(kftab[kfun].name), TRUE, 1)) {
 	kf_argerror(kfun, 1);
     }
     if (f->sp->type != T_INT || (f->sp->number & ~1)) {
@@ -104,8 +104,8 @@ static void kf_op_compare(Frame *f, int kfun)
  */
 static void kf_op_ternary(Frame *f, int kfun)
 {
-    if (!i_call(f, (Object *) NULL, f->sp[2].array, kftab[kfun].name,
-		strlen(kftab[kfun].name), TRUE, 2)) {
+    if (!f->call((Object *) NULL, f->sp[2].array, kftab[kfun].name,
+		 strlen(kftab[kfun].name), TRUE, 2)) {
 	kf_argerror(kfun, 1);
     }
     if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
@@ -554,7 +554,7 @@ int kf_eq(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[1].type != f->sp->type) {
-	i_pop(f, 2);
+	f->pop(2);
 	PUSH_INTVAL(f, FALSE);
 	return 0;
     }
@@ -1194,7 +1194,7 @@ int kf_ne(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[1].type != f->sp->type) {
-	i_pop(f, 2);
+	f->pop(2);
 	PUSH_INTVAL(f, TRUE);
 	return 0;
     }
@@ -2495,7 +2495,7 @@ int kf_calltr_idx(Frame *f, int n, kfunc *kf)
 	error("Non-numeric array index");
     }
     i_add_ticks(f, 10);
-    if (!i_call_tracei(f, f->sp->number, f->sp)) {
+    if (!f->callTraceI(f->sp->number, f->sp)) {
 	error("Index out of range");
     }
     return 0;

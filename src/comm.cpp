@@ -200,7 +200,7 @@ static Array *comm_setup(user *usr, Frame *f, Object *obj)
 
     /* initialize dataspace before the object receives the user role */
     if (!O_HASDATA(obj) &&
-	i_call(f, obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
+	f->call(obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
 	(f->sp++)->del();
     }
 
@@ -401,7 +401,7 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
 	ErrorContext::push();
 	this_user = obj->index;
 	PUSH_INTVAL(f, destruct);
-	if (i_call(f, obj, (Array *) NULL, "close", 5, TRUE, 1)) {
+	if (f->call(obj, (Array *) NULL, "close", 5, TRUE, 1)) {
 	    (f->sp++)->del();
 	}
 	this_user = olduser;
@@ -881,7 +881,7 @@ static void comm_taccept(Frame *f, connection *conn, int port)
     usr->flags |= CF_PROMPT;
     addtoflush(usr, Dataspace::extra(obj->dataspace())->array);
     this_user = obj->index;
-    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
+    if (f->call(obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	(f->sp++)->del();
     }
     endtask();
@@ -913,7 +913,7 @@ static void comm_baccept(Frame *f, connection *conn, int port)
     }
 
     this_user = obj->index;
-    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
+    if (f->call(obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	(f->sp++)->del();
     }
     endtask();
@@ -946,7 +946,7 @@ static void comm_daccept(Frame *f, connection *conn, int port)
     }
 
     this_user = obj->index;
-    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
+    if (f->call(obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	(f->sp++)->del();
     }
     endtask();
@@ -1091,8 +1091,8 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    if (retval < 0) {
 			obj->flags &= ~O_USER;
 			PUSH_INTVAL(f, errcode);
-			if (i_call(f, obj, (Array *) NULL, "unconnected", 11,
-				   TRUE, 1)) {
+			if (f->call(obj, (Array *) NULL, "unconnected", 11,
+				    TRUE, 1)) {
 			    (f->sp++)->del();
 			}
 			endtask();
@@ -1100,8 +1100,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			/*
 			 * Connection completed, call open in the user object.
 			 */
-			if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0))
-			{
+			if (f->call(obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 			    (f->sp++)->del();
 			}
 			endtask();
@@ -1125,8 +1124,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		usr->flags &= ~CF_ODONE;
 		--odone;
 		this_user = obj->index;
-		if (i_call(f, obj, (Array *) NULL, "message_done", 12, TRUE, 0))
-		{
+		if (f->call(obj, (Array *) NULL, "message_done", 12, TRUE, 0)) {
 		    (f->sp++)->del();
 		    endtask();
 		}
@@ -1376,8 +1374,8 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			 */
 			PUSH_STRVAL(f, String::create(buffer, n));
 			this_user = obj->index;
-			if (i_call(f, obj, (Array *) NULL, "receive_datagram",
-				   16, TRUE, 1)) {
+			if (f->call(obj, (Array *) NULL, "receive_datagram", 16,
+				    TRUE, 1)) {
 			    (f->sp++)->del();
 			    endtask();
 			}
@@ -1389,8 +1387,8 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		} else if ((usr->flags & CF_UDP) && conn_udpcheck(usr->conn)) {
 		    usr->flags |= CF_UDPDATA;
 		    this_user = obj->index;
-		    if (i_call(f, obj, (Array *) NULL, "datagram_attach", 15,
-			       TRUE, 0)) {
+		    if (f->call(obj, (Array *) NULL, "datagram_attach", 15,
+				TRUE, 0)) {
 			(f->sp++)->del();
 			endtask();
 		    }
@@ -1414,8 +1412,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	    }
 
 	    this_user = obj->index;
-	    if (i_call(f, obj, (Array *) NULL, "receive_message", 15, TRUE, 1))
-	    {
+	    if (f->call(obj, (Array *) NULL, "receive_message", 15, TRUE, 1)) {
 		(f->sp++)->del();
 		endtask();
 	    }

@@ -169,69 +169,88 @@ struct RLInfo {
     RLInfo *next;		/* next in linked list */
 };
 
-struct Frame {
+class Frame {
+public:
+    void growStack(int);
+    void pop(int n);
+    void objDest(Object *obj);
+    void lvalues(int n);
+    Int getDepth();
+    Int getTicks();
+    void setRlimits(RLInfo *rlim);
+    Frame *setSp(Value *sp);
+    Frame *prevObject(int n);
+    const char *prevProgram(int n);
+    bool call(Object *obj, Array *lwobj, const char *func, unsigned int len,
+	      int call_static, int nargs);
+    bool callTraceI(Int idx, Value *v);
+    Array *callTrace();
+    bool callCritical(const char *func, int narg, int flag);
+    void atomicError(Int level);
+    Frame *restore(Int level);
+
+    static void init(char *create, bool flag);
+    static int instanceOf(unsigned int oindex, char *prog);
+    static void runtimeError(Frame *f, Int depth);
+    static void clear();
+
     Frame *prev;		/* previous stack frame */
     uindex oindex;		/* current object index */
     Array *lwobj;		/* lightweight object */
     Control *ctrl;		/* object control block */
     Dataspace *data;		/* dataspace of current object */
     Control *p_ctrl;		/* program control block */
-    unsigned short p_index;	/* program index */
-    unsigned short nargs;	/* # arguments */
     bool external;		/* TRUE if it's an external call */
-    bool sos;			/* stack on stack */
-    uindex foffset;		/* program function offset */
     struct FuncDef *func;	/* current function */
-    char *prog;			/* start of program */
     char *pc;			/* program counter */
-    Value *stack;		/* local value stack */
     Value *sp;			/* stack pointer */
-    Value *argp;		/* argument pointer (previous sp) */
     Value *fp;			/* frame pointer (at end of local stack) */
     Int depth;			/* stack depth */
     RLInfo *rlim;		/* rlimits info */
     Int level;			/* plane level */
     bool atomic;		/* within uncaught atomic code */
     bool kflv;			/* kfun with lvalue parameters */
+
+private:
+    void pushValue(Value *v);
+    void string(int inherit, unsigned int index);
+    void aggregate(unsigned int size);
+    void mapAggregate(unsigned int size);
+    int	spread(int n);
+    void global(int inherit, int index);
+    void oper(Array *lwobj, const char *op, int nargs, Value *var, Value *idx,
+	      Value *val);
+    void index(Value *aval, Value *ival, Value *val, bool keep);
+    char *className(Uint sclass);
+    int instanceOf(unsigned int oindex, Uint sclass);
+    void cast(Value *val, unsigned int type, Uint sclass);
+    void storeLocal(int local, Value *val, Value *verify);
+    void storeGlobal(int inherit, int index, Value *val, Value *verify);
+    bool storeIndex(Value *var, Value *aval, Value *ival, Value *val);
+    void stores(int skip, int assign);
+    void checkRlimits();
+    void newRlimits(Int depth, Int t);
+    void typecheck(Frame *f, const char *name, const char *ftype, char *proto,
+		   int nargs, bool strict);
+    unsigned short switchInt(char *pc);
+    unsigned short switchRange(char *pc);
+    unsigned short switchStr(char *pc);
+    void interpret(char *pc);
+    void funcall(Object *obj, Array *lwobj, int p_ctrli, int funci, int nargs);
+    unsigned short line();
+    Array *funcTrace(Dataspace *data);
+
+    static int instanceOf(unsigned int oindex, char *prog, Uint hash);
+
+    unsigned short p_index;	/* program index */
+    unsigned short nargs;	/* # arguments */
+    bool sos;			/* stack on stack */
+    uindex foffset;		/* program function offset */
+    char *prog;			/* start of program */
+    Value *stack;		/* local value stack */
+    Value *argp;		/* argument pointer (previous sp) */
 };
 
-extern void	i_init		(char*, bool);
-extern void	i_grow_stack	(Frame*, int);
-extern void	i_push_value	(Frame*, Value*);
-extern void	i_pop		(Frame*, int);
-extern void	i_odest		(Frame*, Object*);
-extern void	i_string	(Frame*, int, unsigned int);
-extern void	i_aggregate	(Frame*, unsigned int);
-extern void	i_map_aggregate	(Frame*, unsigned int);
-extern int	i_spread	(Frame*, int);
-extern void	i_global	(Frame*, int, int);
-extern void	i_index		(Frame*, Value*, Value*, Value*, bool);
-extern char    *i_typename	(char*, unsigned int);
-extern char    *i_classname	(Frame*, Uint);
-extern int	i_instanceof	(Frame*, unsigned int, Uint);
-extern int	i_instancestr	(unsigned int, char*);
-extern void	i_cast		(Frame*, Value*, unsigned int, Uint);
-extern void	i_store_global	(Frame*, int, int, Value*, Value*);
-extern bool	i_store_index	(Frame*, Value*, Value*, Value*, Value*);
-extern void	i_lvalues	(Frame*, int);
-extern Int	i_get_depth	(Frame*);
-extern Int	i_get_ticks	(Frame*);
-extern void	i_new_rlimits	(Frame*, Int, Int);
-extern void	i_set_rlimits	(Frame*, RLInfo*);
-extern Frame   *i_set_sp	(Frame*, Value*);
-extern Frame   *i_prev_object	(Frame*, int);
-extern const char    *i_prev_program	(Frame*, int);
-extern void	i_typecheck	(Frame*, Frame*, const char*, const char*,
-				 char*, int, bool);
-extern void	i_funcall	(Frame*, Object*, Array*, int, int, int);
-extern bool	i_call		(Frame*, Object*, Array*, const char*,
-				 unsigned int, int, int);
-extern bool	i_call_tracei	(Frame*, Int, Value*);
-extern Array   *i_call_trace	(Frame*);
-extern bool	i_call_critical	(Frame*, const char*, int, int);
-extern void	i_runtime_error	(Frame*, Int);
-extern void	i_atomic_error	(Frame*, Int);
-extern Frame   *i_restore	(Frame*, Int);
 extern void	i_clear		();
 
 extern Frame *cframe;

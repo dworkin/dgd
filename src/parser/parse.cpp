@@ -630,9 +630,9 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		try {
 		    ErrorContext::push();
 		    PUSH_ARRVAL(ps->frame, a);
-		    call = i_call(ps->frame, OBJR(ps->frame->oindex),
-				  (Array *) NULL, pn->text + 2 + n,
-				  UCHAR(pn->text[1]) - n - 1, TRUE, 1);
+		    call = ps->frame->call(OBJR(ps->frame->oindex),
+					   (Array *) NULL, pn->text + 2 + n,
+					   UCHAR(pn->text[1]) - n - 1, TRUE, 1);
 		    ErrorContext::pop();
 		} catch (...) {
 		    /* error: restore original parser */

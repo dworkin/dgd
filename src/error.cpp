@@ -152,14 +152,14 @@ void error(String *str)
 	do {
 	    if (cframe->level != e->f->level) {
 		if (atomicec == (ErrorContext *) NULL) {
-		    i_atomic_error(cframe, e->f->level);
+		    cframe->atomicError(e->f->level);
 		    if (e != econtext) {
 			atomicec = e;
 			break;	/* handle rollback later */
 		    }
 		}
 
-		cframe = i_restore(cframe, e->f->level);
+		cframe = cframe->restore(e->f->level);
 		atomicec = (ErrorContext *) NULL;
 	    }
 
@@ -174,9 +174,9 @@ void error(String *str)
     }
 
     if (cframe->rlim != econtext->rlim) {
-	i_set_rlimits(cframe, econtext->rlim);
+	cframe->setRlimits(econtext->rlim);
     }
-    cframe = i_set_sp(cframe, econtext->f->fp - offset);
+    cframe = cframe->setSp(econtext->f->fp - offset);
     cframe->atomic = econtext->atomic;
     cframe->rlim = econtext->rlim;
     ErrorContext::pop();
