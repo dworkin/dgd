@@ -26,7 +26,7 @@ class Value;
 class Control;
 class Dataplane;
 class Dataspace;
-struct Frame;
+class Frame;
 
 # include "config.h"
 # include "alloc.h"
