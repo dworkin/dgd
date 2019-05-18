@@ -1624,8 +1624,8 @@ void Frame::interpret(char *pc)
 		sp[1].string->del();
 		sp[2].string->del();
 	    } else {
-		(sp + 3)->del();
-		(sp + 4)->del();
+		sp[3].del();
+		sp[4].del();
 	    }
 	    sp[4] = sp[0];
 	    sp += 4;

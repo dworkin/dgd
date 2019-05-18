@@ -251,8 +251,6 @@ private:
     Value *argp;		/* argument pointer (previous sp) */
 };
 
-extern void	i_clear		();
-
 extern Frame *cframe;
 
 # define i_add_ticks(f, t)	((f)->rlim->ticks -= (t))
