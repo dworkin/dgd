@@ -182,7 +182,7 @@ public:
 	i = chunksize;
 	for (b = chunk; b != NULL; b = b->prev) {
 	    while (i < CHUNK) {
-		if (!item(&b->items[i].item)) {
+		if (b->items[i].chunk == this && !item(&b->items[i].item)) {
 		    return;
 		}
 		i++;
