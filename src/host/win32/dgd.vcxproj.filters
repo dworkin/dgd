@@ -22,9 +22,6 @@
     <ClCompile Include="..\..\comp\control.cpp">
       <Filter>Source Files\comp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\comp\csupport.cpp">
-      <Filter>Source Files\comp</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\comp\node.cpp">
       <Filter>Source Files\comp</Filter>
     </ClCompile>
@@ -190,9 +187,6 @@
       <Filter>Header Files\comp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\comp\control.h">
-      <Filter>Header Files\comp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\comp\csupport.h">
       <Filter>Header Files\comp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\comp\node.h">

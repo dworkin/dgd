@@ -26,7 +26,6 @@
     <ClCompile Include="..\..\comp\codegen.cpp" />
     <ClCompile Include="..\..\comp\compile.cpp" />
     <ClCompile Include="..\..\comp\control.cpp" />
-    <ClCompile Include="..\..\comp\csupport.cpp" />
     <ClCompile Include="..\..\comp\node.cpp" />
     <ClCompile Include="..\..\comp\optimize.cpp" />
     <ClCompile Include="..\..\comp\parser.cpp" />
@@ -84,7 +83,6 @@
     <ClInclude Include="..\..\comp\comp.h" />
     <ClInclude Include="..\..\comp\compile.h" />
     <ClInclude Include="..\..\comp\control.h" />
-    <ClInclude Include="..\..\comp\csupport.h" />
     <ClInclude Include="..\..\comp\node.h" />
     <ClInclude Include="..\..\comp\optimize.h" />
     <ClInclude Include="..\..\comp\parser.h" />

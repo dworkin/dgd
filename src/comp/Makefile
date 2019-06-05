@@ -18,9 +18,8 @@
 #
 CXXFLAGS=-I. -I.. -I../lex -I../parser -I../kfun $(CCFLAGS)
 
-SRC=	node.cpp parser.cpp control.cpp optimize.cpp codegen.cpp compile.cpp \
-	csupport.cpp
-OBJ=	node.o parser.o control.o optimize.o codegen.o compile.o csupport.o
+SRC=	node.cpp parser.cpp control.cpp optimize.cpp codegen.cpp compile.cpp
+OBJ=	node.o parser.o control.o optimize.o codegen.o compile.o
 
 all:
 	@echo Please run make from the src directory.
@@ -39,18 +38,16 @@ clean:
 
 $(OBJ): ../dgd.h ../config.h ../host.h ../error.h ../alloc.h ../str.h
 $(OBJ): ../array.h ../object.h ../hash.h ../swap.h ../xfloat.h ../interpret.h
-node.o parser.o control.o optimize.o codegen.o compile.o csupport.o: ../data.h
+node.o parser.o control.o optimize.o codegen.o compile.o: ../data.h
 compile.o: ../path.h
 
 node.o parser.o compile.o: ../lex/macro.h ../lex/token.h
 parser.o compile.o: ../lex/ppcontrol.h
 
-control.o optimize.o codegen.o csupport.o: ../kfun/table.h
+control.o optimize.o codegen.o: ../kfun/table.h
 
 $(OBJ): comp.h node.h
-control.o optimize.o codegen.o compile.o csupport.o: control.h
+control.o optimize.o codegen.o compile.o: control.h
 codegen.o compile.o: codegen.h
 parser.o control.o optimize.o codegen.o compile.o: compile.h
-csupport.o: compile.h
 optimize.o compile.o: optimize.h
-csupport.o: csupport.h

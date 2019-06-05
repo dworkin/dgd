@@ -116,7 +116,6 @@ clean:
 
 
 path.o config.o dgd.o: comp/node.h comp/compile.h
-config.o: comp/csupport.h
 config.o: comp/parser.h
 array.o object.o data.o config.o interpret.o ext.o: comp/control.h
 

@@ -38,7 +38,6 @@
 # include "node.h"
 # include "parser.h"
 # include "compile.h"
-# include "csupport.h"
 # include "table.h"
 
 struct config {
@@ -437,7 +436,21 @@ static bool conf_restore(int fd, int fd2)
     Dataspace::initConv(conv_14);
     Control::initConv(conv_14, conv_15);
     if (conv_14) {
-	pc_restore(fd);
+	struct {
+	    uindex nprecomps;
+	    Uint ninherits;
+	    Uint imapsz;
+	    Uint nstrings;
+	    Uint stringsz;
+	    Uint nfuncdefs;
+	    Uint nvardefs;
+	    Uint nfuncalls;
+	} dh;
+
+	conf_dread(fd, (char *) &dh, "uiiiiiii", (Uint) 1);
+	if (dh.nprecomps != 0) {
+	    fatal("precompiled objects in snapshot");
+	}
     }
     boottime = P_time();
     co_restore(fd, boottime);
