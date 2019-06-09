@@ -395,7 +395,7 @@ int kf_destruct_object(Frame *f, int n, kfunc *kf)
     obj = OBJW(f->sp->oindex);
     switch (obj->flags & O_SPECIAL) {
     case O_USER:
-	comm_close(f, obj);
+	Comm::close(f, obj);
 	break;
 
     case O_EDITOR:
@@ -672,7 +672,7 @@ int kf_this_user(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    obj = comm_user();
+    obj = Comm::user();
     if (obj != (Object *) NULL) {
 	PUSH_OBJVAL(f, obj);
     } else {
@@ -702,8 +702,8 @@ int kf_query_ip_number(Frame *f, int n, kfunc *kf)
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
-	if (comm_is_connection(obj)) {
-	    PUT_STRVAL(f->sp, comm_ip_number(obj));
+	if (Comm::isConnection(obj)) {
+	    PUT_STRVAL(f->sp, Comm::ipNumber(obj));
 	    return 0;
 	}
     } else {
@@ -735,8 +735,8 @@ int kf_query_ip_name(Frame *f, int n, kfunc *kf)
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
-	if (comm_is_connection(obj)) {
-	    PUT_STRVAL(f->sp, comm_ip_name(obj));
+	if (Comm::isConnection(obj)) {
+	    PUT_STRVAL(f->sp, Comm::ipName(obj));
 	    return 0;
 	}
     } else {
@@ -763,7 +763,7 @@ int kf_users(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    PUSH_ARRVAL(f, comm_users(f->data));
+    PUSH_ARRVAL(f, Comm::listUsers(f->data));
     i_add_ticks(f, f->sp->array->size);
     return 0;
 }
@@ -1058,9 +1058,9 @@ int kf_send_message(Frame *f, int n, kfunc *kf)
 	if (obj->count != 0) {
 	    if ((obj->flags & O_SPECIAL) == O_USER) {
 		if (f->sp->type == T_INT) {
-		    num = comm_echo(obj, f->sp->number != 0);
+		    num = Comm::echo(obj, f->sp->number != 0);
 		} else {
-		    num = comm_send(OBJW(obj->index), f->sp->string);
+		    num = Comm::send(OBJW(obj->index), f->sp->string);
 		}
 	    } else if ((obj->flags & O_DRIVER) && f->sp->type == T_STRING) {
 		P_message(f->sp->string->text);
@@ -1098,7 +1098,7 @@ int kf_send_datagram(Frame *f, int n, kfunc *kf)
     if (f->lwobj == (Array *) NULL) {
 	obj = OBJW(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
-	    num = comm_udpsend(obj, f->sp->string);
+	    num = Comm::udpsend(obj, f->sp->string);
 	}
     }
     f->sp->string->del();
@@ -1128,7 +1128,7 @@ int kf_datagram_challenge(Frame *f, int n, kfunc *kf)
     if (f->lwobj == (Array *) NULL) {
 	obj = OBJW(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
-	    comm_challenge(obj, f->sp->string);
+	    Comm::challenge(obj, f->sp->string);
 	}
     }
     f->sp->string->del();
@@ -1157,7 +1157,7 @@ int kf_block_input(Frame *f, int n, kfunc *kf)
     if (f->lwobj == (Array *) NULL) {
 	obj = OBJR(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
-	    comm_block(obj, f->sp->number != 0);
+	    Comm::block(obj, f->sp->number != 0);
 	}
     }
     *f->sp = Value::nil;
@@ -1409,7 +1409,7 @@ int kf_connect(Frame *f, int nargs, kfunc *kf)
     }
     port = (f->sp++)->number;
 
-    comm_connect(f, obj, f->sp->string->text, port);
+    Comm::connect(f, obj, f->sp->string->text, port);
     f->sp->string->del();
     *f->sp = Value::nil;
     return 0;
@@ -1473,7 +1473,7 @@ int kf_connect_datagram(Frame *f, int nargs, kfunc *kf)
     }
     port = (f->sp++)->number;
 
-    comm_connect_dgram(f, obj, f->sp[1].number, f->sp->string->text, port);
+    Comm::connectDgram(f, obj, f->sp[1].number, f->sp->string->text, port);
     (f->sp++)->string->del();
     *f->sp = Value::nil;
     return 0;

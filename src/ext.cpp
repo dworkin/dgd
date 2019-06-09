@@ -569,7 +569,7 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     ext_ext[0] = (voidf *) &kf_ext_kfun;
     ext_ext[1] = (voidf *) NULL;
     ext_ext[2] = (voidf *) &ext_spawn;
-    ext_ext[3] = (voidf *) &conn_fdclose;
+    ext_ext[3] = (voidf *) &Connection::fdclose;
     ext_ext[4] = (voidf *) &ext_jit;
     ext_frame[0] = (voidf *) &ext_frame_object;
     ext_frame[1] = (voidf *) &ext_frame_dataspace;

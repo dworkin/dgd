@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,68 +21,79 @@
 # define  P_UDP      17
 # define  P_TELNET   1
 
-struct connection;
+class Connection : public Hashtab::Entry {
+public:
+    virtual bool attach() = 0;
+    virtual bool udp(char *challenge, unsigned int len) = 0;
+    virtual void del() = 0;
+    virtual void block(int flag) = 0;
+    virtual bool udpCheck() = 0;
+    virtual int read(char *buf, unsigned int len) = 0;
+    virtual int readUdp(char *buf, unsigned int len) = 0;
+    virtual int write(char *buf, unsigned int len) = 0;
+    virtual int writeUdp(char *buf, unsigned int len) = 0;
+    virtual bool wrdone() = 0;
+    virtual void ipnum(char *buf) = 0;
+    virtual void ipname(char *buf) = 0;
+    virtual int	checkConnected(int *errcode) = 0;
+    virtual bool cexport(int *fd, char *addr, unsigned short *port, short *at,
+			 int *npkts, int *bufsz, char **buf, char *flags) = 0;
 
-extern bool	   conn_init	 (int, char**, char**, char**, unsigned short*,
-				    unsigned short*, unsigned short*, int, int,
-				    int);
-extern void	   conn_clear	 ();
-extern void	   conn_finish	 ();
-extern void	   conn_listen	 ();
-extern connection *conn_tnew6	 (int);
-extern connection *conn_tnew	 (int);
-extern connection *conn_bnew6	 (int);
-extern connection *conn_bnew	 (int);
-extern connection *conn_dnew6	 (int);
-extern connection *conn_dnew	 (int);
-extern bool	   conn_attach	 (connection*);
-extern bool	   conn_udp	 (connection*, char*, unsigned int);
-extern void	   conn_del	 (connection*);
-extern void	   conn_block	 (connection*, int);
-extern int	   conn_select	 (Uint, unsigned int);
-extern bool	   conn_udpcheck (connection*);
-extern int	   conn_read	 (connection*, char*, unsigned int);
-extern int	   conn_udpread	 (connection*, char*, unsigned int);
-extern int	   conn_write	 (connection*, char*, unsigned int);
-extern int	   conn_udpwrite (connection*, char*, unsigned int);
-extern bool	   conn_wrdone	 (connection*);
-extern void	   conn_ipnum	 (connection*, char*);
-extern void	   conn_ipname	 (connection*, char*);
-extern void	  *conn_host	 (char*, unsigned short, int*);
-extern connection *conn_connect	 (void*, int);
-extern connection *conn_dconnect (int, void*, int);
-extern int	   conn_check_connected (connection*, int*);
-extern bool	   conn_export	 (connection*, int*, char*, unsigned short*,
-				  short*, int*, int*, char**, char*);
-extern connection *conn_import	 (int, char*, unsigned short, short, int, int,
-				  char*, char, bool);
-extern int	   conn_fdcount	 ();
-extern void	   conn_fdlist	 (int*);
-extern void	   conn_fdclose	 (int*, int);
+    static bool init(int maxusers, char **thosts, char **bhosts, char **dhosts,
+		     unsigned short *tports, unsigned short *bports,
+		     unsigned short *dports, int ntports, int nbports,
+		     int ndports);
+    static void clear();
+    static void finish();
+    static void listen();
+    static int select(Uint t, unsigned int mtime);
+    static void *host(char *addr, unsigned short port, int *len);
+    static int fdcount();
+    static void fdlist(int *list);
+    static void fdclose(int *list, int n);
 
-extern bool	comm_init	(int, int, char**, char**, char**,
+    static Connection *createTelnet6(int port);
+    static Connection *createTelnet(int port);
+    static Connection *create6(int port);
+    static Connection *create(int port);
+    static Connection *createDgram6(int port);
+    static Connection *createDgram(int port);
+    static Connection *connect(void *addr, int len);
+    static Connection *connectDgram(int uport, void *addr, int len);
+    static Connection *import(int fd, char *addr, unsigned short port, short at,
+			      int npkts, int bufsz, char *buf, char flags,
+			      bool telnet);
+};
+
+class Comm {
+public:
+    static bool init(int, int, char**, char**, char**,
 				   unsigned short*, unsigned short*,
 				   unsigned short*, int, int, int);
+    static void clear();
+    static void finish();
+    static void listen();
+    static int send(Object *obj, String *str);
+    static int udpsend(Object *obj, String *str);
+    static bool echo(Object *obj, int echo);
+    static void challenge(Object *obj, String *str);
+    static void flush();
+    static void block(Object *obj, int block);
+    static void receive(Frame*, Uint, unsigned int);
+    static String *ipNumber(Object*);
+    static String *ipName(Object*);
+    static void close(Frame*, Object*);
+    static Object *user();
+    static void connect(Frame *f, Object *obj, char *addr, unsigned short port);
+    static void connectDgram(Frame *f, Object *obj, int uport, char *addr,
+			     unsigned short port);
+    static Array *listUsers(Dataspace*);
+    static bool isConnection(Object*);
+    static bool save(int);
+    static bool restore(int);
 
-extern void	comm_clear	();
-extern void	comm_finish	();
-extern void	comm_listen	();
-extern int	comm_send	(Object*, String*);
-extern int	comm_udpsend	(Object*, String*);
-extern bool	comm_echo	(Object*, int);
-extern void	comm_challenge	(Object*, String*);
-extern void	comm_flush	();
-extern void	comm_block	(Object*, int);
-extern void	comm_receive	(Frame*, Uint, unsigned int);
-extern String  *comm_ip_number	(Object*);
-extern String  *comm_ip_name	(Object*);
-extern void	comm_close	(Frame*, Object*);
-extern Object  *comm_user	();
-extern void	comm_connect	(Frame *f, Object *obj, char *addr,
-				 unsigned short port);
-extern void	comm_connect_dgram (Frame *f, Object *obj, int uport,
-				    char *addr, unsigned short port);
-extern Array   *comm_users	(Dataspace*);
-extern bool     comm_is_connection (Object*);
-extern bool	comm_dump	(int);
-extern bool	comm_restore	(int);
+private:
+    static void acceptTelnet(Frame *f, Connection *conn, int port);
+    static void accept(Frame *f, Connection *conn, int port);
+    static void acceptDgram(Frame *f, Connection *conn, int port);
+};

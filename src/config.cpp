@@ -306,7 +306,7 @@ void conf_dump(bool incr, bool boot)
 	fatal("failed to dump callout table");
     }
     if (boot) {
-	boot = comm_dump(fd);
+	boot = Comm::save(fd);
 	if (boot) {
 	    dflags |= FLAGS_HOTBOOT;
 	}
@@ -459,7 +459,7 @@ static bool conf_restore(int fd, int fd2)
 	P_close(fd2);
     }
 
-    return ((rdflags & FLAGS_HOTBOOT) && comm_restore(fd));
+    return ((rdflags & FLAGS_HOTBOOT) && Comm::restore(fd));
 }
 
 /*
@@ -1132,10 +1132,10 @@ static void conf_fdlist()
 {
     int i, size, *list;
 
-    size = conn_fdcount();
+    size = Connection::fdcount();
     if (size != 0) {
 	list = ALLOCA(int, size);
-	conn_fdlist(list);
+	Connection::fdlist(list);
     }
 
     for (i = 0; modules[i] != NULL; i++) {
@@ -1537,13 +1537,13 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     }
 
     /* initialize communications */
-    if (!comm_init((int) conf[USERS].num,
-		   (int) conf[DATAGRAM_USERS].num,
-		   thosts, bhosts, dhosts,
-		   tports, bports, dports,
-		   ntports, nbports, ndports)) {
-	comm_clear();
-	comm_finish();
+    if (!Comm::init((int) conf[USERS].num,
+		    (int) conf[DATAGRAM_USERS].num,
+		    thosts, bhosts, dhosts,
+		    tports, bports, dports,
+		    ntports, nbports, ndports)) {
+	Comm::clear();
+	Comm::finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
 	}
@@ -1579,8 +1579,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     /* initialize call_outs */
     if (!co_init((uindex) conf[CALL_OUTS].num)) {
 	Swap::finish();
-	comm_clear();
-	comm_finish();
+	Comm::clear();
+	Comm::finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
 	}
@@ -1613,8 +1613,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
      */
     if (!conf_includes()) {
 	Swap::finish();
-	comm_clear();
-	comm_finish();
+	Comm::clear();
+	Comm::finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
 	}
@@ -1673,8 +1673,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	ErrorContext::pop();		/* remove guard */
 
 	Swap::finish();
-	comm_clear();
-	comm_finish();
+	Comm::clear();
+	Comm::finish();
 	ed_finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
@@ -1699,7 +1699,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     kf_jit();
 
     /* start accepting connections */
-    comm_listen();
+    Comm::listen();
     return TRUE;
 }
 

@@ -79,7 +79,7 @@ void interrupt()
  */
 void endtask()
 {
-    comm_flush();
+    Comm::flush();
     Dataspace::xport();
     Object::clean();
     Frame::clear();
@@ -89,7 +89,7 @@ void endtask()
     co_swapcount(Dataspace::swapout(fragment));
 
     if (Object::stop) {
-	comm_clear();
+	Comm::clear();
 	ed_finish();
 # ifdef DEBUG
 	Object::swap = TRUE;
@@ -134,7 +134,7 @@ void endtask()
 	    message("Hotboot failed\012");	/* LF */
 	}
 
-	comm_finish();
+	Comm::finish();
 	Array::freeall();
 	String::clean();
 	Alloc::finish();
@@ -225,7 +225,7 @@ int dgd_main(int argc, char **argv)
 
 	/* handle user input */
 	timeout = co_delay(rtime, rmtime, &mtime);
-	comm_receive(cframe, timeout, mtime);
+	Comm::receive(cframe, timeout, mtime);
 
 	/* callouts */
 	co_call(cframe);

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -28,9 +28,7 @@
 
 # define MAXHOSTNAMELEN	1025
 
-# define NFREE		32
-
-struct in46addr {
+struct In46Addr {
     union {
 	struct in6_addr addr6;		/* IPv6 addr */
 	struct in_addr addr;		/* IPv4 addr */
@@ -38,42 +36,23 @@ struct in46addr {
     bool ipv6;				/* IPv6? */
 };
 
-struct ipaddr {
-    ipaddr *link;			/* next in hash table */
-    ipaddr *prev;			/* previous in linked list */
-    ipaddr *next;			/* next in linked list */
-    Uint ref;				/* reference count */
-    in46addr ipnum;			/* ip number */
-    char name[MAXHOSTNAMELEN];		/* ip name */
-};
-
 static SOCKET in = INVALID_SOCKET;	/* connection from name resolver */
 static SOCKET out = INVALID_SOCKET;	/* connection to name resolver */
-static int addrtype;			/* network address family */
-static ipaddr **ipahtab;		/* ip address hash table */
-static unsigned int ipahtabsz;		/* hash table size */
-static ipaddr *qhead, *qtail;		/* request queue */
-static ipaddr *ffirst, *flast;		/* free list */
-static int nfree;			/* # in free list */
-static ipaddr *lastreq;			/* last request */
-static bool busy;			/* name resolver busy */
-
 
 /*
- * NAME:	ipaddr->run()
- * DESCRIPTION:	host name lookup sub-program
+ * host name lookup thread
  */
 static void ipa_run(void *dummy)
 {
-    char buf[sizeof(in46addr)];
+    char buf[sizeof(In46Addr)];
     struct hostent *host;
     int len;
 
     UNREFERENCED_PARAMETER(dummy);
 
-    while (recv(out, buf, sizeof(in46addr), 0) > 0) {
+    while (recv(out, buf, sizeof(In46Addr), 0) > 0) {
 	/* lookup host */
-	if (((in46addr *) &buf)->ipv6) {
+	if (((In46Addr *) &buf)->ipv6) {
 	    host = gethostbyaddr(buf, sizeof(struct in6_addr), AF_INET6);
 	    if (host == (struct hostent *) NULL) {
 		Sleep(2000);
@@ -102,15 +81,46 @@ static void ipa_run(void *dummy)
     out = INVALID_SOCKET;
 }
 
+
+class IpAddr {
+public:
+    void del();
+
+    static bool init(int maxusers);
+    static void start(SOCKET fd_in, SOCKET fd_out);
+    static void finish();
+    static IpAddr *create(In46Addr *ipnum);
+    static void lookup();
+
+    In46Addr ipnum;			/* ip number */
+    char name[MAXHOSTNAMELEN];		/* ip name */
+
+private:
+    IpAddr *link;			/* next in hash table */
+    IpAddr *prev;			/* previous in linked list */
+    IpAddr *next;			/* next in linked list */
+    Uint ref;				/* reference count */
+};
+
+# define NFREE		32
+
+static int addrtype;			/* network address family */
+static IpAddr **ipahtab;		/* ip address hash table */
+static unsigned int ipahtabsz;		/* hash table size */
+static IpAddr *qhead, *qtail;		/* request queue */
+static IpAddr *ffirst, *flast;		/* free list */
+static int nfree;			/* # in free list */
+static IpAddr *lastreq;			/* last request */
+static bool busy;			/* name resolver busy */
+
 /*
- * NAME:	ipaddr->init()
- * DESCRIPTION:	initialize name lookup
+ * initialize name lookup
  */
-static bool ipa_init(int maxusers)
+bool IpAddr::init(int maxusers)
 {
-    ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
-    memset(ipahtab, '\0', ipahtabsz * sizeof(ipaddr*));
-    qhead = qtail = ffirst = flast = lastreq = (ipaddr *) NULL;
+    ipahtab = ALLOC(IpAddr*, ipahtabsz = maxusers);
+    memset(ipahtab, '\0', ipahtabsz * sizeof(IpAddr*));
+    qhead = qtail = ffirst = flast = lastreq = (IpAddr *) NULL;
     nfree = 0;
     busy = FALSE;
 
@@ -118,10 +128,9 @@ static bool ipa_init(int maxusers)
 }
 
 /*
- * NAME:	ipadd->start()
- * DESCRIPTION:	start name resolver thread
+ * start name resolver thread
  */
-static void ipa_start(SOCKET fd_in, SOCKET fd_out)
+void IpAddr::start(SOCKET fd_in, SOCKET fd_out)
 {
     in = fd_in;
     out = fd_out;
@@ -129,22 +138,20 @@ static void ipa_start(SOCKET fd_in, SOCKET fd_out)
 }
 
 /*
- * NAME:	ipaddr->finish()
- * DESCRIPTION:	stop name lookup
+ * stop name lookup
  */
-static void ipa_finish()
+void IpAddr::finish()
 {
     closesocket(in);
     in = INVALID_SOCKET;
 }
 
 /*
- * NAME:	ipaddr->new()
- * DESCRIPTION:	return a new ipaddr
+ * return a new ipaddr
  */
-static ipaddr *ipa_new(in46addr *ipnum)
+IpAddr *IpAddr::create(In46Addr *ipnum)
 {
-    ipaddr *ipa, **hash;
+    IpAddr *ipa, **hash;
 
     /* check hash table */
     if (ipnum->ipv6) {
@@ -153,7 +160,7 @@ static ipaddr *ipa_new(in46addr *ipnum)
     } else {
 	hash = &ipahtab[(Uint) ipnum->addr.s_addr % ipahtabsz];
     }
-    while (*hash != (ipaddr *) NULL) {
+    while (*hash != (IpAddr *) NULL) {
 	ipa = *hash;
 	if (ipnum->ipv6 == ipa->ipnum.ipv6 &&
 	    ((ipnum->ipv6) ?
@@ -165,32 +172,32 @@ static ipaddr *ipa_new(in46addr *ipnum)
 	     */
 	    if (ipa->ref == 0) {
 		/* remove from free list */
-		if (ipa->prev == (ipaddr *) NULL) {
+		if (ipa->prev == (IpAddr *) NULL) {
 		    ffirst = ipa->next;
 		} else {
 		    ipa->prev->next = ipa->next;
 		}
-		if (ipa->next == (ipaddr *) NULL) {
+		if (ipa->next == (IpAddr *) NULL) {
 		    flast = ipa->prev;
 		} else {
 		    ipa->next->prev = ipa->prev;
 		}
-		ipa->prev = ipa->next = (ipaddr *) NULL;
+		ipa->prev = ipa->next = (IpAddr *) NULL;
 		--nfree;
 	    }
 	    ipa->ref++;
 
 	    if (ipa->name[0] == '\0' && ipa != lastreq &&
-		ipa->prev == (ipaddr *) NULL && ipa != qhead) {
+		ipa->prev == (IpAddr *) NULL && ipa != qhead) {
 		if (!busy) {
 		    /* send query to name resolver */
-		    send(in, (char *) ipnum, sizeof(in46addr), 0);
+		    send(in, (char *) ipnum, sizeof(In46Addr), 0);
 		    lastreq = ipa;
 		    busy = TRUE;
 		} else {
 		    /* put in request queue */
 		    ipa->prev = qtail;
-		    if (qtail == (ipaddr *) NULL) {
+		    if (qtail == (IpAddr *) NULL) {
 			qhead = ipa;
 		    } else {
 			qtail->next = ipa;
@@ -204,18 +211,18 @@ static ipaddr *ipa_new(in46addr *ipnum)
     }
 
     if (nfree >= NFREE) {
-	ipaddr **h;
+	IpAddr **h;
 
 	/*
 	 * use first ipaddr in free list
 	 */
 	ipa = ffirst;
 	ffirst = ipa->next;
-	ffirst->prev = (ipaddr *) NULL;
+	ffirst->prev = (IpAddr *) NULL;
 	--nfree;
 
 	if (ipa == lastreq) {
-	    lastreq = (ipaddr *) NULL;
+	    lastreq = (IpAddr *) NULL;
 	}
 
 	if (hash != &ipa->link) {
@@ -242,7 +249,7 @@ static ipaddr *ipa_new(in46addr *ipnum)
 	 * allocate new ipaddr
 	 */
 	Alloc::staticMode();
-	ipa = ALLOC(ipaddr, 1);
+	ipa = ALLOC(IpAddr, 1);
 	Alloc::dynamicMode();
 
 	/* put in hash table */
@@ -253,17 +260,17 @@ static ipaddr *ipa_new(in46addr *ipnum)
     ipa->ref = 1;
     ipa->ipnum = *ipnum;
     ipa->name[0] = '\0';
-    ipa->prev = ipa->next = (ipaddr *) NULL;
+    ipa->prev = ipa->next = (IpAddr *) NULL;
 
     if (!busy) {
 	/* send query to name resolver */
-	send(in, (char *) ipnum, sizeof(in46addr), 0);
+	send(in, (char *) ipnum, sizeof(In46Addr), 0);
 	lastreq = ipa;
 	busy = TRUE;
     } else {
 	/* put in request queue */
 	ipa->prev = qtail;
-	if (qtail == (ipaddr *) NULL) {
+	if (qtail == (IpAddr *) NULL) {
 	    qhead = ipa;
 	} else {
 	    qtail->next = ipa;
@@ -275,49 +282,47 @@ static ipaddr *ipa_new(in46addr *ipnum)
 }
 
 /*
- * NAME:	ipaddr->del()
- * DESCRIPTION:	delete an ipaddr
+ * delete an ipaddr
  */
-static void ipa_del(ipaddr *ipa)
+void IpAddr::del()
 {
-    if (--ipa->ref == 0) {
-	if (ipa->prev != (ipaddr *) NULL || qhead == ipa) {
+    if (--ref == 0) {
+	if (prev != (IpAddr *) NULL || qhead == this) {
 	    /* remove from queue */
-	    if (ipa->prev != (ipaddr *) NULL) {
-		ipa->prev->next = ipa->next;
+	    if (prev != (IpAddr *) NULL) {
+		prev->next = next;
 	    } else {
-		qhead = ipa->next;
+		qhead = next;
 	    }
-	    if (ipa->next != (ipaddr *) NULL) {
-		ipa->next->prev = ipa->prev;
+	    if (next != (IpAddr *) NULL) {
+		next->prev = prev;
 	    } else {
-		qtail = ipa->prev;
+		qtail = prev;
 	    }
 	}
 
 	/* add to free list */
-	if (flast != (ipaddr *) NULL) {
-	    flast->next = ipa;
-	    ipa->prev = flast;
-	    flast = ipa;
+	if (flast != (IpAddr *) NULL) {
+	    flast->next = this;
+	    prev = flast;
+	    flast = this;
 	} else {
-	    ffirst = flast = ipa;
-	    ipa->prev = (ipaddr *) NULL;
+	    ffirst = flast = this;
+	    prev = (IpAddr *) NULL;
 	}
-	ipa->next = (ipaddr *) NULL;
+	next = (IpAddr *) NULL;
 	nfree++;
     }
 }
 
 /*
- * NAME:	ipaddr->lookup()
- * DESCRIPTION:	lookup another ip name
+ * lookup another ip name
  */
-static void ipa_lookup()
+void IpAddr::lookup()
 {
-    ipaddr *ipa;
+    IpAddr *ipa;
 
-    if (lastreq != (ipaddr *) NULL) {
+    if (lastreq != (IpAddr *) NULL) {
 	/* read ip name */
 	lastreq->name[recv(in, lastreq->name, MAXHOSTNAMELEN, 0)] = '\0';
     } else {
@@ -328,74 +333,102 @@ static void ipa_lookup()
     }
 
     /* if request queue not empty, write new query */
-    if (qhead != (ipaddr *) NULL) {
+    if (qhead != (IpAddr *) NULL) {
 	ipa = qhead;
-	send(in, (char *) &ipa->ipnum, sizeof(in46addr), 0);
+	send(in, (char *) &ipa->ipnum, sizeof(In46Addr), 0);
 	qhead = ipa->next;
-	if (qhead == (ipaddr *) NULL) {
-	    qtail = (ipaddr *) NULL;
+	if (qhead == (IpAddr *) NULL) {
+	    qtail = (IpAddr *) NULL;
 	} else {
-	    qhead->prev = (ipaddr *) NULL;
+	    qhead->prev = (IpAddr *) NULL;
 	}
-	ipa->prev = ipa->next = (ipaddr *) NULL;
+	ipa->prev = ipa->next = (IpAddr *) NULL;
 	lastreq = ipa;
 	busy = TRUE;
     } else {
-	lastreq = (ipaddr *) NULL;
+	lastreq = (IpAddr *) NULL;
 	busy = FALSE;
     }
 }
 
+class XConnection : public Connection, public Allocated {
+public:
+    XConnection() : fd(INVALID_SOCKET) { }
 
-struct connection : public Hashtab::Entry {
+    virtual bool attach();
+    virtual bool udp(char *challenge, unsigned int len);
+    virtual void del();
+    virtual void block(int flag);
+    virtual bool udpCheck();
+    virtual int read(char *buf, unsigned int len);
+    virtual int readUdp(char *buf, unsigned int len);
+    virtual int write(char *buf, unsigned int len);
+    virtual int writeUdp(char *buf, unsigned int len);
+    virtual bool wrdone();
+    virtual void ipnum(char *buf);
+    virtual void ipname(char *buf);
+    virtual int checkConnected(int *errcode);
+    virtual bool cexport(int *fd, char *addr, unsigned short *port, short *at,
+			 int *npkts, int *bufsz, char **buf, char *flags);
+
+    static int port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6,
+		     unsigned int port);
+    static int port4(SOCKET *fd, int type, struct sockaddr_in *sin,
+		     unsigned int port);
+    static XConnection *create6(SOCKET portfd, int port);
+    static XConnection *create(SOCKET portfd, int port);
+    static XConnection *createUdp(int port);
+
     SOCKET fd;				/* file descriptor */
-    bool udp;				/* datagram only? */
-    char err;				/* state of outbound UDP connection */
-    int bufsz;				/* # bytes in buffer */
     int npkts;				/* # packets in buffer */
+    int bufsz;				/* # bytes in buffer */
+    bool udpFlag;			/* datagram only? */
+    int err;				/* state of outbound UDP connection */
     char *udpbuf;			/* datagram buffer */
-    ipaddr *addr;			/* internet address of connection */
+    IpAddr *addr;			/* internet address of connection */
     unsigned short port;		/* UDP port of connection */
     short at;				/* port connection was accepted at */
 };
 
-struct portdesc {
+struct PortDesc {
     SOCKET in6;				/* IPv6 socket */
     SOCKET in4;				/* IPv4 socket */
 };
 
-struct udpdesc {
-    struct portdesc fd;			/* port descriptors */
-    in46addr addr;			/* source of new packet */
+class Udp {
+public:
+    static void recv6(int n);
+    static void recv(int n);
+
+    struct PortDesc fd;			/* port descriptors */
+    In46Addr addr;			/* source of new packet */
     unsigned short port;		/* source port of new datagram */
     bool accept;			/* datagram ready to accept? */
     unsigned short hashval;		/* address hash */
     int size;				/* size in buffer */
     char buffer[BINBUF_SIZE];		/* buffer */
-
 };
 
-static connection **udphtab;		/* UDP hash table */
+static XConnection **udphtab;		/* UDP hash table */
 static int udphtabsz;			/* UDP hash table size */
 static Hashtab *chtab;			/* challenge hash table */
-static udpdesc *udescs;			/* UDP port descriptor array */
+static Udp *udescs;			/* UDP port descriptor array */
 static int nudescs;			/* # datagram ports */
 static SOCKET inpkts, outpkts;		/* UDP packet notification pip */
 static CRITICAL_SECTION udpmutex;	/* UDP mutex */
 static bool udpstop;			/* stop UDP thread? */
 
 /*
- * NAME:	udp->recv6()
- * DESCRIPTION:	receive an UDP packet
+ * receive an UDP packet
  */
-static void udp_recv6(int n)
+void Udp::recv6(int n)
 {
     char buffer[BINBUF_SIZE];
     struct sockaddr_in6 from;
     int fromlen;
     int size;
     unsigned short hashval;
-    connection **hash, *conn;
+    XConnection **hash, *conn;
     char *p;
 
     memset(buffer, '\0', UDPHASHSZ);
@@ -407,13 +440,13 @@ static void udp_recv6(int n)
     }
 
     hashval = (Hashtab::hashmem((char *) &from.sin6_addr,
-			        sizeof(struct in6_addr)) ^ from.sin6_port) %
+				sizeof(struct in6_addr)) ^ from.sin6_port) %
 								    udphtabsz;
     hash = &udphtab[hashval];
     EnterCriticalSection(&udpmutex);
     for (;;) {
 	conn = *hash;
-	if (conn == (connection *) NULL) {
+	if (conn == (XConnection *) NULL) {
 	    if (!conf_attach(n)) {
 		if (!udescs[n].accept) {
 		    udescs[n].addr.addr6 = from.sin6_addr;
@@ -431,8 +464,8 @@ static void udp_recv6(int n)
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
-	    hash = (connection **) chtab->lookup(buffer, FALSE);
-	    while ((conn=*hash) != (connection *) NULL &&
+	    hash = (XConnection **) chtab->lookup(buffer, FALSE);
+	    while ((conn=*hash) != (XConnection *) NULL &&
 		   memcmp(conn->name, buffer, UDPHASHSZ) == 0) {
 		if (conn->bufsz == size &&
 		    memcmp(conn->udpbuf, buffer, size) == 0 &&
@@ -442,7 +475,7 @@ static void udp_recv6(int n)
 		    /*
 		     * attach new UDP channel
 		     */
-		    *hash = (connection *) conn->next;
+		    *hash = (XConnection *) conn->next;
 		    conn->name = (char *) NULL;
 		    conn->bufsz = 0;
 		    conn->port = from.sin6_port;
@@ -452,7 +485,7 @@ static void udp_recv6(int n)
 
 		    break;
 		}
-		hash = (connection **) &conn->next;
+		hash = (XConnection **) &conn->next;
 	    }
 	    break;
 	}
@@ -474,23 +507,22 @@ static void udp_recv6(int n)
 	    }
 	    break;
 	}
-	hash = (connection **) &conn->next;
+	hash = (XConnection **) &conn->next;
     }
     LeaveCriticalSection(&udpmutex);
 }
 
 /*
- * NAME:	udp->recv()
- * DESCRIPTION:	receive an UDP packet
+ * receive an UDP packet
  */
-static void udp_recv(int n)
+void Udp::recv(int n)
 {
     char buffer[BINBUF_SIZE];
     struct sockaddr_in from;
     int fromlen;
     int size;
     unsigned short hashval;
-    connection **hash, *conn;
+    XConnection **hash, *conn;
     char *p;
 
     memset(buffer, '\0', UDPHASHSZ);
@@ -506,7 +538,7 @@ static void udp_recv(int n)
     EnterCriticalSection(&udpmutex);
     for (;;) {
 	conn = *hash;
-	if (conn == (connection *) NULL) {
+	if (conn == (XConnection *) NULL) {
 	    if (!conf_attach(n)) {
 		if (!udescs[n].accept) {
 		    udescs[n].addr.addr = from.sin_addr;
@@ -524,8 +556,8 @@ static void udp_recv(int n)
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
-	    hash = (connection **) chtab->lookup(buffer, FALSE);
-	    while ((conn=*hash) != (connection *) NULL &&
+	    hash = (XConnection **) chtab->lookup(buffer, FALSE);
+	    while ((conn=*hash) != (XConnection *) NULL &&
 		   memcmp((*hash)->name, buffer, UDPHASHSZ) == 0) {
 		if (conn->bufsz == size &&
 		    memcmp(conn->udpbuf, buffer, size) == 0 &&
@@ -534,7 +566,7 @@ static void udp_recv(int n)
 		    /*
 		     * attach new UDP channel
 		     */
-		    *hash = (connection *) conn->next;
+		    *hash = (XConnection *) conn->next;
 		    conn->name = (char *) NULL;
 		    conn->bufsz = 0;
 		    conn->port = from.sin_port;
@@ -544,7 +576,7 @@ static void udp_recv(int n)
 
 		    break;
 		}
-		hash = (connection **) &conn->next;
+		hash = (XConnection **) &conn->next;
 	    }
 	    break;
 	}
@@ -566,14 +598,13 @@ static void udp_recv(int n)
 	    }
 	    break;
 	}
-	hash = (connection **) &conn->next;
+	hash = (XConnection **) &conn->next;
     }
     LeaveCriticalSection(&udpmutex);
 }
 
 /*
- * NAME:	udp->run()
- * DESCRIPTION:	UDP thread
+ * UDP thread
  */
 static void udp_run(void *arg)
 {
@@ -607,11 +638,11 @@ static void udp_run(void *arg)
 	    for (n = 0; n < nudescs; n++) {
 		if (udescs[n].fd.in6 >= 0 &&
 		    FD_ISSET(udescs[n].fd.in6, &readfds)) {
-		    udp_recv6(n);
+		    Udp::recv6(n);
 		}
 		if (udescs[n].fd.in4 >= 0 &&
 		    FD_ISSET(udescs[n].fd.in4, &readfds)) {
-		    udp_recv(n);
+		    Udp::recv(n);
 		}
 	    }
 	}
@@ -622,9 +653,9 @@ static void udp_run(void *arg)
 
 
 static int nusers;			/* # of users */
-static connection *connections;		/* connections array */
-static connection *flist;		/* list of free connections */
-static portdesc *tdescs, *bdescs;	/* telnet & binary descriptor arrays */
+static XConnection **connections;	/* connections array */
+static XConnection *flist;		/* list of free connections */
+static PortDesc *tdescs, *bdescs;	/* telnet & binary descriptor arrays */
 static int ntdescs, nbdescs;		/* # telnet & binary ports */
 static fd_set infds;			/* file descriptor input bitmap */
 static fd_set outfds;			/* file descriptor output bitmap */
@@ -637,8 +668,7 @@ static bool self6;			/* self socket IPv6? */
 static SOCKET cintr;			/* interrupt socket */
 
 /*
- * NAME:	conn->intr()
- * DESCRIPTION:	interrupt conn->select()
+ * interrupt Connection::select()
  */
 void conn_intr()
 {
@@ -646,11 +676,10 @@ void conn_intr()
 }
 
 /*
- * NAME:	conn->port6()
- * DESCRIPTION:	open an IPv6 port
+ * open an IPv6 port
  */
-static int conn_port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6,
-	unsigned short port)
+int XConnection::port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6,
+		       unsigned int port)
 {
     int on;
 
@@ -684,11 +713,10 @@ static int conn_port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6,
 }
 
 /*
- * NAME:	conn->port()
- * DESCRIPTION:	open an IPv4 port
+ * open an IPv4 port
  */
-static int conn_port(SOCKET *fd, int type, struct sockaddr_in *sin,
-	unsigned short port)
+int XConnection::port4(SOCKET *fd, int type, struct sockaddr_in *sin,
+		       unsigned int port)
 {
     int on;
 
@@ -723,19 +751,19 @@ static int conn_port(SOCKET *fd, int type, struct sockaddr_in *sin,
 }
 
 /*
- * NAME:	conn->init()
- * DESCRIPTION:	initialize connection handling
+ * initialize connection handling
  */
-bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
-	       unsigned short *tports, unsigned short *bports,
-	       unsigned short *dports, int ntports, int nbports, int ndports)
+bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
+		      unsigned short *tports, unsigned short *bports,
+		      unsigned short *dports, int ntports, int nbports,
+		      int ndports)
 {
     WSADATA wsadata;
     struct sockaddr_in6 sin6;
     struct sockaddr_in sin;
-    int n, length;
     struct hostent *host;
-    connection *conn;
+    int n, length;
+    XConnection **conn;
     bool ipv6, ipv4;
 
     self = INVALID_SOCKET;
@@ -752,13 +780,14 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	return FALSE;
     }
 
-    if (!ipa_init(maxusers)) {
+    if (!IpAddr::init(maxusers)) {
 	return FALSE;
     }
 
     addrtype = PF_INET;
 
     nusers = 0;
+
     FD_ZERO(&infds);
     FD_ZERO(&outfds);
     FD_ZERO(&waitfds);
@@ -766,7 +795,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 
     ntdescs = ntports;
     if (ntports != 0) {
-	tdescs = ALLOC(portdesc, ntports);
+	tdescs = ALLOC(PortDesc, ntports);
 	for (n = 0; n < ntdescs; n++) {
 	    tdescs[n].in6 = INVALID_SOCKET;
 	    tdescs[n].in4 = INVALID_SOCKET;
@@ -774,7 +803,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
     }
     nbdescs = nbports;
     if (nbports != 0) {
-	bdescs = ALLOC(portdesc, nbports);
+	bdescs = ALLOC(PortDesc, nbports);
 	for (n = 0; n < nbdescs; n++) {
 	    bdescs[n].in6 = INVALID_SOCKET;
 	    bdescs[n].in4 = INVALID_SOCKET;
@@ -782,7 +811,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
     }
     nudescs = ndports;
     if (ndports != 0) {
-	udescs = ALLOC(udpdesc, ndports);
+	udescs = ALLOC(Udp, ndports);
 	for (n = 0; n < nudescs; n++) {
 	    udescs[n].fd.in6 = INVALID_SOCKET;
 	    udescs[n].fd.in4 = INVALID_SOCKET;
@@ -838,12 +867,13 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    return FALSE;
 	}
 
-	if (ipv6 &&
-	    !conn_port6(&tdescs[n].in6, SOCK_STREAM, &sin6, tports[n]) &&
+	if (ipv6 && !XConnection::port6(&tdescs[n].in6, SOCK_STREAM, &sin6,
+					tports[n]) &&
 	    tdescs[n].in6 != INVALID_SOCKET) {
 	    return FALSE;
 	}
-	if (ipv4 && !conn_port(&tdescs[n].in4, SOCK_STREAM, &sin, tports[n])) {
+	if (ipv4 &&
+	    !XConnection::port4(&tdescs[n].in4, SOCK_STREAM, &sin, tports[n])) {
 	    return FALSE;
 	}
 
@@ -902,12 +932,13 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    return FALSE;
 	}
 
-	if (ipv6 &&
-	    !conn_port6(&bdescs[n].in6, SOCK_STREAM, &sin6, bports[n]) &&
+	if (ipv6 && !XConnection::port6(&bdescs[n].in6, SOCK_STREAM, &sin6,
+					bports[n]) &&
 	    bdescs[n].in6 != INVALID_SOCKET) {
 	    return FALSE;
 	}
-	if (ipv4 && !conn_port(&bdescs[n].in4, SOCK_STREAM, &sin, bports[n])) {
+	if (ipv4 &&
+	    !XConnection::port4(&bdescs[n].in4, SOCK_STREAM, &sin, bports[n])) {
 	    return FALSE;
 	}
 
@@ -967,74 +998,73 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (ipv6 &&
-	    !conn_port6(&udescs[n].fd.in6, SOCK_DGRAM, &sin6, dports[n]) &&
+	    !XConnection::port6(&udescs[n].fd.in6, SOCK_DGRAM, &sin6,
+				dports[n]) &&
 	    udescs[n].fd.in6 != INVALID_SOCKET) {
 	    return FALSE;
 	}
 	if (ipv4 &&
-	    !conn_port(&udescs[n].fd.in4, SOCK_DGRAM, &sin, dports[n])) {
+	    !XConnection::port4(&udescs[n].fd.in4, SOCK_DGRAM, &sin, dports[n]))
+	{
 	    return FALSE;
 	}
 
 	udescs[n].accept = FALSE;
     }
 
-    flist = (connection *) NULL;
-    connections = ALLOC(connection, nusers = maxusers);
+    flist = (XConnection *) NULL;
+    connections = ALLOC(XConnection*, nusers = maxusers);
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
-	conn->fd = INVALID_SOCKET;
-	conn->next = flist;
-	flist = conn;
+	*conn = new XConnection();
+	(*conn)->next = flist;
+	flist = *conn;
     }
 
-    udphtab = ALLOC(connection *, udphtabsz = maxusers);
-    memset(udphtab, '\0', udphtabsz * sizeof(connection *));
+    udphtab = ALLOC(XConnection*, udphtabsz = maxusers);
+    memset(udphtab, '\0', udphtabsz * sizeof(XConnection*));
     chtab = Hashtab::create(maxusers, UDPHASHSZ, TRUE);
 
     return TRUE;
 }
 
 /*
- * NAME:	conn->clear()
- * DESCRIPTION:	clean up connections
+ * clean up connections
  */
-void conn_clear()
+void Connection::clear()
 {
-    ipa_finish();
+    IpAddr::finish();
 }
 
 /*
- * NAME:	conn->finish()
- * DESCRIPTION:	terminate connections
+ * terminate connections
  */
-void conn_finish()
+void Connection::finish()
 {
     udpstop = TRUE;
     WSACleanup();
 }
 
 /*
- * NAME:	conn->listen()
- * DESCRIPTION:	start listening on telnet port and binary port
+ * start listening on telnet port and binary port
  */
-void conn_listen()
+void Connection::listen()
 {
     int n;
     unsigned long nonblock;
 
     for (n = 0; n < ntdescs; n++) {
-	if (tdescs[n].in6 != INVALID_SOCKET && listen(tdescs[n].in6, 64) != 0) {
+	if (tdescs[n].in6 != INVALID_SOCKET && ::listen(tdescs[n].in6, 64) != 0) {
 	    fatal("listen failed");
 	}
-	if (tdescs[n].in4 != INVALID_SOCKET && listen(tdescs[n].in4, 64) != 0) {
+	if (tdescs[n].in4 != INVALID_SOCKET && ::listen(tdescs[n].in4, 64) != 0) {
 	    fatal("listen failed");
 	}
     }
     for (n = 0; n < nbdescs; n++) {
-	if (bdescs[n].in6 != INVALID_SOCKET && listen(bdescs[n].in6, 64) != 0) {
+	if (bdescs[n].in6 != INVALID_SOCKET && ::listen(bdescs[n].in6, 64) != 0) {
 	    fatal("listen failed");
 	}
-	if (bdescs[n].in4 != INVALID_SOCKET && listen(bdescs[n].in4, 64) != 0) {
+	if (bdescs[n].in4 != INVALID_SOCKET && ::listen(bdescs[n].in4, 64) != 0) {
 	    fatal("listen failed");
 	}
     }
@@ -1053,13 +1083,13 @@ void conn_listen()
 	    }
 	    in = socket(AF_INET6, SOCK_STREAM, 0);
 	    FD_SET(in, &infds);
-	    connect(in, (struct sockaddr *) &addr, len);
-	    ipa_start(in, accept(self, (struct sockaddr *) &dummy, &len));
+	    ::connect(in, (struct sockaddr *) &addr, len);
+	    IpAddr::start(in, accept(self, (struct sockaddr *) &dummy, &len));
 	    fd = socket(AF_INET6, SOCK_STREAM, 0);
-	    connect(fd, (struct sockaddr *) &addr, len);
+	    ::connect(fd, (struct sockaddr *) &addr, len);
 	    cintr = accept(self, (struct sockaddr *) &dummy, &len);
 	    inpkts = socket(AF_INET6, SOCK_STREAM, 0);
-	    connect(inpkts, (struct sockaddr *) &addr, len);
+	    ::connect(inpkts, (struct sockaddr *) &addr, len);
 	    outpkts = accept(self, (struct sockaddr *) &dummy, &len);
 	} else {
 	    struct sockaddr_in addr;
@@ -1072,13 +1102,13 @@ void conn_listen()
 	    }
 	    in = socket(AF_INET, SOCK_STREAM, 0);
 	    FD_SET(in, &infds);
-	    connect(in, (struct sockaddr *) &addr, len);
-	    ipa_start(in, accept(self, (struct sockaddr *) &dummy, &len));
+	    ::connect(in, (struct sockaddr *) &addr, len);
+	    IpAddr::start(in, accept(self, (struct sockaddr *) &dummy, &len));
 	    fd = socket(AF_INET, SOCK_STREAM, 0);
-	    connect(fd, (struct sockaddr *) &addr, len);
+	    ::connect(fd, (struct sockaddr *) &addr, len);
 	    cintr = accept(self, (struct sockaddr *) &dummy, &len);
 	    inpkts = socket(AF_INET, SOCK_STREAM, 0);
-	    connect(inpkts, (struct sockaddr *) &addr, len);
+	    ::connect(inpkts, (struct sockaddr *) &addr, len);
 	    outpkts = accept(self, (struct sockaddr *) &dummy, &len);
 	}
 	FD_SET(fd, &infds);
@@ -1116,39 +1146,38 @@ void conn_listen()
 }
 
 /*
- * NAME:	conn->accept6()
- * DESCRIPTION:	accept a new ipv6 connection
+ * accept a new ipv6 connection
  */
-static connection *conn_accept6(SOCKET portfd, int port)
+XConnection *XConnection::create6(SOCKET portfd, int port)
 {
     SOCKET fd;
     int len;
     struct sockaddr_in6 sin6;
-    in46addr addr;
-    connection *conn;
+    In46Addr addr;
+    XConnection *conn;
     unsigned long nonblock;
 
     if (!FD_ISSET(portfd, &readfds)) {
-	return (connection *) NULL;
+	return (XConnection *) NULL;
     }
     len = sizeof(sin6);
     fd = accept(portfd, (struct sockaddr *) &sin6, &len);
     if (fd == INVALID_SOCKET) {
 	FD_CLR(portfd, &readfds);
-	return (connection *) NULL;
+	return (XConnection *) NULL;
     }
     nonblock = TRUE;
     ioctlsocket(fd, FIONBIO, &nonblock);
 
     conn = flist;
-    flist = (connection *) conn->next;
+    flist = (XConnection *) conn->next;
     conn->name = (char *) NULL;
     conn->fd = fd;
-    conn->udp = FALSE;
+    conn->udpFlag = FALSE;
     conn->udpbuf = (char *) NULL;
     addr.addr6 = sin6.sin6_addr;
     addr.ipv6 = TRUE;
-    conn->addr = ipa_new(&addr);
+    conn->addr = IpAddr::create(&addr);
     conn->at = port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
@@ -1159,39 +1188,38 @@ static connection *conn_accept6(SOCKET portfd, int port)
 }
 
 /*
- * NAME:	conn->accept()
- * DESCRIPTION:	accept a new ipv4 connection
+ * accept a new ipv4 connection
  */
-static connection *conn_accept(SOCKET portfd, int port)
+XConnection *XConnection::create(SOCKET portfd, int port)
 {
     SOCKET fd;
     int len;
     struct sockaddr_in sin;
-    in46addr addr;
-    connection *conn;
+    In46Addr addr;
+    XConnection *conn;
     unsigned long nonblock;
 
     if (!FD_ISSET(portfd, &readfds)) {
-	return (connection *) NULL;
+	return (XConnection *) NULL;
     }
     len = sizeof(sin);
     fd = accept(portfd, (struct sockaddr *) &sin, &len);
     if (fd == INVALID_SOCKET) {
 	FD_CLR(portfd, &readfds);
-	return (connection *) NULL;
+	return (XConnection *) NULL;
     }
     nonblock = TRUE;
     ioctlsocket(fd, FIONBIO, &nonblock);
 
     conn = flist;
-    flist = (connection *) conn->next;
+    flist = (XConnection *) conn->next;
     conn->name = (char *) NULL;
     conn->fd = fd;
-    conn->udp = FALSE;
+    conn->udpFlag = FALSE;
     conn->udpbuf = (char *) NULL;
     addr.addr = sin.sin_addr;
     addr.ipv6 = FALSE;
-    conn->addr = ipa_new(&addr);
+    conn->addr = IpAddr::create(&addr);
     conn->at = port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
@@ -1202,15 +1230,14 @@ static connection *conn_accept(SOCKET portfd, int port)
 }
 
 /*
- * NAME:	conn->udpaccept()
- * DESCRIPTION:	accept a new UDP connection
+ * accept a new UDP connection
  */
-static connection *conn_udpaccept(int port)
+XConnection *XConnection::createUdp(int port)
 {
-    connection *conn, **hash;
+    XConnection *conn, **hash;
 
     conn = flist;
-    flist = (connection *) conn->next;
+    flist = (XConnection *) conn->next;
     conn->name = (char *) NULL;
     Alloc::staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
@@ -1220,8 +1247,8 @@ static connection *conn_udpaccept(int port)
     conn->next = *hash;
     *hash = conn;
     conn->fd = INVALID_SOCKET;
-    conn->udp = TRUE;
-    conn->addr = ipa_new(&udescs[port].addr);
+    conn->udpFlag = TRUE;
+    conn->addr = IpAddr::create(&udescs[port].addr);
     conn->port = udescs[port].port;
     conn->at = port;
     conn->udpbuf[0] = udescs[port].size >> 8;
@@ -1236,109 +1263,100 @@ static connection *conn_udpaccept(int port)
 }
 
 /*
- * NAME:	conn->tnew6()
- * DESCRIPTION:	accept a new telnet connection
+ * accept a new telnet connection
  */
-connection *conn_tnew6(int port)
+Connection *Connection::createTelnet6(int port)
 {
     SOCKET fd;
 
     fd = tdescs[port].in6;
     if (fd != INVALID_SOCKET) {
-	return conn_accept6(fd, port);
+	return XConnection::create6(fd, port);
     }
-    return (connection *) NULL;
+    return (Connection *) NULL;
 }
 
 /*
- * NAME:	conn->bnew6()
- * DESCRIPTION:	accept a new binary connection
+ * accept a new binary connection
  */
-connection *conn_bnew6(int port)
+Connection *Connection::create6(int port)
 {
     SOCKET fd;
 
     fd = bdescs[port].in6;
     if (fd != INVALID_SOCKET) {
-	return conn_accept6(fd, port);
+	return XConnection::create6(fd, port);
     }
-    return (connection *) NULL;
+    return (Connection *) NULL;
 }
 
 /*
- * NAME:	conn->dnew6()
- * DESCRIPTION:	accept a new datagram connection
+ * accept a new datagram connection
  */
-connection *conn_dnew6(int port)
+Connection *Connection::createDgram6(int port)
 {
     if (udescs[port].accept) {
-	return conn_udpaccept(port);
+	return XConnection::createUdp(port);
     }
-    return (connection *) NULL;
+    return (Connection *) NULL;
 }
 
 /*
- * NAME:	conn->tnew()
- * DESCRIPTION:	accept a new telnet connection
+ * accept a new telnet connection
  */
-connection *conn_tnew(int port)
+Connection *Connection::createTelnet(int port)
 {
     SOCKET fd;
 
     fd = tdescs[port].in4;
     if (fd != INVALID_SOCKET) {
-	return conn_accept(fd, port);
+	return XConnection::create(fd, port);
     }
-    return (connection *) NULL;
+    return (Connection *) NULL;
 }
 
 /*
- * NAME:	conn->bnew()
- * DESCRIPTION:	accept a new binary connection
+ * accept a new binary connection
  */
-connection *conn_bnew(int port)
+Connection *Connection::create(int port)
 {
     SOCKET fd;
 
     fd = bdescs[port].in4;
     if (fd != INVALID_SOCKET) {
-	return conn_accept(fd, port);
+	return XConnection::create(fd, port);
     }
-    return (connection *) NULL;
+    return (Connection *) NULL;
 }
 
 /*
- * NAME:	conn->dnew()
- * DESCRIPTION:	accept a new datagram connection
+ * accept a new datagram connection
  */
-connection *conn_dnew(int port)
+Connection *Connection::createDgram(int port)
 {
     if (udescs[port].accept) {
-	return conn_udpaccept(port);
+	return XConnection::createUdp(port);
     }
-    return (connection *) NULL;
+    return (Connection *) NULL;
 }
 
 /*
- * NAME:	conn->attach()
- * DESCRIPTION:	can datagram channel be attached to this connection?
+ * can datagram channel be attached to this connection?
  */
-bool conn_attach(connection *conn)
+bool XConnection::attach()
 {
-    return conf_attach(conn->at);
+    return conf_attach(at);
 }
 
 /*
- * NAME:	conn->udp()
- * DESCRIPTION:	set the challenge for attaching a UDP channel
+ * set the challenge for attaching a UDP channel
  */
-bool conn_udp(connection *conn, char *challenge,
-	      unsigned int len)
+bool XConnection::udp(char *challenge, unsigned int len)
 {
     char buffer[UDPHASHSZ];
-    connection **hash;
+    XConnection **hash;
 
-    if (len == 0 || len > BINBUF_SIZE || conn->udpbuf != (char *) NULL) {
+    if (len == 0 || len > BINBUF_SIZE || udpbuf != (char *) NULL) {
 	return FALSE;	/* invalid challenge */
     }
 
@@ -1349,8 +1367,8 @@ bool conn_udp(connection *conn, char *challenge,
 	memcpy(buffer, challenge, len);
     }
     EnterCriticalSection(&udpmutex);
-    hash = (connection **) chtab->lookup(buffer, FALSE);
-    while (*hash != (connection *) NULL &&
+    hash = (XConnection **) chtab->lookup(buffer, FALSE);
+    while (*hash != (XConnection *) NULL &&
 	   memcmp((*hash)->name, buffer, UDPHASHSZ) == 0) {
 	if ((*hash)->bufsz == (int) len &&
 	    memcmp((*hash)->udpbuf, challenge, len) == 0) {
@@ -1359,90 +1377,85 @@ bool conn_udp(connection *conn, char *challenge,
 	}
     }
 
-    conn->next = *hash;
-    *hash = conn;
-    conn->npkts = 0;
+    next = *hash;
+    *hash = this;
+    npkts = 0;
     Alloc::staticMode();
-    conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
+    udpbuf = ALLOC(char, BINBUF_SIZE + 2);
     Alloc::dynamicMode();
-    memset(conn->udpbuf, '\0', UDPHASHSZ);
-    conn->name = (const char *) memcpy(conn->udpbuf, challenge, conn->bufsz = len);
+    memset(udpbuf, '\0', UDPHASHSZ);
+    name = (const char *) memcpy(udpbuf, challenge, bufsz = len);
     LeaveCriticalSection(&udpmutex);
 
     return TRUE;
 }
 
 /*
- * NAME:	conn->del()
- * DESCRIPTION:	delete a connection
+ * delete a connection
  */
-void conn_del(connection *conn)
+void XConnection::del()
 {
-    connection **hash;
+    XConnection **hash;
 
-    if (conn->fd != INVALID_SOCKET) {
-	shutdown(conn->fd, SD_SEND);
-	closesocket(conn->fd);
-	FD_CLR(conn->fd, &infds);
-	FD_CLR(conn->fd, &outfds);
-	FD_CLR(conn->fd, &waitfds);
-	conn->fd = INVALID_SOCKET;
-    } else if (!conn->udp) {
+    if (fd != INVALID_SOCKET) {
+	shutdown(fd, SD_SEND);
+	closesocket(fd);
+	FD_CLR(fd, &infds);
+	FD_CLR(fd, &outfds);
+	FD_CLR(fd, &waitfds);
+	fd = INVALID_SOCKET;
+    } else if (!udpFlag) {
 	--closed;
     }
-    if (conn->udpbuf != (char *) NULL) {
+    if (udpbuf != (char *) NULL) {
 	EnterCriticalSection(&udpmutex);
-	if (conn->addr != (ipaddr *) NULL) {
-	    if (conn->name != (char *) NULL) {
-		hash = (connection **)chtab->lookup(conn->name, FALSE);
+	if (addr != (IpAddr *) NULL) {
+	    if (name != (char *) NULL) {
+		hash = (XConnection **) chtab->lookup(name, FALSE);
+	    } else if (addr->ipnum.ipv6) {
+		hash = &udphtab[(Hashtab::hashmem((char *) &addr->ipnum,
+				 sizeof(struct in6_addr)) ^ port) % udphtabsz];
+	    } else {
+		hash = &udphtab[(((Uint) addr->ipnum.addr.s_addr) ^ port) %
+								    udphtabsz];
 	    }
-	    else if (conn->addr->ipnum.ipv6) {
-		hash = &udphtab[(Hashtab::hashmem((char *)&conn->addr->ipnum,
-			    sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
+	    while (*hash != this) {
+		hash = (XConnection **) &(*hash)->next;
 	    }
-	    else {
-		hash = &udphtab[((Uint)conn->addr->ipnum.addr.s_addr ^
-						    conn->port) % udphtabsz];
-	    }
-	    while (*hash != conn) {
-		hash = (connection **) &(*hash)->next;
-	    }
-	    *hash = (connection *)conn->next;
+	    *hash = (XConnection *) next;
 	}
-	if (conn->npkts != 0) {
-	    recv(inpkts, conn->udpbuf, conn->npkts, 0);
+	if (npkts != 0) {
+	    recv(inpkts, udpbuf, npkts, 0);
 	}
 	LeaveCriticalSection(&udpmutex);
-	FREE(conn->udpbuf);
+	FREE(udpbuf);
     }
-    if (conn->addr != (ipaddr *) NULL) {
-      ipa_del(conn->addr);
+    if (addr != (IpAddr *) NULL) {
+	addr->del();
     }
-    conn->next = flist;
-    flist = conn;
+    next = flist;
+    flist = this;
 }
 
 /*
- * NAME:	conn->block()
- * DESCRIPTION: block or unblock input from connection
+ * block or unblock input from connection
  */
-void conn_block(connection *conn, int flag)
+void XConnection::block(int flag)
 {
-    if (conn->fd != INVALID_SOCKET) {
+    if (fd != INVALID_SOCKET) {
 	if (flag) {
-	    FD_CLR(conn->fd, &infds);
-	    FD_CLR(conn->fd, &readfds);
+	    FD_CLR(fd, &infds);
+	    FD_CLR(fd, &readfds);
 	} else {
-	    FD_SET(conn->fd, &infds);
+	    FD_SET(fd, &infds);
 	}
     }
 }
 
 /*
- * NAME:	conn->select()
- * DESCRIPTION:	wait for input from connections
+ * wait for input from connections
  */
-int conn_select(Uint t, unsigned int mtime)
+int Connection::select(Uint t, unsigned int mtime)
 {
     struct timeval timeout;
     int retval, n;
@@ -1452,7 +1465,7 @@ int conn_select(Uint t, unsigned int mtime)
      * data only.
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
-    if (flist == (connection *) NULL) {
+    if (flist == (XConnection *) NULL) {
 	/* can't accept new connections, so don't check for them */
 	for (n = ntdescs; n != 0; ) {
 	    --n;
@@ -1481,10 +1494,10 @@ int conn_select(Uint t, unsigned int mtime)
     if (mtime != 0xffff) {
 	timeout.tv_sec = t;
 	timeout.tv_usec = mtime * 1000;
-	retval = select(0, &readfds, &writefds, (fd_set *) NULL, &timeout);
+	retval = ::select(0, &readfds, &writefds, (fd_set *) NULL, &timeout);
     } else {
-	retval = select(0, &readfds, &writefds, (fd_set *) NULL,
-			(struct timeval *) NULL);
+	retval = ::select(0, &readfds, &writefds, (fd_set *) NULL,
+			  (struct timeval *) NULL);
     }
     if (retval == SOCKET_ERROR) {
 	if (WSAGetLastError() == WSAEINVAL) {
@@ -1496,7 +1509,6 @@ int conn_select(Uint t, unsigned int mtime)
 	FD_ZERO(&readfds);
 	retval = 0;
     }
-
     retval += closed;
 
     /*
@@ -1505,71 +1517,67 @@ int conn_select(Uint t, unsigned int mtime)
     memcpy(&writefds, &outfds, sizeof(fd_set));
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
-    select(0, (fd_set *) NULL, &writefds, (fd_set *) NULL, &timeout);
+    ::select(0, (fd_set *) NULL, &writefds, (fd_set *) NULL, &timeout);
 
     /* handle ip name lookup */
     if (FD_ISSET(in, &readfds)) {
-	ipa_lookup();
+	IpAddr::lookup();
     }
     return retval;
 }
 
 /*
- * NAME:	conn->udpcheck()
- * DESCRIPTION:	check if UDP challenge met
+ * check if UDP challenge met
  */
-bool conn_udpcheck(connection *conn)
+bool XConnection::udpCheck()
 {
-    return (conn->name == (char *) NULL);
+    return (name == (char *) NULL);
 }
 
 /*
- * NAME:	conn->read()
- * DESCRIPTION:	read from a connection
+ * read from a connection
  */
-int conn_read(connection *conn, char *buf, unsigned int len)
+int XConnection::read(char *buf, unsigned int len)
 {
     int size;
 
-    if (conn->fd == INVALID_SOCKET) {
+    if (fd == INVALID_SOCKET) {
 	return -1;
     }
-    if (!FD_ISSET(conn->fd, &readfds)) {
+    if (!FD_ISSET(fd, &readfds)) {
 	return 0;
     }
-    size = recv(conn->fd, buf, len, 0);
+    size = recv(fd, buf, len, 0);
     if (size == SOCKET_ERROR) {
-	closesocket(conn->fd);
-	FD_CLR(conn->fd, &infds);
-	FD_CLR(conn->fd, &outfds);
-	FD_CLR(conn->fd, &waitfds);
-	conn->fd = INVALID_SOCKET;
+	closesocket(fd);
+	FD_CLR(fd, &infds);
+	FD_CLR(fd, &outfds);
+	FD_CLR(fd, &waitfds);
+	fd = INVALID_SOCKET;
 	closed++;
     }
     return (size == 0 || size == SOCKET_ERROR) ? -1 : size;
 }
 
 /*
- * NAME:	conn->udpread()
- * DESCRIPTION:	read a message from a UDP channel
+ * read a message from a UDP channel
  */
-int conn_udpread(connection *conn, char *buf, unsigned int len)
+int XConnection::readUdp(char *buf, unsigned int len)
 {
     unsigned short size, n;
     char *p, *q, discard;
 
     EnterCriticalSection(&udpmutex);
-    while (conn->bufsz != 0) {
+    while (bufsz != 0) {
 	/* udp buffer is not empty */
-	size = ((unsigned char) conn->udpbuf[0] << 8) |
-		(unsigned char) conn->udpbuf[1];
+	size = (UCHAR(udpbuf[0]) << 8) | UCHAR(udpbuf[1]);
 	if (size <= len) {
-	    memcpy(buf, conn->udpbuf + 2, len = size);
+	    memcpy(buf, udpbuf + 2, len = size);
 	}
-	--conn->npkts;
+	--npkts;
 	recv(inpkts, &discard, 1, 0);
-	conn->bufsz -= size + 2;
-	for (p = conn->udpbuf, q = p + size + 2, n = conn->bufsz; n != 0; --n) {
+	bufsz -= size + 2;
+	for (p = udpbuf, q = p + size + 2, n = bufsz; n != 0; --n) {
 	    *p++ = *q++;
 	}
 	if (len == size) {
@@ -1582,35 +1590,34 @@ int conn_udpread(connection *conn, char *buf, unsigned int len)
 }
 
 /*
- * NAME:	conn->write()
- * DESCRIPTION:	write to a connection; return the amount of bytes written
+ * write to a connection; return the amount of bytes written
  */
-int conn_write(connection *conn, char *buf, unsigned int len)
+int XConnection::write(char *buf, unsigned int len)
 {
     int size;
 
-    if (conn->fd == INVALID_SOCKET) {
+    if (fd == INVALID_SOCKET) {
 	return -1;
     }
     if (len == 0) {
 	return 0;
     }
-    if (!FD_ISSET(conn->fd, &writefds)) {
+    if (!FD_ISSET(fd, &writefds)) {
 	/* the write would fail */
-	FD_SET(conn->fd, &waitfds);
+	FD_SET(fd, &waitfds);
 	return 0;
     }
-    if ((size = send(conn->fd, buf, len, 0)) == SOCKET_ERROR &&
+    if ((size = send(fd, buf, len, 0)) == SOCKET_ERROR &&
 	WSAGetLastError() != WSAEWOULDBLOCK) {
-	closesocket(conn->fd);
-	FD_CLR(conn->fd, &infds);
-	FD_CLR(conn->fd, &outfds);
-	conn->fd = INVALID_SOCKET;
+	closesocket(fd);
+	FD_CLR(fd, &infds);
+	FD_CLR(fd, &outfds);
+	fd = INVALID_SOCKET;
 	closed++;
     } else if ((unsigned int) size != len) {
 	/* waiting for wrdone */
-	FD_SET(conn->fd, &waitfds);
-	FD_CLR(conn->fd, &writefds);
+	FD_SET(fd, &waitfds);
+	FD_CLR(fd, &writefds);
 	if (size == SOCKET_ERROR) {
 	    return 0;
 	}
@@ -1619,29 +1626,27 @@ int conn_write(connection *conn, char *buf, unsigned int len)
 }
 
 /*
- * NAME:	conn->udpwrite()
- * DESCRIPTION:	write a message to a UDP channel
+ * write a message to a UDP channel
  */
-int conn_udpwrite(connection *conn, char *buf, unsigned int len)
+int XConnection::writeUdp(char *buf, unsigned int len)
 {
-    if (conn->fd != INVALID_SOCKET || conn->udp) {
-	if (conn->addr->ipnum.ipv6) {
+    if (fd != INVALID_SOCKET || udpFlag) {
+	if (addr->ipnum.ipv6) {
 	    struct sockaddr_in6 to;
 
 	    memset(&to, '\0', sizeof(struct sockaddr_in6));
 	    to.sin6_family = AF_INET6;
-	    memcpy(&to.sin6_addr, &conn->addr->ipnum.addr6,
-		   sizeof(struct in6_addr));
-	    to.sin6_port = conn->port;
-	    return sendto(udescs[conn->at].fd.in6, buf, len, 0,
+	    memcpy(&to.sin6_addr, &addr->ipnum.addr6, sizeof(struct in6_addr));
+	    to.sin6_port = port;
+	    return sendto(udescs[at].fd.in6, buf, len, 0,
 			  (struct sockaddr *) &to, sizeof(struct sockaddr_in6));
 	} else {
 	    struct sockaddr_in to;
 
 	    to.sin_family = AF_INET;
-	    to.sin_addr.s_addr = conn->addr->ipnum.addr.s_addr;
-	    to.sin_port = conn->port;
-	    return sendto(udescs[conn->at].fd.in4, buf, len, 0,
+	    to.sin_addr.s_addr = addr->ipnum.addr.s_addr;
+	    to.sin_port = port;
+	    return sendto(udescs[at].fd.in4, buf, len, 0,
 			  (struct sockaddr *) &to, sizeof(struct sockaddr_in));
 	}
     }
@@ -1649,61 +1654,57 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 }
 
 /*
- * NAME:	conn->wrdone()
- * DESCRIPTION:	return TRUE if a connection is ready for output
+ * return TRUE if a connection is ready for output
  */
-bool conn_wrdone(connection *conn)
+bool XConnection::wrdone()
 {
-    if (conn->fd == INVALID_SOCKET || !FD_ISSET(conn->fd, &waitfds)) {
+    if (fd == INVALID_SOCKET || !FD_ISSET(fd, &waitfds)) {
 	return TRUE;
     }
-    if (FD_ISSET(conn->fd, &writefds)) {
-	FD_CLR(conn->fd, &waitfds);
+    if (FD_ISSET(fd, &writefds)) {
+	FD_CLR(fd, &waitfds);
 	return TRUE;
     }
     return FALSE;
 }
 
 /*
- * NAME:	conn->ipnum()
- * DESCRIPTION:	return the ip number of a connection
+ * return the ip number of a connection
  */
-void conn_ipnum(connection *conn, char *buf)
+void XConnection::ipnum(char *buf)
 {
-    if (conn->addr->ipnum.ipv6) {
+    if (addr->ipnum.ipv6) {
 	struct sockaddr_in6 sin6;
 	DWORD length;
 
 	memset(&sin6, '\0', sizeof(struct sockaddr_in6));
 	sin6.sin6_family = AF_INET6;
 	length = 40;
-	sin6.sin6_addr = conn->addr->ipnum.addr6;
+	sin6.sin6_addr = addr->ipnum.addr6;
 	WSAAddressToString((struct sockaddr *) &sin6,
 			   sizeof(struct sockaddr_in6),
 			   (LPWSAPROTOCOL_INFO) NULL, buf, &length);
     } else {
-	strcpy(buf, inet_ntoa(conn->addr->ipnum.addr));
+	strcpy(buf, inet_ntoa(addr->ipnum.addr));
     }
 }
 
 /*
- * NAME:	conn->ipname()
- * DESCRIPTION:	return the ip name of a connection
+ * return the ip name of a connection
  */
-void conn_ipname(connection *conn, char *buf)
+void XConnection::ipname(char *buf)
 {
-    if (conn->addr->name[0] != '\0') {
-	strcpy(buf, conn->addr->name);
+    if (addr->name[0] != '\0') {
+	strcpy(buf, addr->name);
     } else {
-	conn_ipnum(conn, buf);
+	ipnum(buf);
     }
 }
 
 /*
- * NAME:	conn->host()
- * DESCRIPTION:	look up a host
+ * look up a host
  */
-void *conn_host(char *addr, unsigned short port, int *len)
+void *Connection::host(char *addr, unsigned short port, int *len)
 {
     struct hostent *host;
     static union {
@@ -1751,17 +1752,16 @@ void *conn_host(char *addr, unsigned short port, int *len)
 }
 
 /*
- * NAME:	conn->connect()
- * DESCRIPTION: establish an oubound connection
+ * establish an oubound connection
  */
-connection *conn_connect(void *addr, int len)
+Connection *Connection::connect(void *addr, int len)
 {
-    connection *conn;
+    XConnection *conn;
     int sock;
     int on;
     unsigned long nonblock;
 
-    if (flist == (connection *) NULL) {
+    if (flist == (XConnection *) NULL) {
        return NULL;
     }
 
@@ -1791,14 +1791,14 @@ connection *conn_connect(void *addr, int len)
 	return NULL;
     }
 
-    connect(sock, (struct sockaddr *) addr, len);
+    ::connect(sock, (struct sockaddr *) addr, len);
 
     conn = flist;
-    flist = (connection *)conn->next;
+    flist = (XConnection *) conn->next;
     conn->fd = sock;
     conn->name = (char *) NULL;
     conn->udpbuf = (char *) NULL;
-    conn->addr = (ipaddr *) NULL;
+    conn->addr = (IpAddr *) NULL;
     conn->at = -1;
     FD_SET(sock, &infds);
     FD_SET(sock, &outfds);
@@ -1809,18 +1809,17 @@ connection *conn_connect(void *addr, int len)
 }
 
 /*
- * NAME:	conn->dconnect()
- * DESCRIPTION:	establish an oubound UDP connection
+ * establish an oubound UDP connection
  */
-connection *conn_dconnect(int uport, void *addr, int len)
+Connection *Connection::connectDgram(int uport, void *addr, int len)
 {
-    in46addr ipnum;
-    connection *conn, **hash;
+    In46Addr ipnum;
+    XConnection *conn, **hash;
     unsigned short port, hashval;
 
     UNREFERENCED_PARAMETER(len);
 
-    if (flist == (connection *) NULL) {
+    if (flist == (XConnection *) NULL) {
        return NULL;
     }
 
@@ -1842,13 +1841,13 @@ connection *conn_dconnect(int uport, void *addr, int len)
     }
 
     conn = flist;
-    flist = (connection *) conn->next;
+    flist = (XConnection *) conn->next;
     conn->name = (char *) NULL;
     Alloc::staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
     Alloc::dynamicMode();
     conn->fd = INVALID_SOCKET;
-    conn->udp = TRUE;
+    conn->udpFlag = TRUE;
     conn->addr = NULL;
     conn->port = port;
     conn->at = uport;
@@ -1877,7 +1876,7 @@ connection *conn_dconnect(int uport, void *addr, int len)
     hash = &udphtab[hashval];
     EnterCriticalSection(&udpmutex);
     for (;;) {
-	if (*hash == (connection *) NULL) {
+	if (*hash == (XConnection *) NULL) {
 	    /*
 	     * establish connection
 	     */
@@ -1885,7 +1884,7 @@ connection *conn_dconnect(int uport, void *addr, int len)
 	    conn->next = *hash;
 	    *hash = conn;
 	    conn->err = 0;
-	    conn->addr = ipa_new(&ipnum);
+	    conn->addr = IpAddr::create(&ipnum);
 	    break;
 	}
 	if ((*hash)->at == uport && (*hash)->port == port && (
@@ -1899,7 +1898,7 @@ connection *conn_dconnect(int uport, void *addr, int len)
 	    conn->err = 5;
 	    break;
 	}
-	hash = (connection **) &(*hash)->next;
+	hash = (XConnection **) &(*hash)->next;
     }
     LeaveCriticalSection(&udpmutex);
 
@@ -1909,15 +1908,17 @@ connection *conn_dconnect(int uport, void *addr, int len)
 /*
  * check for a connection in pending state and see if it is connected.
  */
-int conn_check_connected(connection *conn, int *errcode)
+int XConnection::checkConnected(int *errcode)
 {
     int optval;
     socklen_t lon;
 
-    if (conn->udp) {
-	/* UDP connection */
-	if (conn->err != 0) {
-	    *errcode = conn->err;
+    if (udpFlag) {
+	/*
+	 * UDP connection
+	 */
+	if (err != 0) {
+	    *errcode = err;
 	    return -1;
 	}
 	return 1;
@@ -1926,14 +1927,14 @@ int conn_check_connected(connection *conn, int *errcode)
     /*
      * indicate that our fd became invalid.
      */
-    if (conn->fd < 0) {
+    if (fd < 0) {
 	return -2;
     }
 
-    if (!FD_ISSET(conn->fd, &writefds)) {
+    if (!FD_ISSET(fd, &writefds)) {
 	return 0;
     }
-    FD_CLR(conn->fd, &waitfds);
+    FD_CLR(fd, &waitfds);
 
     /*
      * Delayed connect completed, check for errors
@@ -1943,7 +1944,7 @@ int conn_check_connected(connection *conn, int *errcode)
      * Get error state for the socket
      */
     *errcode = 0;
-    if (getsockopt(conn->fd, SOL_SOCKET, SO_ERROR, (char*)(&optval), &lon) < 0) {
+    if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)(&optval), &lon) < 0) {
 	return -1;
     }
     if (optval != 0) {
@@ -1973,10 +1974,10 @@ int conn_check_connected(connection *conn, int *errcode)
     } else {
 	struct sockaddr_in6 sin;
 	socklen_t len;
-	in46addr inaddr;
+	In46Addr inaddr;
 
 	len = sizeof(sin);
-	getpeername(conn->fd, (struct sockaddr *) &sin, &len);
+	getpeername(fd, (struct sockaddr *) &sin, &len);
 	inaddr.ipv6 = FALSE;
 	if (sin.sin6_family == AF_INET6) {
 	    inaddr.addr6 = sin.sin6_addr;
@@ -1984,7 +1985,7 @@ int conn_check_connected(connection *conn, int *errcode)
 	} else {
 	    inaddr.addr = ((struct sockaddr_in *) &sin)->sin_addr;
 	}
-	conn->addr = ipa_new(&inaddr);
+	addr = IpAddr::create(&inaddr);
 	errno = 0;
 	return 1;
     }
@@ -1992,13 +1993,11 @@ int conn_check_connected(connection *conn, int *errcode)
 
 
 /*
- * NAME:	conn->export()
- * DESCRIPTION:	export a connection
+ * export a connection
  */
-bool conn_export(connection *conn, int *fd, char *addr, unsigned short *port,
-		 short *at, int *npkts, int *bufsz, char **buf, char *flags)
+bool XConnection::cexport(int *fd, char *addr, unsigned short *port, short *at,
+			  int *npkts, int *bufsz, char **buf, char *flags)
 {
-    UNREFERENCED_PARAMETER(conn);
     UNREFERENCED_PARAMETER(fd);
     UNREFERENCED_PARAMETER(addr);
     UNREFERENCED_PARAMETER(port);
@@ -2011,12 +2010,11 @@ bool conn_export(connection *conn, int *fd, char *addr, unsigned short *port,
 }
 
 /*
- * NAME:	conn->import()
- * DESCRIPTION:	import a connection
+ * import a connection
  */
-connection *conn_import(int fd, char *addr, unsigned short port, short at,
-			int npkts, int bufsz, char *buf, char flags,
-			bool telnet)
+Connection *Connection::import(int fd, char *addr, unsigned short port,
+			       short at, int npkts, int bufsz, char *buf,
+			       char flags, bool telnet)
 {
     UNREFERENCED_PARAMETER(fd);
     UNREFERENCED_PARAMETER(addr);
@@ -2027,32 +2025,29 @@ connection *conn_import(int fd, char *addr, unsigned short port, short at,
     UNREFERENCED_PARAMETER(buf);
     UNREFERENCED_PARAMETER(flags);
     UNREFERENCED_PARAMETER(telnet);
-    return (connection *) NULL;
+    return (Connection *) NULL;
 }
 
 /*
- * NAME:	conn->fdcount()
- * DESCRIPTION:	return the number of restored connections
+ * return the number of restored connections
  */
-int conn_fdcount()
+int Connection::fdcount()
 {
     return 0;
 }
 
 /*
- * NAME:	conn->fdlist()
- * DESCRIPTION:	pass on a list of connection descriptors
+ * pass on a list of connection descriptors
  */
-void conn_fdlist(int *list)
+void Connection::fdlist(int *list)
 {
     UNREFERENCED_PARAMETER(list);
 }
 
 /*
- * NAME:	Connection->fdclose()
- * DESCRIPTION:	close a list of connection descriptors
+ * close a list of connection descriptors
  */
-void conn_fdclose(int *list, int n)
+void Connection::fdclose(int *list, int n)
 {
     UNREFERENCED_PARAMETER(list);
     UNREFERENCED_PARAMETER(n);
