@@ -86,7 +86,7 @@ void endtask()
     ed_clear();
     ErrorContext::clearException();
 
-    co_swapcount(Dataspace::swapout(fragment));
+    CallOut::swapcount(Dataspace::swapout(fragment));
 
     if (Object::stop) {
 	Comm::clear();
@@ -198,10 +198,10 @@ int dgd_main(int argc, char **argv)
     for (;;) {
 	/* rebuild swapfile */
 	if (rebuild) {
-	    timeout = co_time(&mtime);
+	    timeout = CallOut::cotime(&mtime);
 	    if (timeout > rtime || (timeout == rtime && mtime >= rmtime)) {
 		rebuild = Object::copy(timeout);
-		co_swapcount(Dataspace::swapout(fragment));
+		CallOut::swapcount(Dataspace::swapout(fragment));
 		if (rebuild) {
 		    rtime = timeout + 1;
 		    rmtime = mtime;
@@ -224,10 +224,10 @@ int dgd_main(int argc, char **argv)
 	}
 
 	/* handle user input */
-	timeout = co_delay(rtime, rmtime, &mtime);
+	timeout = CallOut::delay(rtime, rmtime, &mtime);
 	Comm::receive(cframe, timeout, mtime);
 
 	/* callouts */
-	co_call(cframe);
+	CallOut::call(cframe);
     }
 }

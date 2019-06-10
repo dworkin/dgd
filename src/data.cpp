@@ -449,22 +449,22 @@ void Dataplane::commitCallouts(bool merge)
 		     */
 		    switch (cop->type) {
 		    case COP_ADD:
-			co_new(alocal.data->oindex, cop->handle, cop->time,
-			       cop->mtime, cop->queue);
+			CallOut::create(alocal.data->oindex, cop->handle,
+					cop->time, cop->mtime, cop->queue);
 			--ncallout;
 			break;
 
 		    case COP_REMOVE:
-			co_del(alocal.data->oindex, cop->handle, cop->rco.time,
-			       cop->rco.mtime);
+			CallOut::del(alocal.data->oindex, cop->handle,
+				     cop->rco.time, cop->rco.mtime);
 			ncallout++;
 			break;
 
 		    case COP_REPLACE:
-			co_del(alocal.data->oindex, cop->handle, cop->rco.time,
-			       cop->rco.mtime);
-			co_new(alocal.data->oindex, cop->handle, cop->time,
-			       cop->mtime, cop->queue);
+			CallOut::del(alocal.data->oindex, cop->handle,
+				     cop->rco.time, cop->rco.mtime);
+			CallOut::create(alocal.data->oindex, cop->handle,
+					cop->time, cop->mtime, cop->queue);
 			cop->commit();
 			break;
 		    }
@@ -1425,7 +1425,7 @@ Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
 	unsigned short dummy;
 
 	/* callouts */
-	co_time(&dummy);
+	CallOut::cotime(&dummy);
 	data->scallouts = ALLOC(SCallOut, header.ncallouts);
 	Swap::convert((char *) data->scallouts, data->sectors, sco_layout,
 		      (Uint) header.ncallouts, size, readv);
@@ -2822,7 +2822,7 @@ uindex Dataspace::newCallOut(String *func, Int delay, unsigned int mdelay,
     Value v[4];
     uindex handle;
 
-    ct = co_check(ncallout, delay, mdelay, &t, &m, &q);
+    ct = CallOut::check(ncallout, delay, mdelay, &t, &m, &q);
     if (ct == 0 && q == (uindex *) NULL) {
 	/* callouts are disabled */
 	return 0;
@@ -2854,7 +2854,7 @@ uindex Dataspace::newCallOut(String *func, Int delay, unsigned int mdelay,
 	/*
 	 * add normal callout
 	 */
-	co_new(oindex, handle, t, m, q);
+	CallOut::create(oindex, handle, t, m, q);
     } else {
 	COPatch **c, *cop;
 	DCallOut *co;
@@ -2915,12 +2915,12 @@ Int Dataspace::delCallOut(Uint handle, unsigned short *mtime)
     }
 
     *mtime = co->mtime;
-    t = co_remaining(co->time, mtime);
+    t = CallOut::remaining(co->time, mtime);
     if (plane->level == 0) {
 	/*
 	 * remove normal callout
 	 */
-	co_del(oindex, (uindex) handle, co->time, co->mtime);
+	CallOut::del(oindex, (uindex) handle, co->time, co->mtime);
     } else {
 	COPatch **c, *cop;
 	COPatch **cc;
@@ -3130,7 +3130,7 @@ Array *Dataspace::listCallouts(Dataspace *data)
 	    --count;
 	}
     }
-    co_list(list);
+    CallOut::list(list);
 
     return list;
 }

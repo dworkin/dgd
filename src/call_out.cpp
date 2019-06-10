@@ -31,22 +31,12 @@
 # define CYCBUF_MASK	(CYCBUF_SIZE - 1) /* cyclic buffer mask */
 # define SWPERIOD	60		/* swaprate buffer size */
 
-struct call_out {
-    uindex handle;	/* callout handle */
-    uindex oindex;	/* index in object table */
-    Uint time;		/* when to call */
-    uindex htime;	/* when to call, high word */
-    uindex mtime;	/* when to call in milliseconds */
-};
-
-static char co_layout[] = "uuiuu";
-
 # define count		time
 # define last		htime
 # define prev		htime
 # define next		mtime
 
-static call_out *cotab;			/* callout table */
+static CallOut *cotab;			/* callout table */
 static uindex cotabsz;			/* callout table size */
 static uindex queuebrk;			/* queue brk */
 static uindex cycbrk;			/* cyclic buffer brk */
@@ -68,14 +58,13 @@ static Uint swaprate1;			/* swaprate per minute */
 static Uint swaprate5;			/* swaprate per 5 minutes */
 
 /*
- * NAME:	call_out->init()
- * DESCRIPTION:	initialize callout handling
+ * initialize callout handling
  */
-bool co_init(unsigned int max)
+bool CallOut::init(unsigned int max)
 {
     if (max != 0) {
 	/* only if callouts are enabled */
-	cotab = ALLOC(call_out, max + 1);
+	cotab = ALLOC(CallOut, max + 1);
 	cotab[0].time = 0;	/* sentinel for the heap */
 	cotab[0].mtime = 0;
 	cotab++;
@@ -88,24 +77,23 @@ bool co_init(unsigned int max)
     cycbrk = cotabsz = max;
     queuebrk = 0;
     nzero = nshort = 0;
-    cotime = 0;
+    ::cotime = 0;
 
     swaptime = P_time();
     memset(swapped1, '\0', sizeof(swapped1));
     memset(swapped5, '\0', sizeof(swapped5));
-    swaprate1 = swaprate5 = 0;
+    ::swaprate1 = ::swaprate5 = 0;
 
     return TRUE;
 }
 
 /*
- * NAME:	enqueue()
- * DESCRIPTION:	put a callout in the queue
+ * put a callout in the queue
  */
-static call_out *enqueue(Uint t, unsigned short m)
+CallOut *CallOut::enqueue(Uint t, unsigned short m)
 {
     uindex i, j;
-    call_out *l;
+    CallOut *l;
 
     /*
      * create a free spot in the heap, and sift it upward
@@ -129,15 +117,14 @@ static call_out *enqueue(Uint t, unsigned short m)
 }
 
 /*
- * NAME:	dequeue()
- * DESCRIPTION:	remove a callout from the queue
+ * remove a callout from the queue
  */
-static void dequeue(uindex i)
+void CallOut::dequeue(uindex i)
 {
     Uint t;
     short m;
     uindex j;
-    call_out *l;
+    CallOut *l;
 
     l = cotab - 1;
     i++;
@@ -167,13 +154,12 @@ static void dequeue(uindex i)
 }
 
 /*
- * NAME:	newcallout()
- * DESCRIPTION:	allocate a new callout for the cyclic buffer
+ * allocate a new callout for the cyclic buffer
  */
-static call_out *newcallout(uindex *list, Uint t)
+CallOut *CallOut::newcallout(uindex *list, Uint t)
 {
     uindex i;
-    call_out *co, *first, *last;
+    CallOut *co, *first, *last;
 
     if (flist != 0) {
 	/* get callout from free list */
@@ -216,12 +202,11 @@ static call_out *newcallout(uindex *list, Uint t)
 }
 
 /*
- * NAME:	freecallout()
- * DESCRIPTION:	remove a callout from the cyclic buffer
+ * remove a callout from the cyclic buffer
  */
-static void freecallout(uindex *cyc, uindex j, uindex i, Uint t)
+void CallOut::freecallout(uindex *cyc, uindex j, uindex i, Uint t)
 {
-    call_out *l, *first;
+    CallOut *l, *first;
 
     --nshort;
     if (t == 0) {
@@ -296,16 +281,15 @@ static void freecallout(uindex *cyc, uindex j, uindex i, Uint t)
 }
 
 /*
- * NAME:	call_out->time()
- * DESCRIPTION:	get the current (adjusted) time
+ * get the current (adjusted) time
  */
-Uint co_time(unsigned short *mtime)
+Uint CallOut::cotime(unsigned short *mtime)
 {
     Uint t;
 
-    if (cotime != 0) {
+    if (::cotime != 0) {
 	*mtime = comtime;
-	return cotime;
+	return ::cotime;
     }
 
     t = P_mtime(mtime) - timediff;
@@ -329,15 +313,14 @@ Uint co_time(unsigned short *mtime)
     }
 
     comtime = *mtime;
-    return cotime = t + timediff;
+    return ::cotime = t + timediff;
 }
 
 /*
- * NAME:	call_out->check()
- * DESCRIPTION:	check if, and how, a new callout can be added
+ * check if, and how, a new callout can be added
  */
-Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
-	unsigned short *mp, uindex **qp)
+Uint CallOut::check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
+		    unsigned short *mp, uindex **qp)
 {
     Uint t;
     unsigned short m;
@@ -359,7 +342,7 @@ Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	 * immediate callout
 	 */
 	if (nshort == 0 && queuebrk == 0 && n == 0) {
-	    co_time(mp);	/* initialize timestamp */
+	    cotime(mp);	/* initialize timestamp */
 	}
 	*qp = &immediate;
 	*tp = t = 0;
@@ -368,7 +351,7 @@ Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	/*
 	 * delayed callout
 	 */
-	t = co_time(mp) - timediff;
+	t = cotime(mp) - timediff;
 	if (t + delay + 1 <= t) {
 	    error("Too long delay");
 	}
@@ -398,13 +381,12 @@ Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 }
 
 /*
- * NAME:	call_out->new()
- * DESCRIPTION:	add a callout
+ * add a callout
  */
-void co_new(unsigned int oindex, unsigned int handle, Uint t,
-	unsigned int m, uindex *q)
+void CallOut::create(unsigned int oindex, unsigned int handle, Uint t,
+		     unsigned int m, uindex *q)
 {
-    call_out *co;
+    CallOut *co;
 
     if (q != (uindex *) NULL) {
 	co = newcallout(q, t);
@@ -419,13 +401,12 @@ void co_new(unsigned int oindex, unsigned int handle, Uint t,
 }
 
 /*
- * NAME:	rmshort()
- * DESCRIPTION:	remove a short-term callout
+ * remove a short-term callout
  */
-static bool rmshort(uindex *cyc, uindex i, uindex handle, Uint t)
+bool CallOut::rmshort(uindex *cyc, uindex i, uindex handle, Uint t)
 {
     uindex j, k;
-    call_out *l;
+    CallOut *l;
 
     k = *cyc;
     if (k != 0) {
@@ -458,15 +439,14 @@ static bool rmshort(uindex *cyc, uindex i, uindex handle, Uint t)
 }
 
 /*
- * NAME:	call_out->remaining()
- * DESCRIPTION:	return the time remaining before a callout expires
+ * return the time remaining before a callout expires
  */
-Int co_remaining(Uint t, unsigned short *m)
+Int CallOut::remaining(Uint t, unsigned short *m)
 {
     Uint time;
     unsigned short mtime;
 
-    time = co_time(&mtime);
+    time = cotime(&mtime);
 
     if (t != 0) {
 	t += timediff;
@@ -492,12 +472,12 @@ Int co_remaining(Uint t, unsigned short *m)
 }
 
 /*
- * NAME:	call_out->del()
- * DESCRIPTION:	remove a callout
+ * remove a callout
  */
-void co_del(unsigned int oindex, unsigned int handle, Uint t, unsigned int m)
+void CallOut::del(unsigned int oindex, unsigned int handle, Uint t,
+		  unsigned int m)
 {
-    call_out *l;
+    CallOut *l;
 
     if (m == 0xffff) {
 	/*
@@ -538,10 +518,9 @@ void co_del(unsigned int oindex, unsigned int handle, Uint t, unsigned int m)
 }
 
 /*
- * NAME:	call_out->list()
- * DESCRIPTION:	adjust callout delays in array
+ * adjust callout delays in array
  */
-void co_list(Array *a)
+void CallOut::list(Array *a)
 {
     Value *v, *w;
     unsigned short i;
@@ -559,7 +538,7 @@ void co_list(Array *a)
 	    t = flt1.low;
 	    m = flt1.high;
 	}
-	t = co_remaining(t, &m);
+	t = remaining(t, &m);
 	if (m == 0xffff) {
 	    PUT_INTVAL(w, t);
 	} else {
@@ -573,12 +552,11 @@ void co_list(Array *a)
 }
 
 /*
- * NAME:	call_out->expire()
- * DESCRIPTION:	collect callouts to run next
+ * collect callouts to run next
  */
-static void co_expire()
+void CallOut::expire()
 {
-    call_out *co, *first, *last;
+    CallOut *co, *first, *last;
     uindex handle, oindex, i, *cyc;
     Uint t;
     unsigned short m;
@@ -649,20 +627,19 @@ static void co_expire()
     /* handle swaprate */
     while (swaptime < t) {
 	++swaptime;
-	swaprate1 -= swapped1[swaptime % SWPERIOD];
+	::swaprate1 -= swapped1[swaptime % SWPERIOD];
 	swapped1[swaptime % SWPERIOD] = 0;
 	if (swaptime % 5 == 0) {
-	    swaprate5 -= swapped5[swaptime % (5 * SWPERIOD) / 5];
+	    ::swaprate5 -= swapped5[swaptime % (5 * SWPERIOD) / 5];
 	    swapped5[swaptime % (5 * SWPERIOD) / 5] = 0;
 	}
     }
 }
 
 /*
- * NAME:	call_out->call()
- * DESCRIPTION:	call expired callouts
+ * call expired callouts
  */
-void co_call(Frame *f)
+void CallOut::call(Frame *f)
 {
     uindex i, handle;
     Object *obj;
@@ -670,7 +647,7 @@ void co_call(Frame *f)
     int nargs;
 
     if (running == 0) {
-	co_expire();
+	expire();
 	running = immediate;
 	immediate = 0;
     }
@@ -701,20 +678,18 @@ void co_call(Frame *f)
 }
 
 /*
- * NAME:	call_out->info()
- * DESCRIPTION:	give information about callouts
+ * give information about callouts
  */
-void co_info(uindex *n1, uindex *n2)
+void CallOut::info(uindex *n1, uindex *n2)
 {
     *n1 = nshort;
     *n2 = queuebrk;
 }
 
 /*
- * NAME:	call_out->delay()
- * DESCRIPTION:	return the time until the next timeout
+ * return the time until the next timeout
  */
-Uint co_delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
+Uint CallOut::delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
 {
     Uint t;
     unsigned short m;
@@ -746,8 +721,8 @@ Uint co_delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
 	rtime += timediff;
     }
 
-    t = co_time(&m);
-    cotime = 0;
+    t = cotime(&m);
+    ::cotime = 0;
     if (t > rtime || (t == rtime && m >= rmtime)) {
 	/* immediate */
 	*mtime = 0;
@@ -762,38 +737,35 @@ Uint co_delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
 }
 
 /*
- * NAME:	call_out->swapcount()
- * DESCRIPTION:	keep track of the number of objects swapped out
+ * keep track of the number of objects swapped out
  */
-void co_swapcount(unsigned int count)
+void CallOut::swapcount(unsigned int count)
 {
-    swaprate1 += count;
-    swaprate5 += count;
+    ::swaprate1 += count;
+    ::swaprate5 += count;
     swapped1[swaptime % SWPERIOD] += count;
     swapped5[swaptime % (SWPERIOD * 5) / 5] += count;
-    cotime = 0;
+    ::cotime = 0;
 }
 
 /*
- * NAME:	call_out->swaprate1()
- * DESCRIPTION:	return the number of objects swapped out per minute
+ * return the number of objects swapped out per minute
  */
-long co_swaprate1()
+long CallOut::swaprate1()
 {
-    return swaprate1;
+    return ::swaprate1;
 }
 
 /*
- * NAME:	call_out->swaprate5()
- * DESCRIPTION:	return the number of objects swapped out per 5 minutes
+ * return the number of objects swapped out per 5 minutes
  */
-long co_swaprate5()
+long CallOut::swaprate5()
 {
-    return swaprate5;
+    return ::swaprate5;
 }
 
 
-struct dump_header {
+struct CallOutHeader {
     uindex cotabsz;		/* callout table size */
     uindex queuebrk;		/* queue brk */
     uindex cycbrk;		/* cyclic buffer brk */
@@ -810,17 +782,16 @@ struct dump_header {
 static char dh_layout[] = "uuuuuuussii";
 
 /*
- * NAME:	call_out->dump()
- * DESCRIPTION:	dump callout table
+ * dump callout table
  */
-bool co_dump(int fd)
+bool CallOut::save(int fd)
 {
-    dump_header dh;
+    CallOutHeader dh;
     unsigned short m;
 
     /* update timestamp */
-    co_time(&m);
-    cotime = 0;
+    cotime(&m);
+    ::cotime = 0;
 
     /* fill in header */
     dh.cotabsz = cotabsz;
@@ -836,24 +807,23 @@ bool co_dump(int fd)
     dh.timediff = timediff;
 
     /* write header and callouts */
-    return (Swap::write(fd, &dh, sizeof(dump_header)) &&
+    return (Swap::write(fd, &dh, sizeof(CallOutHeader)) &&
 	    (queuebrk == 0 ||
-	     Swap::write(fd, cotab, queuebrk * sizeof(call_out))) &&
+	     Swap::write(fd, cotab, queuebrk * sizeof(CallOut))) &&
 	    (cycbrk == cotabsz ||
 	     Swap::write(fd, cotab + cycbrk,
-			 (cotabsz - cycbrk) * sizeof(call_out))) &&
+			 (cotabsz - cycbrk) * sizeof(CallOut))) &&
 	    Swap::write(fd, cycbuf, CYCBUF_SIZE * sizeof(uindex)));
 }
 
 /*
- * NAME:	call_out->restore()
- * DESCRIPTION:	restore callout table
+ * restore callout table
  */
-void co_restore(int fd, Uint t)
+void CallOut::restore(int fd, Uint t)
 {
-    dump_header dh;
+    CallOutHeader dh;
     uindex n, i, offset;
-    call_out *co;
+    CallOut *co;
     uindex *cb;
     uindex buffer[CYCBUF_SIZE];
 
@@ -880,8 +850,8 @@ void co_restore(int fd, Uint t)
     /* read tables */
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	conf_dread(fd, (char *) cotab, co_layout, (Uint) queuebrk);
-	conf_dread(fd, (char *) (cotab + cycbrk), co_layout,
+	conf_dread(fd, (char *) cotab, CO_LAYOUT, (Uint) queuebrk);
+	conf_dread(fd, (char *) (cotab + cycbrk), CO_LAYOUT,
 		   (Uint) (cotabsz - cycbrk));
 
 	for (co = cotab, i = queuebrk; i != 0; co++, --i) {

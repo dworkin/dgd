@@ -302,7 +302,7 @@ void conf_dump(bool incr, bool boot)
     if (!Object::save(fd, incr)) {
 	fatal("failed to dump object table");
     }
-    if (!co_dump(fd)) {
+    if (!CallOut::save(fd)) {
 	fatal("failed to dump callout table");
     }
     if (boot) {
@@ -453,7 +453,7 @@ static bool conf_restore(int fd, int fd2)
 	}
     }
     boottime = P_time();
-    co_restore(fd, boottime);
+    CallOut::restore(fd, boottime);
 
     if (fd2 >= 0) {
 	P_close(fd2);
@@ -1577,7 +1577,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    (int) conf[EDITORS].num);
 
     /* initialize call_outs */
-    if (!co_init((uindex) conf[CALL_OUTS].num)) {
+    if (!CallOut::init((uindex) conf[CALL_OUTS].num)) {
 	Swap::finish();
 	Comm::clear();
 	Comm::finish();
@@ -1824,11 +1824,11 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 7:	/* ST_SWAPRATE1 */
-	PUT_INTVAL(v, co_swaprate1());
+	PUT_INTVAL(v, CallOut::swaprate1());
 	break;
 
     case 8:	/* ST_SWAPRATE5 */
-	PUT_INTVAL(v, co_swaprate5());
+	PUT_INTVAL(v, CallOut::swaprate5());
 	break;
 
     case 9:	/* ST_SMEMSIZE */
@@ -1860,12 +1860,12 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 16:	/* ST_NCOSHORT */
-	co_info(&ncoshort, &ncolong);
+	CallOut::info(&ncoshort, &ncolong);
 	PUT_INTVAL(v, ncoshort);
 	break;
 
     case 17:	/* ST_NCOLONG */
-	co_info(&ncoshort, &ncolong);
+	CallOut::info(&ncoshort, &ncolong);
 	PUT_INTVAL(v, ncolong);
 	break;
 

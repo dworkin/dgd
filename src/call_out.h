@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,21 +17,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern bool	co_init		(unsigned int);
-extern Uint	co_check	(unsigned int, Int, unsigned int,
-				   Uint*, unsigned short*, uindex**);
-extern void	co_new		(unsigned int, unsigned int, Uint,
-				   unsigned int, uindex*);
-extern Int	co_remaining	(Uint, unsigned short*);
-extern void	co_del		(unsigned int, unsigned int, Uint,
-				   unsigned int);
-extern void	co_list		(Array*);
-extern void	co_call		(Frame*);
-extern void	co_info		(uindex*, uindex*);
-extern Uint	co_time		(unsigned short*);
-extern Uint	co_delay	(Uint, unsigned int, unsigned short*);
-extern void	co_swapcount	(unsigned int);
-extern long	co_swaprate1	();
-extern long	co_swaprate5	();
-extern bool	co_dump		(int);
-extern void	co_restore	(int, Uint);
+class CallOut {
+public:
+    static bool init(unsigned int max);
+    static Uint check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
+		      unsigned short *mp, uindex **qp);
+    static void create(unsigned int oindex, unsigned int handle, Uint t,
+		       unsigned int m, uindex *q);
+    static Int remaining(Uint t, unsigned short *m);
+    static void del(unsigned int oindex, unsigned int handle, Uint t,
+		    unsigned int m);
+    static void list(Array *a);
+    static void call(Frame *f);
+    static void info(uindex *n1, uindex *n2);
+    static Uint cotime(unsigned short *mtime);
+    static Uint delay(Uint rtime, unsigned int rmtime, unsigned short *mtime);
+    static void swapcount(unsigned int count);
+    static long swaprate1();
+    static long swaprate5();
+    static bool save(int fd);
+    static void restore(int fd, Uint t);
+
+private:
+    static CallOut *enqueue(Uint t, unsigned short m);
+    static void dequeue(uindex i);
+    static CallOut *newcallout(uindex *list, Uint t);
+    static void freecallout(uindex *cyc, uindex j, uindex i, Uint t);
+    static bool rmshort(uindex *cyc, uindex i, uindex handle, Uint t);
+    static void expire();
+
+    uindex handle;	/* callout handle */
+    uindex oindex;	/* index in object table */
+    Uint time;		/* when to call */
+    uindex htime;	/* when to call, high word */
+    uindex mtime;	/* when to call in milliseconds */
+};
+
+# define CO_LAYOUT	"uuiuu"
