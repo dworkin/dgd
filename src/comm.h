@@ -21,7 +21,7 @@
 # define  P_UDP      17
 # define  P_TELNET   1
 
-class Connection : public Hashtab::Entry {
+class Connection {
 public:
     virtual bool attach() = 0;
     virtual bool udp(char *challenge, unsigned int len) = 0;

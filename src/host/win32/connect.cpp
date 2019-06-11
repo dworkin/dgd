@@ -351,7 +351,7 @@ void IpAddr::lookup()
     }
 }
 
-class XConnection : public Connection, public Allocated {
+class XConnection : public Hashtab::Entry, public Connection, public Allocated {
 public:
     XConnection() : fd(INVALID_SOCKET) { }
 
@@ -409,7 +409,7 @@ public:
     char buffer[BINBUF_SIZE];		/* buffer */
 };
 
-static XConnection **udphtab;		/* UDP hash table */
+static Hashtab::Entry **udphtab;	/* UDP hash table */
 static int udphtabsz;			/* UDP hash table size */
 static Hashtab *chtab;			/* challenge hash table */
 static Udp *udescs;			/* UDP port descriptor array */
@@ -428,7 +428,8 @@ void Udp::recv6(int n)
     int fromlen;
     int size;
     unsigned short hashval;
-    XConnection **hash, *conn;
+    Hashtab::Entry **hash;
+    XConnection *conn;
     char *p;
 
     memset(buffer, '\0', UDPHASHSZ);
@@ -445,7 +446,7 @@ void Udp::recv6(int n)
     hash = &udphtab[hashval];
     EnterCriticalSection(&udpmutex);
     for (;;) {
-	conn = *hash;
+	conn = (XConnection *) *hash;
 	if (conn == (XConnection *) NULL) {
 	    if (!conf_attach(n)) {
 		if (!udescs[n].accept) {
@@ -464,8 +465,8 @@ void Udp::recv6(int n)
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
-	    hash = (XConnection **) chtab->lookup(buffer, FALSE);
-	    while ((conn=*hash) != (XConnection *) NULL &&
+	    hash = chtab->lookup(buffer, FALSE);
+	    while ((conn=(XConnection *) *hash) != (XConnection *) NULL &&
 		   memcmp(conn->name, buffer, UDPHASHSZ) == 0) {
 		if (conn->bufsz == size &&
 		    memcmp(conn->udpbuf, buffer, size) == 0 &&
@@ -475,7 +476,7 @@ void Udp::recv6(int n)
 		    /*
 		     * attach new UDP channel
 		     */
-		    *hash = (XConnection *) conn->next;
+		    *hash = conn->next;
 		    conn->name = (char *) NULL;
 		    conn->bufsz = 0;
 		    conn->port = from.sin6_port;
@@ -485,7 +486,7 @@ void Udp::recv6(int n)
 
 		    break;
 		}
-		hash = (XConnection **) &conn->next;
+		hash = &conn->next;
 	    }
 	    break;
 	}
@@ -507,7 +508,7 @@ void Udp::recv6(int n)
 	    }
 	    break;
 	}
-	hash = (XConnection **) &conn->next;
+	hash = &conn->next;
     }
     LeaveCriticalSection(&udpmutex);
 }
@@ -522,7 +523,8 @@ void Udp::recv(int n)
     int fromlen;
     int size;
     unsigned short hashval;
-    XConnection **hash, *conn;
+    Hashtab::Entry **hash;
+    XConnection *conn;
     char *p;
 
     memset(buffer, '\0', UDPHASHSZ);
@@ -537,7 +539,7 @@ void Udp::recv(int n)
     hash = &udphtab[hashval];
     EnterCriticalSection(&udpmutex);
     for (;;) {
-	conn = *hash;
+	conn = (XConnection *) *hash;
 	if (conn == (XConnection *) NULL) {
 	    if (!conf_attach(n)) {
 		if (!udescs[n].accept) {
@@ -556,8 +558,8 @@ void Udp::recv(int n)
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
-	    hash = (XConnection **) chtab->lookup(buffer, FALSE);
-	    while ((conn=*hash) != (XConnection *) NULL &&
+	    hash = chtab->lookup(buffer, FALSE);
+	    while ((conn=(XConnection *) *hash) != (XConnection *) NULL &&
 		   memcmp((*hash)->name, buffer, UDPHASHSZ) == 0) {
 		if (conn->bufsz == size &&
 		    memcmp(conn->udpbuf, buffer, size) == 0 &&
@@ -566,7 +568,7 @@ void Udp::recv(int n)
 		    /*
 		     * attach new UDP channel
 		     */
-		    *hash = (XConnection *) conn->next;
+		    *hash = conn->next;
 		    conn->name = (char *) NULL;
 		    conn->bufsz = 0;
 		    conn->port = from.sin_port;
@@ -576,7 +578,7 @@ void Udp::recv(int n)
 
 		    break;
 		}
-		hash = (XConnection **) &conn->next;
+		hash = &conn->next;
 	    }
 	    break;
 	}
@@ -598,7 +600,7 @@ void Udp::recv(int n)
 	    }
 	    break;
 	}
-	hash = (XConnection **) &conn->next;
+	hash = &conn->next;
     }
     LeaveCriticalSection(&udpmutex);
 }
@@ -654,7 +656,7 @@ static void udp_run(void *arg)
 
 static int nusers;			/* # of users */
 static XConnection **connections;	/* connections array */
-static XConnection *flist;		/* list of free connections */
+static Hashtab::Entry *flist;		/* list of free connections */
 static PortDesc *tdescs, *bdescs;	/* telnet & binary descriptor arrays */
 static int ntdescs, nbdescs;		/* # telnet & binary ports */
 static fd_set infds;			/* file descriptor input bitmap */
@@ -1012,7 +1014,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	udescs[n].accept = FALSE;
     }
 
-    flist = (XConnection *) NULL;
+    flist = (Hashtab::Entry *) NULL;
     connections = ALLOC(XConnection*, nusers = maxusers);
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	*conn = new XConnection();
@@ -1020,8 +1022,8 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	flist = *conn;
     }
 
-    udphtab = ALLOC(XConnection*, udphtabsz = maxusers);
-    memset(udphtab, '\0', udphtabsz * sizeof(XConnection*));
+    udphtab = ALLOC(Hashtab::Entry*, udphtabsz = maxusers);
+    memset(udphtab, '\0', udphtabsz * sizeof(Hashtab::Entry*));
     chtab = Hashtab::create(maxusers, UDPHASHSZ, TRUE);
 
     return TRUE;
@@ -1169,8 +1171,8 @@ XConnection *XConnection::create6(SOCKET portfd, int port)
     nonblock = TRUE;
     ioctlsocket(fd, FIONBIO, &nonblock);
 
-    conn = flist;
-    flist = (XConnection *) conn->next;
+    conn = (XConnection *) flist;
+    flist = conn->next;
     conn->name = (char *) NULL;
     conn->fd = fd;
     conn->udpFlag = FALSE;
@@ -1211,8 +1213,8 @@ XConnection *XConnection::create(SOCKET portfd, int port)
     nonblock = TRUE;
     ioctlsocket(fd, FIONBIO, &nonblock);
 
-    conn = flist;
-    flist = (XConnection *) conn->next;
+    conn = (XConnection *) flist;
+    flist = conn->next;
     conn->name = (char *) NULL;
     conn->fd = fd;
     conn->udpFlag = FALSE;
@@ -1234,10 +1236,11 @@ XConnection *XConnection::create(SOCKET portfd, int port)
  */
 XConnection *XConnection::createUdp(int port)
 {
-    XConnection *conn, **hash;
+    XConnection *conn;
+    Hashtab::Entry **hash;
 
-    conn = flist;
-    flist = (XConnection *) conn->next;
+    conn = (XConnection *) flist;
+    flist = conn->next;
     conn->name = (char *) NULL;
     Alloc::staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
@@ -1354,7 +1357,8 @@ bool XConnection::attach()
 bool XConnection::udp(char *challenge, unsigned int len)
 {
     char buffer[UDPHASHSZ];
-    XConnection **hash;
+    Hashtab::Entry **hash;
+    XConnection *conn;
 
     if (len == 0 || len > BINBUF_SIZE || udpbuf != (char *) NULL) {
 	return FALSE;	/* invalid challenge */
@@ -1367,17 +1371,18 @@ bool XConnection::udp(char *challenge, unsigned int len)
 	memcpy(buffer, challenge, len);
     }
     EnterCriticalSection(&udpmutex);
-    hash = (XConnection **) chtab->lookup(buffer, FALSE);
-    while (*hash != (XConnection *) NULL &&
-	   memcmp((*hash)->name, buffer, UDPHASHSZ) == 0) {
-	if ((*hash)->bufsz == (int) len &&
-	    memcmp((*hash)->udpbuf, challenge, len) == 0) {
+    hash = chtab->lookup(buffer, FALSE);
+    while ((conn=(XConnection *) *hash) != (XConnection *) NULL &&
+	   memcmp(conn->name, buffer, UDPHASHSZ) == 0) {
+	if (conn->bufsz == (int) len &&
+	    memcmp(conn->udpbuf, challenge, len) == 0) {
 	    LeaveCriticalSection(&udpmutex);
 	    return FALSE;	/* duplicate challenge */
 	}
+	hash = &conn->next;
     }
 
-    next = *hash;
+    next = conn;
     *hash = this;
     npkts = 0;
     Alloc::staticMode();
@@ -1395,7 +1400,7 @@ bool XConnection::udp(char *challenge, unsigned int len)
  */
 void XConnection::del()
 {
-    XConnection **hash;
+    Hashtab::Entry **hash;
 
     if (fd != INVALID_SOCKET) {
 	shutdown(fd, SD_SEND);
@@ -1411,7 +1416,7 @@ void XConnection::del()
 	EnterCriticalSection(&udpmutex);
 	if (addr != (IpAddr *) NULL) {
 	    if (name != (char *) NULL) {
-		hash = (XConnection **) chtab->lookup(name, FALSE);
+		hash = chtab->lookup(name, FALSE);
 	    } else if (addr->ipnum.ipv6) {
 		hash = &udphtab[(Hashtab::hashmem((char *) &addr->ipnum,
 				 sizeof(struct in6_addr)) ^ port) % udphtabsz];
@@ -1419,10 +1424,10 @@ void XConnection::del()
 		hash = &udphtab[(((Uint) addr->ipnum.addr.s_addr) ^ port) %
 								    udphtabsz];
 	    }
-	    while (*hash != this) {
-		hash = (XConnection **) &(*hash)->next;
+	    while ((XConnection *) *hash != this) {
+		hash = &(*hash)->next;
 	    }
-	    *hash = (XConnection *) next;
+	    *hash = next;
 	}
 	if (npkts != 0) {
 	    recv(inpkts, udpbuf, npkts, 0);
@@ -1465,7 +1470,7 @@ int Connection::select(Uint t, unsigned int mtime)
      * data only.
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
-    if (flist == (XConnection *) NULL) {
+    if (flist == (Hashtab::Entry *) NULL) {
 	/* can't accept new connections, so don't check for them */
 	for (n = ntdescs; n != 0; ) {
 	    --n;
@@ -1761,7 +1766,7 @@ Connection *Connection::connect(void *addr, int len)
     int on;
     unsigned long nonblock;
 
-    if (flist == (XConnection *) NULL) {
+    if (flist == (Hashtab::Entry *) NULL) {
        return NULL;
     }
 
@@ -1793,8 +1798,8 @@ Connection *Connection::connect(void *addr, int len)
 
     ::connect(sock, (struct sockaddr *) addr, len);
 
-    conn = flist;
-    flist = (XConnection *) conn->next;
+    conn = (XConnection *) flist;
+    flist = conn->next;
     conn->fd = sock;
     conn->name = (char *) NULL;
     conn->udpbuf = (char *) NULL;
@@ -1814,12 +1819,13 @@ Connection *Connection::connect(void *addr, int len)
 Connection *Connection::connectDgram(int uport, void *addr, int len)
 {
     In46Addr ipnum;
-    XConnection *conn, **hash;
+    XConnection *conn, *c;
+    Hashtab::Entry **hash;
     unsigned short port, hashval;
 
     UNREFERENCED_PARAMETER(len);
 
-    if (flist == (XConnection *) NULL) {
+    if (flist == (Hashtab::Entry *) NULL) {
        return NULL;
     }
 
@@ -1840,8 +1846,8 @@ Connection *Connection::connectDgram(int uport, void *addr, int len)
 	port = ((struct sockaddr_in *) addr)->sin_port;
     }
 
-    conn = flist;
-    flist = (XConnection *) conn->next;
+    conn = (XConnection *) flist;
+    flist = conn->next;
     conn->name = (char *) NULL;
     Alloc::staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
@@ -1876,7 +1882,8 @@ Connection *Connection::connectDgram(int uport, void *addr, int len)
     hash = &udphtab[hashval];
     EnterCriticalSection(&udpmutex);
     for (;;) {
-	if (*hash == (XConnection *) NULL) {
+	c = (XConnection *) *hash;
+	if (c == (XConnection *) NULL) {
 	    /*
 	     * establish connection
 	     */
@@ -1887,18 +1894,18 @@ Connection *Connection::connectDgram(int uport, void *addr, int len)
 	    conn->addr = IpAddr::create(&ipnum);
 	    break;
 	}
-	if ((*hash)->at == uport && (*hash)->port == port && (
+	if (c->at == uport && c->port == port && (
 	     (ipnum.ipv6) ?
-	      memcmp(&(*hash)->addr->ipnum, &ipnum.addr6,
+	      memcmp(&c->addr->ipnum, &ipnum.addr6,
 		     sizeof(struct in6_addr)) == 0 :
-	      (*hash)->addr->ipnum.addr.s_addr == ipnum.addr.s_addr)) {
+	      c->addr->ipnum.addr.s_addr == ipnum.addr.s_addr)) {
 	    /*
 	     * already exists
 	     */
 	    conn->err = 5;
 	    break;
 	}
-	hash = (XConnection **) &(*hash)->next;
+	hash = &c->next;
     }
     LeaveCriticalSection(&udpmutex);
 
