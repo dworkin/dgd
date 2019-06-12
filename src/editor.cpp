@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,7 +27,7 @@
 # include <stdarg.h>
 
 struct editor {
-    cmdbuf *ed;			/* editor instance */
+    CmdBuf *ed;			/* editor instance */
     editor *next;		/* next in free list */
 };
 
@@ -56,7 +56,7 @@ void ed_init(char *tmp, int num)
 	outbuf = ALLOC(char, USHRT_MAX + 1);
 	editors = ALLOC(editor, num);
 	for (e = editors + num; num != 0; --num) {
-	    (--e)->ed = (cmdbuf *) NULL;
+	    (--e)->ed = (CmdBuf *) NULL;
 	    e->next = f;
 	    f = e;
 	}
@@ -75,9 +75,7 @@ void ed_finish()
     editor *e;
 
     for (i = neditors, e = editors; i > 0; --i, e++) {
-	if (e->ed != (cmdbuf *) NULL) {
-	    cb_del(e->ed);
-	}
+	delete e->ed;
     }
 }
 
@@ -123,7 +121,9 @@ void ed_new(Object *obj)
     obj->flags |= O_EDITOR;
 
     sprintf(tmp, "%s%05u", tmpedfile, EINDEX(obj->etabi));
-    e->ed = cb_new(tmp);
+    Alloc::staticMode();
+    e->ed = new CmdBuf(tmp);
+    Alloc::dynamicMode();
 }
 
 /*
@@ -136,11 +136,11 @@ void ed_del(Object *obj)
 
     check_recursion();
     e = &editors[EINDEX(obj->etabi)];
-    cb_del(e->ed);
+    delete e->ed;
     if (obj->etabi == newed) {
 	newed = EINDEX_MAX;
     }
-    e->ed = (cmdbuf *) NULL;
+    e->ed = (CmdBuf *) NULL;
     e->next = flist;
     flist = e;
     obj->flags &= ~O_EDITOR;
@@ -181,8 +181,8 @@ String *ed_command(Object *obj, char *cmd)
     try {
 	ErrorContext::push((ErrorContext::Handler) ed_handler);
 	recursion = TRUE;
-	if (cb_command(e->ed, cmd)) {
-	    lb_inact(e->ed->edbuf->lb);
+	if (e->ed->command(cmd)) {
+	    e->ed->edbuf.lb.inact();
 	    recursion = FALSE;
 	} else {
 	    recursion = FALSE;
@@ -191,7 +191,7 @@ String *ed_command(Object *obj, char *cmd)
 	ErrorContext::pop();
     } catch (...) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
-	lb_inact(e->ed->edbuf->lb);
+	e->ed->edbuf.lb.inact();
 	recursion = FALSE;
 	if (!internal) {
 	    error((char *) NULL);	/* pass on error */

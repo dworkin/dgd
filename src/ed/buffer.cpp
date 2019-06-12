@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,220 +25,204 @@
  */
 
 /*
- * NAME:	editbuf->new()
- * DESCRIPTION:	create a new edit buffer
+ * create a new edit buffer
  */
-editbuf *eb_new(char *tmpfile)
+EditBuf::EditBuf(char *tmpfile) :
+    lb(tmpfile)
 {
-    editbuf *eb;
-
-    eb = ALLOC(editbuf, 1);
-    eb->lb = lb_new((linebuf *) NULL, tmpfile);
-    eb->buffer = (block) 0;
-    eb->lines = 0;
-
-    return eb;
+    buffer = (Block) 0;
+    lines = 0;
 }
 
 /*
- * NAME:	editbuf->del()
- * DESCRIPTION:	delete an edit buffer
+ * delete an edit buffer
  */
-void eb_del(editbuf *eb)
+EditBuf::~EditBuf()
 {
-    lb_del(eb->lb);
-    FREE(eb);
 }
 
 /*
- * NAME:	editbuf->clear()
- * DESCRIPTION:	reinitialize an edit buffer
+ * reinitialize an edit buffer
  */
-void eb_clear(editbuf *eb)
+void EditBuf::clear()
 {
-    lb_new(eb->lb, (char *) NULL);
-    eb->buffer = (block) 0;
-    eb->lines = 0;
+    lb.reset();
+    buffer = (Block) 0;
+    lines = 0;
 }
 
 /*
- * NAME:	editbuf->add()
- * DESCRIPTION:	add a new block of lines to the edit buffer after a given line.
- *		If this line is 0 the block is inserted before the other lines
- *		in the edit buffer.
+ * add a new block of lines to the edit buffer after a given line.
+ * If this line is 0 the block is inserted before the other lines
+ * in the edit buffer.
  */
-void eb_add(editbuf *eb, Int ln, char *(*getline) ())
+void EditBuf::add(Int ln, char *(*getline) ())
 {
-    block b;
+    Block b;
 
-    b = bk_new(eb->lb, getline);
-    if (b != (block) 0) {
+    b = lb.create(getline);
+    if (b != (Block) 0) {
 	Int size;
 
-	size = eb->lines + bk_size(eb->lb, b);
+	size = lines + lb.size(b);
 	if (size < 0) {
 	    error("Too many lines");
 	}
 
 	if (ln == 0) {
-	    if (eb->lines == 0) {
-		eb->buffer = b;
+	    if (lines == 0) {
+		buffer = b;
 	    } else {
-		eb->buffer = bk_cat(eb->lb, b, eb->buffer);
+		buffer = lb.cat(b, buffer);
 	    }
-	} else if (ln == eb->lines) {
-	    eb->buffer = bk_cat(eb->lb, eb->buffer, b);
+	} else if (ln == lines) {
+	    buffer = lb.cat(buffer, b);
 	} else {
-	    block head, tail;
+	    Block head, tail;
 
-	    bk_split(eb->lb, eb->buffer, ln, &head, &tail);
-	    eb->buffer = bk_cat(eb->lb, bk_cat(eb->lb, head, b), tail);
+	    lb.split(buffer, ln, &head, &tail);
+	    buffer = lb.cat(lb.cat(head, b), tail);
 	}
 
-	eb->lines = size;
+	lines = size;
     }
 }
 
 /*
- * NAME:	editbuf->delete()
- * DESCRIPTION:	delete a subrange of lines in the edit buffer
+ * delete a subrange of lines in the edit buffer
  */
-block eb_delete(editbuf *eb, Int first, Int last)
+Block EditBuf::del(Int first, Int last)
 {
-    block head, mid, tail;
+    Block head, mid, tail;
     Int size;
 
     size = last - first + 1;
 
-    if (last < eb->lines) {
-	bk_split(eb->lb, eb->buffer, last, &mid, &tail);
+    if (last < lines) {
+	lb.split(buffer, last, &mid, &tail);
 	if (first > 1) {
-	    bk_split(eb->lb, mid, first - 1, &head, &mid);
-	    eb->buffer = bk_cat(eb->lb, head, tail);
+	    lb.split(mid, first - 1, &head, &mid);
+	    buffer = lb.cat(head, tail);
 	} else {
-	    eb->buffer = tail;
+	    buffer = tail;
 	}
     } else {
-	mid = eb->buffer;
+	mid = buffer;
 	if (first > 1) {
-	    bk_split(eb->lb, mid, first - 1, &head, &mid);
-	    eb->buffer = head;
+	    lb.split(mid, first - 1, &head, &mid);
+	    buffer = head;
 	} else {
-	    eb->buffer = (block) 0;
+	    buffer = (Block) 0;
 	}
     }
-    eb->lines -= size;
+    lines -= size;
 
     return mid;
 }
 
 /*
- * NAME:	editbuf->change()
- * DESCRIPTION:	change a subrange of lines in the edit buffer
+ * change a subrange of lines in the edit buffer
  */
-void eb_change(editbuf *eb, Int first, Int last, block b)
+void EditBuf::change(Int first, Int last, Block b)
 {
     Int size;
-    block head, tail;
+    Block head, tail;
 
-    size = eb->lines - (last - first + 1);
-    if (b != (block) 0) {
-	size += bk_size(eb->lb, b);
+    size = lines - (last - first + 1);
+    if (b != (Block) 0) {
+	size += lb.size(b);
 	if (size < 0) {
 	    error("Too many lines");
 	}
     }
 
-    if (last < eb->lines) {
+    if (last < lines) {
 	if (first > 1) {
-	    bk_split(eb->lb, eb->buffer, first - 1, &head, (block *) NULL);
-	    bk_split(eb->lb, eb->buffer, last, (block *) NULL, &tail);
-	    if (b != (block) 0) {
-		b = bk_cat(eb->lb, bk_cat(eb->lb, head, b), tail);
+	    lb.split(buffer, first - 1, &head, (Block *) NULL);
+	    lb.split(buffer, last, (Block *) NULL, &tail);
+	    if (b != (Block) 0) {
+		b = lb.cat(lb.cat(head, b), tail);
 	    } else {
-		b = bk_cat(eb->lb, head, tail);
+		b = lb.cat(head, tail);
 	    }
 	} else {
-	    bk_split(eb->lb, eb->buffer, last, (block *) NULL, &tail);
-	    if (b != (block) 0) {
-		b = bk_cat(eb->lb, b, tail);
+	    lb.split(buffer, last, (Block *) NULL, &tail);
+	    if (b != (Block) 0) {
+		b = lb.cat(b, tail);
 	    } else {
 		b = tail;
 	    }
 	}
     } else if (first > 1) {
-	bk_split(eb->lb, eb->buffer, first - 1, &head, (block *) NULL);
-	if (b != (block) 0) {
-	    b = bk_cat(eb->lb, head, b);
+	lb.split(buffer, first - 1, &head, (Block *) NULL);
+	if (b != (Block) 0) {
+	    b = lb.cat(head, b);
 	} else {
 	    b = head;
 	}
     }
-    eb->buffer = b;
-    eb->lines = size;
+    buffer = b;
+    lines = size;
 }
 
 /*
- * NAME:	editbuf->yank()
- * DESCRIPTION:	return a subrange block of the edit buffer
+ * return a subrange block of the edit buffer
  */
-block eb_yank(editbuf *eb, Int first, Int last)
+Block EditBuf::yank(Int first, Int last)
 {
-    block head, mid, tail;
+    Block head, mid, tail;
 
-    if (last < eb->lines) {
-	bk_split(eb->lb, eb->buffer, last, &mid, &tail);
+    if (last < lines) {
+	lb.split(buffer, last, &mid, &tail);
     } else {
-	mid = eb->buffer;
+	mid = buffer;
     }
     if (first > 1) {
-	bk_split(eb->lb, mid, first - 1, &head, &mid);
+	lb.split(mid, first - 1, &head, &mid);
     }
 
     return mid;
 }
 
 /*
- * NAME:	editbuf->put()
- * DESCRIPTION:	put a block after a line in the edit buffer. The block is
- *		supplied immediately.
+ * put a block after a line in the edit buffer. The block is
+ * supplied immediately.
  */
-void eb_put(editbuf *eb, Int ln, block b)
+void EditBuf::put(Int ln, Block b)
 {
     Int size;
 
-    size = eb->lines + bk_size(eb->lb, b);
+    size = lines + lb.size(b);
     if (size < 0) {
 	error("Too many lines");
     }
 
     if (ln == 0) {
-	if (eb->lines == 0) {
-	    eb->buffer = b;
+	if (lines == 0) {
+	    buffer = b;
 	} else {
-	    eb->buffer = bk_cat(eb->lb, b, eb->buffer);
+	    buffer = lb.cat(b, buffer);
 	}
-    } else if (ln == eb->lines) {
-	eb->buffer = bk_cat(eb->lb, eb->buffer, b);
+    } else if (ln == lines) {
+	buffer = lb.cat(buffer, b);
     } else {
-	block head, tail;
+	Block head, tail;
 
-	bk_split(eb->lb, eb->buffer, ln, &head, &tail);
-	eb->buffer = bk_cat(eb->lb, bk_cat(eb->lb, head, b), tail);
+	lb.split(buffer, ln, &head, &tail);
+	buffer = lb.cat(lb.cat(head, b), tail);
     }
 
-    eb->lines = size;
+    lines = size;
 }
 
 /*
- * NAME:	editbuf->range()
- * DESCRIPTION:	output a subrange of the edit buffer, without first making
- *		a subrange block for it
+ * output a subrange of the edit buffer, without first making
+ * a subrange block for it
  */
-void eb_range(editbuf *eb, Int first, Int last, void (*putline) (const char*),
-	      bool reverse)
+void EditBuf::range(Int first, Int last, void (*putline) (const char*),
+		    bool reverse)
 {
-    bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, reverse);
+    lb.put(buffer, first - 1, last - first + 1, putline, reverse);
 }
 
 /*
@@ -248,15 +232,14 @@ void eb_range(editbuf *eb, Int first, Int last, void (*putline) (const char*),
  * Lines are stored in a local buffer, which is flushed into a block when full.
  */
 
-static editbuf *eeb;	/* editor buffer */
+static EditBuf *eeb;	/* editor buffer */
 
 /*
- * NAME:	add_line()
- * DESCRIPTION:	return the next line from the lines buffer
+ * return the next line from the lines buffer
  */
-static char *add_line()
+char *EditBuf::addLine()
 {
-    editbuf *eb;
+    EditBuf *eb;
 
     eb = eeb;
     if (eb->szlines > 0) {
@@ -272,57 +255,53 @@ static char *add_line()
 }
 
 /*
- * NAME:	flush_line()
- * DESCRIPTION:	flush the lines buffer into a block
+ * flush the lines buffer into a block
  */
-static void flush_line(editbuf *eb)
+void EditBuf::flushLine()
 {
-    block b;
+    Block b;
 
-    eb->llines = eb->llbuf;
-    eeb = eb;
-    b = bk_new(eb->lb, add_line);
-    if (eb->flines == (block) 0) {
-	eb->flines = b;
+    llines = llbuf;
+    eeb = this;
+    b = lb.create(addLine);
+    if (flines == (Block) 0) {
+	flines = b;
     } else {
-	eb->flines = bk_cat(eb->lb, eb->flines, b);
+	flines = lb.cat(flines, b);
     }
 }
 
 /*
- * NAME:	editbuf->startblock()
- * DESCRIPTION:	start a block of lines
+ * start a block of lines
  */
-void eb_startblock(editbuf *eb)
+void EditBuf::startblock()
 {
-    eb->flines = (block) 0;
-    eb->szlines = 0;
+    flines = (Block) 0;
+    szlines = 0;
 }
 
 /*
- * NAME:	editbuf->addblock()
- * DESCRIPTION:	add a line to the current block of lines
+ * add a line to the current block of lines
  */
-void eb_addblock(editbuf *eb, const char *text)
+void EditBuf::addblock(const char *text)
 {
     int len;
 
     len = strlen(text) + 1;
 
-    if (eb->szlines + len >= sizeof(eb->llines)) {
-	flush_line(eb);
+    if (szlines + len >= sizeof(llines)) {
+	flushLine();
     }
-    memcpy(eb->llbuf + eb->szlines, text, len);
-    eb->szlines += len;
+    memcpy(llbuf + szlines, text, len);
+    szlines += len;
 }
 
 /*
- * NAME:	editbuf->endblock()
- * DESCRIPTION:	finish the current block
+ * finish the current block
  */
-void eb_endblock(editbuf *eb)
+void EditBuf::endblock()
 {
-    if (eb->szlines > 0) {
-	flush_line(eb);
+    if (szlines > 0) {
+	flushLine();
     }
 }

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,19 +22,52 @@
  * allocated. The line buffer can be made inactive, to make it use as little
  * system resources as possible.
  *   Blocks can be created, deleted, queried for their size, split in two, or
- * concatenated. Blocks are never actually deleted in a line buffer, but a
- * fake delete operation is added for the sake of completeness.
+ * concatenated.
  */
-typedef Int block;
+typedef Int Block;
 
-struct btbuf {
-    long offset;			/* offset in tmpfile */
-    btbuf *prev;			/* prev in linked list */
-    btbuf *next;			/* next in linked list */
-    char *buf;				/* buffer with blocks and text */
-};
+class LineBuf {
+public:
+    LineBuf(char *filename);
+    virtual ~LineBuf();
 
-struct linebuf {
+    void reset();
+    void inact();
+    Block create(char *(*getline)());
+    Int size(Block b);
+    void split(Block b, Int size, Block *b1, Block *b2);
+    Block cat(Block b1, Block b2);
+    void put(Block b, Int idx, Int size, void(*putline)(const char*),
+	     bool reverse);
+
+private:
+    struct BTBuf {
+	long offset;			/* offset in tmpfile */
+	BTBuf *prev;			/* prev in linked list */
+	BTBuf *next;			/* next in linked list */
+	char *buf;			/* buffer with blocks and text */
+    };
+    struct Blk {
+	Block prev, next;		/* first and last */
+	Int lines;			/* size of this block */
+	union {
+	    Int lindex;			/* index from start of chain block */
+	    struct {
+		short u_index1;		/* index in first chain block */
+		short u_index2;		/* index in last chain block */
+	    } s;
+	};
+    };
+
+    void init();
+    void act();
+    void write();
+    Blk *load(Block b);
+    Blk *putblk(Blk *bp, char *text);
+    Blk *putln(Blk *bp, char *text);
+    void split1(Blk *bp, Int size, Block *b1, Block *b2);
+    void put1(Blk *bp, Int idx, Int size);
+
     char *file;				/* tmpfile name */
     int fd;				/* tmpfile fd */
     char *buf;				/* current low-level buffer */
@@ -42,18 +75,6 @@ struct linebuf {
     int txtsz;				/* text size in write buffer */
     void (*putline) (const char*);	/* output line function */
     bool reverse;			/* for bk_put() */
-    btbuf *wb;				/* write buffer */
-    btbuf bt[NR_EDBUFS];		/* read & write buffers */
+    BTBuf *wb;				/* write buffer */
+    BTBuf bt[NR_EDBUFS];		/* read & write buffers */
 };
-
-extern linebuf *lb_new	  (linebuf*, char*);
-extern void	lb_del	  (linebuf*);
-extern void	lb_inact  (linebuf*);
-
-extern block	bk_new	  (linebuf*, char*(*)());
-# define	bk_del(linebuf, block)	/* nothing */
-extern Int	bk_size	  (linebuf*, block);
-extern void	bk_split  (linebuf*, block, Int, block*, block*);
-extern block	bk_cat	  (linebuf*, block, block);
-extern void	bk_put	  (linebuf*, block, Int, Int, void(*)(const char*),
-			   bool);

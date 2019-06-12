@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,7 +25,14 @@
 # define RXBUFSZ	2048
 # define NSUBEXP	9
 
-struct rxbuf {
+class RxBuf : public Allocated {
+public:
+    RxBuf();
+    virtual ~RxBuf();
+
+    const char *comp(const char *pattern);
+    int exec(const char *text, int idx, bool ic);
+
     bool valid;			/* is the present matcher valid? */
     bool anchor;		/* is the match anchored (^pattern) */
     char firstc;		/* first character in match, if any */
@@ -36,9 +43,8 @@ struct rxbuf {
 	int size;		/* size of subexpression */
     } se[NSUBEXP];
     char buffer[RXBUFSZ];	/* buffer to hold matcher */
-};
 
-extern rxbuf	  *rx_new  ();
-extern void	   rx_del  (rxbuf*);
-extern const char *rx_comp (rxbuf*, const char*);
-extern int	   rx_exec (rxbuf*, const char*, int, bool);
+private:
+    bool match(const char *start, const char *text, bool ic, char *m,
+	       const char *t);
+};

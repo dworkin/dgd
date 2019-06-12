@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -44,16 +44,54 @@
 # define CB_TUPPER	0x1000
 # define CB_TLOWER	0x2000
 
-struct cmdbuf {
+class CmdBuf : public Allocated {
+public:
+    CmdBuf(char *tmpfile);
+    virtual ~CmdBuf();
+
+    bool command(const char *command);
+    int doundo();
+    int global();
+    int vglobal();
+    int print();
+    int list();
+    int number();
+    int page();
+    int assign();
+    int domark();
+    int append();
+    int insert();
+    int change();
+    int del();
+    int copy();
+    int move();
+    int put();
+    int yank();
+    int lshift();
+    int rshift();
+    int indent();
+    int join();
+    int subst();
+    int file();
+    int read();
+    int edit();
+    int quit();
+    int write();
+    int wq();
+    int xit();
+    int set();
+
+    EditBuf edbuf;		/* edit buffer */
+    short flags;		/* status flags */
+
+private:
     const char *cmd;		/* command to do */
-    editbuf *edbuf;		/* edit buffer */
-    rxbuf *regexp;		/* current regular expression */
+    RxBuf regexp;		/* current regular expression */
     Vars *vars;			/* variables */
     bool reverse;		/* reverse search */
     bool ignorecase;		/* ignore case */
 
-    short flags;		/* status flags */
-    Int edit;			/* number of edits on file */
+    Int edits;			/* number of edits on file */
 
     Int cthis;			/* current line number */
     Int othis;			/* current line number after last operation */
@@ -68,7 +106,7 @@ struct cmdbuf {
     int buflen;			/* size of buffer */
 
     /* globals */
-    rxbuf *glob_rx;		/* global regexp */
+    RxBuf *glob_rx;		/* global regexp */
     Int glob_next;		/* next line affected in global */
     Int glob_size;		/* # lines affected in global */
 
@@ -83,25 +121,50 @@ struct cmdbuf {
     Int *moffset;		/* mark offsets */
 
     Int mark[26];		/* line numbers of marks */
-    block buf;			/* default yank buffer */
-    block zbuf[26];		/* named buffers */
+    Block buf;			/* default yank buffer */
+    Block zbuf[26];		/* named buffers */
 
     char fname[STRINGSZ];	/* current filename */
 
-    block undo;			/* undo block */
+    Block undo;			/* undo block */
     Int uthis;			/* current line number after undo */
     Int umark[26];		/* marks after undo */
 
     char search[STRINGSZ];	/* pattern to search for */
     char replace[STRINGSZ];	/* string to replace with */
+
+    void count();
+    void not_in_global();
+    void dodo(Int cthis);
+    void dobuf(Block b);
+    void add(Int ln, Block b, Int size);
+    Block dellines(Int first, Int last);
+    void change(Int first, Int last, Block b);
+    void startblock();
+    void addblock(const char *text);
+    void endblock();
+    Int dosearch(Int first, Int last, bool reverse);
+    void pattern(char delim);
+    Int address(Int first);
+    void range();
+    int doshift();
+    void noshift(const char *text);
+    void sub(const char *text, unsigned int size);
+    bool getfname(char *buffer);
+
+    static const char *skipst(const char *p);
+    static const char *pattern(const char *pat, int delim, char *buffer);
+    static void globfind(const char *text);
+    static void find(const char *text);
+    static void println(const char *text);
+    static void doshift(const char *text);
+    static void indent(const char *text);
+    static void join(const char *text);
+    static void subst(const char *text);
+    static void io_show(struct io *iob);
 };
 
 # define RET_QUIT	1
 # define RET_FLAGS	2
 
-extern cmdbuf *cb_new     (char*);
-extern void    cb_del     (cmdbuf*);
-extern bool    cb_command (cmdbuf*, const char*);
-extern int     cb_edit	  (cmdbuf*);
-
-extern cmdbuf *ccb;
+extern CmdBuf *ccb;

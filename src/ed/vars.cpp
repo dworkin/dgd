@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,10 +25,9 @@
  */
 
 /*
- * NAME:	Vars->new()
- * DESCRIPTION:	allocate and initialize a variable buffer
+ * allocate and initialize a variable buffer
  */
-Vars *va_new()
+Vars *Vars::create()
 {
     static Vars dflt[] = {
 	{ "ignorecase",	"ic",	FALSE },
@@ -44,19 +43,17 @@ Vars *va_new()
 }
 
 /*
- * NAME:	Vars->del()
- * DESCRIPTION:	delete a variable buffer
+ * delete a variable buffer
  */
-void va_del(Vars *v)
+void Vars::del(Vars *v)
 {
     FREE(v);
 }
 
 /*
- * NAME:	Vars->set()
- * DESCRIPTION:	set the value of a variable.
+ * set the value of a variable.
  */
-void va_set(Vars *v, char *option)
+void Vars::set(Vars *v, char *option)
 {
     char buffer[2];
     char *val;
@@ -95,10 +92,9 @@ void va_set(Vars *v, char *option)
 }
 
 /*
- * NAME:	Vars->show()
- * DESCRIPTION:	show all variables
+ * show all variables
  */
-void va_show(Vars *v)
+void Vars::show(Vars *v)
 {
     output("%signorecase\011",   ((v++)->val) ? "" : "no");	/* HT */
     output("shiftwidth=%ld\011", (long) (v++)->val);		/* HT */

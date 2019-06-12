@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,62 +26,45 @@
  * This file defines the command subroutines for edcmd.c
  */
 
-extern const char *skipst	(const char*);
-extern const char *pattern	(const char*, int, char*);
-extern void	   cb_count	(cmdbuf*);
-extern void	   not_in_global(cmdbuf*);
-extern void	   cb_do	(cmdbuf*, Int);
-extern void	   cb_buf	(cmdbuf*, block);
-extern void	   add		(cmdbuf*, Int, block, Int);
-extern block	   dellines	(cmdbuf*, Int, Int);
-extern void	   change	(cmdbuf*, Int, Int, block);
-extern void	   startblock	(cmdbuf*);
-extern void	   addblock	(cmdbuf*, const char*);
-extern void	   endblock	(cmdbuf*);
-
 
 /*
- * NAME:	find()
- * DESCRIPTION:	scan a line for a pattern. If the pattern is found, longjump
- *		out.
+ * scan a line for a pattern. If the pattern is found, longjump out.
  */
-static void find(const char *text)
+void CmdBuf::find(const char *text)
 {
-    if (rx_exec(ccb->regexp, text, 0, ccb->ignorecase) > 0) {
+    if (ccb->regexp.exec(text, 0, ccb->ignorecase) > 0) {
 	throw "found";
     }
     ccb->lineno++;
 }
 
 /*
- * NAME:	cmdbuf->search()
- * DESCRIPTION:	search a range of lines for the occurance of a pattern. When
- *		found, jump out immediately.
+ * search a range of lines for the occurance of a pattern. When
+ * found, jump out immediately.
  */
-Int cb_search(cmdbuf *cb, Int first, Int last, bool reverse)
+Int CmdBuf::dosearch(Int first, Int last, bool reverse)
 {
     try {
-	cb->lineno = 0;
-	cb->ignorecase = IGNORECASE(cb->vars);
-	eb_range(cb->edbuf, first, last, find, reverse);
+	lineno = 0;
+	ignorecase = IGNORECASE(vars);
+	edbuf.range(first, last, find, reverse);
 	/* not found */
 	return 0;
     } catch (...) {
 	/* found */
-	return (reverse) ? last - cb->lineno : first + cb->lineno;
+	return (reverse) ? last - lineno : first + lineno;
     }
 }
 
 
 /*
- * NAME:	println()
- * DESCRIPTION:	output a line of text. The format is decided by flags.
- *		Non-ascii characters (eight bit set) have no special processing.
+ * output a line of text. The format is decided by flags.
+ * Non-ascii characters (eight bit set) have no special processing.
  */
-static void println(const char *text)
+void CmdBuf::println(const char *text)
 {
     char buffer[2 * MAX_LINE_SIZE + 14];	/* all ^x + number + list */
-    cmdbuf *cb;
+    CmdBuf *cb;
     char *p;
 
     cb = ccb;
@@ -118,17 +101,16 @@ static void println(const char *text)
 }
 
 /*
- * NAME:	cmdbuf->print()
- * DESCRIPTION:	print a range of lines, according to the format specified in
- *		the flags. Afterwards, the current line is set to the last line
- *		printed.
+ * print a range of lines, according to the format specified in
+ * the flags. Afterwards, the current line is set to the last line
+ * printed.
  */
-int cb_print(cmdbuf *cb)
+int CmdBuf::print()
 {
     const char *p;
 
     /* handle flags right now */
-    p = cb->cmd;
+    p = cmd;
     for (;;) {
 	switch (*p++) {
 	case '-':
@@ -138,60 +120,57 @@ int cb_print(cmdbuf *cb)
 	    continue;
 
 	case 'l':
-	    cb->flags |= CB_LIST;
+	    flags |= CB_LIST;
 	    continue;
 
 	case '#':
-	    cb->flags |= CB_NUMBER;
+	    flags |= CB_NUMBER;
 	    continue;
 	}
-	cb->cmd = --p;
+	cmd = --p;
 	break;
     }
 
-    cb->lineno = cb->first;
-    eb_range(cb->edbuf, cb->first, cb->last, println, FALSE);
-    cb->cthis = cb->last;
+    lineno = first;
+    edbuf.range(first, last, println, FALSE);
+    cthis = last;
     return 0;
 }
 
 /*
- * NAME:	cmdbuf->list()
- * DESCRIPTION:	output a range of lines in a hopefully unambiguous format
+ * output a range of lines in a hopefully unambiguous format
  */
-int cb_list(cmdbuf *cb)
+int CmdBuf::list()
 {
-    cb->flags |= CB_LIST;
-    return cb_print(cb);
+    flags |= CB_LIST;
+    return print();
 }
 
 /*
- * NAME:	cmdbuf->number()
- * DESCRIPTION:	output a range of lines preceded by line numbers
+ * output a range of lines preceded by line numbers
  */
-int cb_number(cmdbuf *cb)
+int CmdBuf::number()
 {
-    cb->flags |= CB_NUMBER;
-    return cb_print(cb);
+    flags |= CB_NUMBER;
+    return print();
 }
 
 /*
- * NAME:	cmdbuf->page()
- * DESCRIPTION:	show a page of lines
+ * show a page of lines
  */
-int cb_page(cmdbuf *cb)
+int CmdBuf::page()
 {
     Int offset, window;
 
-    if (cb->edbuf->lines == 0) {
+    if (edbuf.lines == 0) {
 	error("No lines in buffer");
     }
 
-    window = WINDOW(cb->vars);
-    switch (*(cb->cmd)++) {
+    window = WINDOW(vars);
+    switch (*(cmd)++) {
     default:	/* next line */
-	cb->cmd--;
-	cb->cthis++;
+	cmd--;
+	cthis++;
 	/* fall through */
     case '+':	/* top */
 	offset = 0;
@@ -207,221 +186,207 @@ int cb_page(cmdbuf *cb)
     }
 
     /* set first */
-    if (cb->first < 0) {
-	cb->first = cb->cthis;
+    if (first < 0) {
+	first = cthis;
     }
-    cb->first += offset;
-    if (cb->first <= 0) {
-	cb->first = 1;
-    } else if (cb->first > cb->edbuf->lines) {
-	cb->first = cb->edbuf->lines;
+    first += offset;
+    if (first <= 0) {
+	first = 1;
+    } else if (first > edbuf.lines) {
+	first = edbuf.lines;
     }
 
     /* set last */
-    cb->last = cb->first + window - 1;
-    if (cb->last < cb->first) {
-	cb->last = cb->first;
-    } else if (cb->last > cb->edbuf->lines) {
-	cb->last = cb->edbuf->lines;
+    last = first + window - 1;
+    if (last < first) {
+	last = first;
+    } else if (last > edbuf.lines) {
+	last = edbuf.lines;
     }
 
-    return cb_print(cb);
+    return print();
 }
 
 /*
- * NAME:	cmdbuf->assign()
- * DESCRIPTION:	show the specified line number
+ * show the specified line number
  */
-int cb_assign(cmdbuf *cb)
+int CmdBuf::assign()
 {
-    output("%ld\012",
-	   (long) (cb->first < 0) ? cb->edbuf->lines : cb->first);	/* LF */
+    output("%ld\012", (long) (first < 0) ? edbuf.lines : first);	/* LF */
     return 0;
 }
 
 
 /*
- * NAME:	cmdbuf->mark()
- * DESCRIPTION:	set a mark in the range [a-z] to line number
+ * set a mark in the range [a-z] to line number
  */
-int cb_mark(cmdbuf *cb)
+int CmdBuf::domark()
 {
-    if (!islower(cb->cmd[0])) {
+    if (!islower(cmd[0])) {
 	error("Mark must specify a letter");
     }
-    cb->mark[*(cb->cmd)++ - 'a'] = cb->first;
+    mark[*(cmd)++ - 'a'] = first;
     return 0;
 }
 
 
 /*
- * NAME:	cmdbuf->append()
- * DESCRIPTION:	append a block of lines, read from user, to edit buffer
+ * append a block of lines, read from user, to edit buffer
  */
-int cb_append(cmdbuf *cb)
+int CmdBuf::append()
 {
-    not_in_global(cb);
-    cb_do(cb, cb->first);
+    not_in_global();
+    dodo(first);
 
-    startblock(cb);
-    cb->flags |= CB_INSERT;
+    startblock();
+    flags |= CB_INSERT;
     return 0;
 }
 
 /*
- * NAME:	cmdbuf->insert()
- * DESCRIPTION:	insert a block of lines in the edit buffer
+ * insert a block of lines in the edit buffer
  */
-int cb_insert(cmdbuf *cb)
+int CmdBuf::insert()
 {
-    not_in_global(cb);
-    if (cb->first > 0) {
-	cb->first--;
+    not_in_global();
+    if (first > 0) {
+	first--;
     }
-    return cb_append(cb);
+    return append();
 }
 
 /*
- * NAME:	cmdbuf->change()
- * DESCRIPTION:	change a subrange of lines in the edit buffer
+ * change a subrange of lines in the edit buffer
  */
-int cb_change(cmdbuf *cb)
+int CmdBuf::change()
 {
     Int *m;
 
-    not_in_global(cb);
-    cb_do(cb, cb->first);
+    not_in_global();
+    dodo(first);
 
     /* erase marks of changed lines */
-    for (m = cb->mark; m < &cb->mark[26]; m++) {
-	if (*m >= cb->first && *m <= cb->last) {
+    for (m = mark; m < &mark[26]; m++) {
+	if (*m >= first && *m <= last) {
 	    *m = 0;
 	}
     }
 
-    startblock(cb);
-    cb->flags |= CB_INSERT | CB_CHANGE;
+    startblock();
+    flags |= CB_INSERT | CB_CHANGE;
     return 0;
 }
 
 
 /*
- * NAME:	cmdbuf->delete()
- * DESCRIPTION:	delete a subrange of lines in the edit buffer
+ * delete a subrange of lines in the edit buffer
  */
-int cb_delete(cmdbuf *cb)
+int CmdBuf::del()
 {
-    cb_do(cb, cb->first);
+    dodo(first);
 
-    cb_buf(cb, dellines(cb, cb->first, cb->last));
+    dobuf(dellines(first, last));
 
-    cb->edit++;
+    edits++;
 
     return RET_FLAGS;
 }
 
 /*
- * NAME:	cmdbuf->copy()
- * DESCRIPTION:	copy a subrange of lines in the edit buffer
+ * copy a subrange of lines in the edit buffer
  */
-int cb_copy(cmdbuf *cb)
+int CmdBuf::copy()
 {
-    cb_do(cb, cb->a_addr);
-    add(cb, cb->a_addr, eb_yank(cb->edbuf, cb->first, cb->last),
-      cb->last - cb->first + 1);
+    dodo(a_addr);
+    add(a_addr, edbuf.yank(first, last), last - first + 1);
 
-    cb->edit++;
+    edits++;
 
     return RET_FLAGS;
 }
 
 /*
- * NAME:	cmdbuf->move()
- * DESCRIPTION:	move a subrange of lines in the edit buffer
+ * move a subrange of lines in the edit buffer
  */
-int cb_move(cmdbuf *cb)
+int CmdBuf::move()
 {
     Int mark[26];
     Int offset, *m1, *m2;
 
-    if (cb->a_addr >= cb->first - 1 && cb->a_addr <= cb->last) {
+    if (a_addr >= first - 1 && a_addr <= last) {
 	error("Move to moved line");
     }
 
-    cb_do(cb, cb->first);
+    dodo(first);
     memset(mark, '\0', sizeof(mark));
-    if (cb->a_addr < cb->last) {
-	offset = cb->a_addr + 1 - cb->first;
+    if (a_addr < last) {
+	offset = a_addr + 1 - first;
     } else {
-	offset = cb->a_addr - cb->last;
-	cb->a_addr -= cb->last - cb->first + 1;
+	offset = a_addr - last;
+	a_addr -= last - first + 1;
     }
     /* make a copy of the marks of the lines to move */
-    for (m1 = mark, m2 = cb->mark; m1 < &mark[26]; m1++, m2++) {
-	if (*m2 >= cb->first && *m2 <= cb->last) {
+    for (m1 = mark, m2 = this->mark; m1 < &mark[26]; m1++, m2++) {
+	if (*m2 >= first && *m2 <= last) {
 	    *m1 = *m2;
 	} else {
 	    *m1 = 0;
 	}
     }
-    add(cb, cb->a_addr, dellines(cb, cb->first, cb->last),
-      cb->last - cb->first + 1);
+    add(a_addr, dellines(first, last), last - first + 1);
     /* copy back adjusted marks of moved lines */
-    for (m1 = mark, m2 = cb->mark; m1 < &mark[26]; m1++, m2++) {
+    for (m1 = mark, m2 = this->mark; m1 < &mark[26]; m1++, m2++) {
 	if (*m1 != 0) {
 	    *m2 = *m1 + offset;
 	}
     }
 
-    cb->edit++;
+    edits++;
 
     return RET_FLAGS;
 }
 
 /*
- * NAME:	cmdbuf->put()
- * DESCRIPTION:	put a block in the edit buffer
+ * put a block in the edit buffer
  */
-int cb_put(cmdbuf *cb)
+int CmdBuf::put()
 {
-    block b;
+    Block b;
 
-    if (isalpha(cb->a_buffer)) {
+    if (isalpha(a_buffer)) {
 	/* 'a' and 'A' both refer to buffer 'a' */
-	b = cb->zbuf[tolower(cb->a_buffer) - 'a'];
+	b = zbuf[tolower(a_buffer) - 'a'];
     } else {
-	b = cb->buf;
+	b = buf;
     }
-    if (b == (block) 0) {
+    if (b == (Block) 0) {
 	error("Nothing in buffer");
     }
 
-    cb_do(cb, cb->first);
-    add(cb, cb->first, b, bk_size(cb->edbuf->lb, b));
+    dodo(first);
+    add(first, b, edbuf.lb.size(b));
 
-    cb->edit++;
+    edits++;
 
     return RET_FLAGS;
 }
 
 /*
- * NAME:	cmdbuf->yank()
- * DESCRIPTION:	yank a block of lines from the edit buffer
+ * yank a block of lines from the edit buffer
  */
-int cb_yank(cmdbuf *cb)
+int CmdBuf::yank()
 {
-    cb_buf(cb, eb_yank(cb->edbuf, cb->first, cb->last));
+    dobuf(edbuf.yank(first, last));
     return 0;
 }
 
 
 /*
- * NAME:	shift()
- * DESCRIPTION:	shift a line left or right
+ * shift a line left or right
  */
-static void shift(const char *text)
+void CmdBuf::doshift(const char *text)
 {
-    cmdbuf *cb;
+    CmdBuf *cb;
     int idx;
 
     cb = ccb;
@@ -438,7 +403,7 @@ static void shift(const char *text)
 
     if (*text == '\0') {
 	/* don't shift lines with ws only */
-	addblock(cb, text);
+	cb->addblock(text);
 	cb->lineno++;
     } else {
 	idx += cb->shift;
@@ -458,7 +423,7 @@ static void shift(const char *text)
 	    }
 	    if (p - buffer + strlen(text) < MAX_LINE_SIZE) {
 		strcpy(p, text);
-		addblock(cb, buffer);
+		cb->addblock(buffer);
 		cb->lineno++;
 		return;
 	    }
@@ -466,45 +431,42 @@ static void shift(const char *text)
 
 	/* Error: line too long. Finish block of lines already shifted. */
 	cb->last = cb->lineno;
-	endblock(cb);
+	cb->endblock();
 	error("Result of shift would be too long");
     }
 }
 
 /*
- * NAME:	cmdbuf->shift()
- * DESCRIPTION:	shift a range of lines left or right
+ * shift a range of lines left or right
  */
-static int cb_shift(cmdbuf *cb)
+int CmdBuf::doshift()
 {
-    cb_do(cb, cb->first);
-    startblock(cb);
-    cb->lineno = cb->first - 1;
-    cb->flags |= CB_CHANGE;
-    eb_range(cb->edbuf, cb->first, cb->last, shift, FALSE);
-    endblock(cb);
+    dodo(first);
+    startblock();
+    lineno = first - 1;
+    flags |= CB_CHANGE;
+    edbuf.range(first, last, doshift, FALSE);
+    endblock();
 
     return RET_FLAGS;
 }
 
 /*
- * NAME:	cmdbuf->lshift()
- * DESCRIPTION:	shift a range of lines to the left
+ * shift a range of lines to the left
  */
-int cb_lshift(cmdbuf *cb)
+int CmdBuf::lshift()
 {
-    cb->shift = -SHIFTWIDTH(cb->vars);
-    return cb_shift(cb);
+    shift = -SHIFTWIDTH(vars);
+    return doshift();
 }
 
 /*
- * NAME:	cmdbuf->rshift()
- * DESCRIPTION:	shift a range of lines to the right
+ * shift a range of lines to the right
  */
-int cb_rshift(cmdbuf *cb)
+int CmdBuf::rshift()
 {
-    cb->shift = SHIFTWIDTH(cb->vars);
-    return cb_shift(cb);
+    shift = SHIFTWIDTH(vars);
+    return doshift();
 }
 
 
@@ -526,30 +488,28 @@ int cb_rshift(cmdbuf *cb)
 # define EOT		12
 
 /*
- * NAME:	noshift()
- * DESCRIPTION:	add this line to the current block without shifting it
+ * add this line to the current block without shifting it
  */
-static void noshift(cmdbuf *cb, const char *text)
+void CmdBuf::noshift(const char *text)
 {
-    addblock(cb, text);
-    cb->lineno++;
+    addblock(text);
+    lineno++;
 }
 
 /*
- * NAME:	indent()
- * DESCRIPTION:	Parse and indent a line of text. This isn't perfect, as
- *		keywords could be defined as macros, comments are very hard to
- *		handle properly, (, [ and ({ will match any of ), ] and }),
- *		and last but not least everyone has his own taste of
- *		indentation.
+ * Parse and indent a line of text. This isn't perfect, as
+ * keywords could be defined as macros, comments are very hard to
+ * handle properly, (, [ and ({ will match any of ), ] and }),
+ * and last but not least everyone has his own taste of
+ * indentation.
  */
-static void indent(const char *text)
+void CmdBuf::indent(const char *text)
 {
     static char f[] = { 7, 1, 7, 1, 2, 1, 6, 4, 2, 6, 7, 2, 0, };
     static char g[] = { 2, 2, 1, 7, 1, 5, 1, 3, 6, 2, 2, 2, 0, };
     char ident[MAX_LINE_SIZE];
     char line[MAX_LINE_SIZE];
-    cmdbuf *cb;
+    CmdBuf *cb;
     const char *p;
     char *sp;
     int *ip, idx;
@@ -566,9 +526,9 @@ static void indent(const char *text)
     /* process status vars */
     if (cb->quote != '\0') {
 	cb->shift = 0;	/* in case a comment starts on this line */
-	noshift(cb, p);
+	cb->noshift(p);
     } else if ((cb->flags & CB_PPCONTROL) || *p == '#') {
-	noshift(cb, p);
+	cb->noshift(p);
 	while (*p != '\0') {
 	    if (*p == '\\' && *++p == '\0') {
 		cb->flags |= CB_PPCONTROL;
@@ -588,10 +548,10 @@ static void indent(const char *text)
 	    }
 	}
 	if (*p == '\0') {
-	    noshift(cb, p);
+	    cb->noshift(p);
 	    return;
 	} else if (cb->flags & CB_COMMENT) {
-	    shift(text);	/* use previous shift */
+	    doshift(text);	/* use previous shift */
 	} else {
 	    do_indent = TRUE;
 	}
@@ -629,7 +589,7 @@ static void indent(const char *text)
 		    break;
 		} else if (*p == '\0') {
 		    cb->last = cb->lineno;
-		    endblock(cb);
+		    cb->endblock();
 		    error("Unterminated string");
 		} else if (*p == '\\' && *++p == '\0') {
 		    break;
@@ -655,7 +615,7 @@ static void indent(const char *text)
 		    if (do_indent) {
 			/* this line hasn't been indented yet */
 			cb->shift = cb->ind[0] - idx;
-			shift(text);
+			doshift(text);
 			do_indent = FALSE;
 		    } else {
 			const char *q;
@@ -764,7 +724,7 @@ static void indent(const char *text)
 		if (sp == cb->stackbot) {
 		    /* out of stack. Finish already indented block. */
 		    cb->last = cb->lineno;
-		    endblock(cb);
+		    cb->endblock();
 		    error("Nesting too deep");
 		}
 
@@ -791,7 +751,7 @@ static void indent(const char *text)
 			/* back up if this is a switch label */
 			cb->shift -= SHIFTWIDTH(cb->vars);
 		    }
-		    shift(text);
+		    doshift(text);
 		    do_indent = FALSE;
 		}
 		/* change indentation after current token */
@@ -827,41 +787,39 @@ static void indent(const char *text)
 }
 
 /*
- * NAME:	cmdbuf->indent()
- * DESCRIPTION:	indent a range of lines
+ * indent a range of lines
  */
-int cb_indent(cmdbuf *cb)
+int CmdBuf::indent()
 {
     char s[STACKSZ];
     int i[STACKSZ];
 
     /* setup stacks */
-    cb->stackbot = s;
-    cb->stack = s + STACKSZ - 1;
-    cb->stack[0] = EOT;
-    cb->ind = i + STACKSZ - 1;
-    cb->ind[0] = 0;
-    cb->quote = '\0';
+    stackbot = s;
+    stack = s + STACKSZ - 1;
+    stack[0] = EOT;
+    ind = i + STACKSZ - 1;
+    ind[0] = 0;
+    quote = '\0';
 
-    cb_do(cb, cb->first);
-    startblock(cb);
-    cb->lineno = cb->first - 1;
-    cb->flags |= CB_CHANGE;
-    cb->flags &= ~(CB_PPCONTROL | CB_COMMENT | CB_JSKEYWORD);
-    eb_range(cb->edbuf, cb->first, cb->last, indent, FALSE);
-    endblock(cb);
+    dodo(first);
+    startblock();
+    lineno = first - 1;
+    flags |= CB_CHANGE;
+    flags &= ~(CB_PPCONTROL | CB_COMMENT | CB_JSKEYWORD);
+    edbuf.range(first, last, indent, FALSE);
+    endblock();
 
     return 0;
 }
 
 
 /*
- * NAME:	join()
- * DESCRIPTION:	join a string to the one already in the join buffer
+ * join a string to the one already in the join buffer
  */
-static void join(const char *text)
+void CmdBuf::join(const char *text)
 {
-    cmdbuf *cb;
+    CmdBuf *cb;
     char *p;
 
     cb = ccb;
@@ -886,89 +844,87 @@ static void join(const char *text)
 }
 
 /*
- * NAME:	cmdbuf->join()
- * DESCRIPTION:	join a range of lines in the edit buffer
+ * join a range of lines in the edit buffer
  */
-int cb_join(cmdbuf *cb)
+int CmdBuf::join()
 {
     char buf[MAX_LINE_SIZE + 1];
     Int *m;
 
-    if (cb->edbuf->lines == 0) {
+    if (edbuf.lines == 0) {
 	error("No lines in buffer");
     }
-    if (cb->first < 0) {
-	cb->first = cb->cthis;
+    if (first < 0) {
+	first = cthis;
     }
-    if (cb->last < 0) {
-	cb->last = (cb->first == cb->edbuf->lines) ? cb->first : cb->first + 1;
+    if (last < 0) {
+	last = (first == edbuf.lines) ? first : first + 1;
     }
 
-    cb_do(cb, cb->first);
+    dodo(first);
 
-    cb->cthis = cb->othis = cb->first;
+    cthis = othis = first;
     buf[0] = '\0';
-    cb->buffer = buf;
-    cb->buflen = 0;
-    eb_range(cb->edbuf, cb->first, cb->last, join, FALSE);
+    buffer = buf;
+    buflen = 0;
+    edbuf.range(first, last, join, FALSE);
 
     /* erase marks for joined lines */
-    for (m = cb->mark; m < &cb->mark[26]; m++) {
-	if (*m > cb->first && *m <= cb->last) {
+    for (m = mark; m < &mark[26]; m++) {
+	if (*m > first && *m <= last) {
 	    *m = 0;
 	}
     }
 
-    cb->flags |= CB_CHANGE;
-    startblock(cb);
-    addblock(cb, buf);
-    endblock(cb);
+    flags |= CB_CHANGE;
+    startblock();
+    addblock(buf);
+    endblock();
 
     return RET_FLAGS;
 }
 
 
 /*
- * NAME:	sub()
- * DESCRIPTION:	add a string to the current substitute buffer
+ * add a string to the current substitute buffer
  */
-static void sub(cmdbuf *cb, const char *text, unsigned int size)
+void CmdBuf::sub(const char *text, unsigned int size)
 {
     char *p;
     const char *q;
     unsigned int i;
 
     i = size;
-    if (cb->buflen + i >= MAX_LINE_SIZE) {
-	if (cb->flags & CB_CURRENTBLK) {
+    if (buflen + i >= MAX_LINE_SIZE) {
+	if (flags & CB_CURRENTBLK) {
 	    /* finish already processed block */
-	    endblock(cb);
+	    endblock();
 	}
-	cb->cthis = cb->othis = cb->lineno;
+	cthis = othis = lineno;
 	error("Line overflow in substitute");
     }
 
-    p = cb->buffer + cb->buflen;
+    p = buffer + buflen;
     q = text;
-    if (cb->flags & CB_TLOWER) {	/* lowercase one letter */
+    if (flags & CB_TLOWER) {	/* lowercase one letter */
 	*p++ = tolower(*q);
 	q++;
-	cb->flags &= ~CB_TLOWER;
+	flags &= ~CB_TLOWER;
 	--i;
-    } else if (cb->flags & CB_TUPPER) {	/* uppercase one letter */
+    } else if (flags & CB_TUPPER) {	/* uppercase one letter */
 	*p++ = toupper(*q);
 	q++;
-	cb->flags &= ~CB_TUPPER;
+	flags &= ~CB_TUPPER;
 	--i;
     }
 
-    if (cb->flags & CB_LOWER) {		/* lowercase string */
+    if (flags & CB_LOWER) {		/* lowercase string */
 	while (i > 0) {
 	    *p++ = tolower(*q);
 	    q++;
 	    --i;
 	}
-    } else if (cb->flags & CB_UPPER) {		/* uppercase string */
+    } else if (flags & CB_UPPER) {		/* uppercase string */
 	while (i > 0) {
 	    *p++ = toupper(*q);
 	    q++;
@@ -977,19 +933,18 @@ static void sub(cmdbuf *cb, const char *text, unsigned int size)
     } else if (i > 0) {		/* don't change case */
 	memcpy(p, q, i);
     }
-    cb->buflen += size;
+    buflen += size;
 }
 
 /*
- * NAME:	subst()
- * DESCRIPTION:	do substitutions in a line. If something is substituted on line
- *		N, and the next substitution happens on line N + 2, line N + 1
- *		is joined in the new block also.
+ * do substitutions in a line. If something is substituted on line
+ * N, and the next substitution happens on line N + 2, line N + 1
+ * is joined in the new block also.
  */
-static void subst(const char *text)
+void CmdBuf::subst(const char *text)
 {
     char line[MAX_LINE_SIZE];
-    cmdbuf *cb;
+    CmdBuf *cb;
     int idx, size;
     char *p;
     Int *k, *l;
@@ -1007,14 +962,14 @@ static void subst(const char *text)
      * not remain in memory, use a local copy.
      */
     text = strcpy(line, text);
-    while (rx_exec(cb->regexp, text, idx, IGNORECASE(cb->vars)) > 0) {
+    while (cb->regexp.exec(text, idx, IGNORECASE(cb->vars)) > 0) {
 	if (cb->flags & CB_SKIPPED) {
 	    /*
 	     * add the previous line, in which nothing was substituted, to
 	     * the block. Has to be done here, before the contents of the buffer
 	     * are changed.
 	     */
-	    addblock(cb, cb->buffer);
+	    cb->addblock(cb->buffer);
 	    cb->flags &= ~CB_SKIPPED;
 	    /*
 	     * check if there were newlines in the last substitution. If there
@@ -1032,17 +987,17 @@ static void subst(const char *text)
 	}
 	found = TRUE;
 	cb->flags &= ~(CB_UPPER | CB_LOWER | CB_TUPPER | CB_TLOWER);
-	size = cb->regexp->start - text - idx;
+	size = cb->regexp.start - text - idx;
 	if (size > 0) {
 	    /* copy first unchanged part of line to buffer */
-	    sub(cb, text + idx, size);
+	    cb->sub(text + idx, size);
 	}
 	p = cb->replace;
 	while (*p != '\0') {
 	    switch (*p) {
 	    case '&':
 		/* insert matching string */
-		sub(cb, cb->regexp->start, cb->regexp->size);
+		cb->sub(cb->regexp.start, cb->regexp.size);
 		break;
 
 	    case '\\':		/* special substitute characters */
@@ -1057,14 +1012,14 @@ static void subst(const char *text)
 		case '8':
 		case '9':
 		    /* insert subexpression between \( \) */
-		    if (cb->regexp->se[*p - '1'].start != (char*) NULL) {
-			sub(cb, cb->regexp->se[*p - '1'].start,
-			    cb->regexp->se[*p - '1'].size);
+		    if (cb->regexp.se[*p - '1'].start != (char*) NULL) {
+			cb->sub(cb->regexp.se[*p - '1'].start,
+				cb->regexp.se[*p - '1'].size);
 			break;
 		    }
 		    /* if no subexpression, fall though */
 		default:
-		    sub(cb, p, 1);	/* ignore preceding backslash */
+		    cb->sub(p, 1);	/* ignore preceding backslash */
 		    break;
 
 		case 'n':
@@ -1108,15 +1063,15 @@ static void subst(const char *text)
 		break;
 
 	    default:		/* normal char */
-		sub(cb, p, 1);
+		cb->sub(p, 1);
 		break;
 	    }
 	    p++;
 	}
 
-	idx = cb->regexp->start + cb->regexp->size - text;
+	idx = cb->regexp.start + cb->regexp.size - text;
 	if (!(cb->flags & CB_GLOBSUBST) || text[idx] == '\0' ||
-	    (cb->regexp->size == 0 && text[++idx] == '\0')) {
+	    (cb->regexp.size == 0 && text[++idx] == '\0')) {
 	    break;
 	}
     }
@@ -1125,19 +1080,19 @@ static void subst(const char *text)
 	if (text[idx] != '\0') {
 	    /* concatenate unchanged part of line after found pattern */
 	    cb->flags &= ~(CB_UPPER | CB_LOWER | CB_TUPPER | CB_TLOWER);
-	    sub(cb, text + idx, strlen(text + idx));
+	    cb->sub(text + idx, strlen(text + idx));
 	}
 	if (!(cb->flags & CB_CURRENTBLK)) {
 	    /* start a new block of lines with substitutions in them */
 	    cb->flags |= CB_CHANGE;
 	    cb->first = cb->lineno;
-	    startblock(cb);
+	    cb->startblock();
 	    cb->flags |= CB_CURRENTBLK;
 	}
 	/* add this changed line to block */
 	cb->buffer[cb->buflen] = '\0';
 	if (newlines == 0) {
-	    addblock(cb, cb->buffer);
+	    cb->addblock(cb->buffer);
 	} else {
 	    /*
 	     * There were newlines in the substituted string. Add all
@@ -1145,7 +1100,7 @@ static void subst(const char *text)
 	     */
 	    p = cb->buffer;
 	    do {
-		addblock(cb, p);
+		cb->addblock(p);
 		p += strlen(p) + 1;
 	    } while (p <= cb->buffer + cb->buflen);
 
@@ -1161,7 +1116,7 @@ static void subst(const char *text)
     } else {
 	if (cb->flags & CB_SKIPPED) {
 	    /* two lines without substitutions now. Finish previous block. */
-	    endblock(cb);
+	    cb->endblock();
 	    cb->lineno += cb->offset;
 	    cb->offset = 0;
 	    cb->flags &= ~(CB_CURRENTBLK | CB_SKIPPED);
@@ -1179,10 +1134,9 @@ static void subst(const char *text)
 }
 
 /*
- * NAME:	cmdbuf->substitute()
- * DESCRIPTION:	do substitutions on a range of lines
+ * do substitutions on a range of lines
  */
-int cb_subst(cmdbuf *cb)
+int CmdBuf::subst()
 {
     char buf[MAX_LINE_SIZE], delim;
     Int m[26];
@@ -1190,26 +1144,26 @@ int cb_subst(cmdbuf *cb)
     const char *p;
     Int *k, *l;
 
-    delim = cb->cmd[0];
+    delim = cmd[0];
     if (delim == '\0' || strchr("0123456789gpl#-+", delim) != (char*) NULL) {
 	/* no search pattern & replace string specified */
-	if (cb->search[0] == '\0') {
+	if (search[0] == '\0') {
 	    error("No previous substitute to repeat");
 	}
     } else if (!isalpha(delim)) {
 	char *q;
 
 	/* get search pattern */
-	p = pattern(cb->cmd + 1, delim, cb->search);
+	p = pattern(cmd + 1, delim, search);
 	/* get replace string */
-	q = cb->replace;
+	q = replace;
 	while (*p != '\0') {
 	    if (*p == delim) {
 		p++;
 		break;
 	    }
-	    if (q == cb->replace + STRINGSZ - 1) {
-		cb->search[0] = '\0';
+	    if (q == replace + STRINGSZ - 1) {
+		search[0] = '\0';
 		error("Replace string too large");
 	    }
 	    if ((*q++ = *p++) == '\\' && *p != '\0') {
@@ -1217,60 +1171,60 @@ int cb_subst(cmdbuf *cb)
 	    }
 	}
 	*q = '\0';
-	cb->cmd = p;
+	cmd = p;
     } else {
 	/* cause error */
-	cb->search[0] = '\0';
+	search[0] = '\0';
     }
 
-    if (cb->search[0] == '\0') {
+    if (search[0] == '\0') {
 	error("Missing regular expression for substitute");
     }
 
     /* compile regexp */
-    p = rx_comp(cb->regexp, cb->search);
+    p = regexp.comp(search);
     if (p != (char *) NULL) {
 	error(p);
     }
 
-    cb_count(cb);	/* get count */
+    count();	/* get count */
     /* handle global flag */
-    if (cb->cmd[0] == 'g') {
-	cb->flags |= CB_GLOBSUBST;
-	cb->cmd++;
+    if (cmd[0] == 'g') {
+	flags |= CB_GLOBSUBST;
+	cmd++;
     } else {
-	cb->flags &= ~CB_GLOBSUBST;
+	flags &= ~CB_GLOBSUBST;
     }
 
     /* make a blank mark table */
-    cb->moffset = m;
+    moffset = m;
     for (l = m; l < &m[26]; ) {
 	*l++ = 0;
     }
-    cb->offset = 0;
+    offset = 0;
 
     /* do substitutions */
-    cb_do(cb, cb->first);
-    cb->lineno = cb->first;
-    edit = cb->edit;
-    cb->buffer = buf;
-    cb->buflen = 0;
-    cb->flags &= ~(CB_CURRENTBLK | CB_SKIPPED);
-    eb_range(cb->edbuf, cb->first, cb->last, subst, FALSE);
-    if (cb->flags & CB_CURRENTBLK) {
+    dodo(first);
+    lineno = first;
+    edit = edits;
+    buffer = buf;
+    buflen = 0;
+    flags &= ~(CB_CURRENTBLK | CB_SKIPPED);
+    edbuf.range(first, last, subst, FALSE);
+    if (flags & CB_CURRENTBLK) {
 	/* finish current block, if needed */
-	endblock(cb);
+	endblock();
     }
 
-    cb->othis = cb->uthis;
-    if (edit != cb->edit) {
+    othis = uthis;
+    if (edit != edits) {
 	/* some marks may have been messed up. fix them */
-	for (l = m, k = cb->mark; l < &m[26]; l++, k++) {
+	for (l = m, k = mark; l < &m[26]; l++, k++) {
 	    if (*l != 0) {
 		*k = *l;
 	    }
 	}
-    } else if (!(cb->flags & CB_GLOBAL)) {
+    } else if (!(flags & CB_GLOBAL)) {
 	error("Substitute pattern match failed");
     }
 
@@ -1279,183 +1233,158 @@ int cb_subst(cmdbuf *cb)
 
 
 /*
- * NAME:	getfname()
- * DESCRIPTION:	copy a string to another buffer, unless it has length 0 or
- *		is too long
+ * copy a string to another buffer, unless it has length 0 or
+ * is too long
  */
-static bool getfname(cmdbuf *cb, char *buffer)
+bool CmdBuf::getfname(char *buffer)
 {
     const char *p, *q;
 
     /* find the end of the filename */
-    p = strchr(cb->cmd, ' ');
-    q = strchr(cb->cmd, HT);
+    p = strchr(cmd, ' ');
+    q = strchr(cmd, HT);
     if (q != (char *) NULL && (p == (char *) NULL || p > q)) {
 	p = q;
     }
-    q = strchr(cb->cmd, '|');
+    q = strchr(cmd, '|');
     if (q != (char *) NULL && (p == (char *) NULL || p > q)) {
 	p = q;
     }
     if (p == (char *) NULL) {
-	p = strchr(cb->cmd, '\0');
+	p = strchr(cmd, '\0');
     }
 
     /* checks */
-    if (p == cb->cmd) {
+    if (p == cmd) {
 	return FALSE;
     }
-    if (p - cb->cmd >= STRINGSZ) {
+    if (p - cmd >= STRINGSZ) {
 	error("Filename too long");
     }
 
     /* copy */
-    memcpy(buffer, cb->cmd, p - cb->cmd);
-    buffer[p - cb->cmd] = '\0';
-    cb->cmd = p;
+    memcpy(buffer, cmd, p - cmd);
+    buffer[p - cmd] = '\0';
+    cmd = p;
     return TRUE;
 }
 
 /*
- * NAME:	cmdbuf->file()
- * DESCRIPTION:	get/set the file name & current line, etc.
+ * get/set the file name & current line, etc.
  */
-int cb_file(cmdbuf *cb)
+int CmdBuf::file()
 {
-    not_in_global(cb);
+    not_in_global();
 
-    if (getfname(cb, cb->fname)) {
+    if (getfname(fname)) {
 	/* file name is changed: mark the file as "not edited" */
-	cb->flags |= CB_NOIMAGE;
+	flags |= CB_NOIMAGE;
     }
 
     /* give statistics */
-    if (cb->fname[0] == '\0') {
+    if (fname[0] == '\0') {
 	output("No file");
     } else {
-	output("\"%s\"", cb->fname);
+	output("\"%s\"", fname);
     }
-    if (cb->flags & CB_NOIMAGE) {
+    if (flags & CB_NOIMAGE) {
 	output(" [Not edited]");
     }
-    if (cb->edit > 0) {
+    if (edits > 0) {
 	output(" [Modified]");
     }
     output(" line %ld of %ld --%d%%--\012", /* LF */
-	   (long) cb->cthis, (long) cb->edbuf->lines,
-	   (cb->edbuf->lines == 0) ? 0 :
-				(int) ((100 * cb->cthis) / cb->edbuf->lines));
+	   (long) cthis, (long) edbuf.lines,
+	   (edbuf.lines == 0) ? 0 : (int) ((100 * cthis) / edbuf.lines));
 
     return 0;
 }
 
 /*
- * NAME:	io->show()
- * DESCRIPTION:	show statistics on the file just read/written
+ * insert a file in the current edit buffer
  */
-static void io_show(io *iob)
-{
-    output("%ld lines, %ld characters", (long) iob->lines,
-	   (long) (iob->chars + iob->zero - iob->split - iob->ill));
-    if (iob->zero > 0) {
-	output(" [%ld zero]", (long) iob->zero);
-    }
-    if (iob->split > 0) {
-	output(" [%ld split]", (long) iob->split);
-    }
-    if (iob->ill) {
-	output(" [incomplete last line]");
-    }
-    output("\012");	/* LF */
-}
-
-/*
- * NAME:	cmdbuf->read()
- * DESCRIPTION:	insert a file in the current edit buffer
- */
-int cb_read(cmdbuf *cb)
+int CmdBuf::read()
 {
     char buffer[STRINGSZ];
-    io iob;
+    IO iob;
 
-    not_in_global(cb);
+    not_in_global();
 
-    if (!getfname(cb, buffer)) {
-	if (cb->fname[0] == '\0') {
+    if (!getfname(buffer)) {
+	if (fname[0] == '\0') {
 	    error("No current filename");
 	}
 	/* read current file, by default. I don't know why, but ex has it
 	   that way. */
-	strcpy(buffer, cb->fname);
+	strcpy(buffer, fname);
     }
 
-    cb_do(cb, cb->first);
+    dodo(first);
     output("\"%s\" ", buffer);
-    if (!io_load(cb->edbuf, buffer, cb->first, &iob)) {
+    if (!iob.load(&edbuf, buffer, first)) {
 	error("is unreadable");
     }
-    io_show(&iob);
+    iob.show();
 
-    cb->edit++;
-    cb->cthis = cb->first + iob.lines;
+    edits++;
+    cthis = first + iob.lines;
 
     return 0;
 }
 
 /*
- * NAME:	cmdbuf->edit()
+ * NAME:	CmdBuf->edit()
  * DESCRIPTION:	edit a new file
  */
-int cb_edit(cmdbuf *cb)
+int CmdBuf::edit()
 {
-    io iob;
+    IO iob;
 
-    not_in_global(cb);
+    not_in_global();
 
-    if (cb->edit > 0 && !(cb->flags & CB_EXCL)) {
+    if (edits > 0 && !(flags & CB_EXCL)) {
 	error("No write since last change (edit! overrides)");
     }
 
-    getfname(cb, cb->fname);
-    if (cb->fname[0] == '\0') {
+    getfname(fname);
+    if (fname[0] == '\0') {
 	error("No current filename");
     }
 
     Alloc::staticMode();
-    eb_clear(cb->edbuf);
+    edbuf.clear();
     Alloc::dynamicMode();
-    cb->flags &= ~CB_NOIMAGE;
-    cb->edit = 0;
-    cb->first = cb->cthis = 0;
-    memset(cb->mark, '\0', sizeof(cb->mark));
-    cb->buf = 0;
-    memset(cb->zbuf, '\0', sizeof(cb->zbuf));
-    cb->undo = (block) -1;	/* not 0! */
+    flags &= ~CB_NOIMAGE;
+    edits = 0;
+    first = cthis = 0;
+    memset(mark, '\0', sizeof(mark));
+    buf = 0;
+    memset(zbuf, '\0', sizeof(zbuf));
+    undo = (Block) -1;	/* not 0! */
 
-    output("\"%s\" ", cb->fname);
-    if (!io_load(cb->edbuf, cb->fname, cb->first, &iob)) {
+    output("\"%s\" ", fname);
+    if (!iob.load(&edbuf, fname, first)) {
 	error("is unreadable");
     }
-    io_show(&iob);
+    iob.show();
     if (iob.zero > 0 || iob.split > 0 || iob.ill) {
 	/* the editbuffer in memory is not a perfect image of the file read */
-	cb->flags |= CB_NOIMAGE;
+	flags |= CB_NOIMAGE;
     }
 
-    cb->cthis = iob.lines;
+    cthis = iob.lines;
 
     return 0;
 }
 
 /*
- * NAME:	cmdbuf->quit()
- * DESCRIPTION:	quit editing
+ * quit editing
  */
-int cb_quit(cmdbuf *cb)
+int CmdBuf::quit()
 {
-    not_in_global(cb);
+    not_in_global();
 
-    if (cb->edit > 0 && !(cb->flags & CB_EXCL)) {
+    if (edits > 0 && !(flags & CB_EXCL)) {
 	error("No write since last change (quit! overrides)");
     }
 
@@ -1463,79 +1392,76 @@ int cb_quit(cmdbuf *cb)
 }
 
 /*
- * NAME:	cmdbuf->write()
- * DESCRIPTION:	write a range of lines to a file
+ * write a range of lines to a file
  */
-int cb_write(cmdbuf *cb)
+int CmdBuf::write()
 {
     char buffer[STRINGSZ];
     bool append;
-    io iob;
+    IO iob;
 
-    not_in_global(cb);
+    not_in_global();
 
-    if (strncmp(cb->cmd, ">>", 2) == 0) {
+    if (strncmp(cmd, ">>", 2) == 0) {
 	append = TRUE;
-	cb->cmd = skipst(cb->cmd + 2);
+	cmd = skipst(cmd + 2);
     } else {
 	append = FALSE;
     }
 
     /* check if write can be done */
-    if (!getfname(cb, buffer)) {
-	if (cb->fname[0] == '\0') {
+    if (!getfname(buffer)) {
+	if (fname[0] == '\0') {
 	    error("No current filename");
 	}
-	strcpy(buffer, cb->fname);
+	strcpy(buffer, fname);
     }
-    if (strcmp(buffer, cb->fname) == 0) {
-	if (cb->first == 1 && cb->last == cb->edbuf->lines) {
-	    if ((cb->flags & (CB_NOIMAGE|CB_EXCL)) == CB_NOIMAGE) {
+    if (strcmp(buffer, fname) == 0) {
+	if (first == 1 && last == edbuf.lines) {
+	    if ((flags & (CB_NOIMAGE|CB_EXCL)) == CB_NOIMAGE) {
 		error("File is changed (use w! to override)");
 	    }
-	} else if (!(cb->flags & CB_EXCL)) {
+	} else if (!(flags & CB_EXCL)) {
 	    error("Use w! to write partial buffer");
 	}
     }
 
     output("\"%s\" ", buffer);
-    if (!io_save(cb->edbuf, buffer, cb->first, cb->last, append, &iob)) {
+    if (!iob.save(&edbuf, buffer, first, last, append)) {
 	error("write failed");
     }
-    io_show(&iob);
+    iob.show();
 
-    if (cb->first == 1 && cb->last == cb->edbuf->lines) {
+    if (first == 1 && last == edbuf.lines) {
 	/* file is now perfect image of editbuffer in memory */
-	cb->flags &= ~CB_NOIMAGE;
-	cb->edit = 0;
+	flags &= ~CB_NOIMAGE;
+	edits = 0;
     }
 
     return 0;
 }
 
 /*
- * NAME:	cmdbuf->wq()
- * DESCRIPTION:	write a range of lines to a file and quit
+ * write a range of lines to a file and quit
  */
-int cb_wq(cmdbuf *cb)
+int CmdBuf::wq()
 {
-    cb->first = 1;
-    cb->last = cb->edbuf->lines;
-    cb_write(cb);
-    return cb_quit(cb);
+    first = 1;
+    last = edbuf.lines;
+    write();
+    return quit();
 }
 
 /*
- * NAME:	cmdbuf->xit()
- * DESCRIPTION:	write to the current file if modified, and quit
+ * write to the current file if modified, and quit
  */
-int cb_xit(cmdbuf *cb)
+int CmdBuf::xit()
 {
-    if (cb->edit > 0) {
-	cb->flags |= CB_EXCL;
-	return cb_wq(cb);
+    if (edits > 0) {
+	flags |= CB_EXCL;
+	return wq();
     } else {
-	not_in_global(cb);
+	not_in_global();
 
 	return RET_QUIT;
     }
@@ -1543,21 +1469,20 @@ int cb_xit(cmdbuf *cb)
 
 
 /*
- * NAME:	cmdbuf->set()
- * DESCRIPTION:	get/set variable(s)
+ * get/set variable(s)
  */
-int cb_set(cmdbuf *cb)
+int CmdBuf::set()
 {
     char buffer[STRINGSZ];
     const char *p;
     char *q;
 
-    not_in_global(cb);
+    not_in_global();
 
-    p = cb->cmd;
+    p = cmd;
     if (*p == '\0') {
 	/* no arguments */
-	va_show(cb->vars);
+	Vars::show(vars);
     } else {
 	do {
 	    /* copy argument */
@@ -1568,10 +1493,10 @@ int cb_set(cmdbuf *cb)
 	    }
 	    *q = '\0';
 	    /* let va_set() process it */
-	    va_set(cb->vars, buffer);
+	    Vars::set(vars, buffer);
 	    p = skipst(p);
 	} while (*p != '\0');
-	cb->cmd = p;
+	cmd = p;
     }
     return 0;
 }

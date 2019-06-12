@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -60,18 +60,6 @@
 # define BLOCK_MASK	(~(BLOCK_SIZE-1))
 # define CAT		-1
 
-struct blk {
-    block prev, next;		/* first and last */
-    Int lines;			/* size of this block */
-    union {
-	Int lindex;		/* index from start of chain block */
-	struct {
-	    short u_index1;	/* index in first chain block */
-	    short u_index2;	/* index in last chain block */
-	} s;
-    };
-};
-
 # define lfirst	prev
 # define llast	next
 # define type	s.u_index1
@@ -80,187 +68,187 @@ struct blk {
 # define index2	s.u_index2
 
 # define BLOCK(lb, blk)	\
-	(block) ((lb)->wb->offset + (intptr_t) (blk) - (intptr_t) (lb)->wb->buf)
+	(Block) ((lb)->wb->offset + (intptr_t) (blk) - (intptr_t) (lb)->wb->buf)
 
 # define EDFULLTREE	0x8000
 # define EDDEPTH	0x7fff
 # define EDMAXDEPTH	10000
 
 /*
- * NAME:	linebuf->new()
- * DESCRIPTION:	If the first argument is 0, create a new line buffer,
- *		otherwise refresh the line buffer given as arg 1.
- *		If a new line buffer is created, arg 2 is the tmp file name.
- *		Return the new/refreshed line buffer.
+ * Create a new line buffer.  Arg 2 is the tmp file name.
  */
-linebuf *lb_new(linebuf *lb, char *filename)
+LineBuf::LineBuf(char *filename)
 {
-    char buf[STRINGSZ];
     int i;
-    btbuf *bt;
+    BTBuf *bt;
 
-    if (lb != (linebuf *) NULL) {
-	/* refresh; close the old tmpfile */
-	lb_inact(lb);
-    } else {
-	/* allocate new line buffer */
-	lb = ALLOC(linebuf, 1);
+    file = strcpy(ALLOC(char, strlen(filename) + 1), filename);
 
-	lb->file = strcpy(ALLOC(char, strlen(filename) + 1), filename);
-
-	bt = lb->bt;
-	for (i = NR_EDBUFS; i > 0; --i) {
-	    bt->prev = bt - 1;
-	    bt->next = bt + 1;
-	    bt->buf = ALLOC(char, BLOCK_SIZE);
-	    bt++;
-	}
-	--bt;
-	lb->bt[0].prev = bt;
-	bt->next = lb->bt;
+    bt = this->bt;
+    for (i = NR_EDBUFS; i > 0; --i) {
+	bt->prev = bt - 1;
+	bt->next = bt + 1;
+	bt->buf = ALLOC(char, BLOCK_SIZE);
+	bt++;
     }
+    --bt;
+    this->bt[0].prev = bt;
+    bt->next = this->bt;
 
-    /* initialize */
-    lb->wb = bt = lb->bt;
-    (bt++)->offset = 0;		/* in use, but empty */
-    for (i = NR_EDBUFS - 1; i > 0; --i) {
-	(bt++)->offset = -BLOCK_SIZE;	/* not in use */
-    }
-    lb->blksz = 0;
-    lb->txtsz = 0;
-
-    /* create or truncate tmpfile */
-    lb->fd = P_open(path_native(buf, lb->file),
-		    O_CREAT | O_TRUNC | O_RDWR | O_BINARY, 0600);
-    if (lb->fd < 0) {
-	fatal("cannot create editor tmpfile \"%s\"", lb->file);
-    }
-
-    return lb;
+    init();
 }
 
 /*
- * NAME:	linebuf->del()
- * DESCRIPTION:	delete a line buffer
+ * delete a line buffer
  */
-void lb_del(linebuf *lb)
+LineBuf::~LineBuf()
 {
     char buf[STRINGSZ];
     int i;
-    btbuf *bt;
+    BTBuf *bt;
 
     /* close tmpfile */
-    lb_inact(lb);
+    inact();
 
     /* remove tmpfile */
-    P_unlink(path_native(buf, lb->file));
-    FREE(lb->file);
+    P_unlink(path_native(buf, file));
+    FREE(file);
 
     /* release memory */
-    bt = lb->bt;
+    bt = this->bt;
     for (i = NR_EDBUFS; i > 0; --i) {
 	FREE(bt->buf);
 	bt++;
     }
-    FREE(lb);
 }
 
 /*
- * NAME:	linebuf->inact()
- * DESCRIPTION:	make the line buffer inactive, i.e. make it use as few resources
- *		as possible. A further operation on the line buffer will
- *		re-activate it.
+ * initialize line buffer
  */
-void lb_inact(linebuf *lb)
+void LineBuf::init()
 {
-    /* close tmpfile, to save descriptors */
-    if (lb->fd >= 0) {
-	P_close(lb->fd);
-	lb->fd = -1;
+    char buf[STRINGSZ];
+    int i;
+    BTBuf *bt;
+
+    /* initialize */
+    wb = bt = this->bt;
+    (bt++)->offset = 0;		/* in use, but empty */
+    for (i = NR_EDBUFS - 1; i > 0; --i) {
+	(bt++)->offset = -BLOCK_SIZE;	/* not in use */
+    }
+    blksz = 0;
+    txtsz = 0;
+
+    /* create or truncate tmpfile */
+    fd = P_open(path_native(buf, file), O_CREAT | O_TRUNC | O_RDWR | O_BINARY,
+		0600);
+    if (fd < 0) {
+	fatal("cannot create editor tmpfile \"%s\"", file);
     }
 }
 
 /*
- * NAME:	linebuf->act()
- * DESCRIPTION:	make the line buffer active, this has to be done before each
- *		operation on the tmpfile
+ * reset line buffer
  */
-static void lb_act(linebuf *lb)
+void LineBuf::reset()
+{
+    inact();	/* close the old tmpfile */
+    init();
+}
+
+/*
+ * make the line buffer inactive, i.e. make it use as few resources
+ * as possible. A further operation on the line buffer will
+ * re-activate it.
+ */
+void LineBuf::inact()
+{
+    /* close tmpfile, to save descriptors */
+    if (fd >= 0) {
+	P_close(fd);
+	fd = -1;
+    }
+}
+
+/*
+ * make the line buffer active, this has to be done before each
+ * operation on the tmpfile
+ */
+void LineBuf::act()
 {
     char buf[STRINGSZ];
 
-    if (lb->fd < 0) {
-	lb->fd = P_open(path_native(buf, lb->file), O_RDWR | O_BINARY, 0);
-	if (lb->fd < 0) {
-	    fatal("cannot reopen editor tmpfile \"%s\"", lb->file);
+    if (fd < 0) {
+	fd = P_open(path_native(buf, file), O_RDWR | O_BINARY, 0);
+	if (fd < 0) {
+	    fatal("cannot reopen editor tmpfile \"%s\"", file);
 	}
     }
 }
 
 /*
- * NAME:	linebuf->write()
- * DESCRIPTION:	Write the output buffer to the tmpfile.
+ * Write the output buffer to the tmpfile.
  */
-static void lb_write(linebuf *lb)
+void LineBuf::write()
 {
-    if (lb->blksz > 0) {
+    if (blksz > 0) {
 	long offset;
 
 # ifdef TMPFILE_SIZE
-	if (lb->wb->offset >= TMPFILE_SIZE - BLOCK_SIZE) {
+	if (wb->offset >= TMPFILE_SIZE - BLOCK_SIZE) {
 	    error("Editor tmpfile too large");
 	}
 # endif
 
 	/* make the line buffer active */
-	lb_act(lb);
+	act();
 
 	/* write in tmpfile */
-	P_lseek(lb->fd, offset = lb->wb->offset, SEEK_SET);	/* EOF */
-	if (P_write(lb->fd, lb->wb->buf, BLOCK_SIZE) < 0) {
+	P_lseek(fd, offset = wb->offset, SEEK_SET);	/* EOF */
+	if (P_write(fd, wb->buf, BLOCK_SIZE) < 0) {
 	    error("Failed to write editor tmpfile");
 	}
 	/* cycle buffers */
-	lb->wb = lb->wb->prev;
-	lb->wb->offset = offset + BLOCK_SIZE;
-	lb->blksz = 0;
-	lb->txtsz = 0;
+	wb = wb->prev;
+	wb->offset = offset + BLOCK_SIZE;
+	blksz = 0;
+	txtsz = 0;
     }
 }
 
 /*
- * NAME:	linebuf->load()
- * DESCRIPTION:	return a pointer to the blk struct of arg 1. If needed, it is
- *		loaded in memory first.
+ * return a pointer to the blk struct of arg 1. If needed, it is
+ * loaded in memory first.
  */
-static blk *bk_load(linebuf *lb, block b)
+LineBuf::Blk *LineBuf::load(Block b)
 {
-    btbuf *bt;
+    BTBuf *bt;
 
     /* check the write buffer */
-    bt = lb->wb;
-    if (b < bt->offset || b >= bt->offset + lb->blksz) {
+    bt = this->wb;
+    if (b < bt->offset || b >= bt->offset + blksz) {
 	/*
 	 * walk through the read buffers to see if the block can be found
 	 */
 	for (;;) {
 	    bt = bt->next;
-	    if (bt == lb->wb) {
+	    if (bt == wb) {
 		/*
 		 * refill read buffer
 		 */
-		lb_act(lb);
+		act();
 		bt = bt->prev;
-		P_lseek(lb->fd, bt->offset = b - (b % BLOCK_SIZE), SEEK_SET);
-		if (P_read(lb->fd, bt->buf, BLOCK_SIZE) != BLOCK_SIZE) {
-		    fatal("cannot read editor tmpfile \"%s\"", lb->file);
+		P_lseek(fd, bt->offset = b - (b % BLOCK_SIZE), SEEK_SET);
+		if (P_read(fd, bt->buf, BLOCK_SIZE) != BLOCK_SIZE) {
+		    fatal("cannot read editor tmpfile \"%s\"", file);
 		}
 	    }
 
 	    if (b >= bt->offset && b < bt->offset + BLOCK_SIZE) {
-		btbuf *rd;
+		BTBuf *rd;
 
-		rd = lb->wb->next;
+		rd = wb->next;
 		if (bt != rd) {
 		    /*
 		     * make this buffer the "first" read buffer
@@ -277,22 +265,21 @@ static blk *bk_load(linebuf *lb, block b)
 	}
     }
 
-    return (blk *) ((lb->buf = bt->buf) + b - bt->offset);
+    return (Blk *) ((buf = bt->buf) + b - bt->offset);
 }
 
 /*
- * NAME:	linebuf->putblk()
- * DESCRIPTION:	put blk in write buffer. if text is non-zero, it is a chain
- *		block with lines following it. return the copy in the buffer.
+ * put blk in write buffer. if text is non-zero, it is a chain
+ * block with lines following it. return the copy in the buffer.
  */
-static blk *bk_putblk(linebuf *lb, blk *bp, char *text)
+LineBuf::Blk *LineBuf::putblk(Blk *bp, char *text)
 {
-    blk *bp2;
+    Blk *bp2;
     int blksz, txtsz;
     size_t strcsz;
 
     /* determine blocksize and textsize */
-    blksz = sizeof(blk);
+    blksz = sizeof(Blk);
     if (text != (char *) NULL) {
 	blksz += sizeof(short);
 	txtsz = strlen(text) + 1;
@@ -302,20 +289,20 @@ static blk *bk_putblk(linebuf *lb, blk *bp, char *text)
 
     strcsz = STRUCT_AL;
     if (strcsz > 2) {
-	lb->blksz = ALGN(lb->blksz, STRUCT_AL);
+	this->blksz = ALGN(this->blksz, STRUCT_AL);
     }
 
     /* flush write buffer if needed */
-    if (lb->blksz + lb->txtsz + blksz + txtsz > BLOCK_SIZE) {
+    if (this->blksz + this->txtsz + blksz + txtsz > BLOCK_SIZE) {
 	/* write buffer full */
-	lb_write(lb);
+	write();
     }
 
 
     /* store block */
-    bp2 = (blk *) (lb->wb->buf + lb->blksz);
+    bp2 = (Blk *) (wb->buf + this->blksz);
     *bp2 = *bp;
-    lb->blksz += blksz;
+    this->blksz += blksz;
 
     if (txtsz != 0) {
 	/* store text */
@@ -323,9 +310,9 @@ static blk *bk_putblk(linebuf *lb, blk *bp, char *text)
 	bp2->lines = 1;
 	bp2->lindex = 0;
 
-	lb->txtsz += txtsz;
-	txtsz = BLOCK_SIZE - lb->txtsz;
-	strcpy(lb->wb->buf + txtsz, text);
+	this->txtsz += txtsz;
+	txtsz = BLOCK_SIZE - this->txtsz;
+	strcpy(wb->buf + txtsz, text);
 	*((short *)(bp2 + 1)) = txtsz;
     }
 
@@ -333,12 +320,11 @@ static blk *bk_putblk(linebuf *lb, blk *bp, char *text)
 }
 
 /*
- * NAME:	linebuf->putln()
- * DESCRIPTION:	append a line after the current block (type chain). If the
- *		block becomes too large for the buffer, continue it in a new
- *		buffer. Return the new current block.
+ * append a line after the current block (type chain). If the
+ * block becomes too large for the buffer, continue it in a new
+ * buffer. Return the new current block.
  */
-static blk *bk_putln(linebuf *lb, blk *bp, char *text)
+LineBuf::Blk *LineBuf::putln(Blk *bp, char *text)
 {
     int blksz, txtsz;
 
@@ -347,88 +333,84 @@ static blk *bk_putln(linebuf *lb, blk *bp, char *text)
     txtsz = strlen(text) + 1;
 
     /* flush write buffer if needed */
-    if (lb->blksz + lb->txtsz + blksz + txtsz > BLOCK_SIZE) {
+    if (this->blksz + this->txtsz + blksz + txtsz > BLOCK_SIZE) {
 	Int offset;
-	block prev;
+	Block prev;
 
 	/* write full buffer */
-	bp->next = lb->wb->offset + BLOCK_SIZE;
+	bp->next = this->wb->offset + BLOCK_SIZE;
 	offset = bp->lindex + bp->lines;
-	prev = BLOCK(lb, bp);
-	lb_write(lb);
+	prev = BLOCK(this, bp);
+	write();
 
 	/* create new block */
-	bp = (blk *) lb->wb->buf;
+	bp = (Blk *) wb->buf;
 	bp->prev = prev;
 	bp->lines = 0;
 	bp->lindex = offset;
-	blksz += sizeof(blk);
+	blksz += sizeof(Blk);
     }
 
     /* store text */
-    lb->txtsz += txtsz;
-    txtsz = BLOCK_SIZE - lb->txtsz;
-    strcpy(lb->wb->buf + txtsz, text);
+    this->txtsz += txtsz;
+    txtsz = BLOCK_SIZE - this->txtsz;
+    strcpy(wb->buf + txtsz, text);
     ((short *)(bp + 1)) [bp->lines++] = txtsz;
 
-    lb->blksz += blksz;
+    this->blksz += blksz;
 
     return bp;
 }
 
 /*
- * NAME:	linebuf->new()
- * DESCRIPTION:	read a block of lines from function getline. continue until
- *		getline returns 0. Return the block.
+ * read a block of lines from function getline. continue until
+ * getline returns 0. Return the block.
  */
-block bk_new(linebuf *lb, char *(*getline)())
+Block LineBuf::create(char *(*getline)())
 {
-    blk *bp;
+    Blk *bp;
     char *text;
-    blk bb;
+    Blk bb;
 
     /* get first line */
     text = (*getline)();
     if (text == (char *) NULL) {
-	return (block) 0;
+	return (Block) 0;
     }
 
     /* create block */
-    bp = bk_putblk(lb, &bb, text);
-    bb.lfirst = BLOCK(lb, bp);
+    bp = putblk(&bb, text);
+    bb.lfirst = BLOCK(this, bp);
     bb.lines = 1;
     bb.index1 = 0;
     bb.index2 = 0;
 
     /* append lines */
     while ((text=(*getline)()) != (char *) NULL) {
-	bp = bk_putln(lb, bp, text);
+	bp = putln(bp, text);
 	bb.lines++;
     }
 
     /* finish block */
     bp->next = -1;
-    bb.llast = BLOCK(lb, bp);
-    bp = bk_putblk(lb, &bb, (char *) NULL);
+    bb.llast = BLOCK(this, bp);
+    bp = putblk(&bb, (char *) NULL);
 
-    return BLOCK(lb, bp);
+    return BLOCK(this, bp);
 }
 
 /*
- * NAME:	linebuf->size()
- * DESCRIPTION:	return the size of a block
+ * return the size of a block
  */
-Int bk_size(linebuf *lb, block b)
+Int LineBuf::size(Block b)
 {
-    return bk_load(lb, b)->lines;
+    return load(b)->lines;
 }
 
 /*
- * NAME:	bk_split1()
- * DESCRIPTION:	split blk in two, arg 3 is size of first block
- *		(local for bk_split)
+ * split blk in two, arg 3 is size of first block (local for bk_split)
  */
-static void bk_split1(linebuf *lb, blk *bp, Int size, block *b1, block *b2)
+void LineBuf::split1(Blk *bp, Int size, Block *b1, Block *b2)
 {
     Int lines;
     Int first, last;
@@ -440,31 +422,31 @@ static void bk_split1(linebuf *lb, blk *bp, Int size, block *b1, block *b2)
 	first = bp->lfirst;
 	last = bp->llast;
 
-	bp = bk_load(lb, first);
+	bp = load(first);
 	lines = bp->lines;
 	if (lines > size) {
 	    /* the first split block is contained in the first block */
-	    bk_split1(lb, bp, size, b1, b2);
-	    if (b2 != (block *) NULL) {
-		*b2 = bk_cat(lb, *b2, last);
+	    split1(bp, size, b1, b2);
+	    if (b2 != (Block *) NULL) {
+		*b2 = cat(*b2, last);
 	    }
 	} else if (lines < size) {
 	    /* the second split block is contained in the last block */
-	    bk_split1(lb, bk_load(lb, last), size - lines, b1, b2);
-	    if (b1 != (block *) NULL) {
-		*b1 = bk_cat(lb, first, *b1);
+	    split1(load(last), size - lines, b1, b2);
+	    if (b1 != (Block *) NULL) {
+		*b1 = cat(first, *b1);
 	    }
 	} else {
 	    /* splitting on the edge of cat */
-	    if (b1 != (block *) NULL) {
+	    if (b1 != (Block *) NULL) {
 		*b1 = first;
 	    }
-	    if (b2 != (block *) NULL) {
+	    if (b2 != (Block *) NULL) {
 		*b2 = last;
 	    }
 	}
     } else {
-	blk bb1, bb2;
+	Blk bb1, bb2;
 	Int offset, mid;
 
 	/* block is a (sub)range block */
@@ -482,7 +464,7 @@ static void bk_split1(linebuf *lb, blk *bp, Int size, block *b1, block *b2)
 	last = bp->llast + BLOCK_SIZE;
 	lines += bb1.index1;
 	size += bb1.index1;
-	bp = bk_load(lb, mid = bp->lfirst);
+	bp = load(mid = bp->lfirst);
 	offset = bp->lindex;
 
 	while (size < 0 || size >= bp->lines) {
@@ -497,7 +479,7 @@ static void bk_split1(linebuf *lb, blk *bp, Int size, block *b1, block *b2)
 		offset = bp->lindex + bp->lines;
 	    }
 	    mid = first + ((((last - first) / lines) * size) & BLOCK_MASK);
-	    bp = bk_load(lb, mid);
+	    bp = load(mid);
 	    size -= bp->lindex - offset;
 	}
 
@@ -512,42 +494,40 @@ static void bk_split1(linebuf *lb, blk *bp, Int size, block *b1, block *b2)
 	bb2.index1 = size;
 
 	/* block 1 */
-	if (b1 != (block *) NULL) {
-	    bp = bk_putblk(lb, &bb1, (char *) NULL);
-	    *b1 = BLOCK(lb, bp);
+	if (b1 != (Block *) NULL) {
+	    bp = putblk(&bb1, (char *) NULL);
+	    *b1 = BLOCK(this, bp);
 	}
 
 	/* block 2 */
-	if (b2 != (block *) NULL) {
-	    bp = bk_putblk(lb, &bb2, (char *) NULL);
-	    *b2 = BLOCK(lb, bp);
+	if (b2 != (Block *) NULL) {
+	    bp = putblk(&bb2, (char *) NULL);
+	    *b2 = BLOCK(this, bp);
 	}
     }
 }
 
 /*
- * NAME:	linebuf->split()
- * DESCRIPTION:	split block in two, arg 3 is size of first block
+ * split block in two, arg 3 is size of first block
  */
-void bk_split(linebuf *lb, block b, Int size, block *b1, block *b2)
+void LineBuf::split(Block b, Int size, Block *b1, Block *b2)
 {
-    bk_split1(lb, bk_load(lb, b), size, b1, b2);
+    split1(load(b), size, b1, b2);
 }
 
 /*
- * NAME:	linebuf->cat()
- * DESCRIPTION:	return the concatenation of the arguments
+ * return the concatenation of the arguments
  */
-block bk_cat(linebuf *lb, block b1, block b2)
+Block LineBuf::cat(Block b1, Block b2)
 {
-    blk *bp1, *bp2;
+    Blk *bp1, *bp2;
     unsigned short depth1, depth2;
-    blk bb;
+    Blk bb;
 
     /* get information about blocks to concatenate */
-    bp1 = bk_load(lb, b1);
+    bp1 = load(b1);
     depth1 = (bp1->type == CAT) ? bp1->depth & EDDEPTH : 1;
-    bp2 = bk_load(lb, b2);
+    bp2 = load(b2);
     depth2 = (bp2->type == CAT) ? bp2->depth & EDDEPTH : 1;
 
     /* start new block */
@@ -557,20 +537,20 @@ block bk_cat(linebuf *lb, block b1, block b2)
     if (depth1 < depth2 && !(bp2->depth & EDFULLTREE)) {
 	/* concat b1 and the first subblock of b2 */
 	b2 = bp2->llast;
-	b1 = bk_cat(lb, b1, bp2->lfirst);
+	b1 = cat(b1, bp2->lfirst);
 
-	bp1 = bk_load(lb, b1);
+	bp1 = load(b1);
 	depth1 = bp1->depth & EDDEPTH;
-	bp2 = bk_load(lb, b2);
+	bp2 = load(b2);
 	depth2 = (bp2->type == CAT) ? bp2->depth & EDDEPTH : 1;
     } else if (depth1 > depth2 && !(bp1->depth & EDFULLTREE)) {
 	/* concat the last subblock of b1 and b2 */
 	b1 = bp1->lfirst;
-	b2 = bk_cat(lb, bp1->llast, b2);
+	b2 = cat(bp1->llast, b2);
 
-	bp1 = bk_load(lb, b1);
+	bp1 = load(b1);
 	depth1 = (bp1->type == CAT) ? bp1->depth & EDDEPTH : 1;
-	bp2 = bk_load(lb, b2);
+	bp2 = load(b2);
 	depth2 = bp2->depth & EDDEPTH;
     }
 
@@ -587,29 +567,27 @@ block bk_cat(linebuf *lb, block b1, block b2)
     }
 
     /* put it in the write buffer */
-    bp1 = bk_putblk(lb, &bb, (char *) NULL);
+    bp1 = putblk(&bb, (char *) NULL);
     /* return the block */
-    return BLOCK(lb, bp1);
+    return BLOCK(this, bp1);
 }
 
 /*
- * NAME:	bk_put1()
- * DESCRIPTION:	output of a subrange of a blk
- *		(local for bk_put)
+ * output of a subrange of a blk (local for bk_put)
  */
-static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
+void LineBuf::put1(Blk *bp, Int idx, Int size)
 {
     Int lines, last;
 
     lines = bp->lines;
 
     if (bp->type == CAT) {
-	if (!lb->reverse) {
+	if (!reverse) {
 	    last = bp->llast;
-	    bp = bk_load(lb, bp->lfirst);
+	    bp = load(bp->lfirst);
 	} else {
 	    last = bp->lfirst;
-	    bp = bk_load(lb, bp->llast);
+	    bp = load(bp->llast);
 	}
 	lines = bp->lines;
 	if (lines > idx) {
@@ -617,14 +595,14 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
 	    if (lines > size) {
 		lines = size;
 	    }
-	    bk_put1(lb, bp, idx, lines);
+	    put1(bp, idx, lines);
 	    size -= lines;
 	    idx = 0;
 	} else {
 	    idx -= lines;
 	}
 	if (size > 0) {
-	    bk_put1(lb, bk_load(lb, last), idx, size);
+	    put1(load(last), idx, size);
 	}
     } else {
 	Int first, offset, mid;
@@ -632,12 +610,12 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
 	first = 0;
 	last = bp->llast + BLOCK_SIZE;
 	lines += bp->index1;
-	if (!lb->reverse) {
+	if (!reverse) {
 	    idx += bp->index1;
 	} else {
 	    idx = lines - idx - 1;
 	}
-	bp = bk_load(lb, mid = bp->lfirst);
+	bp = load(mid = bp->lfirst);
 	offset = bp->lindex;
 
 	while (idx < 0 || idx >= bp->lines) {
@@ -652,11 +630,11 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
 		offset = bp->lindex + bp->lines;
 	    }
 	    mid = first + ((((last - first) / lines) * idx) & BLOCK_MASK);
-	    bp = bk_load(lb, mid);
+	    bp = load(mid);
 	    idx -= bp->lindex - offset;
 	}
 
-	if (!lb->reverse) {
+	if (!reverse) {
 	    for (;;) {
 		lines = size;
 		if (lines > bp->lines - idx) {
@@ -665,15 +643,15 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
 		size -= lines;
 
 		do {
-		    (*lb->putline)(lb->buf + *((short *)(bp + 1) + idx++));
-		    bp = bk_load(lb, mid);
+		    (*putline)(buf + *((short *)(bp + 1) + idx++));
+		    bp = load(mid);
 		} while (--lines > 0);
 
 		if (size == 0) {
 		    return;
 		}
 
-		bp = bk_load(lb, mid = bp->next);
+		bp = load(mid = bp->next);
 		idx = 0;
 	    }
 	} else {
@@ -687,15 +665,15 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
 
 		idx = bp->lines - idx;
 		do {
-		    (*lb->putline)(lb->buf + *((short *)(bp + 1) + --idx));
-		    bp = bk_load(lb, mid);
+		    (*putline)(buf + *((short *)(bp + 1) + --idx));
+		    bp = load(mid);
 		} while (--lines > 0);
 
 		if (size == 0) {
 		    return;
 		}
 
-		bp = bk_load(lb, mid = bp->prev);
+		bp = load(mid = bp->prev);
 		idx = 0;
 	    }
 	}
@@ -703,16 +681,15 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
 }
 
 /*
- * NAME:	linebuf->put()
- * DESCRIPTION:	output of a subrange of a block
+ * output of a subrange of a block
  */
-void bk_put(linebuf *lb, block b, Int idx, Int size,
-	    void (*putline)(const char*), bool reverse)
+void LineBuf::put(Block b, Int idx, Int size, void (*putline)(const char*),
+		  bool reverse)
 {
-    blk *bp;
+    Blk *bp;
 
-    lb->putline = putline;
-    lb->reverse = reverse;
-    bp = bk_load(lb, b);
-    bk_put1(lb, bp, (reverse) ? bp->lines - idx - size : idx, size);
+    this->putline = putline;
+    this->reverse = reverse;
+    bp = load(b);
+    put1(bp, (reverse) ? bp->lines - idx - size : idx, size);
 }

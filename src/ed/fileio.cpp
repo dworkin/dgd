@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -33,15 +33,14 @@ static char *bufp;		/* buffer pointer */
 static unsigned int inbuf;	/* # bytes in buffer */
 static char *lbuf;		/* line buffer */
 static char *lbuflast;		/* end of line buffer */
-static io *iostat;		/* I/O status */
+static IO *iostat;		/* I/O status */
 static char filename[STRINGSZ];	/* file name */
 
 /*
- * NAME:	get_line()
- * DESCRIPTION:	read a line from the input, return as '\0'-terminated string
- *		without '\n'
+ * read a line from the input, return as '\0'-terminated string
+ * without '\n'
  */
-static char *get_line()
+char *IO::get_line()
 {
     char c, *p, *bp;
     int i;
@@ -96,10 +95,9 @@ static char *get_line()
 }
 
 /*
- * NAME:	io_load()
- * DESCRIPTION:	append block read from file after a line
+ * append block read from file after a line
  */
-bool io_load(editbuf *eb, char *fname, Int l, io *iobuf)
+bool IO::load(EditBuf *eb, char *fname, Int l)
 {
     char b[MAX_LINE_SIZE], buf[BUF_SIZE];
     struct stat sbuf;
@@ -122,7 +120,7 @@ bool io_load(editbuf *eb, char *fname, Int l, io *iobuf)
     lbuflast = &b[MAX_LINE_SIZE - 1];
 
     /* initialize statistics */
-    iostat = iobuf;
+    iostat = this;
     iostat->lines = 0;
     iostat->chars = 0;
     iostat->zero = 0;
@@ -132,7 +130,7 @@ bool io_load(editbuf *eb, char *fname, Int l, io *iobuf)
     /* add the block to the edit buffer */
     try {
 	ErrorContext::push();
-	eb_add(eb, l, get_line);
+	eb->add(l, get_line);
 	ErrorContext::pop();
     } catch (...) {
 	P_close(ffd);
@@ -144,10 +142,9 @@ bool io_load(editbuf *eb, char *fname, Int l, io *iobuf)
 }
 
 /*
- * NAME:	put_line()
- * DESCRIPTION:	write a line to a file
+ * write a line to a file
  */
-static void put_line(const char *text)
+void IO::put_line(const char *text)
 {
     unsigned int len;
 
@@ -176,10 +173,9 @@ static void put_line(const char *text)
 }
 
 /*
- * NAME:	io_save()
- * DESCRIPTION:	write a range of lines to a file
+ * write a range of lines to a file
  */
-bool io_save(editbuf *eb, char *fname, Int first, Int last, int append, io *iobuf)
+bool IO::save(EditBuf *eb, char *fname, Int first, Int last, int append)
 {
     char buf[BUF_SIZE];
     struct stat sbuf;
@@ -203,7 +199,7 @@ bool io_save(editbuf *eb, char *fname, Int first, Int last, int append, io *iobu
     inbuf = 0;
 
     /* initialize statistics */
-    iostat = iobuf;
+    iostat = this;
     iostat->lines = 0;
     iostat->chars = 0;
     iostat->zero = 0;
@@ -213,7 +209,7 @@ bool io_save(editbuf *eb, char *fname, Int first, Int last, int append, io *iobu
     /* write range */
     try {
 	ErrorContext::push();
-	eb_range(eb, first, last, put_line, FALSE);
+	eb->range(first, last, put_line, FALSE);
 	if (P_write(ffd, buffer, inbuf) != inbuf) {
 	    error("error while writing file \"/%s\"", filename);
 	}
@@ -225,4 +221,23 @@ bool io_save(editbuf *eb, char *fname, Int first, Int last, int append, io *iobu
     P_close(ffd);
 
     return TRUE;
+}
+
+/*
+ * show statistics on the file just read/written
+ */
+void IO::show()
+{
+    output("%ld lines, %ld characters", (long) lines,
+	   (long) (chars + zero - split - ill));
+    if (zero > 0) {
+	output(" [%ld zero]", (long) zero);
+    }
+    if (split > 0) {
+	output(" [%ld split]", (long) split);
+    }
+    if (ill) {
+	output(" [incomplete last line]");
+    }
+    output("\012");	/* LF */
 }

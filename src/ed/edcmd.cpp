@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,79 +25,64 @@
  * This file contains the command parsing functions.
  */
 
-/*
- * These functions are in cmdsub.c
- */
-extern Int  cb_search	(cmdbuf*, Int, Int, bool);
-extern int  cb_print	(cmdbuf*);
-extern int  cb_list	(cmdbuf*);
-extern int  cb_number	(cmdbuf*);
-extern int  cb_page	(cmdbuf*);
-extern int  cb_assign	(cmdbuf*);
-extern int  cb_mark	(cmdbuf*);
-extern int  cb_append	(cmdbuf*);
-extern int  cb_insert	(cmdbuf*);
-extern int  cb_change	(cmdbuf*);
-extern int  cb_delete	(cmdbuf*);
-extern int  cb_copy	(cmdbuf*);
-extern int  cb_move	(cmdbuf*);
-extern int  cb_put	(cmdbuf*);
-extern int  cb_yank	(cmdbuf*);
-extern int  cb_lshift	(cmdbuf*);
-extern int  cb_rshift	(cmdbuf*);
-extern int  cb_indent	(cmdbuf*);
-extern int  cb_join	(cmdbuf*);
-extern int  cb_subst	(cmdbuf*);
-extern int  cb_file	(cmdbuf*);
-extern int  cb_read	(cmdbuf*);
-extern int  cb_edit	(cmdbuf*);
-extern int  cb_quit	(cmdbuf*);
-extern int  cb_write	(cmdbuf*);
-extern int  cb_wq	(cmdbuf*);
-extern int  cb_xit	(cmdbuf*);
-extern int  cb_set	(cmdbuf*);
-
-cmdbuf *ccb;		/* editor command buffer */
+CmdBuf *ccb;		/* editor command buffer */
 
 /*
- * NAME:	cmdbuf->new()
- * DESCRIPTION:	create and initialize a command edit buffer
+ * create and initialize a command edit buffer
  */
-cmdbuf *cb_new(char *tmpfile)
+CmdBuf::CmdBuf(char *tmpfile) :
+    edbuf(tmpfile)
 {
-    cmdbuf *cb;
+    vars = Vars::create();
 
-    Alloc::staticMode();
-    cb = ALLOC(cmdbuf, 1);
-    memset(cb, '\0', sizeof(cmdbuf));
-    cb->edbuf = eb_new(tmpfile);
-    cb->regexp = rx_new();
-    cb->vars = va_new();
-    Alloc::dynamicMode();
-
-    cb->cthis = 0;
-    cb->undo = (block) -1;	/* not 0! */
-    return cb;
+    flags = 0;
+    cmd = (char *) NULL;
+    reverse = false;
+    ignorecase = false;
+    edits = 0;
+    cthis = 0;
+    othis = 0;
+    first = 0;
+    last = 0;
+    a_addr = 0;
+    a_buffer = 0;
+    lineno = 0;
+    buffer = (char *) NULL;
+    buflen = 0;
+    glob_rx = (RxBuf *) NULL;
+    glob_next = 0;
+    glob_size = 0;
+    stack = (char *) NULL;
+    stackbot = (char *) NULL;
+    ind = (int *) NULL;
+    quote = 0;
+    shift = 0;
+    offset = 0;
+    moffset = (Int *) NULL;
+    memset(mark, '\0', sizeof(mark));
+    Block buf = 0;
+    memset(zbuf, '\0', sizeof(zbuf));
+    memset(fname, '\0', sizeof(fname));
+    undo = (Block) -1;				/* not 0! */
+    Int uthis = 0;
+    memset(umark, '\0', sizeof(umark));
+    memset(search, '\0', sizeof(search));
+    memset(replace, '\0', sizeof(replace));
 }
 
 /*
- * NAME:	cmdbuf->del()
- * DESCRIPTION:	delete a command edit buffer
+ * delete a command edit buffer
  */
-void cb_del(cmdbuf *cb)
+CmdBuf::~CmdBuf()
 {
-    eb_del(cb->edbuf);
-    rx_del(cb->regexp);
-    va_del(cb->vars);
-    FREE(cb);
+    Vars::del(vars);
 }
 
 /*
- * NAME:	skipst()
- * DESCRIPTION:	skip white space in a string. return a pointer to the first
- *		character after the white space (could be '\0')
+ * skip white space in a string. return a pointer to the first
+ * character after the white space (could be '\0')
  */
-const char *skipst(const char *p)
+const char *CmdBuf::skipst(const char *p)
 {
     while (*p == ' ' || *p == HT) {
 	p++;
@@ -106,10 +91,9 @@ const char *skipst(const char *p)
 }
 
 /*
- * NAME:	pattern()
- * DESCRIPTION:	scan a pattern and copy it to a buffer.
+ * scan a pattern and copy it to a buffer.
  */
-const char *pattern(const char *pat, int delim, char *buffer)
+const char *CmdBuf::pattern(const char *pat, int delim, char *buffer)
 {
     const char *p;
     unsigned int size;
@@ -153,22 +137,21 @@ const char *pattern(const char *pat, int delim, char *buffer)
 }
 
 /*
- * NAME:	cmdbuf->pattern()
- * DESCRIPTION:	compile a regular expression, up to a delimeter
+ * compile a regular expression, up to a delimeter
  */
-static void cb_pattern(cmdbuf *cb, char delim)
+void CmdBuf::pattern(char delim)
 {
     char buffer[STRINGSZ];
 
-    cb->cmd = pattern(cb->cmd, delim, buffer);
+    cmd = pattern(cmd, delim, buffer);
     if (buffer[0] == '\0') {
-	if (!cb->regexp->valid) {
+	if (!regexp.valid) {
 	    error("No previous regular expression");
 	}
     } else {
 	const char *err;
 
-	err = rx_comp(cb->regexp, buffer);
+	err = regexp.comp(buffer);
 	if (err != (char *) NULL) {
 	    error(err);
 	}
@@ -176,18 +159,17 @@ static void cb_pattern(cmdbuf *cb, char delim)
 }
 
 /*
- * NAME:	cmdbuf->address()
- * DESCRIPTION:	parse an address. First is the first line to search from if the
- *		address is a search pattern.
+ * parse an address. First is the first line to search from if the
+ * address is a search pattern.
  */
-static Int cb_address(cmdbuf *cb, Int first)
+Int CmdBuf::address(Int first)
 {
     Int l;
     const char *p;
 
     l = 0;
 
-    switch (*(p = cb->cmd)) {
+    switch (*(p = cmd)) {
     case '0':
     case '1':
     case '2':
@@ -202,65 +184,65 @@ static Int cb_address(cmdbuf *cb, Int first)
 	    l *= 10;
 	    l += *p++ - '0';
 	} while (isdigit(*p));
-	cb->cmd = p;
+	cmd = p;
 	break;
 
     case '.':
-	cb->cmd++;
+	cmd++;
 	/* fall through */
     case '+':
     case '-':
-	l = cb->cthis;
+	l = cthis;
 	break;
 
     case '$':
-	l = cb->edbuf->lines;
-	cb->cmd++;
+	l = edbuf.lines;
+	cmd++;
 	break;
 
     case '\'':
 	if (islower(*++p)) {
-	    l = cb->mark[*p - 'a'];
+	    l = mark[*p - 'a'];
 	} else {
 	    error("Marks are a-z");
 	}
 	if (l == 0) {
 	    error("Undefined mark referenced");
 	}
-	cb->cmd += 2;
+	cmd += 2;
 	break;
 
     case '/':
-	cb->cmd++;
-	cb_pattern(cb, *p);
-	l = cb->edbuf->lines;
+	cmd++;
+	pattern(*p);
+	l = edbuf.lines;
 	if (l == 0) {
 	    return 1;	/* force out-of-range error */
 	}
 	if (first < l) {
-	    l = cb_search(cb, first + 1, l, FALSE);
+	    l = dosearch(first + 1, l, FALSE);
 	    if (l != 0) {
 		break;
 	    }
 	}
-	l = cb_search(cb, (Int) 1, first, FALSE);
+	l = dosearch((Int) 1, first, FALSE);
 	if (l == 0) {
 	    error("Pattern not found");
 	}
 	break;
 
     case '?':
-	cb->cmd++;
-	cb_pattern(cb, *p);
+	cmd++;
+	pattern(*p);
 	if (first > 1) {
-	    l = cb_search(cb, (Int) 1, first - 1, TRUE);
+	    l = dosearch((Int) 1, first - 1, TRUE);
 	}
 	if (l == 0) {
-	    l = cb->edbuf->lines;
+	    l = edbuf.lines;
 	    if (l == 0) {
 		return 1;	/* force out-of-range error */
 	    }
-	    l = cb_search(cb, first, l, TRUE);
+	    l = dosearch(first, l, TRUE);
 	    if (l == 0) {
 		error("Pattern not found");
 	    }
@@ -271,11 +253,11 @@ static Int cb_address(cmdbuf *cb, Int first)
 	return -1;
     }
 
-    cb->cmd = skipst(cb->cmd);
-    while (cb->cmd[0] == '+' || cb->cmd[0] == '-') {
+    cmd = skipst(cmd);
+    while (cmd[0] == '+' || cmd[0] == '-') {
 	Int r;
 
-	p = skipst(cb->cmd + 1);
+	p = skipst(cmd + 1);
 	if (!isdigit(*p)) {
 	    r = 1;
 	} else {
@@ -285,12 +267,12 @@ static Int cb_address(cmdbuf *cb, Int first)
 		r += *p++ - '0';
 	    } while (isdigit(*p));
 	}
-	if (cb->cmd[0] == '+') {
+	if (cmd[0] == '+') {
 	    l += r;
 	} else {
 	    l -= r;
 	}
-	cb->cmd = skipst(p);
+	cmd = skipst(p);
     }
     if (l < 0) {
 	error("Negative address");
@@ -299,49 +281,47 @@ static Int cb_address(cmdbuf *cb, Int first)
 }
 
 /*
- * NAME:	cmdbuf->range()
- * DESCRIPTION:	parse line range from the command buffer. Valid range for an
- *		address is 0-$
+ * parse line range from the command buffer. Valid range for an
+ * address is 0-$
  */
-static void cb_range(cmdbuf *cb)
+void CmdBuf::range()
 {
-    cb->first = -1;
-    cb->last = -1;
-    cb->cmd = skipst(cb->cmd);
-    if (cb->cmd[0] == '\0') {
+    first = -1;
+    last = -1;
+    cmd = skipst(cmd);
+    if (cmd[0] == '\0') {
 	return;
     }
-    if (cb->cmd[0] == '%') {
-	cb->first = 1;
-	cb->last = cb->edbuf->lines;
-	cb->cmd = skipst(cb->cmd + 1);
+    if (cmd[0] == '%') {
+	first = 1;
+	last = edbuf.lines;
+	cmd = skipst(cmd + 1);
     } else {
-	cb->first = cb_address(cb, cb->cthis);
-	if (cb->cmd[0] == ',' || cb->cmd[0] == ';') {
-	    if (cb->first < 0) {
-		cb->first = cb->cthis;
-	    } else if (cb->cmd[0] == ';') {
-		cb->cthis = cb->first;
+	first = address(cthis);
+	if (cmd[0] == ',' || cmd[0] == ';') {
+	    if (first < 0) {
+		first = cthis;
+	    } else if (cmd[0] == ';') {
+		cthis = first;
 	    }
-	    cb->cmd = skipst(cb->cmd + 1);
-	    cb->last = cb_address(cb, cb->cthis);
-	    if (cb->last < 0) {
-		cb->last = cb->cthis;
+	    cmd = skipst(cmd + 1);
+	    last = address(cthis);
+	    if (last < 0) {
+		last = cthis;
 	    }
 	}
     }
 }
 
 /*
- * NAME:	cmdbuf->count()
- * DESCRIPTION:	set the line range according to the (optional) count in the
- *		command buffer
+ * set the line range according to the (optional) count in the
+ * command buffer
  */
-void cb_count(cmdbuf *cb)
+void CmdBuf::count()
 {
     const char *p;
 
-    p = cb->cmd;
+    p = cmd;
     if (isdigit(*p)) {
 	Int count;
 
@@ -350,100 +330,96 @@ void cb_count(cmdbuf *cb)
 	    count *= 10;
 	    count += *p++ - '0';
 	} while (isdigit(*p));
-	cb->cmd = skipst(p);
+	cmd = skipst(p);
 
-	if (cb->first < 0) {
-	    cb->first = cb->cthis;
+	if (first < 0) {
+	    first = cthis;
 	}
-	cb->last = cb->first + count - 1;
-	if (cb->last < cb->first || cb->last > cb->edbuf->lines) {
+	last = first + count - 1;
+	if (last < first || last > edbuf.lines) {
 	    error("Not that many lines in buffer");
 	}
     }
 }
 
 /*
- * NAME:	not_in_global()
- * DESCRIPTION:	error if currently executing a global command
+ * error if currently executing a global command
  */
-void not_in_global(cmdbuf *cb)
+void CmdBuf::not_in_global()
 {
-    if (cb->flags & CB_GLOBAL) {
+    if (flags & CB_GLOBAL) {
 	error("Command not allowed in global");
     }
 }
 
 /*
- * NAME:	cmdbuf->do()
- * DESCRIPTION:	copy the present command buffer status in the undo buffer
+ * copy the present command buffer status in the undo buffer
  */
-void cb_do(cmdbuf *cb, Int cthis)
+void CmdBuf::dodo(Int cthis)
 {
-    cb->undo = cb->edbuf->buffer;
-    cb->uthis = cthis;
-    memcpy(cb->umark, cb->mark, sizeof(cb->mark));
+    undo = edbuf.buffer;
+    uthis = cthis;
+    memcpy(umark, mark, sizeof(mark));
 }
 
 /*
- * NAME:	cmdbuf->undo()
- * DESCRIPTION:	undo the effects of a previous command by exchanging the
- *		command buffer status with the undo buffer
+ * undo the effects of a previous command by exchanging the
+ * command buffer status with the undo buffer
  */
-int cb_undo(cmdbuf *cb)
+int CmdBuf::doundo()
 {
-    block b;
+    Block b;
     Int cthis, mark[26];
 
-    not_in_global(cb);
-    if (cb->undo == (block) -1) {
+    not_in_global();
+    if (undo == (Block) -1) {
 	error("Nothing to undo");
     }
 
-    b = cb->undo;
-    cb->undo = cb->edbuf->buffer;
-    cb->edbuf->lines = (b == (block) 0) ? 0 : bk_size(cb->edbuf->lb, b);
-    cb->edbuf->buffer = b;
+    b = undo;
+    this->undo = edbuf.buffer;
+    edbuf.lines = (b == (Block) 0) ? 0 : edbuf.lb.size(b);
+    edbuf.buffer = b;
 
-    cthis = cb->uthis;
-    if (cthis == 0 && b != (block) 0) {
+    cthis = this->uthis;
+    if (cthis == 0 && b != (Block) 0) {
 	cthis = 1;
     }
-    cb->uthis = cb->othis;
-    cb->cthis = cb->othis = cthis;
+    uthis = othis;
+    this->cthis = othis = cthis;
 
-    memcpy(mark, cb->umark, sizeof(mark));
-    memcpy(cb->umark, cb->mark, sizeof(mark));
-    memcpy(cb->mark, mark, sizeof(mark));
+    memcpy(mark, umark, sizeof(mark));
+    memcpy(umark, mark, sizeof(mark));
+    memcpy(this->mark, mark, sizeof(mark));
 
-    cb->edit++;
+    edits++;
     return RET_FLAGS;
 }
 
 /*
- * NAME:	cmdbuf->buf()
- * DESCRIPTION:	put a block in the appropriate buffers
+ * put a block in the appropriate buffers
  */
-void cb_buf(cmdbuf *cb, block b)
+void CmdBuf::dobuf(Block b)
 {
-    if (isupper(cb->a_buffer)) {
-	block *zbuf;
+    if (isupper(a_buffer)) {
+	Block *zbuf;
 
 	/*
 	 * copy or append to named buffer
 	 */
-	zbuf = &cb->zbuf[cb->a_buffer - 'A'];
-	if (*zbuf != (block) 0) {
-	    *zbuf = bk_cat(cb->edbuf->lb, *zbuf, b);
+	zbuf = &this->zbuf[a_buffer - 'A'];
+	if (*zbuf != (Block) 0) {
+	    *zbuf = edbuf.lb.cat(*zbuf, b);
 	} else {
 	    *zbuf = b;
 	}
-    } else if (islower(cb->a_buffer)) {
-	cb->zbuf[cb->a_buffer - 'a'] = b;
+    } else if (islower(a_buffer)) {
+	this->zbuf[a_buffer - 'a'] = b;
     }
     /*
      * always put it in the default yank buffer too
      */
-    cb->buf = b;
+    buf = b;
 }
 
 
@@ -454,60 +430,58 @@ void cb_buf(cmdbuf *cb, block b)
  */
 
 /*
- * NAME:	add()
- * DESCRIPTION:	add a block of lines to the edit buffer
+ * add a block of lines to the edit buffer
  */
-void add(cmdbuf *cb, Int ln, block b, Int size)
+void CmdBuf::add(Int ln, Block b, Int size)
 {
     Int *m;
 
     /* global checks */
-    if (cb->flags & CB_GLOBAL) {
-	if (ln < cb->glob_next) {
-	    cb->glob_next += size;
-	} else if (ln < cb->glob_next + cb->glob_size - 1) {
+    if (flags & CB_GLOBAL) {
+	if (ln < glob_next) {
+	    glob_next += size;
+	} else if (ln < glob_next + glob_size - 1) {
 	    error("Illegal add in global");
 	}
     }
 
-    eb_put(cb->edbuf, ln, b);
+    edbuf.put(ln, b);
 
     /* adjust marks of lines after new block */
-    for (m = cb->mark; m < &cb->mark[26]; m++) {
+    for (m = mark; m < &mark[26]; m++) {
 	if (*m > ln) {
 	    *m += size;
 	}
     }
 
-    cb->cthis = cb->othis = ln + size;
+    cthis = othis = ln + size;
 }
 
 /*
- * NAME:	dellines()
- * DESCRIPTION:	delete a block of lines from the edit buffer
+ * delete a block of lines from the edit buffer
  */
-block dellines(cmdbuf *cb, Int first, Int last)
+Block CmdBuf::dellines(Int first, Int last)
 {
     Int size, *m;
 
     size = last - first + 1;
 
     /* global checks */
-    if (cb->flags & CB_GLOBAL) {
-	if (last < cb->glob_next) {
-	    cb->glob_next -= size;
-	} else if (first <= cb->glob_next) {
-	    cb->glob_size -= last - cb->glob_next + 1;
-	    cb->glob_next = first;
-	} else if (last >= cb->glob_next + cb->glob_size) {
-	    cb->glob_size = first - cb->glob_next;
+    if (flags & CB_GLOBAL) {
+	if (last < glob_next) {
+	    glob_next -= size;
+	} else if (first <= glob_next) {
+	    glob_size -= last - glob_next + 1;
+	    glob_next = first;
+	} else if (last >= glob_next + glob_size) {
+	    glob_size = first - glob_next;
 	} else {
 	    error("Illegal delete in global");
 	}
     }
 
     /* adjust & erase marks */
-    for (m = cb->mark; m < &cb->mark[26]; m++) {
+    for (m = mark; m < &mark[26]; m++) {
 	if (*m >= first) {
 	    if (*m > last) {
 		*m -= size;
@@ -517,37 +491,36 @@ block dellines(cmdbuf *cb, Int first, Int last)
 	}
     }
 
-    cb->othis = first;
-    if (last == cb->edbuf->lines) {
-	cb->othis--;
+    othis = first;
+    if (last == edbuf.lines) {
+	othis--;
     }
-    cb->cthis = cb->othis;
+    cthis = othis;
 
-    return eb_delete(cb->edbuf, first, last);
+    return edbuf.del(first, last);
 }
 
 /*
- * NAME:	change()
- * DESCRIPTION:	replace a subrange of lines by a block
+ * replace a subrange of lines by a block
  */
-void change(cmdbuf *cb, Int first, Int last, block b)
+void CmdBuf::change(Int first, Int last, Block b)
 {
     Int offset, *m;
 
     offset = last - first + 1;
-    if (b != (block) 0) {
-	offset -= bk_size(cb->edbuf->lb, b);
+    if (b != (Block) 0) {
+	offset -= edbuf.lb.size(b);
     }
 
     /* global checks */
-    if (cb->flags & CB_GLOBAL) {
-	if (last < cb->glob_next) {
-	    cb->glob_next -= offset;
-	} else if (first <= cb->glob_next) {
-	    cb->glob_size -= last - cb->glob_next + 1;
-	    cb->glob_next = last - offset + 1;
-	} else if (last >= cb->glob_next + cb->glob_size) {
-	    cb->glob_size = first - cb->glob_next;
+    if (flags & CB_GLOBAL) {
+	if (last < glob_next) {
+	    glob_next -= offset;
+	} else if (first <= glob_next) {
+	    glob_size -= last - glob_next + 1;
+	    glob_next = last - offset + 1;
+	} else if (last >= glob_next + glob_size) {
+	    glob_size = first - glob_next;
 	} else {
 	    error("Illegal change in global");
 	}
@@ -555,106 +528,100 @@ void change(cmdbuf *cb, Int first, Int last, block b)
 
     /* adjust marks. If the marks of the changed lines have to be erased,
        the calling routine must handle it. */
-    for (m = cb->mark; m < &cb->mark[26]; m++) {
+    for (m = mark; m < &mark[26]; m++) {
 	if (*m > last) {
 	    *m -= offset;
 	}
     }
 
-    cb->othis = first;
-    cb->cthis = last - offset;
-    if (cb->cthis == 0 && last != cb->edbuf->lines) {
-	cb->cthis = 1;
+    othis = first;
+    cthis = last - offset;
+    if (cthis == 0 && last != edbuf.lines) {
+	cthis = 1;
     }
 
-    eb_change(cb->edbuf, first, last, b);
+    edbuf.change(first, last, b);
 }
 
 
 /*
- * NAME:	startblock()
- * DESCRIPTION:	start a block of lines
+ * start a block of lines
  */
-void startblock(cmdbuf *cb)
+void CmdBuf::startblock()
 {
-    eb_startblock(cb->edbuf);
+    edbuf.startblock();
 }
 
 /*
- * NAME:	addblock()
- * DESCRIPTION:	add a line to the current block of lines
+ * add a line to the current block of lines
  */
-void addblock(cmdbuf *cb, const char *text)
+void CmdBuf::addblock(const char *text)
 {
-    eb_addblock(cb->edbuf, text);
+    edbuf.addblock(text);
 }
 
 /*
- * NAME:	endblock()
- * DESCRIPTION:	finish the current block
+ * finish the current block
  */
-void endblock(cmdbuf *cb)
+void CmdBuf::endblock()
 {
-    eb_endblock(cb->edbuf);
+    edbuf.endblock();
 
-    if (cb->flags & CB_CHANGE) {
-	if (cb->first <= cb->last) {
-	    change(cb, cb->first, cb->last, cb->edbuf->flines);
-	} else if (cb->first == 0 && cb->edbuf->lines != 0) {
-	    cb->cthis = cb->othis = 1;
+    if (flags & CB_CHANGE) {
+	if (first <= last) {
+	    change(first, last, edbuf.flines);
+	} else if (first == 0 && edbuf.lines != 0) {
+	    cthis = othis = 1;
 	} else {
-	    cb->cthis = cb->othis = cb->first;
+	    cthis = othis = first;
 	}
     } else {
-	if (cb->edbuf->flines != (block) 0) {
-	    add(cb, cb->first, cb->edbuf->flines,
-		bk_size(cb->edbuf->lb, cb->edbuf->flines));
-	} else if (cb->first == 0 && cb->edbuf->lines != 0) {
-	    cb->cthis = cb->othis = 1;
+	if (edbuf.flines != (Block) 0) {
+	    add(first, edbuf.flines, edbuf.lb.size(edbuf.flines));
+	} else if (first == 0 && edbuf.lines != 0) {
+	    cthis = othis = 1;
 	} else {
-	    cb->cthis = cb->othis = cb->first;
+	    cthis = othis = first;
 	}
     }
 
-    cb->flags &= ~(CB_INSERT | CB_CHANGE);
-    cb->edit++;
+    flags &= ~(CB_INSERT | CB_CHANGE);
+    edits++;
 }
 
 
 /*
- * NAME:	find()
- * DESCRIPTION:	match a pattern in a global command
+ * match a pattern in a global command
  */
-static void find(const char *text)
+void CmdBuf::globfind(const char *text)
 {
-    cmdbuf *cb;
+    CmdBuf *cb;
 
     cb = ccb;
     cb->glob_next++;
     cb->glob_size--;
-    if (rx_exec(cb->glob_rx, text, 0, cb->ignorecase) != (int) cb->reverse) {
+    if (cb->glob_rx->exec(text, 0, cb->ignorecase) != (int) cb->reverse) {
 	throw "found";
     }
 }
 
 /*
- * NAME:	cmdbuf->global()
- * DESCRIPTION:	do a global command
+ * do a global command
  */
-int cb_global(cmdbuf *cb)
+int CmdBuf::global()
 {
     const char *p;
     char buffer[STRINGSZ], delim;
-    block undo;
+    Block undo;
     Int uthis, umark[26];
     bool aborted;
 
-    not_in_global(cb);	/* no recursion please */
+    not_in_global();	/* no recursion please */
 
     /* get the regular expression */
-    delim = cb->cmd[0];
+    delim = cmd[0];
     if (delim != '\0' && !isalnum(delim)) {
-	cb->cmd = pattern(cb->cmd + 1, delim, buffer);
+	cmd = pattern(cmd + 1, delim, buffer);
     } else {
 	buffer[0] = '\0';
     }
@@ -663,46 +630,46 @@ int cb_global(cmdbuf *cb)
     }
 
     /* keep global undo status */
-    undo = cb->edbuf->buffer;
-    uthis = cb->first;
-    memcpy(umark, cb->mark, sizeof(cb->mark));
+    undo = edbuf.buffer;
+    uthis = first;
+    memcpy(umark, mark, sizeof(mark));
 
     /*
      * A local error context is created, so the regular expression buffer
      * can be deallocated in case of an error.
      */
-    cb->glob_rx = rx_new();
+    glob_rx = new RxBuf();
     try {
 	ErrorContext::push();
 	/* compile regexp */
-	p = rx_comp(cb->glob_rx, buffer);
+	p = glob_rx->comp(buffer);
 	if (p != (char *) NULL) {
 	    error(p);
 	}
 
 	/* get the command to be done in global */
-	p = skipst(cb->cmd);
-	cb->cmd = p + strlen(p);
+	p = skipst(cmd);
+	cmd = p + strlen(p);
 	if (*p == '\0') {
 	    p = "p";	/* default: print lines */
 	}
-	cb->flags |= CB_GLOBAL;
-	cb->reverse = (cb->flags & CB_EXCL) != 0;
-	cb->ignorecase = IGNORECASE(cb->vars);
-	cb->glob_next = cb->first;
-	cb->glob_size = cb->last - cb->first + 1;
+	flags |= CB_GLOBAL;
+	reverse = (flags & CB_EXCL) != 0;
+	ignorecase = IGNORECASE(vars);
+	glob_next = first;
+	glob_size = last - first + 1;
 
 	do {
 	    try {
 		/* search */
-		eb_range(cb->edbuf, cb->glob_next,
-			 cb->glob_next + cb->glob_size - 1, find, FALSE);
+		edbuf.range(glob_next, glob_next + glob_size - 1, globfind,
+			    FALSE);
 	    } catch (...) {
 		/* found: do the commands */
-		cb->cthis = cb->glob_next - 1;
-		cb_command(cb, p);
+		cthis = glob_next - 1;
+		command(p);
 	    }
-	} while (cb->glob_size > 0);
+	} while (glob_size > 0);
 
 	/* pop error context */
 	aborted = FALSE;
@@ -713,15 +680,15 @@ int cb_global(cmdbuf *cb)
     /* come here if global is finished or in case of an error */
 
     /* clean up regular expression */
-    rx_del(cb->glob_rx);
+    delete glob_rx;
 
     /* set undo status */
-    cb->undo = undo;
-    cb->uthis = uthis;
-    memcpy(cb->umark, umark, sizeof(umark));
+    this->undo = undo;
+    this->uthis = uthis;
+    memcpy(this->umark, umark, sizeof(umark));
 
     /* no longer in global */
-    cb->flags &= ~CB_GLOBAL;
+    flags &= ~CB_GLOBAL;
 
     if (aborted) {
 	error((char *) NULL);
@@ -730,13 +697,12 @@ int cb_global(cmdbuf *cb)
 }
 
 /*
- * NAME:	cmdbuf->vglobal()
- * DESCRIPTION:	v == g!
+ * v == g!
  */
-int cb_vglobal(cmdbuf *cb)
+int CmdBuf::vglobal()
 {
-    cb->flags |= CB_EXCL;
-    return cb_global(cb);
+    flags |= CB_EXCL;
+    return global();
 }
 
 
@@ -744,7 +710,7 @@ struct Cmd {
     char flags;			/* type of command */
     char chr;			/* first char of command */
     const char *cmd;		/* full command string */
-    int (*ftn)(cmdbuf*);	/* command function */
+    int (*ftn)(CmdBuf*);	/* command function */
 };
 
 # define CM_LNMASK	0x03
@@ -758,6 +724,37 @@ struct Cmd {
 # define CM_BUFFER	0x10	/* buffer argument */
 # define CM_ADDR	0x20	/* address argument */
 # define CM_COUNT	0x40	/* count argument */
+
+static int cb_append(CmdBuf *cb)	{ return cb->append(); }
+static int cb_assign(CmdBuf *cb)	{ return cb->assign(); }
+static int cb_change(CmdBuf *cb)	{ return cb->change(); }
+static int cb_delete(CmdBuf *cb)	{ return cb->del(); }
+static int cb_edit(CmdBuf *cb)		{ return cb->edit(); }
+static int cb_file(CmdBuf *cb)		{ return cb->file(); }
+static int cb_global(CmdBuf *cb)	{ return cb->global(); }
+static int cb_put(CmdBuf *cb)		{ return cb->put(); }
+static int cb_insert(CmdBuf *cb)	{ return cb->insert(); }
+static int cb_join(CmdBuf *cb)		{ return cb->join(); }
+static int cb_mark(CmdBuf *cb)		{ return cb->domark(); }
+static int cb_list(CmdBuf *cb)		{ return cb->list(); }
+static int cb_move(CmdBuf *cb)		{ return cb->move(); }
+static int cb_number(CmdBuf *cb)	{ return cb->number(); }
+static int cb_wq(CmdBuf *cb)		{ return cb->wq(); }
+static int cb_print(CmdBuf *cb)		{ return cb->print(); }
+static int cb_quit(CmdBuf *cb)		{ return cb->quit(); }
+static int cb_read(CmdBuf *cb)		{ return cb->read(); }
+static int cb_subst(CmdBuf *cb)		{ return cb->subst(); }
+static int cb_copy(CmdBuf *cb)		{ return cb->copy(); }
+static int cb_undo(CmdBuf *cb)		{ return cb->doundo(); }
+static int cb_vglobal(CmdBuf *cb)	{ return cb->vglobal(); }
+static int cb_write(CmdBuf *cb)		{ return cb->write(); }
+static int cb_xit(CmdBuf *cb)		{ return cb->xit(); }
+static int cb_yank(CmdBuf *cb)		{ return cb->yank(); }
+static int cb_page(CmdBuf *cb)		{ return cb->page(); }
+static int cb_set(CmdBuf *cb)		{ return cb->set(); }
+static int cb_lshift(CmdBuf *cb)	{ return cb->lshift(); }
+static int cb_rshift(CmdBuf *cb)	{ return cb->rshift(); }
+static int cb_indent(CmdBuf *cb)	{ return cb->indent(); }
 
 static Cmd ed_commands[] = {
     { CM_LN0,				'a', "append",	cb_append },
@@ -808,56 +805,56 @@ static Cmd ed_commands[] = {
 
 
 /*
- * NAME:	cmdbuf->command()
+ * NAME:	CmdBuf->command()
  * DESCRIPTION:	Parse and execute an editor command. Return TRUE if this command
  *		did not terminate the editor. Multiple commands may be
  *		specified, separated by |
  */
-bool cb_command(cmdbuf *cb, const char *command)
+bool CmdBuf::command(const char *command)
 {
-    cb->cmd = command;
-    ccb = cb;
+    cmd = command;
+    ccb = this;
 
     for (;;) {
-	if (cb->flags & CB_INSERT) {
+	if (flags & CB_INSERT) {
 	    /* insert mode */
 	    if (strlen(command) >= MAX_LINE_SIZE) {
-		endblock(cb);
+		endblock();
 		error("Line too long");
 	    }
 	    if (strcmp(command, ".") == 0) {
 		/* finish block */
-		endblock(cb);
+		endblock();
 	    } else {
 		/* add the "command" to the current block */
-		addblock(cb, command);
+		addblock(command);
 	    }
 	} else {
 	    Cmd *cm;
 	    const char *p;
 	    int ltype, ret;
 
-	    cb->flags &= ~(CB_EXCL | CB_NUMBER | CB_LIST);
+	    flags &= ~(CB_EXCL | CB_NUMBER | CB_LIST);
 
-	    cb->a_addr = -1;
-	    cb->a_buffer = 0;
+	    a_addr = -1;
+	    a_buffer = 0;
 
 	    /*
 	     * parse the command line: [range] [command] [arguments]
 	     */
 
-	    cb->cmd = skipst(cb->cmd);
-	    if (cb->cmd[0] == '\0') {
+	    cmd = skipst(cmd);
+	    if (cmd[0] == '\0') {
 		/* no command: print next line */
-		if (cb->cthis == cb->edbuf->lines) {
+		if (cthis == edbuf.lines) {
 		    error("End-of-file");
 		}
 		cm = &ed_commands['p' - 'a'];
-		cb->first = cb->last = cb->cthis + 1;
+		first = last = cthis + 1;
 	    } else {
 		/* parse [range] */
-		cb_range(cb);
-		p = cb->cmd = skipst(cb->cmd);
+		range();
+		p = cmd = skipst(cmd);
 		cm = (Cmd *) NULL;
 
 		/* parse [command] */
@@ -868,7 +865,7 @@ bool cb_command(cmdbuf *cb, const char *command)
 			p++;
 		    }
 		}
-		if (p == cb->cmd) {
+		if (p == cmd) {
 		    /* length == 0 */
 		    switch (*p++) {
 		    case '=':
@@ -895,7 +892,7 @@ bool cb_command(cmdbuf *cb, const char *command)
 			--p;
 			break;
 		    }
-		} else if (p - cb->cmd == 1) {
+		} else if (p - cmd == 1) {
 		    /* length == 1 */
 		    if (ed_commands[p[-1] - 'a'].chr == p[-1]) {
 			cm = &ed_commands[p[-1] - 'a'];
@@ -907,7 +904,7 @@ bool cb_command(cmdbuf *cb, const char *command)
 		    cm = ed_commands;
 		    for (;;) {
 			if (cm->cmd &&
-			  strncmp(cb->cmd, cm->cmd, p - cb->cmd) == 0) {
+			  strncmp(cmd, cm->cmd, p - cmd) == 0) {
 			    break;
 			}
 			if (++cm == &ed_commands[NR_CMD]) {
@@ -923,7 +920,7 @@ bool cb_command(cmdbuf *cb, const char *command)
 
 		/* CM_EXCL */
 		if ((cm->flags & CM_EXCL) && *p == '!') {
-		    cb->flags |= CB_EXCL;
+		    flags |= CB_EXCL;
 		    p++;
 		}
 
@@ -931,24 +928,24 @@ bool cb_command(cmdbuf *cb, const char *command)
 
 		/* CM_BUFFER */
 		if ((cm->flags & CM_BUFFER) && isalpha(*p)) {
-		    cb->a_buffer = *p;
+		    a_buffer = *p;
 		    p = skipst(p + 1);
 		}
 
-		cb->cmd = p;
+		cmd = p;
 
 		/* CM_COUNT */
 		if (cm->flags & CM_COUNT) {
-		    cb_count(cb);
+		    count();
 		}
 
 		/* CM_ADDR */
 		if (cm->flags & CM_ADDR) {
-		    cb->a_addr = cb_address(cb, cb->cthis);
-		    if (cb->a_addr < 0) {
+		    a_addr = address(cthis);
+		    if (a_addr < 0) {
 			error("Command requires a trailing address");
 		    }
-		    cb->cmd = skipst(cb->cmd);
+		    cmd = skipst(cmd);
 		}
 	    }
 
@@ -958,54 +955,54 @@ bool cb_command(cmdbuf *cb, const char *command)
 	    ltype = cm->flags & CM_LNMASK;
 	    if (ltype != CM_LN0) {
 		if ((ltype == CM_LNDOT || ltype == CM_LNRNG) &&
-		  cb->edbuf->lines == 0) {
+		  edbuf.lines == 0) {
 		    error("No lines in buffer");
 		}
-		if (cb->first == 0) {
+		if (first == 0) {
 		    error("Nonzero address required on this command");
 		}
 	    }
 	    switch (ltype) {
 	    case CM_LNDOT:
 	    case CM_LN0:
-		if (cb->first < 0) {
-		    cb->first = cb->cthis;
+		if (first < 0) {
+		    first = cthis;
 		}
-		if (cb->last < 0) {
-		    cb->last = cb->first;
+		if (last < 0) {
+		    last = first;
 		}
 		break;
 
 	    case CM_LNRNG:
-		if (cb->first < 0) {
-		    cb->first = 1;
-		    cb->last = cb->edbuf->lines;
-		} else if ( cb->last < 0) {
-		    cb->last = cb->first;
+		if (first < 0) {
+		    first = 1;
+		    last = edbuf.lines;
+		} else if ( last < 0) {
+		    last = first;
 		}
 		break;
 	    }
-	    if (cb->first > cb->edbuf->lines || cb->last > cb->edbuf->lines ||
-		cb->a_addr > cb->edbuf->lines) {
+	    if (first > edbuf.lines || last > edbuf.lines ||
+		a_addr > edbuf.lines) {
 		error("Not that many lines in buffer");
 	    }
-	    if (cb->last >= 0 && cb->last < cb->first) {
+	    if (last >= 0 && last < first) {
 		error("Inverted address range");
 	    }
 
-	    ret = (*cm->ftn)(cb);
+	    ret = (*cm->ftn)(this);
 
-	    p = skipst(cb->cmd);
+	    p = skipst(cmd);
 
 	    if (ret == RET_FLAGS) {
 		for (;;) {
 		    switch (*p++) {
 		    case '-':
-			--cb->cthis;
+			--cthis;
 			continue;
 
 		    case '+':
-			cb->cthis++;
+			cthis++;
 			continue;
 
 		    case 'p':
@@ -1013,34 +1010,34 @@ bool cb_command(cmdbuf *cb, const char *command)
 			continue;
 
 		    case 'l':
-			cb->flags |= CB_LIST;
+			flags |= CB_LIST;
 			continue;
 
 		    case '#':
-			cb->flags |= CB_NUMBER;
+			flags |= CB_NUMBER;
 			continue;
 		    }
 		    --p;
 		    break;
 		}
 
-		if (cb->cthis <= 0) {
-		    cb->cthis = 1;
+		if (cthis <= 0) {
+		    cthis = 1;
 		}
-		if (cb->cthis > cb->edbuf->lines) {
-		    cb->cthis = cb->edbuf->lines;
+		if (cthis > edbuf.lines) {
+		    cthis = edbuf.lines;
 		}
-		if (cb->cthis != 0 && !(cb->flags & CB_GLOBAL)) {
+		if (cthis != 0 && !(flags & CB_GLOBAL)) {
 		    /* no autoprint in global */
-		    cb->first = cb->last = cb->cthis;
-		    cb_print(cb);
+		    first = last = cthis;
+		    print();
 		}
-		p = skipst(cb->cmd);
+		p = skipst(cmd);
 	    }
 
 	    /* another command? */
-	    if (*p == '|' && (cb->flags & CB_GLOBAL) && ret != RET_QUIT) {
-		cb->cmd = p + 1;
+	    if (*p == '|' && (flags & CB_GLOBAL) && ret != RET_QUIT) {
+		cmd = p + 1;
 		continue;
 	    }
 	    /* it has to be finished now */

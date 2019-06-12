@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -46,35 +46,27 @@
 # define CCL_CODE(rx, ccl)	(((rx)->buffer + RXBUFSZ - (ccl)) / CCLSIZE)
 
 /*
- * NAME:	rxbuf->new()
- * DESCRIPTION:	Create a new regular expression buffer.
+ * Create a new regular expression buffer.
  */
-rxbuf *rx_new()
+RxBuf::RxBuf()
 {
-    rxbuf *rx;
-
-    rx = ALLOC(rxbuf, 1);
-    rx->valid = 0;
-    return rx;
+    valid = 0;
 }
 
 /*
- * NAME:	rxbuf->del()
- * DESCRIPTION:	Delete a regular expression buffer.
+ * Delete a regular expression buffer.
  */
-void rx_del(rxbuf *rx)
+RxBuf::~RxBuf()
 {
-    FREE(rx);
 }
 
 /*
- * NAME:	rxbuf->comp()
- * DESCRIPTION:	Compile a regular expression. Return 0 if succesful, or an
- *		errorstring otherwise.
- *		There are two gotos in this function. Reading the source
- *		code is considered harmful.
+ * Compile a regular expression. Return 0 if succesful, or an
+ * errorstring otherwise.
+ * There are two gotos in this function. Reading the source
+ * code is considered harmful.
  */
-const char *rx_comp(rxbuf *rx, const char *pattern)
+const char *RxBuf::comp(const char *pattern)
 {
     const char *p;
     char *m, *prevcode, *prevpat, *cclass, *eoln;
@@ -82,10 +74,10 @@ const char *rx_comp(rxbuf *rx, const char *pattern)
     int brac, depth;
 
     /* initialize */
-    rx->valid = 0;
-    rx->anchor = 0;
-    rx->firstc = '\0';
-    cclass = rx->buffer + RXBUFSZ;
+    valid = 0;
+    anchor = 0;
+    firstc = '\0';
+    cclass = buffer + RXBUFSZ;
     eoln = (char *) NULL;
     dummy = 0;
     prevpat = &dummy;
@@ -93,14 +85,14 @@ const char *rx_comp(rxbuf *rx, const char *pattern)
     brac = depth = 0;
 
     p = pattern;
-    m = rx->buffer;
+    m = buffer;
 
     /* process the regular expression */
     while (*p) {
 	switch (*p) {
 	case '^':
 	    if (*prevpat == 0) {	/* is this the first pattern char? */
-		rx->anchor = 1;
+		anchor = 1;
 	    } else {
 		goto single;
 	    }
@@ -208,7 +200,7 @@ const char *rx_comp(rxbuf *rx, const char *pattern)
 		    int i;
 
 		    i = CCLSIZE;
-		    ccl2 = CCL_BUF(rx, i);
+		    ccl2 = CCL_BUF(this, i);
 		    do {
 			if (cclass[i] & ccl2[i]) break;
 		    } while (--i > 0);
@@ -219,7 +211,7 @@ const char *rx_comp(rxbuf *rx, const char *pattern)
 	    }
 	    prevcode = prevpat = m;
 	    *m++ = CCLASS;
-	    *m++ = CCL_CODE(rx, cclass);
+	    *m++ = CCL_CODE(this, cclass);
 	    break;
 
 	case '\\':
@@ -276,7 +268,7 @@ const char *rx_comp(rxbuf *rx, const char *pattern)
 			*prevpat = LSTAR;
 		    }
 		} else if (prevpat[1] == CCLASS) {
-		    if (CCL(CCL_BUF(rx, prevpat[2]), &, *p) == 0) {
+		    if (CCL(CCL_BUF(this, prevpat[2]), &, *p) == 0) {
 			*prevpat = LSTAR;
 		    }
 		}
@@ -297,29 +289,28 @@ const char *rx_comp(rxbuf *rx, const char *pattern)
     if (depth > 0) {
 	return "Unmatched \\(";
     }
-    rx->start = (char *) NULL;
+    start = (char *) NULL;
     while (brac < NSUBEXP) {
-	rx->se[brac++].start = (char *) NULL;	/* unused */
+	se[brac++].start = (char *) NULL;	/* unused */
     }
     if (*prevpat == SINGLE && prevpat == eoln) {
 	*prevpat++ = EOL;
 	*prevpat = EOL;	/* won't hurt */
     }
     *m = EOM;
-    if (rx->buffer[0] == SINGLE) {
-	rx->firstc = rx->buffer[1];	/* first char for quick search */
+    if (buffer[0] == SINGLE) {
+	firstc = buffer[1];	/* first char for quick search */
     }
-    rx->valid = 1;	/* buffer contains valid NFA */
+    valid = 1;	/* buffer contains valid NFA */
     return (char *) NULL;
 }
 
 /*
- * NAME:	match()
- * DESCRIPTION:	match the text (t) against the pattern (m). Return 1 if
- *		success.
+ * match the text (t) against the pattern (m). Return 1 if
+ * success.
  */
-static bool match(rxbuf *rx, const char *start, const char *text, bool ic,
-		  char *m, const char *t)
+bool RxBuf::match(const char *start, const char *text, bool ic, char *m,
+		  const char *t)
 {
     const char *p;
     char *cclass, code, c;
@@ -328,7 +319,7 @@ static bool match(rxbuf *rx, const char *start, const char *text, bool ic,
 	switch (code = *m++) {
 	case EOM:
 	    /* found a match */
-	    rx->start = t;
+	    this->start = t;
 	    return TRUE;
 
 	case EOL:
@@ -354,7 +345,7 @@ static bool match(rxbuf *rx, const char *start, const char *text, bool ic,
 
 	case CCLASS:
 	    /* match character class */
-	    cclass = CCL_BUF(rx, *m++);
+	    cclass = CCL_BUF(this, *m++);
 	    if (CCL(cclass, &, *t) == 0) {
 		if (ic) {
 		    c = tolower(*t);
@@ -385,7 +376,7 @@ static bool match(rxbuf *rx, const char *start, const char *text, bool ic,
 		break;
 
 	    case CCLASS:
-		cclass = CCL_BUF(rx, *m++);
+		cclass = CCL_BUF(this, *m++);
 		if (!ic) {
 		    while (CCL(cclass, &, *p)) {
 			p++;
@@ -405,7 +396,7 @@ static bool match(rxbuf *rx, const char *start, const char *text, bool ic,
 	    } else {
 		/* try all possible lengths of the starred pattern */
 		while (p > t) {
-		    if (match(rx, start, text, ic, m, p)) {
+		    if (match(start, text, ic, m, p)) {
 			return TRUE;
 		    }
 		    --p;
@@ -431,12 +422,12 @@ static bool match(rxbuf *rx, const char *start, const char *text, bool ic,
 
 	case LBRAC:
 	    /* start of subexpression */
-	    rx->se[*m++].start = t;
+	    se[*m++].start = t;
 	    continue;
 
 	case RBRAC:
 	    /* end of subexpression */
-	    rx->se[*m].size = t - rx->se[*m].start;
+	    se[*m].size = t - se[*m].start;
 	    m++;
 	    continue;
 	}
@@ -445,35 +436,34 @@ static bool match(rxbuf *rx, const char *start, const char *text, bool ic,
 }
 
 /*
- * NAME:	rxbuf->exec()
- * DESCRIPTION:	try to match a string, possibly indexed, possibly with no
- *		difference between lowercase and uppercase. Return -1 if the
- *		pattern is invalid, 0 if no match was found, or 1 if a match
- *		was found.
+ * try to match a string, possibly indexed, possibly with no
+ * difference between lowercase and uppercase. Return -1 if the
+ * pattern is invalid, 0 if no match was found, or 1 if a match
+ * was found.
  */
-int rx_exec(rxbuf *rx, const char *text, int idx, bool ic)
+int RxBuf::exec(const char *text, int idx, bool ic)
 {
-    rx->start = (char *) NULL;
-    if (!rx->valid) {
+    start = (char *) NULL;
+    if (!valid) {
 	return -1;
     }
 
-    if (rx->anchor) {
+    if (anchor) {
 	/* the easy case */
-	if (idx || !match(rx, text, text, ic, rx->buffer, text)) {
+	if (idx || !match(text, text, ic, buffer, text)) {
 	    return 0;
 	}
     } else {
 	for (;;) {
-	    if (rx->firstc != '\0') {
+	    if (firstc != '\0') {
 		const char *p;
 
 		/* find the first character of the pattern in the string */
-		p = strchr(text + idx, rx->firstc);
+		p = strchr(text + idx, firstc);
 		if (ic) {
 		    const char *q;
 
-		    q = strchr(text + idx, toupper(rx->firstc));
+		    q = strchr(text + idx, toupper(firstc));
 		    if (q != (char*) NULL && (p == (char *) NULL || p > q)) {
 			p = q;
 		    }
@@ -484,7 +474,7 @@ int rx_exec(rxbuf *rx, const char *text, int idx, bool ic)
 		    return 0;
 		}
 	    }
-	    if (match(rx, text, text + idx, ic, rx->buffer, text + idx)) {
+	    if (match(text, text + idx, ic, buffer, text + idx)) {
 		break;
 	    }
 	    /* if no match, try the next character in the string */
@@ -495,7 +485,7 @@ int rx_exec(rxbuf *rx, const char *text, int idx, bool ic)
     }
 
     /* a match was found, record its starting place and length */
-    rx->size = rx->start - text - idx;
-    rx->start -= rx->size;
+    size = start - text - idx;
+    start -= size;
     return 1;
 }
