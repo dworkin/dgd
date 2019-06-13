@@ -389,7 +389,7 @@ int CmdBuf::doundo()
     this->cthis = othis = cthis;
 
     memcpy(mark, umark, sizeof(mark));
-    memcpy(umark, mark, sizeof(mark));
+    memcpy(umark, this->mark, sizeof(mark));
     memcpy(this->mark, mark, sizeof(mark));
 
     edits++;

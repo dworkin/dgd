@@ -226,7 +226,7 @@ LineBuf::Blk *LineBuf::load(Block b)
     BTBuf *bt;
 
     /* check the write buffer */
-    bt = this->wb;
+    bt = wb;
     if (b < bt->offset || b >= bt->offset + blksz) {
 	/*
 	 * walk through the read buffers to see if the block can be found
@@ -338,7 +338,7 @@ LineBuf::Blk *LineBuf::putln(Blk *bp, char *text)
 	Block prev;
 
 	/* write full buffer */
-	bp->next = this->wb->offset + BLOCK_SIZE;
+	bp->next = wb->offset + BLOCK_SIZE;
 	offset = bp->lindex + bp->lines;
 	prev = BLOCK(this, bp);
 	write();

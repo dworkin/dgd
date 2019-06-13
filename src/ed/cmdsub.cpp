@@ -167,7 +167,7 @@ int CmdBuf::page()
     }
 
     window = WINDOW(vars);
-    switch (*(cmd)++) {
+    switch (*cmd++) {
     default:	/* next line */
 	cmd--;
 	cthis++;
@@ -225,7 +225,7 @@ int CmdBuf::domark()
     if (!islower(cmd[0])) {
 	error("Mark must specify a letter");
     }
-    mark[*(cmd)++ - 'a'] = first;
+    mark[*cmd++ - 'a'] = first;
     return 0;
 }
 

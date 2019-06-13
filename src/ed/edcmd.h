@@ -85,6 +85,36 @@ public:
     short flags;		/* status flags */
 
 private:
+    void count();
+    void not_in_global();
+    void dodo(Int cthis);
+    void dobuf(Block b);
+    void add(Int ln, Block b, Int size);
+    Block dellines(Int first, Int last);
+    void change(Int first, Int last, Block b);
+    void startblock();
+    void addblock(const char *text);
+    void endblock();
+    Int dosearch(Int first, Int last, bool reverse);
+    void pattern(char delim);
+    Int address(Int first);
+    void range();
+    int doshift();
+    void noshift(const char *text);
+    void sub(const char *text, unsigned int size);
+    bool getfname(char *buffer);
+
+    static const char *skipst(const char *p);
+    static const char *pattern(const char *pat, int delim, char *buffer);
+    static void globfind(const char *text);
+    static void find(const char *text);
+    static void println(const char *text);
+    static void doshift(const char *text);
+    static void indent(const char *text);
+    static void join(const char *text);
+    static void subst(const char *text);
+    static void io_show(struct io *iob);
+
     const char *cmd;		/* command to do */
     RxBuf regexp;		/* current regular expression */
     Vars *vars;			/* variables */
@@ -132,36 +162,6 @@ private:
 
     char search[STRINGSZ];	/* pattern to search for */
     char replace[STRINGSZ];	/* string to replace with */
-
-    void count();
-    void not_in_global();
-    void dodo(Int cthis);
-    void dobuf(Block b);
-    void add(Int ln, Block b, Int size);
-    Block dellines(Int first, Int last);
-    void change(Int first, Int last, Block b);
-    void startblock();
-    void addblock(const char *text);
-    void endblock();
-    Int dosearch(Int first, Int last, bool reverse);
-    void pattern(char delim);
-    Int address(Int first);
-    void range();
-    int doshift();
-    void noshift(const char *text);
-    void sub(const char *text, unsigned int size);
-    bool getfname(char *buffer);
-
-    static const char *skipst(const char *p);
-    static const char *pattern(const char *pat, int delim, char *buffer);
-    static void globfind(const char *text);
-    static void find(const char *text);
-    static void println(const char *text);
-    static void doshift(const char *text);
-    static void indent(const char *text);
-    static void join(const char *text);
-    static void subst(const char *text);
-    static void io_show(struct io *iob);
 };
 
 # define RET_QUIT	1
