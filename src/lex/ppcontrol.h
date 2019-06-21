@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,6 +17,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern bool  pp_init	(char*, char**, String**, int, int);
-extern void  pp_clear	();
-extern int   pp_gettok	();
+class PP {
+public:
+    static bool init(char *file, char **id, String **strs, int nstr, int level);
+    static void clear();
+    static int gettok();
+
+private:
+    static int wsgettok();
+    static int mcgtok();
+    static int wsmcgtok();
+    static int expr_get();
+    static long eval_expr(int priority);
+    static int pptokenz(char *key, unsigned int len);
+    static int tokenz(char *key, unsigned int len);
+    static void unexpected(int token, const char *wanted,
+			   const char *directive);
+    static void do_include();
+    static int argnum(char **args, int narg, int token);
+    static void do_define();
+};

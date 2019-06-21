@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,13 +26,12 @@
 
 # define MCHUNKSZ	32
 
-static class macrochunk : public Chunk<macro, MCHUNKSZ> {
+static class MacroChunk : public Chunk<Macro, MCHUNKSZ> {
 public:
     /*
-     * NAME:		items()
-     * DESCRIPTION:	free strings when iterating through items
+     * free strings when iterating through items
      */
-    virtual bool item(macro *m) {
+    virtual bool item(Macro *m) {
 	if (m->name != (char *) NULL) {
 	    FREE(m->name);
 	    if (m->replace != (char *) NULL) {
@@ -46,19 +45,17 @@ public:
 static Hashtab *mt;		/* macro hash table */
 
 /*
- * NAME:	macro->init()
- * DESCRIPTION:	intiialize the macro table
+ * intiialize the macro table
  */
-void mc_init()
+void Macro::init()
 {
     mt = Hashtab::create(MACTABSZ, MACHASHSZ, FALSE);
 }
 
 /*
- * NAME:	macro->clear()
- * DESCRIPTION:	clear the macro table
+ * clear the macro table
  */
-void mc_clear()
+void Macro::clear()
 {
     if (mt != (Hashtab *) NULL) {
 	delete mt;
@@ -70,66 +67,80 @@ void mc_clear()
 }
 
 /*
- * NAME:	macro->define()
- * DESCRIPTION:	define a macro
+ * constructor
  */
-void mc_define(const char *name, const char *replace, int narg)
+Macro::Macro(const char *name)
 {
-    macro **m;
-
-    m = (macro **) mt->lookup(name, FALSE);
-    if (*m != (macro *) NULL) {
-	/* the macro already exists. */
-	if ((*m)->replace != (char *) NULL &&
-	    ((*m)->narg != narg || strcmp((*m)->replace, replace) != 0)) {
-	    warning("macro %s redefined", name);
-	}
-    } else {
-	*m = chunknew (mchunk) macro;
-	(*m)->next = (Hashtab::Entry *) NULL;
-	(*m)->name = strcpy(ALLOC(char, strlen(name) + 1), name);
-	(*m)->replace = (char *) NULL;
-    }
-    /* fill in macro */
-    if (replace != (char *) NULL) {
-	(*m)->replace = strcpy(REALLOC((*m)->replace, char, 0,
-				       strlen(replace) + 1),
-			       replace);
-    } else {
-	(*m)->replace = (char *) NULL;
-    }
-    (*m)->narg = narg;
+    next = (Hashtab::Entry *) NULL;
+    this->name = strcpy(ALLOC(char, strlen(name) + 1), name);
+    replace = (char *) NULL;
 }
 
 /*
- * NAME:	macro->undef()
- * DESCRIPTION:	undefine a macro
+ * destructor
  */
-void mc_undef(char *name)
+Macro::~Macro()
 {
-    macro **m, *mac;
+    FREE(name);
+    name = (char *) NULL;
+    if (replace != (char *) NULL) {
+	FREE(replace);
+	replace = (char *) NULL;
+    }
+}
 
-    m = (macro **) mt->lookup(name, FALSE);
-    if (*m != (macro *) NULL) {
-	/* it really exists. */
-	mac = *m;
-	FREE(mac->name);
-	mac->name = (char *) NULL;
-	if (mac->replace != (char *) NULL) {
-	    FREE(mac->replace);
-	    mac->replace = (char *) NULL;
+/*
+ * define a macro
+ */
+void Macro::define(const char *name, const char *replace, int narg)
+{
+    Hashtab::Entry **m;
+    Macro *mac;
+
+    m = mt->lookup(name, FALSE);
+    if ((Macro *) *m != (Macro *) NULL) {
+	/* the macro already exists. */
+	mac = (Macro *) *m;
+	if (mac->replace != (char *) NULL &&
+	    (mac->narg != narg || strcmp(mac->replace, replace) != 0)) {
+	    warning("macro %s redefined", name);
 	}
-	*m = (macro *) mac->next;
+    } else {
+	*m = mac = chunknew (mchunk) Macro(name);
+    }
+    /* fill in macro */
+    if (replace != (char *) NULL) {
+	mac->replace = strcpy(REALLOC(mac->replace, char, 0,
+				      strlen(replace) + 1),
+			       replace);
+    } else {
+	mac->replace = (char *) NULL;
+    }
+    mac->narg = narg;
+}
+
+/*
+ * undefine a macro
+ */
+void Macro::undef(char *name)
+{
+    Hashtab::Entry **m;
+    Macro *mac;
+
+    m = mt->lookup(name, FALSE);
+    if ((Macro *) *m != (Macro *) NULL) {
+	/* it really exists. */
+	mac = (Macro *) *m;
+	*m = mac->next;
 	delete mac;
     }
 }
 
 /*
- * NAME:	macro->lookup()
- * DESCRIPTION:	lookup a macro definition in the macro table. Return &NULL if
- *		the macro is not found.
+ * lookup a macro definition in the macro table. Return NULL if
+ * the macro is not found.
  */
-macro *mc_lookup(char *name)
+Macro *Macro::lookup(char *name)
 {
-    return *(macro **) mt->lookup(name, TRUE);
+    return (Macro *) *mt->lookup(name, TRUE);
 }

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,14 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-struct str : public ChunkAllocated {
-    char *buffer;	/* string buffer */
-    int size;		/* size of buffer */
-    int len;		/* lenth of string (-1 if illegal) */
-};
+class Str : public ChunkAllocated {
+public:
+    int append(const char *s);
+    int append(int c);
 
-extern void pps_init	();
-extern void pps_clear	();
-extern str *pps_new	(char*, int);
-extern int  pps_scat	(str*, const char*);
-extern int  pps_ccat	(str*, int);
+    static void clear();
+    static Str *create(char *buf, int sz);
+
+    char *buffer;	/* string buffer */
+    int len;		/* lenth of string (-1 if illegal) */
+
+private:
+    Str(char *buf, int sz);
+
+    int size;		/* size of buffer */
+};

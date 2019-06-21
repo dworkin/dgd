@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,67 +26,58 @@
 
 # define SCHUNKSZ	8
 
-static Chunk<str, SCHUNKSZ> schunk;
+static Chunk<Str, SCHUNKSZ> schunk;
 
 /*
- * NAME:	str->init()
- * DESCRIPTION:	initialize string handling
+ * finish string handling
  */
-void pps_init()
-{
-}
-
-/*
- * NAME:	str->clear()
- * DESCRIPTION:	finish string handling
- */
-void pps_clear()
+void Str::clear()
 {
     schunk.clean();
 }
 
 /*
- * NAME:	str->new()
- * DESCRIPTION:	make a new string with length 0.
+ * constructor
  */
-str *pps_new(char *buf, int sz)
+Str::Str(char *buf, int sz)
 {
-    str *sb;
-
-    sb = chunknew (schunk) str;
-    sb->buffer = buf;
-    sb->buffer[0] = '\0';
-    sb->size = sz;
-    sb->len = 0;
-
-    return sb;
+    buffer = buf;
+    buffer[0] = '\0';
+    size = sz;
+    len = 0;
 }
 
 /*
- * NAME:	str->scat()
- * DESCRIPTION:	append a string. The length becomes -1 if the result is too long
+ * make a new string with length 0.
  */
-int pps_scat(str *sb, const char *s)
+Str *Str::create(char *buf, int sz)
+{
+    return chunknew (schunk) Str(buf, sz);
+}
+
+/*
+ * append a string. The length becomes -1 if the result is too long
+ */
+int Str::append(const char *s)
 {
     int l;
 
-    if (sb->len < 0 || sb->len + (l = strlen(s)) >= sb->size) {
-	return sb->len = -1;
+    if (len < 0 || len + (l = strlen(s)) >= size) {
+	return len = -1;
     }
-    strcpy(sb->buffer + sb->len, s);
-    return sb->len += l;
+    strcpy(buffer + len, s);
+    return len += l;
 }
 
 /*
- * NAME:	str->ccat()
- * DESCRIPTION:	append a char. The length becomes -1 if the result is too long
+ * append a char. The length becomes -1 if the result is too long
  */
-int pps_ccat(str *sb, int c)
+int Str::append(int c)
 {
-    if (sb->len < 0 || c == '\0' || sb->len + 1 >= sb->size) {
-	return sb->len = -1;
+    if (len < 0 || c == '\0' || len + 1 >= size) {
+	return len = -1;
     }
-    sb->buffer[sb->len++] = c;
-    sb->buffer[sb->len] = '\0';
-    return sb->len;
+    buffer[len++] = c;
+    buffer[len] = '\0';
+    return len;
 }

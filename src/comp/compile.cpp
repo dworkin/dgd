@@ -511,7 +511,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	    error("Compilation nesting too deep");
 	}
 
-	pp_clear();
+	PP::clear();
 	Control::clear();
 	c_clear();
     } else if (current != (context *) NULL) {
@@ -568,11 +568,11 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	    }
 
 	    if (strs != (String **) NULL) {
-		pp_init(file_c, paths, strs, nstr, 1);
-	    } else if (!pp_init(file_c, paths, (String **) NULL, 0, 1)) {
+		PP::init(file_c, paths, strs, nstr, 1);
+	    } else if (!PP::init(file_c, paths, (String **) NULL, 0, 1)) {
 		error("Could not compile \"/%s\"", file_c);
 	    }
-	    if (!tk_include(include, (String **) NULL, 0)) {
+	    if (!TokenBuf::include(include, (String **) NULL, 0)) {
 		error("Could not include \"/%s\"", include);
 	    }
 
@@ -601,7 +601,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 
 	    } else if (nerrors == 0) {
 		/* another try */
-		pp_clear();
+		PP::clear();
 		Control::clear();
 		c_clear();
 	    } else {
@@ -611,14 +611,14 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	}
 	ErrorContext::pop();
     } catch (...) {
-	pp_clear();
+	PP::clear();
 	Control::clear();
 	c_clear();
 	current = c.prev;
 	error((char *) NULL);
     }
 
-    pp_clear();
+    PP::clear();
     if (!seen_decls) {
 	/*
 	 * object with inherit statements only (or nothing at all)
@@ -702,7 +702,7 @@ String *c_objecttype(node *n)
 	Frame *f;
 
 	f = current->frame;
-	p = tk_filename();
+	p = TokenBuf::filename();
 	PUSH_STRVAL(f, String::create(p, strlen(p)));
 	PUSH_STRVAL(f, n->l.string);
 	call_driver_object(f, "object_type", 2);
@@ -1768,7 +1768,7 @@ node *c_return(node *n, int typechecked)
 void c_startcompound()
 {
     if (thisblock == (block *) NULL) {
-	fline = tk_line();
+	fline = TokenBuf::line();
     }
     block_new();
 }
@@ -2565,9 +2565,9 @@ void c_error(const char *format, ...)
 	Frame *f;
 
 	f = current->frame;
-	fname = tk_filename();
+	fname = TokenBuf::filename();
 	PUSH_STRVAL(f, String::create(fname, strlen(fname)));
-	PUSH_INTVAL(f, tk_line());
+	PUSH_INTVAL(f, TokenBuf::line());
 	va_start(args, format);
 	vsprintf(buf, format, args);
 	va_end(args);
@@ -2577,7 +2577,7 @@ void c_error(const char *format, ...)
 	(f->sp++)->del();
     } else {
 	/* there is no driver object to call; show the error on stderr */
-	sprintf(buf, "%s, %u: ", tk_filename(), tk_line());
+	sprintf(buf, "%s, %u: ", TokenBuf::filename(), TokenBuf::line());
 	va_start(args, format);
 	vsprintf(buf + strlen(buf), format, args);
 	va_end(args);

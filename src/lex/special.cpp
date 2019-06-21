@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -30,17 +30,16 @@ static char datestr[14];
 static char timestr[11];
 
 /*
- * NAME:	special_define()
- * DESCRIPTION:	predefine macros
+ * predefine macros
  */
-void special_define()
+void Special::define()
 {
     char buf[26];
 
-    mc_define("__LINE__", (char *) NULL, -1);
-    mc_define("__FILE__", (char *) NULL, -1);
-    mc_define("__DATE__", (char *) NULL, -1);
-    mc_define("__TIME__", (char *) NULL, -1);
+    Macro::define("__LINE__", (char *) NULL, -1);
+    Macro::define("__FILE__", (char *) NULL, -1);
+    Macro::define("__DATE__", (char *) NULL, -1);
+    Macro::define("__TIME__", (char *) NULL, -1);
 
     P_ctime(buf, P_time());
     sprintf(datestr, "\"%.6s %.4s\"", buf + 4, buf + 20);
@@ -48,18 +47,17 @@ void special_define()
 }
 
 /*
- * NAME:	special_replace()
- * DESCRIPTION:	return the expandation of a predefined macro
+ * return the expansion of a predefined macro
  */
-char *special_replace(const char *name)
+char *Special::replace(const char *name)
 {
     static char buf[STRINGSZ + 3];
 
     if (strcmp(name, "__LINE__") == 0) {
-	sprintf(buf, " %u ", tk_line());
+	sprintf(buf, " %u ", TokenBuf::line());
 	return buf;
     } else if (strcmp(name, "__FILE__") == 0) {
-	sprintf(buf, "\"%s\"", tk_filename());
+	sprintf(buf, "\"%s\"", TokenBuf::filename());
 	return buf;
     } else if (strcmp(name, "__DATE__") == 0) {
 	return datestr;

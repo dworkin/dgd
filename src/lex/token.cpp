@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -33,25 +33,7 @@
 
 # define TCHUNKSZ	8
 
-struct tbuf : public ChunkAllocated {
-    String **strs;		/* input buffer array */
-    int nstr;			/* number of input buffers */
-    char *buffer;		/* token buffer */
-    char *p;			/* token buffer pointer */
-    int inbuf;			/* # chars in token buffer */
-    char ubuf[4];		/* unget buffer */
-    char *up;			/* unget buffer pointer */
-    bool eof;			/* TRUE if empty(buffer) -> EOF */
-    unsigned short line;	/* line number */
-    int fd;			/* file descriptor */
-    union {
-	char *filename;		/* file name */
-	macro *mc;		/* macro this buffer is an expansion of */
-    };
-    tbuf *prev;			/* previous token buffer */
-};
-
-static Chunk<tbuf, TCHUNKSZ> tchunk;
+static Chunk<TokenBuf, TCHUNKSZ> tchunk;
 
 char *yytext;			/* for strings and identifiers */
 static char *yytext1, *yytext2;	/* internal buffers */
@@ -60,36 +42,34 @@ int yyleng;			/* length of token */
 long yynumber;			/* integer constant */
 Float yyfloat;			/* floating point constant */
 
-static tbuf *tbuffer;		/* current token buffer */
-static tbuf *ibuffer;		/* current input buffer */
+static TokenBuf *tbuffer;	/* current token buffer */
+static TokenBuf *ibuffer;	/* current input buffer */
 static int pp_level;		/* the recursive preprocesing level */
 static bool do_include;		/* treat < and strings specially */
 static bool seen_nl;		/* just seen a newline */
 
 /*
- * NAME:	token->init()
- * DESCRIPTION:	initialize the new token input buffer
+ * initialize the new token input buffer
  */
-void tk_init()
+void TokenBuf::init()
 {
     yytext1 = ALLOC(char, MAX_LINE_SIZE);
     yytext2 = ALLOC(char, MAX_LINE_SIZE);
-    tbuffer = (tbuf *) NULL;
-    ibuffer = (tbuf *) NULL;
+    tbuffer = (TokenBuf *) NULL;
+    ibuffer = (TokenBuf *) NULL;
     pp_level = 0;
     do_include = FALSE;
 }
 
 /*
- * NAME:	push()
- * DESCRIPTION:	Push a buffer on the token input stream. If eof is false, then
- *		the buffer will automatically be dropped when all is read.
+ * Push a buffer on the token input stream. If eof is false, then
+ * the buffer will automatically be dropped when all is read.
  */
-static void push(macro *mc, char *buffer, unsigned int buflen, bool eof)
+void TokenBuf::push(Macro *mc, char *buffer, unsigned int buflen, bool eof)
 {
-    tbuf *tb;
+    TokenBuf *tb;
 
-    tb = chunknew (tchunk) tbuf;
+    tb = chunknew (tchunk) TokenBuf;
     tb->strs = (String **) NULL;
     tb->nstr = 0;
     tb->p = tb->buffer = buffer;
@@ -103,53 +83,48 @@ static void push(macro *mc, char *buffer, unsigned int buflen, bool eof)
 }
 
 /*
- * NAME:	pop()
- * DESCRIPTION:	Drop the current token input buffer. If the associated macro
- *		is function-like, the token buffer will have to be deallocated.
+ * Drop the current token input buffer. If the associated macro
+ * is function-like, the token buffer will have to be deallocated.
  */
-static void pop()
+void TokenBuf::pop()
 {
-    tbuf *tb;
-
-    tb = tbuffer;
-    if (tb->fd < -1) {
-	if (tb->mc != (macro *) NULL) {
-	    if (tb->mc->narg > 0) {
+    if (fd < -1) {
+	if (mc != (Macro *) NULL) {
+	    if (mc->narg > 0) {
 		/* in the buffer a function-like macro has been expanded */
-		FREE(tb->buffer);
+		FREE(buffer);
 	    }
 	}
     } else {
-	if (tb->fd >= 0) {
-	    P_close(tb->fd);
-	    FREE(tb->buffer);
-	} else if (tb->prev != (tbuf *) NULL) {
+	if (fd >= 0) {
+	    P_close(fd);
+	    FREE(buffer);
+	} else if (prev != (TokenBuf *) NULL) {
 	    for (;;) {
-		tb->strs[0]->del();
-		if (tb->nstr == 0) {
+		strs[0]->del();
+		if (nstr == 0) {
 		    break;
 		}
-		--(tb->strs);
-		--(tb->nstr);
+		--strs;
+		--nstr;
 	    }
-	    FREE(tb->strs);
+	    FREE(strs);
 	}
-	ibuffer = tbuffer->prev;
-	FREE(tb->filename);
+	ibuffer = prev;
+	FREE(_filename);
     }
-    tbuffer = tb->prev;
+    tbuffer = prev;
 
-    delete tb;
+    delete this;
 }
 
 /*
- * NAME:	token->clear()
- * DESCRIPTION:	clear all of the token input buffers
+ * clear all of the token input buffers
  */
-void tk_clear()
+void TokenBuf::clear()
 {
-    while (tbuffer != (tbuf *) NULL) {
-	pop();
+    while (tbuffer != (TokenBuf *) NULL) {
+	tbuffer->pop();
     }
     tchunk.clean();
     if (yytext1 != (char *) NULL) {
@@ -161,10 +136,9 @@ void tk_clear()
 }
 
 /*
- * NAME:	token->include()
- * DESCRIPTION:	push a file on the input stream
+ * push a file on the input stream
  */
-bool tk_include(char *file, String **strs, int nstr)
+bool TokenBuf::include(char *file, String **strs, int nstr)
 {
     int fd;
     ssizet len;
@@ -186,11 +160,11 @@ bool tk_include(char *file, String **strs, int nstr)
 		return FALSE;
 	    }
 
-	    push((macro *) NULL, ALLOC(char, BUF_SIZE), 0, TRUE);
+	    push((Macro *) NULL, ALLOC(char, BUF_SIZE), 0, TRUE);
 	} else {
 	    /* read from strings */
 	    --strs;
-	    push((macro *) NULL, strs[0]->text, strs[0]->len, TRUE);
+	    push((Macro *) NULL, strs[0]->text, strs[0]->len, TRUE);
 	    tbuffer->strs = strs;
 	    tbuffer->nstr = --nstr;
 	    fd = -1;
@@ -202,11 +176,11 @@ bool tk_include(char *file, String **strs, int nstr)
 	if (len >= STRINGSZ - 1) {
 	    len = STRINGSZ - 2;
 	}
-	ibuffer->filename = ALLOC(char, len + 2);
-	strncpy(ibuffer->filename + 1, file, len);
-	ibuffer->filename[0] = '/';
-	ibuffer->filename[len + 1] = '\0';
-	ibuffer->line = 1;
+	ibuffer->_filename = ALLOC(char, len + 2);
+	strncpy(ibuffer->_filename + 1, file, len);
+	ibuffer->_filename[0] = '/';
+	ibuffer->_filename[len + 1] = '\0';
+	ibuffer->_line = 1;
 	seen_nl = TRUE;
 
 	return TRUE;
@@ -216,47 +190,42 @@ bool tk_include(char *file, String **strs, int nstr)
 }
 
 /*
- * NAME:	token->endinclude()
- * DESCRIPTION:	end an #inclusion
+ * end an #inclusion
  */
-void tk_endinclude()
+void TokenBuf::endinclude()
 {
-    pop();
+    tbuffer->pop();
     seen_nl = TRUE;
 }
 
 /*
- * NAME:	token->line()
- * DESCRIPTION:	return the current line number (possibly adjusted)
+ * return the current line number (possibly adjusted)
  */
-unsigned short tk_line()
+unsigned short TokenBuf::line()
 {
-    return ibuffer->line - (unsigned short) seen_nl;
+    return ibuffer->_line - (unsigned short) seen_nl;
 }
 
 /*
- * NAME:	token->filename()
- * DESCRIPTION:	return the current file name
+ * return the current file name
  */
-char *tk_filename()
+char *TokenBuf::filename()
 {
-    return ibuffer->filename;
+    return ibuffer->_filename;
 }
 
 /*
- * NAME:	token->setline()
- * DESCRIPTION:	set the current line number
+ * set the current line number
  */
-void tk_setline(unsigned short line)
+void TokenBuf::setline(unsigned short line)
 {
-    ibuffer->line = line;
+    ibuffer->_line = line;
 }
 
 /*
- * NAME:	token->setfilename()
- * DESCRIPTION:	set the current file name
+ * set the current file name
  */
-void tk_setfilename(char *file)
+void TokenBuf::setfilename(char *file)
 {
     unsigned int len;
 
@@ -264,45 +233,43 @@ void tk_setfilename(char *file)
     if (len >= STRINGSZ) {
 	len = STRINGSZ - 1;
     }
-    ibuffer->filename = (char *) memcpy(REALLOC(ibuffer->filename, char, 0, len + 1),
-				 file, len);
-    ibuffer->filename[len] = '\0';
+    ibuffer->_filename = (char *) memcpy(REALLOC(ibuffer->_filename, char, 0,
+						 len + 1),
+					 file, len);
+    ibuffer->_filename[len] = '\0';
 }
 
 /*
- * NAME:	token->header()
- * DESCRIPTION:	set the current include string mode. if TRUE, '<' will be
- *		specially processed.
+ * set the current include string mode. if TRUE, '<' will be
+ * specially processed.
  */
-void tk_header(bool incl)
+void TokenBuf::header(bool incl)
 {
     do_include = incl;
 }
 
 /*
- * NAME:	token->setpp()
- * DESCRIPTION:	if the argument is true, do not translate escape sequences in
- *		strings, and don't report errors.
+ * if the argument is true, do not translate escape sequences in
+ * strings, and don't report errors.
  */
-void tk_setpp(int pp)
+void TokenBuf::setpp(int pp)
 {
     pp_level = (int) pp;
 }
 
 # define uc(c)	{ \
 		    if ((c) != EOF) { \
-			if ((c) == LF && tbuffer == ibuffer) ibuffer->line--; \
+			if ((c) == LF && tbuffer == ibuffer) ibuffer->_line--; \
 			*(tbuffer->up)++ = (c); \
 		    } \
 		}
 
 /*
- * NAME:	gc()
- * DESCRIPTION:	get a character from the input
+ * get a character from the input
  */
-static int gc()
+int TokenBuf::gc()
 {
-    tbuf *tb;
+    TokenBuf *tb;
     int c;
     bool backslash;
 
@@ -322,7 +289,7 @@ static int gc()
 		} else if (backslash) {
 		    return '\\';
 		} else if (tb->nstr != 0) {
-		    if (tb->prev != (tbuf *) NULL) {
+		    if (tb->prev != (TokenBuf *) NULL) {
 			tb->strs[0]->del();
 		    }
 		    --(tb->strs);
@@ -334,7 +301,7 @@ static int gc()
 		    return EOF;
 		} else {
 		    /* otherwise, pop the current token input buffer */
-		    pop();
+		    tbuffer->pop();
 		    tb = tbuffer;
 		    continue;
 		}
@@ -344,7 +311,7 @@ static int gc()
 	}
 
 	if (c == LF && tb == ibuffer) {
-	    ibuffer->line++;
+	    ibuffer->_line++;
 	    if (!backslash) {
 		return c;
 	    }
@@ -361,10 +328,9 @@ static int gc()
 }
 
 /*
- * NAME:	skip_comment()
- * DESCRIPTION: skip a single comment
+ * skip a single comment
  */
-static void skip_comment()
+void TokenBuf::skip_comment()
 {
     int c;
 
@@ -384,10 +350,9 @@ static void skip_comment()
 }
 
 /*
- * NAME:	skip_alt_comment()
- * DESCRIPTION: skip c++ style comment
+ * skip c++ style comment
  */
-static void skip_alt_comment()
+void TokenBuf::skip_alt_comment()
 {
     int c;
 
@@ -401,10 +366,9 @@ static void skip_alt_comment()
 }
 
 /*
- * NAME:	comment()
- * DESCRIPTION:	skip comments and white space
+ * skip comments and white space
  */
-static void comment(bool flag)
+void TokenBuf::comment(bool flag)
 {
     int c;
 
@@ -443,10 +407,9 @@ static void comment(bool flag)
 }
 
 /*
- * NAME:	token->esc()
- * DESCRIPTION:	handle an escaped character, leaving the value in yynumber
+ * handle an escaped character, leaving the value in yynumber
  */
-static char *tk_esc(char *p)
+char *TokenBuf::esc(char *p)
 {
     int c, i, n;
 
@@ -509,11 +472,10 @@ static char *tk_esc(char *p)
 }
 
 /*
- * NAME:	token->string()
- * DESCRIPTION:	handle a string. If pp_level > 0, don't translate escape
- *		sequences.
+ * handle a string. If pp_level > 0, don't translate escape
+ * sequences.
  */
-static int tk_string(char quote)
+int TokenBuf::string(char quote)
 {
     char *p;
     int c, n;
@@ -539,11 +501,11 @@ static int tk_string(char quote)
 	    if (pp_level > 0 || do_include) {
 		/* recognize, but do not translate escape sequence */
 		*p++ = c;
-		p = tk_esc(p);
+		p = esc(p);
 		c = *--p;
 	    } else {
 		/* translate escape sequence */
-		n += tk_esc(p) - p;
+		n += esc(p) - p;
 		c = yynumber;
 	    }
 	} else if (c == LF || c == EOF) {
@@ -569,10 +531,9 @@ static int tk_string(char quote)
 }
 
 /*
- * NAME:	token->gettok()
- * DESCRIPTION:	get a token from the input stream.
+ * get a token from the input stream.
  */
-int tk_gettok()
+int TokenBuf::gettok()
 {
     int c;
     long result;
@@ -816,7 +777,7 @@ int tk_gettok()
 	if (do_include) {
 	    /* #include <header> */
 	    seen_nl = FALSE;
-	    return tk_string('>');
+	    return string('>');
 	}
 	c = gc();
 	*p++ = c;
@@ -1016,7 +977,7 @@ int tk_gettok()
 	    uc(c);
 	} else {
 	    if (c == '\\') {
-		p = tk_esc(p);
+		p = esc(p);
 	    } else {
 		yynumber = c;
 	    }
@@ -1034,7 +995,7 @@ int tk_gettok()
 
     case '"':
 	seen_nl = FALSE;
-	return tk_string('"');
+	return string('"');
     }
     *p = '\0';
     yyleng = p - yytext;
@@ -1044,15 +1005,14 @@ int tk_gettok()
 }
 
 /*
- * NAME:	token->skiptonl()
- * DESCRIPTION:	skip tokens until a newline or EOF is found. If the argument is
- *		TRUE, only whitespace is allowed.
+ * skip tokens until a newline or EOF is found. If the argument is
+ * TRUE, only whitespace is allowed.
  */
-void tk_skiptonl(int ws)
+void TokenBuf::skiptonl(int ws)
 {
     pp_level++;
     for (;;) {
-	switch (tk_gettok()) {
+	switch (gettok()) {
 	case EOF:
 	    error("unterminated line");
 	    --pp_level;
@@ -1077,18 +1037,17 @@ void tk_skiptonl(int ws)
 }
 
 /*
- * NAME:	token->expand()
- * DESCRIPTION:	expand a macro, pushing it on the input stream
- *		return: -1 if the macro is nested and is not expanded
- *			0 if the macro is ftn-like and the call isn't
- *			1 if the macro was expanded
+ * expand a macro, pushing it on the input stream
+ * return: -1 if the macro is nested and is not expanded
+ *	   0 if the macro is ftn-like and the call isn't
+ *	   1 if the macro was expanded
  */
-int tk_expand(macro *mc)
+int TokenBuf::expand(Macro *mc)
 {
     int token;
 
     if (tbuffer != ibuffer) {
-	tbuf *tb;
+	TokenBuf *tb;
 
 	token = gc();
 	if (token == LF) {
@@ -1098,7 +1057,7 @@ int tk_expand(macro *mc)
 
 	tb = tbuffer;
 	do {
-	    if (tb->fd < -1 && tb->mc != (macro *) NULL &&
+	    if (tb->fd < -1 && tb->mc != (Macro *) NULL &&
 	      strcmp(mc->name, tb->mc->name) == 0) {
 		return -1;
 	    }
@@ -1109,11 +1068,11 @@ int tk_expand(macro *mc)
     if (mc->narg >= 0) {
 	char *args[MAX_NARG], *arg, ppbuf[MAX_REPL_SIZE];
 	int narg;
-	str *s;
+	Str *s;
 	unsigned short startline, line;
 	int errcount;
 
-	startline = ibuffer->line;
+	startline = ibuffer->_line;
 
 	do {
 	    token = gc();
@@ -1144,9 +1103,9 @@ int tk_expand(macro *mc)
 	narg = 0;
 	errcount = 0;
 	pp_level++;
-	s = pps_new(ppbuf, sizeof(ppbuf));
+	s = Str::create(ppbuf, sizeof(ppbuf));
 	do {
-	    token = tk_gettok();
+	    token = gettok();
 	} while (token == ' ' || token == HT || token == LF);
 
 	if (token != ')' || mc->narg != 0) {
@@ -1159,20 +1118,20 @@ int tk_expand(macro *mc)
 
 	    for (;;) {
 		if (token == EOF) {	/* sigh */
-		    line = ibuffer->line;
-		    ibuffer->line = startline;
+		    line = ibuffer->_line;
+		    ibuffer->_line = startline;
 		    error("EOF in macro call");
-		    ibuffer->line = line;
+		    ibuffer->_line = line;
 		    errcount++;
 		    break;
 		}
 
 		if ((token == ',' || token == ')') && paren == 0) {
 		    if (s->len < 0) {
-			line = ibuffer->line;
-			ibuffer->line = startline;
+			line = ibuffer->_line;
+			ibuffer->_line = startline;
 			error("macro argument too long");
-			ibuffer->line = line;
+			ibuffer->_line = line;
 			errcount++;
 		    } else if (narg < mc->narg) {
 			arg = ALLOCA(char, s->len + 1);
@@ -1186,20 +1145,20 @@ int tk_expand(macro *mc)
 		    s->len = 0;
 
 		    do {
-			token = tk_gettok();
+			token = gettok();
 		    } while (token == ' ' || token == HT || token == LF);
 		    seen_space = FALSE;
 		    seen_sep = FALSE;
 		} else {
 		    if (seen_space) {
-			pps_ccat(s, ' ');
+			s->append(' ');
 			seen_space = FALSE;
 			seen_sep = FALSE;
 		    } else if (seen_sep) {
-			pps_ccat(s, HT);
+			s->append(HT);
 			seen_sep = FALSE;
 		    }
-		    pps_scat(s, yytext);
+		    s->append(yytext);
 		    if (token == '(') {
 			paren++;
 		    } else if (token == ')') {
@@ -1207,7 +1166,7 @@ int tk_expand(macro *mc)
 		    }
 
 		    for (;;) {
-			token = tk_gettok();
+			token = gettok();
 			if (token == ' ' || token == LF) {
 			    seen_space = TRUE;
 			} else if (token == HT) {
@@ -1239,11 +1198,11 @@ int tk_expand(macro *mc)
 	}
 
 	if (narg > 0) {
-	    push((macro *) NULL, mc->replace, strlen(mc->replace), TRUE);
+	    push((Macro *) NULL, mc->replace, strlen(mc->replace), TRUE);
 	    s->len = 0;
 
 	    pp_level++;
-	    while ((token=tk_gettok()) != EOF) {
+	    while ((token=gettok()) != EOF) {
 		if (token == MARK) {	/* macro argument follows */
 		    token = gc();
 		    narg = token & MA_NARG;
@@ -1251,28 +1210,28 @@ int tk_expand(macro *mc)
 			char *p;
 
 			/* copy it, inserting \ before \ and " */
-			push((macro *) NULL, args[narg], strlen(args[narg]),
+			push((Macro *) NULL, args[narg], strlen(args[narg]),
 			     TRUE);
-			pps_ccat(s, '"');
-			while ((token=tk_gettok()) != EOF) {
+			s->append('"');
+			while ((token=gettok()) != EOF) {
 			    if (token != HT) {
 				p = yytext;
 				if (*p == '\'' || *p == '"') {
 				    /* escape \ and " */
 				    do {
 					if (*p == '"' || *p == '\\') {
-					    pps_ccat(s, '\\');
+					    s->append('\\');
 					}
-					pps_ccat(s, *p++);
+					s->append(*p++);
 				    } while (*p != '\0');
 				} else {
 				    /* just add token */
-				    pps_scat(s, yytext);
+				    s->append(yytext);
 				}
 			    }
 			}
-			pps_ccat(s, '"');
-			pop();
+			s->append('"');
+			tbuffer->pop();
 		    } else if (token & MA_NOEXPAND) {
 
 			/*
@@ -1283,9 +1242,9 @@ int tk_expand(macro *mc)
 			    s->len--;
 			}
 
-			push((macro *) NULL, args[narg], strlen(args[narg]),
+			push((Macro *) NULL, args[narg], strlen(args[narg]),
 			     TRUE);
-			token = tk_gettok();
+			token = gettok();
 			/*
 			 * if the first token of the argument is a
 			 * not-to-expand macro, make it a normal identifier
@@ -1294,42 +1253,42 @@ int tk_expand(macro *mc)
 			    uc(narg);
 			}
 			while (token != EOF) {
-			    pps_scat(s, yytext);
-			    token = tk_gettok();
+			    s->append(yytext);
+			    token = gettok();
 			}
-			pop();
+			tbuffer->pop();
 		    } else {
 
 			/* preprocess the argument */
-			push((macro *) NULL, args[narg], strlen(args[narg]),
+			push((Macro *) NULL, args[narg], strlen(args[narg]),
 			     TRUE);
-			while ((token=tk_gettok()) != EOF) {
+			while ((token=gettok()) != EOF) {
 			    if (token == IDENTIFIER) {
-				macro *m;
+				Macro *m;
 
-				if ((m=mc_lookup(yytext)) != (macro *) NULL) {
-				    token = tk_expand(m);
+				if ((m=Macro::lookup(yytext)) != (Macro *) NULL) {
+				    token = expand(m);
 				    if (token > 0) {
 					continue;
 				    }
 				    if (token < 0) {
-					pps_scat(s, yytext);
-					pps_ccat(s, LF);
+					s->append(yytext);
+					s->append(LF);
 					continue;
 				    }
 				}
 			    }
-			    pps_scat(s, yytext);
+			    s->append(yytext);
 			}
-			pop();
+			tbuffer->pop();
 		    }
 		} else {
 		    /* copy this token */
-		    pps_scat(s, yytext);
+		    s->append(yytext);
 		}
 	    }
 	    --pp_level;
-	    pop();
+	    tbuffer->pop();
 
 	    /* cleanup */
 	    narg = mc->narg;
@@ -1355,7 +1314,7 @@ int tk_expand(macro *mc)
     } else {
 	char *p;
 
-	p = special_replace(mc->name);
+	p = Special::replace(mc->name);
 	push(mc, p, strlen(p), FALSE);
     }
 

@@ -31,49 +31,80 @@
 
 # define ICHUNKSZ	8
 
-struct ifstate : public ChunkAllocated {
+class IFState : public ChunkAllocated {
+public:
+    void pop();
+
+    static void push();
+
     bool active;		/* is this ifstate active? */
     bool skipping;		/* skipping this part? */
     bool expect_else;		/* expect #else or #endif? */
     char level;			/* include level */
-    ifstate *prev;		/* previous ifstate */
+    IFState *prev;		/* previous ifstate */
 };
 
-static Chunk<ifstate, ICHUNKSZ> ichunk;
+static Chunk<IFState, ICHUNKSZ> ichunk;
+
+static int include_level;	/* current #include level */
+static IFState *ifs;		/* current conditional inclusion state */
+
+/*
+ * push a new ifstate on the stack
+ */
+void IFState::push()
+{
+    IFState *s;
+
+    s = chunknew (ichunk) IFState;
+    s->active = !ifs->skipping;
+    s->skipping = TRUE;	/* ! */
+    s->expect_else = TRUE;
+    s->level = include_level + 1;
+    s->prev = ifs;
+    ifs = s;
+}
+
+/*
+ * pop an ifstate from the stack
+ */
+void IFState::pop()
+{
+    ifs = prev;
+
+    delete this;
+}
+
 
 static char **idirs;		/* include directory array */
 static char pri[NR_TOKENS + 1];	/* operator priority table */
 static bool init_pri;		/* has the priority table been initialized? */
-static int include_level;	/* current #include level */
-static ifstate *ifs;		/* current conditional inclusion state */
-static ifstate top;		/* initial ifstate */
+static IFState top;		/* initial ifstate */
 
 # define UNARY	0x10
 
 /*
- * NAME:	pp->init()
- * DESCRIPTION:	initialize preprocessor. Return TRUE if the input file could
- *		be opened.
+ * initialize preprocessor. Return TRUE if the input file could
+ * be opened.
  */
-bool pp_init(char *file, char **id, String **strs, int nstr, int level)
+bool PP::init(char *file, char **id, String **strs, int nstr, int level)
 {
     top.active = TRUE;
     top.skipping = FALSE;
     top.expect_else = FALSE;
     top.level = 0;
-    top.prev = (ifstate *) NULL;
+    top.prev = (IFState *) NULL;
 
-    tk_init();
+    TokenBuf::init();
     if (strs != (String **) NULL) {
-	tk_include(file, strs, nstr);
-    } else if (!tk_include(file, (String **) NULL, 0)) {
-	tk_clear();
+	TokenBuf::include(file, strs, nstr);
+    } else if (!TokenBuf::include(file, (String **) NULL, 0)) {
+	TokenBuf::clear();
 	return FALSE;
     }
-    mc_init();
-    special_define();
-    mc_define("__DGD__", "\x0091\x009", -1);	/* HT 1 HT */
-    pps_init();
+    Macro::init();
+    Special::define();
+    Macro::define("__DGD__", "\x0091\x009", -1);	/* HT 1 HT */
     include_level = level;
     ifs = &top;
 
@@ -109,80 +140,46 @@ bool pp_init(char *file, char **id, String **strs, int nstr, int level)
 }
 
 /*
- * NAME:	push()
- * DESCRIPTION:	push a new ifstate on the stack
+ * terminate preprocessor
  */
-static void push()
+void PP::clear()
 {
-    ifstate *s;
-
-    s = chunknew (ichunk) ifstate;
-    s->active = !ifs->skipping;
-    s->skipping = TRUE;	/* ! */
-    s->expect_else = TRUE;
-    s->level = include_level + 1;
-    s->prev = ifs;
-    ifs = s;
-}
-
-/*
- * NAME:	pop()
- * DESCRIPTION:	pop an ifstate from the stack
- */
-static void pop()
-{
-    ifstate *s;
-
-    s = ifs;
-    ifs = ifs->prev;
-
-    delete s;
-}
-
-/*
- * NAME:	pp->clear()
- * DESCRIPTION:	terminate preprocessor
- */
-void pp_clear()
-{
-    pps_clear();
+    Str::clear();
     while (ifs != &top) {
-	pop();
+	ifs->pop();
     }
     ichunk.clean();
-    mc_clear();
-    tk_clear();
+    Macro::clear();
+    TokenBuf::clear();
 }
 
 /*
- * NAME:	wsgettok()
- * DESCRIPTION:	get an unpreprocessed token, skipping white space
+ * get an unpreprocessed token, skipping white space
  */
-static int wsgettok()
+int PP::wsgettok()
 {
     int token;
 
     do {
-	token = tk_gettok();
+	token = TokenBuf::gettok();
     } while (token == ' ');
 
     return token;
 }
 
 /*
- * NAME:	mcgtok()
- * DESCRIPTION:	get a token, while expanding macros
+ * get a token, while expanding macros
  */
-static int mcgtok()
+int PP::mcgtok()
 {
     int token;
-    macro *mc;
+    Macro *mc;
 
     for (;;) {
-	token = tk_gettok();
+	token = TokenBuf::gettok();
 	if (token == IDENTIFIER) {
-	    mc = mc_lookup(yytext);
-	    if (mc != (macro *) NULL && tk_expand(mc) > 0) {
+	    mc = Macro::lookup(yytext);
+	    if (mc != (Macro *) NULL && TokenBuf::expand(mc) > 0) {
 		continue;
 	    }
 	}
@@ -191,10 +188,9 @@ static int mcgtok()
 }
 
 /*
- * NAME:	wsmcgtok()
- * DESCRIPTION:	get a preprocessed token, skipping white space
+ * get a preprocessed token, skipping white space
  */
-static int wsmcgtok()
+int PP::wsmcgtok()
 {
     int token;
 
@@ -212,11 +208,10 @@ static int expr_keep;	/* single character unget buffer for expr_get() */
 # define expr_unclr()	expr_keep = EOF
 
 /*
- * NAME:	expr_get()
- * DESCRIPTION:	get a token from the input stream, handling defined(IDENT),
- *		replacing undefined identifiers by 0
+ * get a token from the input stream, handling defined(IDENT),
+ * replacing undefined identifiers by 0
  */
-static int expr_get()
+int PP::expr_get()
 {
     char buf[MAX_LINE_SIZE];
     int token;
@@ -249,7 +244,7 @@ static int expr_get()
 			expr_unget(token);
 		    }
 		}
-		yynumber = (mc_lookup(buf) != (macro *) NULL);
+		yynumber = (Macro::lookup(buf) != (Macro *) NULL);
 	    } else {
 		/* this identifier isn't a macro */
 		yynumber = 0;
@@ -261,10 +256,9 @@ static int expr_get()
 }
 
 /*
- * NAME:	eval_expr()
- * DESCRIPTION:	evaluate an expression following #if
+ * evaluate an expression following #if
  */
-static long eval_expr(int priority)
+long PP::eval_expr(int priority)
 {
     int token;
     long expr, expr2;
@@ -369,11 +363,10 @@ static long eval_expr(int priority)
 # define PP_PRAGMA	12
 
 /*
- * NAME:	pptokenz()
- * DESCRIPTION:	return a number in the range 1..12 specifying which preprocessor
- *		directive the argument is, or 0 if it isn't.
+ * return a number in the range 1..12 specifying which preprocessor
+ * directive the argument is, or 0 if it isn't.
  */
-static int pptokenz(char *key, unsigned int len)
+int PP::pptokenz(char *key, unsigned int len)
 {
     static const char *keyword[] = {
       "else", "error", "line", "elif", "endif", "if", "define",
@@ -394,12 +387,11 @@ static int pptokenz(char *key, unsigned int len)
 # define FIRST_KEYWORD	VOID
 
 /*
- * NAME:	tokenz()
- * DESCRIPTION:	return a number in the range 1..31 specifying which keyword
- *		the argument is, or 0 if it isn't. Note that the keywords must
- *		be given in the same order here as in parser.y.
+ * return a number in the range 1..31 specifying which keyword
+ * the argument is, or 0 if it isn't. Note that the keywords must
+ * be given in the same order here as in parser.y.
  */
-static int tokenz(char *key, unsigned int len)
+int PP::tokenz(char *key, unsigned int len)
 {
     static const char *keyword[] = {
       "void", "inherit", "mapping", "break", "else", "case", "nil", "for",
@@ -426,25 +418,23 @@ static int tokenz(char *key, unsigned int len)
 }
 
 /*
- * NAME:	unexpected()
- * DESCRIPTION:	an error has occured, print appropriate errormessage and skip
- *		till \n found
+ * an error has occured, print appropriate errormessage and skip
+ * till \n found
  */
-static void unexpected(int token, const char *wanted, const char *directive)
+void PP::unexpected(int token, const char *wanted, const char *directive)
 {
     if (token == LF) {
 	error("missing %s in #%s", wanted, directive);
     } else {
 	error("unexpected token in #%s", directive);
-	tk_skiptonl(FALSE);
+	TokenBuf::skiptonl(FALSE);
     }
 }
 
 /*
- * NAME:	do_include()
- * DESCRIPTION:	handle an #include preprocessing directive
+ * handle an #include preprocessing directive
  */
-static void do_include()
+void PP::do_include()
 {
     char file[MAX_LINE_SIZE], path[STRINGSZ + MAX_LINE_SIZE], buf[STRINGSZ];
     int token;
@@ -455,13 +445,13 @@ static void do_include()
 
     if (include_level == INCLUDEDEPTH) {
 	error("#include nesting too deep");
-	tk_skiptonl(FALSE);
+	TokenBuf::skiptonl(FALSE);
 	return;
     }
 
-    tk_header(TRUE);
+    TokenBuf::header(TRUE);
     token = wsmcgtok();
-    tk_header(FALSE);
+    TokenBuf::header(FALSE);
 
     if (idirs == (char **) NULL) {
 	error("illegal #include from config file");
@@ -469,17 +459,17 @@ static void do_include()
     }
     if (token == STRING_CONST) {
 	strcpy(file, yytext);
-	tk_skiptonl(TRUE);
+	TokenBuf::skiptonl(TRUE);
 
 	/* first try the path direct */
-	include = path_include(buf, tk_filename(), file, &strs, &nstr);
-	if (tk_include(include, strs, nstr)) {
+	include = path_include(buf, TokenBuf::filename(), file, &strs, &nstr);
+	if (TokenBuf::include(include, strs, nstr)) {
 	    include_level++;
 	    return;
 	}
     } else if (token == INCL_CONST) {
 	strcpy(file, yytext);
-	tk_skiptonl(TRUE);
+	TokenBuf::skiptonl(TRUE);
     } else {
 	unexpected(token, "filename", "include");
 	return;
@@ -490,8 +480,8 @@ static void do_include()
 	strcpy(path, *idir);
 	strcat(path, "/");
 	strcat(path, file);
-	include = path_include(buf, tk_filename(), path, &strs, &nstr);
-	if (tk_include(include, strs, nstr)) {
+	include = path_include(buf, TokenBuf::filename(), path, &strs, &nstr);
+	if (TokenBuf::include(include, strs, nstr)) {
 	    include_level++;
 	    return;
 	}
@@ -500,11 +490,10 @@ static void do_include()
 }
 
 /*
- * NAME:	argnum()
- * DESCRIPTION:	return the index in the parameter list if the supplied token is
- *		a parameter, -1 otherwise
+ * return the index in the parameter list if the supplied token is
+ * a parameter, -1 otherwise
  */
-static int argnum(char **args, int narg, int token)
+int PP::argnum(char **args, int narg, int token)
 {
     if (token == IDENTIFIER) {
 	while (narg > 0) {
@@ -517,14 +506,13 @@ static int argnum(char **args, int narg, int token)
 }
 
 /*
- * NAME:	do_define()
- * DESCRIPTION:	handle a #define preprocessor directive
+ * handle a #define preprocessor directive
  */
-static void do_define()
+void PP::do_define()
 {
     char name[MAX_LINE_SIZE], buf[MAX_REPL_SIZE], *args[MAX_NARG], *arg;
     int token, i, narg, errcount;
-    str *s;
+    Str *s;
     bool seen_space;
 
     token = wsgettok();
@@ -536,8 +524,8 @@ static void do_define()
 
     /* scan parameter list (if any) */
     errcount = 0;
-    tk_setpp(TRUE);
-    token = tk_gettok();
+    TokenBuf::setpp(TRUE);
+    token = TokenBuf::gettok();
     if (token == '(') {
 	narg = 0;
 	token = wsgettok();
@@ -551,7 +539,7 @@ static void do_define()
 		if (token != IDENTIFIER) {
 		    error("unexpected token in macro parameter list");
 		    errcount++;
-		    tk_skiptonl(FALSE);
+		    TokenBuf::skiptonl(FALSE);
 		    break;
 		}
 		if (narg < MAX_NARG) {
@@ -560,7 +548,7 @@ static void do_define()
 		} else {
 		    error("too many parameters in macro definition");
 		    errcount++;
-		    tk_skiptonl(FALSE);
+		    TokenBuf::skiptonl(FALSE);
 		    break;
 		}
 		token = wsgettok();
@@ -575,13 +563,13 @@ static void do_define()
 		if (token != ',') {
 		    error("unexpected token in macro parameter list");
 		    errcount++;
-		    tk_skiptonl(FALSE);
+		    TokenBuf::skiptonl(FALSE);
 		    break;
 		}
 		token = wsgettok();
 	    }
 	    if (errcount > 0) {
-		tk_setpp(FALSE);
+		TokenBuf::setpp(FALSE);
 		while (narg > 0) {
 		    --narg;
 		    AFREE(args[narg]);
@@ -598,8 +586,8 @@ static void do_define()
 	}
     }
 
-    s = pps_new(buf, sizeof(buf));
-    pps_ccat(s, HT);
+    s = Str::create(buf, sizeof(buf));
+    s->append(HT);
     seen_space = FALSE;
 
     /* scan replacement list */
@@ -612,13 +600,13 @@ static void do_define()
 		token = wsgettok();
 		i = argnum(args, narg, token);
 		if (i >= 0) {
-		    pps_scat(s, "\011\012");	/* HT LF */
-		    pps_ccat(s, (i | MA_TAG | MA_STRING));
-		    pps_ccat(s, HT);
+		    s->append("\011\012");	/* HT LF */
+		    s->append((i | MA_TAG | MA_STRING));
+		    s->append(HT);
 		} else {
 		    error("# must be followed by parameter");
 		    errcount++;
-		    tk_skiptonl(FALSE);
+		    TokenBuf::skiptonl(FALSE);
 		    break;
 		}
 	    } else if (token == HASH_HASH) {
@@ -626,7 +614,7 @@ static void do_define()
 		if (s->len == 1) {
 		    error("## at start of macro replacement list");
 		    errcount++;
-		    tk_skiptonl(FALSE);
+		    TokenBuf::skiptonl(FALSE);
 		    break;
 		}
 		token = wsgettok();
@@ -643,31 +631,31 @@ static void do_define()
 		}
 		i = argnum(args, narg, token);
 		if (i >= 0) {
-		    pps_ccat(s, LF);
-		    pps_ccat(s, (i | MA_TAG | MA_NOEXPAND));
-		    pps_ccat(s, HT);
+		    s->append(LF);
+		    s->append((i | MA_TAG | MA_NOEXPAND));
+		    s->append(HT);
 		} else {
-		    pps_scat(s, yytext);
+		    s->append(yytext);
 		}
 	    } else {
 		i = argnum(args, narg, token);
 		if (i >= 0) {
-		    pps_scat(s, "\011\012");	/* HT LF */
-		    pps_ccat(s, (i | MA_TAG));
-		    pps_ccat(s, HT);
+		    s->append("\011\012");	/* HT LF */
+		    s->append((i | MA_TAG));
+		    s->append(HT);
 		} else {
 		    if (seen_space) {
-			pps_ccat(s, ' ');
+			s->append(' ');
 		    }
-		    pps_scat(s, yytext);
+		    s->append(yytext);
 		}
 	    }
 	    seen_space = FALSE;
 	}
-	token = tk_gettok();
+	token = TokenBuf::gettok();
     }
-    pps_ccat(s, HT);
-    tk_setpp(FALSE);
+    s->append(HT);
+    TokenBuf::setpp(FALSE);
 
     for (i = narg; i > 0; ) {
 	--i;
@@ -679,45 +667,44 @@ static void do_define()
     if (errcount == 0) {
 	if (i < 0) {
 	    error("macro replacement list too large");
-	} else if (special_replace(name) != (char *) NULL) {
+	} else if (Special::replace(name) != (char *) NULL) {
 	    error("#define of predefined macro");
 	} else {
-	    mc_define(name, buf, narg);
+	    Macro::define(name, buf, narg);
 	}
     }
 }
 
 /*
- * NAME:	pp->gettok()
- * DESCRIPTION:	get a preprocessed token from the input stream, handling
- *		preprocessor directives.
+ * get a preprocessed token from the input stream, handling
+ * preprocessor directives.
  */
-int pp_gettok()
+int PP::gettok()
 {
     int token;
-    macro *mc;
+    Macro *mc;
 
     for (;;) {
 	if (ifs->skipping) {
-	    tk_setpp(TRUE);
+	    TokenBuf::setpp(TRUE);
 	    token = wsgettok();
-	    tk_setpp(FALSE);
+	    TokenBuf::setpp(FALSE);
 	    if (token != '#' && token != LF && token != EOF) {
-		tk_skiptonl(FALSE);
+		TokenBuf::skiptonl(FALSE);
 		continue;
 	    }
 	} else {
-	    token = tk_gettok();
+	    token = TokenBuf::gettok();
 	}
 	switch (token) {
 	case EOF:
 	    while (ifs->level > include_level) {
 		error("missing #endif");
-		pop();
+		ifs->pop();
 	    }
 	    if (include_level > 0) {
 		--include_level;
-		tk_endinclude();
+		TokenBuf::endinclude();
 		continue;
 	    }
 	    return token;
@@ -750,8 +737,8 @@ int pp_gettok()
 	    return token;
 
 	case IDENTIFIER:
-	    mc = mc_lookup(yytext);
-	    if (mc != (macro *) NULL && tk_expand(mc) > 0) {
+	    mc = Macro::lookup(yytext);
+	    if (mc != (Macro *) NULL && TokenBuf::expand(mc) > 0) {
 		break;
 	    }
 	    token = tokenz(yytext, yyleng);
@@ -781,10 +768,10 @@ int pp_gettok()
 	    if (token == IDENTIFIER) {
 		switch (pptokenz(yytext, strlen(yytext))) {
 		case PP_IF:
-		    push();
+		    IFState::push();
 		    if (!ifs->active) {
 			/* #if within unactive or skipped #if */
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 			break;
 		    }
 
@@ -792,59 +779,59 @@ int pp_gettok()
 		    expr_unclr();
 		    ifs->skipping = (eval_expr(0) == 0);
 		    if (expr_get() != LF) {
-			tk_skiptonl(TRUE);
+			TokenBuf::skiptonl(TRUE);
 		    }
 		    break;
 
 		case PP_ELIF:
 		    if (ifs == &top) {
 			error("#elif without #if");
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 		    } else if (!ifs->expect_else) {
 			error("#elif after #else");
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 		    } else if (!ifs->active || !ifs->skipping) {
 			/* #elif within unactive/after non-skipped #if */
 			ifs->active = FALSE;
 			ifs->skipping = TRUE;
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 		    } else {
 			/* get #elif expression */
 			expr_unclr();
 			ifs->skipping = (eval_expr(0) == 0);
 			if (expr_get() != LF) {
-			    tk_skiptonl(TRUE);
+			    TokenBuf::skiptonl(TRUE);
 			}
 		    }
 		    break;
 
 		case PP_IFDEF:
-		    push();
+		    IFState::push();
 		    if (!ifs->active) {
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 			break;
 		    }
 		    token = wsgettok();
 		    if (token == IDENTIFIER) {
 			ifs->skipping =
-			  (mc_lookup(yytext) == (macro *) NULL);
-			tk_skiptonl(TRUE);
+			  (Macro::lookup(yytext) == (Macro *) NULL);
+			TokenBuf::skiptonl(TRUE);
 		    } else {
 			unexpected(token, "identifier", "ifdef");
 		    }
 		    break;
 
 		case PP_IFNDEF:
-		    push();
+		    IFState::push();
 		    if (!ifs->active) {
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 			break;
 		    }
 		    token = wsgettok();
 		    if (token == IDENTIFIER) {
 			ifs->skipping =
-			  (mc_lookup(yytext) != (macro *) NULL);
-			tk_skiptonl(TRUE);
+			  (Macro::lookup(yytext) != (Macro *) NULL);
+			TokenBuf::skiptonl(TRUE);
 		    } else {
 			unexpected(token, "identifier", "ifndef");
 		    }
@@ -853,44 +840,44 @@ int pp_gettok()
 		case PP_ELSE:
 		    if (ifs == &top) {
 			error("#else without #if");
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 		    } else if (!ifs->expect_else) {
 			error("#else after #else");
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 		    } else {
 			ifs->expect_else = FALSE;
 			ifs->skipping ^= ifs->active;
-			tk_skiptonl(TRUE);
+			TokenBuf::skiptonl(TRUE);
 		    }
 		    break;
 
 		case PP_ENDIF:
 		    if (ifs->level <= include_level) {
 			error("#endif without #if");
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 		    } else {
-			pop();
-			tk_skiptonl(TRUE);
+			ifs->pop();
+			TokenBuf::skiptonl(TRUE);
 		    }
 		    break;
 
 		case PP_ERROR:
 		    if (!ifs->skipping) {
 			char buf[MAX_LINE_SIZE];
-			str *s;
+			Str *s;
 
-			s = pps_new(buf, sizeof(buf));
-			tk_setpp(TRUE);
+			s = Str::create(buf, sizeof(buf));
+			TokenBuf::setpp(TRUE);
 			for (;;) {
 			    token = mcgtok();
 			    if (token == LF || token == EOF) {
 				break;
 			    }
 			    if (token != HT) {
-				pps_scat(s, yytext);
+				s->append(yytext);
 			    }
 			}
-			tk_setpp(FALSE);
+			TokenBuf::setpp(FALSE);
 			if (s->len == 0) {
 			    error("#error directive");
 			} else {
@@ -898,13 +885,13 @@ int pp_gettok()
 			}
 			delete s;
 		    } else {
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 		    }
 		    break;
 
 		case PP_LINE:
 		    if (ifs->skipping) {
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 			break;
 		    }
 		    token = wsmcgtok();
@@ -912,12 +899,12 @@ int pp_gettok()
 			unexpected(token, "number", "line");
 			break;
 		    }
-		    tk_setline((unsigned short) yynumber - 1);
-		    tk_header(TRUE);
+		    TokenBuf::setline((unsigned short) yynumber - 1);
+		    TokenBuf::header(TRUE);
 		    token = wsmcgtok();
-		    tk_header(FALSE);
+		    TokenBuf::header(FALSE);
 		    if (token == STRING_CONST) {
-			tk_setfilename(yytext);
+			TokenBuf::setfilename(yytext);
 			token = wsmcgtok();
 		    }
 		    if (token != LF) {
@@ -928,7 +915,7 @@ int pp_gettok()
 
 		case PP_INCLUDE:
 		    if (ifs->skipping) {
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 			break;
 		    }
 		    do_include();
@@ -936,7 +923,7 @@ int pp_gettok()
 
 		case PP_DEFINE:
 		    if (ifs->skipping) {
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 			break;
 		    }
 		    do_define();
@@ -944,17 +931,17 @@ int pp_gettok()
 
 		case PP_UNDEF:
 		    if (ifs->skipping) {
-			tk_skiptonl(FALSE);
+			TokenBuf::skiptonl(FALSE);
 			break;
 		    }
 		    token = wsgettok();
 		    if (token == IDENTIFIER) {
-			if (special_replace(yytext) != (char *) NULL) {
+			if (Special::replace(yytext) != (char *) NULL) {
 			    error("#undef of predefined macro");
 			} else {
-			    mc_undef(yytext);
+			    Macro::undef(yytext);
 			}
-			tk_skiptonl(TRUE);
+			TokenBuf::skiptonl(TRUE);
 		    } else {
 			unexpected(token, "identifier", "undef");
 		    }
@@ -962,17 +949,17 @@ int pp_gettok()
 
 		case PP_PRAGMA:
 		    /* no pragmas */
-		    tk_skiptonl(FALSE);
+		    TokenBuf::skiptonl(FALSE);
 		    break;
 
 		default:
 		    error("undefined control");
-		    tk_skiptonl(FALSE);
+		    TokenBuf::skiptonl(FALSE);
 		    break;
 		}
 	    } else if (token != LF) {
 		error("undefined control");
-		tk_skiptonl(FALSE);
+		TokenBuf::skiptonl(FALSE);
 	    }
 	    break;
 	}

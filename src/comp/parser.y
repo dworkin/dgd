@@ -39,7 +39,7 @@
 # include "node.h"
 # include "compile.h"
 
-# define yylex		pp_gettok
+# define yylex		PP::gettok
 # define yyerror	c_error
 
 int nerrors;			/* number of errors encountered so far */

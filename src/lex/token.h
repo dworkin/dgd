@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,19 +17,49 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void		 tk_init	();
-extern void		 tk_clear	();
-extern bool		 tk_include	(char*, String**, int);
-extern void		 tk_endinclude	();
-extern unsigned short	 tk_line	();
-extern char		*tk_filename	();
-extern void		 tk_setline	(unsigned short);
-extern void		 tk_setfilename	(char*);
-extern void		 tk_header	(bool);
-extern void		 tk_setpp	(int);
-extern int		 tk_gettok	();
-extern void		 tk_skiptonl	(int);
-extern int		 tk_expand	(macro*);
+class TokenBuf : public ChunkAllocated {
+public:
+    static void init();
+    static void clear();
+    static bool include(char *file, String **strs, int nstr);
+    static void endinclude();
+    static unsigned short line();
+    static char *filename();
+    static void setline(unsigned short line);
+    static void setfilename(char *file);
+    static void header(bool incl);
+    static void setpp(int pp);
+    static int gettok();
+    static void skiptonl(int ws);
+    static int expand(Macro *mc);
+
+private:
+    void pop();
+
+    static void push(Macro *mc, char *buffer, unsigned int buflen, bool eof);
+    static int gc();
+    static void skip_comment();
+    static void skip_alt_comment();
+    static void comment(bool flag);
+    static char *esc(char *p);
+    static int string(char quote);
+
+    String **strs;		/* input buffer array */
+    int nstr;			/* number of input buffers */
+    char *buffer;		/* token buffer */
+    char *p;			/* token buffer pointer */
+    int inbuf;			/* # chars in token buffer */
+    char ubuf[4];		/* unget buffer */
+    char *up;			/* unget buffer pointer */
+    bool eof;			/* TRUE if empty(buffer) -> EOF */
+    unsigned short _line;	/* line number */
+    int fd;			/* file descriptor */
+    union {
+	char *_filename;	/* file name */
+	Macro *mc;		/* macro this buffer is an expansion of */
+    };
+    TokenBuf *prev;		/* previous token buffer */
+};
 
 extern char *yytext;
 extern int yyleng;

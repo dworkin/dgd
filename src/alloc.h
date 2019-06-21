@@ -246,7 +246,7 @@ private:
 
 	item = (Titem *) ptr;
 # ifdef DEBUG
-	memset(item, '\xdd', sizeof(Titem));
+	memset((void *) item, '\xdd', sizeof(Titem));
 # endif
 	item->list = flist;
 	flist = item;

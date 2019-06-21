@@ -85,7 +85,7 @@ node *node_int(Int num)
 {
     node *n;
 
-    n = node_new(tk_line());
+    n = node_new(TokenBuf::line());
     n->type = N_INT;
     n->flags = F_CONST;
     n->mod = T_INT;
@@ -102,7 +102,7 @@ node *node_float(Float *flt)
 {
     node *n;
 
-    n = node_new(tk_line());
+    n = node_new(TokenBuf::line());
     n->type = N_FLOAT;
     n->flags = F_CONST;
     n->mod = T_FLOAT;
@@ -119,7 +119,7 @@ node *node_nil()
 {
     node *n;
 
-    n = node_new(tk_line());
+    n = node_new(TokenBuf::line());
     n->type = nil_node;
     n->flags = F_CONST;
     n->mod = Value::nil.type;
@@ -136,7 +136,7 @@ node *node_str(String *str)
 {
     node *n;
 
-    n = node_new(tk_line());
+    n = node_new(TokenBuf::line());
     n->type = N_STR;
     n->flags = F_CONST;
     n->mod = T_STRING;
@@ -155,7 +155,7 @@ node *node_var(unsigned int type, int idx)
 {
     node *n;
 
-    n = node_new(tk_line());
+    n = node_new(TokenBuf::line());
     n->type = N_VAR;
     n->mod = type;
     n->l.number = idx;
@@ -171,7 +171,7 @@ node *node_type(int type, String *tclass)
 {
     node *n;
 
-    n = node_new(tk_line());
+    n = node_new(TokenBuf::line());
     n->type = N_TYPE;
     n->mod = type;
     n->sclass = tclass;
@@ -190,7 +190,7 @@ node *node_fcall(int mod, String *tclass, char *func, Int call)
 {
     node *n;
 
-    n = node_new(tk_line());
+    n = node_new(TokenBuf::line());
     n->type = N_FUNC;
     n->mod = mod;
     n->sclass = tclass;
@@ -220,7 +220,7 @@ node *node_mon(int type, int mod, node *left)
 {
     node *n;
 
-    n = node_new(tk_line());
+    n = node_new(TokenBuf::line());
     n->type = type;
     n->mod = mod;
     n->l.left = left;
@@ -237,7 +237,7 @@ node *node_bin(int type, int mod, node *left, node *right)
 {
     node *n;
 
-    n = node_new(tk_line());
+    n = node_new(TokenBuf::line());
     n->type = type;
     n->mod = mod;
     n->l.left = left;

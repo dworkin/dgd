@@ -807,7 +807,7 @@ static int ntports, nbports, ndports;
  */
 static void conferr(const char *err)
 {
-    message("Config error, line %u: %s\012", tk_line(), err);	/* LF */
+    message("Config error, line %u: %s\012", TokenBuf::line(), err);	/* LF */
 }
 
 /*
@@ -829,7 +829,7 @@ static bool conf_config()
     memset(dirs, '\0', sizeof(dirs));
     strs = (char **) NULL;
 
-    while ((c=pp_gettok()) != EOF) {
+    while ((c=PP::gettok()) != EOF) {
 	if (c != IDENTIFIER) {
 	    conferr("option expected");
 	    return FALSE;
@@ -854,12 +854,12 @@ static bool conf_config()
 	    }
 	}
 
-	if (pp_gettok() != '=') {
+	if (PP::gettok() != '=') {
 	    conferr("'=' expected");
 	    return FALSE;
 	}
 
-	if ((c=pp_gettok()) != conf[m].type) {
+	if ((c=PP::gettok()) != conf[m].type) {
 	    if (c != INT_CONST && c != STRING_CONST && c != '(') {
 		conferr("syntax error");
 		return FALSE;
@@ -918,7 +918,7 @@ static bool conf_config()
 	    break;
 
 	case '(':
-	    if (pp_gettok() != '{') {
+	    if (PP::gettok() != '{') {
 		conferr("'{' expected");
 		return FALSE;
 	    }
@@ -928,7 +928,7 @@ static bool conf_config()
 	    case INCLUDE_DIRS:	strs = dirs; break;
 	    }
 	    for (;;) {
-		if (pp_gettok() != STRING_CONST) {
+		if (PP::gettok() != STRING_CONST) {
 		    conferr("string expected");
 		    return FALSE;
 		}
@@ -940,7 +940,7 @@ static bool conf_config()
 		strs[l] = strcpy(ALLOC(char, strlen(yytext) + 1), yytext);
 		l++;
 		Alloc::dynamicMode();
-		if ((c=pp_gettok()) == '}') {
+		if ((c=PP::gettok()) == '}') {
 		    break;
 		}
 		if (c != ',') {
@@ -948,7 +948,7 @@ static bool conf_config()
 		    return FALSE;
 		}
 	    }
-	    if (pp_gettok() != ')') {
+	    if (PP::gettok() != ')') {
 		conferr("')' expected");
 		return FALSE;
 	    }
@@ -956,12 +956,12 @@ static bool conf_config()
 	    break;
 
 	case '[':
-	    if (pp_gettok() != '[') {
+	    if (PP::gettok() != '[') {
 		conferr("'[' expected");
 		return FALSE;
 	    }
 	    l = 0;
-	    if ((c=pp_gettok()) != ']') {
+	    if ((c=PP::gettok()) != ']') {
 		switch (m) {
 		case BINARY_PORT:
 		    strs = bhosts;
@@ -995,11 +995,11 @@ static bool conf_config()
 					 yytext);
 			Alloc::dynamicMode();
 		    }
-		    if (pp_gettok() != ':') {
+		    if (PP::gettok() != ':') {
 			conferr("':' expected");
 			return FALSE;
 		    }
-		    if (pp_gettok() != INT_CONST) {
+		    if (PP::gettok() != INT_CONST) {
 			conferr("integer expected");
 			return FALSE;
 		    }
@@ -1008,17 +1008,17 @@ static bool conf_config()
 			return FALSE;
 		    }
 		    ports[l++] = yylval.number;
-		    if ((c=pp_gettok()) == ']') {
+		    if ((c=PP::gettok()) == ']') {
 			break;
 		    }
 		    if (c != ',') {
 			conferr("',' expected");
 			return FALSE;
 		    }
-		    c = pp_gettok();
+		    c = PP::gettok();
 		}
 	    }
-	    if (pp_gettok() != ')') {
+	    if (PP::gettok() != ')') {
 		conferr("')' expected");
 		return FALSE;
 	    }
@@ -1038,12 +1038,12 @@ static bool conf_config()
 	    break;
 
 	case ']':
-	    if (pp_gettok() != '[') {
+	    if (PP::gettok() != '[') {
 		conferr("'[' expected");
 		return FALSE;
 	    }
 	    l = 0;
-	    if ((c=pp_gettok()) != ']') {
+	    if ((c=PP::gettok()) != ']') {
 		for (;;) {
 		    if (l == MAX_STRINGS - 1) {
 			conferr("mapping too large");
@@ -1057,11 +1057,11 @@ static bool conf_config()
 		    modules[l] = strcpy(ALLOC(char, strlen(yytext) + 1),
 					yytext);
 		    Alloc::dynamicMode();
-		    if (pp_gettok() != ':') {
+		    if (PP::gettok() != ':') {
 			conferr("':' expected");
 			return FALSE;
 		    }
-		    if (pp_gettok() != STRING_CONST) {
+		    if (PP::gettok() != STRING_CONST) {
 			conferr("string expected");
 			return FALSE;
 		    }
@@ -1069,17 +1069,17 @@ static bool conf_config()
 		    modconf[l++] = strcpy(ALLOC(char, strlen(yytext) + 1),
 					  yytext);
 		    Alloc::dynamicMode();
-		    if ((c=pp_gettok()) == ']') {
+		    if ((c=PP::gettok()) == ']') {
 			break;
 		    }
 		    if (c != ',') {
 			conferr("',' expected");
 			return FALSE;
 		    }
-		    c = pp_gettok();
+		    c = PP::gettok();
 		}
 	    }
-	    if (pp_gettok() != ')') {
+	    if (PP::gettok() != ')') {
 		conferr("')' expected");
 		return FALSE;
 	    }
@@ -1087,7 +1087,7 @@ static bool conf_config()
 	    break;
 	}
 	conf[m].set = TRUE;
-	if (pp_gettok() != ';') {
+	if (PP::gettok() != ';') {
 	    conferr("';' expected");
 	    return FALSE;
 	}
@@ -1446,14 +1446,14 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     /*
      * process config file
      */
-    if (!pp_init(path_native(buf, configfile), (char **) NULL, (String **) NULL,
-		 0, 0)) {
+    if (!PP::init(path_native(buf, configfile), (char **) NULL,
+		  (String **) NULL, 0, 0)) {
 	message("Config error: cannot open config file\012");	/* LF */
 	Alloc::finish();
 	return FALSE;
     }
     init = conf_config();
-    pp_clear();
+    PP::clear();
     Alloc::purge();
     if (!init) {
 	Alloc::finish();

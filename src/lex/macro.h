@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,9 +19,20 @@
 
 # include "hash.h"
 
-struct macro : public Hashtab::Entry, public ChunkAllocated {
+class Macro : public Hashtab::Entry, public ChunkAllocated {
+public:
+    static void init();
+    static void clear();
+    static void define(const char *name, const char *replace, int narg);
+    static void undef(char *name);
+    static Macro *lookup(char *name);
+
     char *replace;		/* replace text */
     int narg;			/* number of arguments */
+
+private:
+    Macro(const char *name);
+    virtual ~Macro();
 };
 
 # define MA_NARG	0x1f
@@ -32,9 +43,3 @@ struct macro : public Hashtab::Entry, public ChunkAllocated {
 # define MAX_NARG	31
 
 # define MAX_REPL_SIZE	(4 * MAX_LINE_SIZE)
-
-extern void   mc_init	();
-extern void   mc_clear  ();
-extern void   mc_define (const char*, const char*, int);
-extern void   mc_undef  (char*);
-extern macro *mc_lookup (char*);
