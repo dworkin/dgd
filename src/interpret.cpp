@@ -1871,7 +1871,7 @@ void Frame::interpret(char *pc)
     }
 }
 
-extern bool ext_execute(const Frame*, int, Value*);
+extern bool ext_execute(const Frame*, int);
 
 /*
  * Call a function in an object. The arguments must be on the stack already.
@@ -2080,12 +2080,12 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
     }
 
     /* execute code */
-    if (!ext_execute(&f, funci, &val)) {
+    if (!ext_execute(&f, funci)) {
 	f.ctrl->funCalls();	/* make sure they are available */
 	f.prog = pc += 2;
 	f.interpret(pc);
-	val = *f.sp++;
     }
+    val = *f.sp++;
 
     /* clean up stack, move return value to outer stackframe */
 # ifdef DEBUG

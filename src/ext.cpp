@@ -31,7 +31,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	0
-# define EXTENSION_MINOR	12
+# define EXTENSION_MINOR	13
 
 
 /*
@@ -433,20 +433,20 @@ static void ext_spawn(void (*fdlist)(int*, int), void (*finish)())
 }
 
 static int (*jit_init)(int, int, size_t, size_t, int, int, uint8_t*, size_t,
-		       int);
+		       void**);
 static void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
 			   uint8_t*, size_t, uint8_t*, size_t);
-static int (*jit_execute)(uint64_t, uint64_t, int, int, Value*);
+static int (*jit_execute)(uint64_t, uint64_t, int, int);
 
 /*
  * NAME:        ext->jit()
  * DESCRIPTION: initialize JIT extension
  */
 static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, uint8_t*,
-				size_t, int),
+				size_t, void**),
                     void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
                                     int, uint8_t*, size_t, uint8_t*, size_t),
-                    int (*execute)(uint64_t, uint64_t, int, int, Value*))
+                    int (*execute)(uint64_t, uint64_t, int, int))
 {
     jit_init = init;
     jit_compile = compile;
@@ -459,10 +459,14 @@ static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, uint8_t*,
  */
 void ext_kfuns(char *protos, int size, int nkfun)
 {
-    if (jit_compile != NULL && !(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR,
-					    sizeof(Int), 1, KF_BUILTINS, nkfun,
-					    (uint8_t *) protos, size, nkfun)) {
-	jit_compile = NULL;
+    if (jit_compile != NULL) {
+	void *vmtab[88];
+
+	memset(vmtab, '\0', sizeof(vmtab));
+	if (!(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR, sizeof(Int), 1,
+			 KF_BUILTINS, nkfun, (uint8_t *) protos, size, vmtab)) {
+	    jit_compile = NULL;
+	}
     }
 }
 
@@ -470,7 +474,7 @@ void ext_kfuns(char *protos, int size, int nkfun)
  * NAME:	ext->execute()
  * DESCRIPTION:	JIT-compile and execute a function
  */
-bool ext_execute(const Frame *f, int func, Value *val)
+bool ext_execute(const Frame *f, int func)
 {
     Control *ctrl;
     int i, j, nftypes;
@@ -487,8 +491,7 @@ bool ext_execute(const Frame *f, int func, Value *val)
     if (ctrl->instance == 0) {
 	return FALSE;
     }
-    result = (*jit_execute)(ctrl->oindex, ctrl->instance, ctrl->version, func,
-			    val);
+    result = (*jit_execute)(ctrl->oindex, ctrl->instance, ctrl->version, func);
     if (result < 0) {
 	/*
 	 * compile new program
