@@ -1011,7 +1011,7 @@ static node *prefix(int op, node *n, const char *name)
 	t_unary(n, name);
 	type = n->mod;
     }
-    return node_mon(op, type, c_lvalue(n, name));
+    return node_mon((type == T_INT) ? op + 1 : op, type, c_lvalue(n, name));
 }
 
 /*
