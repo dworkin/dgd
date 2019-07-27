@@ -437,6 +437,7 @@ static int (*jit_init)(int, int, size_t, size_t, int, int, uint8_t*, size_t,
 static void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
 			   uint8_t*, size_t, uint8_t*, size_t);
 static int (*jit_execute)(uint64_t, uint64_t, int, int);
+static void (*jit_release)(uint64_t, uint64_t);
 
 /*
  * NAME:        ext->jit()
@@ -444,13 +445,15 @@ static int (*jit_execute)(uint64_t, uint64_t, int, int);
  */
 static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, uint8_t*,
 				size_t, void**),
-                    void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
-                                    int, uint8_t*, size_t, uint8_t*, size_t),
-                    int (*execute)(uint64_t, uint64_t, int, int))
+		    void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
+				    int, uint8_t*, size_t, uint8_t*, size_t),
+		    int (*execute)(uint64_t, uint64_t, int, int),
+		    void (*release)(uint64_t, uint64_t))
 {
     jit_init = init;
     jit_compile = compile;
     jit_execute = execute;
+    jit_release = release;
 }
 
 /*
