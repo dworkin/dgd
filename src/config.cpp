@@ -1428,6 +1428,7 @@ static bool conf_includes()
 
 
 extern bool ext_dgd (char*, char*, void (**)(int*, int), void (**)());
+extern void ext_finish();
 
 /*
  * NAME:	config->init()
@@ -1499,6 +1500,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 		P_close(fd);
 	    }
 	    conf_mod_finish();
+	    ext_finish();
 	    Alloc::finish();
 	    return FALSE;
 	}
@@ -1514,6 +1516,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    P_close(fd);
 	}
 	conf_mod_finish();
+	ext_finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1532,6 +1535,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    P_close(fd);
 	}
 	conf_mod_finish();
+	ext_finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1551,6 +1555,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    P_close(fd);
 	}
 	conf_mod_finish();
+	ext_finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1588,6 +1593,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    P_close(fd);
 	}
 	conf_mod_finish();
+	ext_finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1622,6 +1628,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    P_close(fd);
 	}
 	conf_mod_finish();
+	ext_finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1685,6 +1692,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	Array::freeall();
 	String::clean();
 	conf_mod_finish();
+	ext_finish();
 	Alloc::finish();
 	return FALSE;
     }

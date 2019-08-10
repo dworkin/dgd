@@ -434,6 +434,7 @@ static void ext_spawn(void (*fdlist)(int*, int), void (*finish)())
 
 static int (*jit_init)(int, int, size_t, size_t, int, int, uint8_t*, size_t,
 		       void**);
+static void (*jit_finish)();
 static void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
 			   uint8_t*, size_t, uint8_t*, size_t);
 static int (*jit_execute)(uint64_t, uint64_t, int, int);
@@ -445,12 +446,14 @@ static void (*jit_release)(uint64_t, uint64_t);
  */
 static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, uint8_t*,
 				size_t, void**),
+		    void (*finish)(),
 		    void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
 				    int, uint8_t*, size_t, uint8_t*, size_t),
 		    int (*execute)(uint64_t, uint64_t, int, int),
 		    void (*release)(uint64_t, uint64_t))
 {
     jit_init = init;
+    jit_finish = finish;
     jit_compile = compile;
     jit_execute = execute;
     jit_release = release;
@@ -643,4 +646,15 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     *fdlist = mod_fdlist;
     *finish = mod_finish;
     return TRUE;
+}
+
+/*
+ * NAME:	ext->finish()
+ * DESCRIPTION:	finish JIT compiler interface
+ */
+void ext_finish()
+{
+    if (jit_compile != NULL) {
+	(*jit_finish)();
+    }
 }

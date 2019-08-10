@@ -73,6 +73,8 @@ void interrupt()
     intr = TRUE;
 }
 
+extern void ext_finish();
+
 /*
  * NAME:	endtask()
  * DESCRIPTION:	clean up after a task has terminated
@@ -122,6 +124,7 @@ void endtask()
     if (Object::stop) {
 	Swap::finish();
 	conf_mod_finish();
+	ext_finish();
 
 	if (Object::boot) {
 	    char **hotboot;
