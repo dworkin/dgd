@@ -437,7 +437,7 @@ static int (*jit_init)(int, int, size_t, size_t, int, int, uint8_t*, size_t,
 static void (*jit_finish)();
 static void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
 			   uint8_t*, size_t, uint8_t*, size_t);
-static int (*jit_execute)(uint64_t, uint64_t, int, int);
+static int (*jit_execute)(uint64_t, uint64_t, int, int, void*);
 static void (*jit_release)(uint64_t, uint64_t);
 
 /*
@@ -449,7 +449,7 @@ static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, uint8_t*,
 		    void (*finish)(),
 		    void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
 				    int, uint8_t*, size_t, uint8_t*, size_t),
-		    int (*execute)(uint64_t, uint64_t, int, int),
+		    int (*execute)(uint64_t, uint64_t, int, int, void*),
 		    void (*release)(uint64_t, uint64_t))
 {
     jit_init = init;
@@ -497,7 +497,8 @@ bool ext_execute(const Frame *f, int func)
     if (ctrl->instance == 0) {
 	return FALSE;
     }
-    result = (*jit_execute)(ctrl->oindex, ctrl->instance, ctrl->version, func);
+    result = (*jit_execute)(ctrl->oindex, ctrl->instance, ctrl->version, func,
+			    (void *) f);
     if (result < 0) {
 	/*
 	 * compile new program
