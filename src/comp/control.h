@@ -205,8 +205,6 @@ private:
 # define CTRL_UNDEFINED		0x010	/* has undefined functions */
 # define CTRL_VARMAP		0x020	/* varmap updated */
 
-# define CTRL_VERSION		1	/* program version */
-
 /* data compression */
 # define CMP_TYPE		0x03
 # define CMP_NONE		0x00	/* no compression */

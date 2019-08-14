@@ -53,7 +53,7 @@ Control::Control()
     nctrl++;
 
     flags = 0;
-    version = CTRL_VERSION;
+    version = VERSION_VM_MINOR;
 
     nsectors = 0;		/* nothing on swap device yet */
     sectors = (Sector *) NULL;
