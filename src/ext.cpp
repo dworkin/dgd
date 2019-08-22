@@ -432,8 +432,8 @@ static void ext_spawn(void (*fdlist)(int*, int), void (*finish)())
     mod_finish = finish;
 }
 
-static int (*jit_init)(int, int, size_t, size_t, int, int, uint8_t*, size_t,
-		       void**);
+static int (*jit_init)(int, int, size_t, size_t, int, int, int, uint8_t*,
+		       size_t, void**);
 static void (*jit_finish)();
 static void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
 			   uint8_t*, size_t, uint8_t*, size_t);
@@ -444,8 +444,8 @@ static void (*jit_release)(uint64_t, uint64_t);
  * NAME:        ext->jit()
  * DESCRIPTION: initialize JIT extension
  */
-static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, uint8_t*,
-				size_t, void**),
+static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, int,
+				uint8_t*, size_t, void**),
 		    void (*finish)(),
 		    void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
 				    int, uint8_t*, size_t, uint8_t*, size_t),
@@ -470,7 +470,8 @@ void ext_kfuns(char *protos, int size, int nkfun)
 
 	memset(vmtab, '\0', sizeof(vmtab));
 	if (!(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR, sizeof(Int), 1,
-			 KF_BUILTINS, nkfun, (uint8_t *) protos, size, vmtab)) {
+			 conf_typechecking(), KF_BUILTINS, nkfun,
+			 (uint8_t *) protos, size, vmtab)) {
 	    jit_compile = NULL;
 	}
     }
