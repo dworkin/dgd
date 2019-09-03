@@ -91,18 +91,23 @@ void kf_clear()
  */
 static int kf_callgate(Frame *f, int nargs, kfunc *kf)
 {
-    Value val;
+    if (!setjmp(*ErrorContext::push())) {
+	Value val;
 
-    val = Value::nil;
-    (kf->ext)(f, nargs, &val);
-    val.ref();
-    f->pop(nargs);
-    *--f->sp = val;
-    if (kf->lval) {
-	f->kflv = TRUE;
-	PUSH_ARRVAL(f, ext_value_temp(f->data)->array);
+	val = Value::nil;
+	(kf->ext)(f, nargs, &val);
+	val.ref();
+	f->pop(nargs);
+	*--f->sp = val;
+	if (kf->lval) {
+	    f->kflv = TRUE;
+	    PUSH_ARRVAL(f, ext_value_temp(f->data)->array);
+	}
+
+	ErrorContext::pop();
+    } else {
+	error((char *) NULL);
     }
-
     return 0;
 }
 
@@ -351,7 +356,6 @@ int kf_func(const char *name)
  */
 int kf_encrypt(Frame *f, int nargs, kfunc *func)
 {
-    Value val;
     int n;
 
     UNREFERENCED_PARAMETER(func);
@@ -360,11 +364,11 @@ int kf_encrypt(Frame *f, int nargs, kfunc *func)
     if (n < 0) {
 	error("Unknown cipher");
     }
-    val = Value::nil;
-    (kfenc[n].ext)(f, nargs - 1, &val);
-    val.ref();
-    f->pop(nargs);
-    *--f->sp = val;
+    (kfenc[n].func)(f, nargs - 1, &kfenc[n]);
+    f->sp[1].del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+
     return 0;
 }
 
@@ -374,7 +378,6 @@ int kf_encrypt(Frame *f, int nargs, kfunc *func)
  */
 int kf_decrypt(Frame *f, int nargs, kfunc *func)
 {
-    Value val;
     int n;
 
     UNREFERENCED_PARAMETER(func);
@@ -383,11 +386,11 @@ int kf_decrypt(Frame *f, int nargs, kfunc *func)
     if (n < 0) {
 	error("Unknown cipher");
     }
-    val = Value::nil;
-    (kfdec[n].ext)(f, nargs - 1, &val);
-    val.ref();
-    f->pop(nargs);
-    *--f->sp = val;
+    (kfdec[n].func)(f, nargs - 1, &kfdec[n]);
+    f->sp[1].del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+
     return 0;
 }
 
@@ -397,7 +400,6 @@ int kf_decrypt(Frame *f, int nargs, kfunc *func)
  */
 int kf_hash_string(Frame *f, int nargs, kfunc *func)
 {
-    Value val;
     int n;
 
     UNREFERENCED_PARAMETER(func);
@@ -406,11 +408,11 @@ int kf_hash_string(Frame *f, int nargs, kfunc *func)
     if (n < 0) {
 	error("Unknown hash algorithm");
     }
-    val = Value::nil;
-    (kfhsh[n].ext)(f, nargs - 1, &val);
-    val.ref();
-    f->pop(nargs);
-    *--f->sp = val;
+    (kfhsh[n].func)(f, nargs - 1, &kfhsh[n]);
+    f->sp[1].del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+
     return 0;
 }
 

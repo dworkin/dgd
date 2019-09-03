@@ -29,6 +29,7 @@ FUNCDEF("encrypt", kf_encrypt, pt_encrypt, 0)
 # else
 extern String *P_encrypt_des_key (Frame*, String*);
 extern String *P_encrypt_des (Frame*, String*, String*);
+extern void ext_runtime_error (Frame*, const char*);
 
 char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
@@ -42,7 +43,7 @@ void kf_enc_key(Frame *f, int nargs, Value *val)
     String *str;
 
     if (nargs != 1) {
-	error("Too many arguments for kfun encrypt");
+	ext_runtime_error(f, "Too many arguments for kfun encrypt");
     }
     str = P_encrypt_des_key(f, f->sp->string);
     PUT_STRVAL_NOREF(val, str);
@@ -57,7 +58,7 @@ void kf_enc(Frame *f, int nargs, Value *val)
     String *str;
 
     if (nargs != 2) {
-	error("Too few arguments for kfun encrypt");
+	ext_runtime_error(f, "Too few arguments for kfun encrypt");
     }
     str = P_encrypt_des(f, f->sp[1].string, f->sp->string);
     PUT_STRVAL_NOREF(val, str);
@@ -82,7 +83,7 @@ void kf_dec_key(Frame *f, int nargs, Value *val)
     String *str;
 
     if (nargs != 1) {
-	error("Too many arguments for kfun decrypt");
+	ext_runtime_error(f, "Too many arguments for kfun decrypt");
     }
     str = P_decrypt_des_key(f, f->sp->string);
     PUT_STRVAL_NOREF(val, str);
@@ -97,7 +98,7 @@ void kf_dec(Frame *f, int nargs, Value *val)
     String *str;
 
     if (nargs != 2) {
-	error("Too few arguments for kfun decrypt");
+	ext_runtime_error(f, "Too few arguments for kfun decrypt");
     }
     /* Given the proper key, DES is its own inverse */
     str = P_encrypt_des(f, f->sp[1].string, f->sp->string);
@@ -983,7 +984,7 @@ void kf_xcrypt(Frame *f, int nargs, Value *val)
     String *str;
 
     if (nargs > 2) {
-	error("Too many arguments for kfun hash_string");
+	ext_runtime_error(f, "Too many arguments for kfun hash_string");
     }
     if (nargs == 2 && f->sp->string->len >= 2) {
 	/* fixed salt */
@@ -1357,7 +1358,7 @@ void kf_md5(Frame *f, int nargs, Value *val)
     }
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
-	error("Out of ticks");
+	ext_runtime_error(f, "Out of ticks");
     }
     i_add_ticks(f, cost);
 
@@ -1384,7 +1385,7 @@ void kf_sha1(Frame *f, int nargs, Value *val)
     cost = hash_sha1_start(f, nargs, digest);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
-	error("Out of ticks");
+	ext_runtime_error(f, "Out of ticks");
     }
     i_add_ticks(f, cost);
 
@@ -1412,6 +1413,9 @@ int kf_crypt(Frame *f, int nargs, kfunc *kf)
 
     UNREFERENCED_PARAMETER(kf);
 
+    if (nargs > 2) {
+	error("Too many arguments for kfun crypt");
+    }
     kf_xcrypt(f, nargs, &val);
     val.ref();
     f->pop(nargs);

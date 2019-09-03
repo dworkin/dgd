@@ -219,7 +219,12 @@ static void ext_string_putval(Value *val, String *str)
 static String *ext_string_new(Dataspace *data, char *text, int len)
 {
     UNREFERENCED_PARAMETER(data);
-    return String::create(text, len);
+
+    try {
+	return String::create(text, len);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
 }
 
 /*
@@ -373,7 +378,12 @@ static Array *ext_mapping_new(Dataspace *data)
  */
 static Value *ext_mapping_index(Array *m, Value *idx)
 {
-    return m->mapIndex(m->primary->data, idx, (Value *) NULL, (Value *) NULL);
+    try {
+	return m->mapIndex(m->primary->data, idx, (Value *) NULL,
+			   (Value *) NULL);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
 }
 
 /*
@@ -383,7 +393,11 @@ static Value *ext_mapping_index(Array *m, Value *idx)
 static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
 			       Value *val)
 {
-    m->mapIndex(data, idx, val, (Value *) NULL);
+    try {
+	m->mapIndex(data, idx, val, (Value *) NULL);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
 }
 
 /*
@@ -409,10 +423,15 @@ static int ext_mapping_size(Array *m)
  * NAME:	ext->runtime_error()
  * DESCRIPTION:	handle an error at runtime
  */
-static void ext_runtime_error(Frame *f, char *mesg)
+void ext_runtime_error(Frame *f, const char *mesg)
 {
     UNREFERENCED_PARAMETER(f);
-    error(mesg);
+
+    try {
+	error(mesg);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
 }
 
 
