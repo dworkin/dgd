@@ -21,7 +21,7 @@ class ErrorContext : public Allocated {
 public:
     typedef void (*Handler) (Frame*, Int);
 
-    static void push(Handler handler = NULL);
+    static jmp_buf *push(Handler handler = NULL);
     static void pop();
 
     static void setException(String *err);
@@ -34,6 +34,9 @@ public:
     struct RLInfo *rlim;		/* rlimits info */
     Handler handler;			/* error handler */
     ErrorContext *next;			/* next in linked list */
+    jmp_buf extEnv;			/* extension error env */
+
+    static jmp_buf *env;		/* current error env */
 
 private:
     ErrorContext(Frame *frame, Handler handler);

@@ -172,8 +172,12 @@ struct RLInfo {
 class Frame {
 public:
     void growStack(int);
+    void pushValue(Value *v);
     void pop(int n);
     void objDest(Object *obj);
+    void aggregate(unsigned int size);
+    void mapAggregate(unsigned int size);
+    int spread(int n);
     void lvalues(int n);
     Int getDepth();
     Int getTicks();
@@ -181,6 +185,27 @@ public:
     Frame *setSp(Value *sp);
     Frame *prevObject(int n);
     const char *prevProgram(int n);
+    Value *global(int inherit, int index);
+    void index(Value *aval, Value *ival, Value *val, bool keep);
+    int instanceOf(Uint sclass);
+    void cast(Value *val, unsigned int type, Uint sclass);
+    void storeParam(int param, Value *val);
+    void storeLocal(int local, Value *val);
+    void storeGlobal(int inherit, int index, Value *val);
+    void storeIndex(Value *val);
+    void storeParamIndex(int param, Value *val);
+    void storeLocalIndex(int local, Value *val);
+    void storeGlobalIndex(int inherit, int index, Value *val);
+    void storeIndexIndex(Value *val);
+    void storeSkip();
+    void storeSkipSkip();
+    unsigned short storesSpread(int n, int offset, int type, Uint sclass);
+    void toFloat(class Float *flt);
+    Int toInt();
+    void kfunc(int n, int nargs);
+    void vfunc(int n, int nargs);
+    void rlimits(bool privileged);
+    void funcall(Object *obj, Array *lwobj, int p_ctrli, int funci, int nargs);
     bool call(Object *obj, Array *lwobj, const char *func, unsigned int len,
 	      int call_static, int nargs);
     bool callTraceI(Int idx, Value *v);
@@ -191,6 +216,10 @@ public:
 
     static void init(char *create, bool flag);
     static int instanceOf(unsigned int oindex, char *prog);
+    static Int div(Int num, Int denom);
+    static Int lshift(Int num, Int shift);
+    static Int mod(Int num, Int denom);
+    static Int rshift(Int num, Int shift);
     static void runtimeError(Frame *f, Int depth);
     static void clear();
 
@@ -200,32 +229,27 @@ public:
     Control *ctrl;		/* object control block */
     Dataspace *data;		/* dataspace of current object */
     Control *p_ctrl;		/* program control block */
+    unsigned short p_index;	/* program index */
     bool external;		/* TRUE if it's an external call */
     struct FuncDef *func;	/* current function */
     char *pc;			/* program counter */
+    Value *argp;		/* argument pointer (previous sp) */
     Value *sp;			/* stack pointer */
     Value *fp;			/* frame pointer (at end of local stack) */
     Int depth;			/* stack depth */
     RLInfo *rlim;		/* rlimits info */
+    int nStores;		/* number of scheduled stores */
     Int level;			/* plane level */
+    unsigned short source;	/* source code line number */
     bool atomic;		/* within uncaught atomic code */
     bool kflv;			/* kfun with lvalue parameters */
 
 private:
-    void pushValue(Value *v);
     void string(int inherit, unsigned int index);
-    void aggregate(unsigned int size);
-    void mapAggregate(unsigned int size);
-    int	spread(int n);
-    void global(int inherit, int index);
     void oper(Array *lwobj, const char *op, int nargs, Value *var, Value *idx,
 	      Value *val);
-    void index(Value *aval, Value *ival, Value *val, bool keep);
     char *className(Uint sclass);
     int instanceOf(unsigned int oindex, Uint sclass);
-    void cast(Value *val, unsigned int type, Uint sclass);
-    void storeLocal(int local, Value *val, Value *verify);
-    void storeGlobal(int inherit, int index, Value *val, Value *verify);
     bool storeIndex(Value *var, Value *aval, Value *ival, Value *val);
     void stores(int skip, int assign);
     void checkRlimits();
@@ -236,21 +260,28 @@ private:
     unsigned short switchRange(char *pc);
     unsigned short switchStr(char *pc);
     void interpret(char *pc);
-    void funcall(Object *obj, Array *lwobj, int p_ctrli, int funci, int nargs);
     unsigned short line();
     Array *funcTrace(Dataspace *data);
 
     static int instanceOf(unsigned int oindex, char *prog, Uint hash);
 
-    unsigned short p_index;	/* program index */
     unsigned short nargs;	/* # arguments */
     bool sos;			/* stack on stack */
     uindex foffset;		/* program function offset */
     char *prog;			/* start of program */
     Value *stack;		/* local value stack */
-    Value *argp;		/* argument pointer (previous sp) */
 };
 
 extern Frame *cframe;
 
 # define i_add_ticks(f, t)	((f)->rlim->ticks -= (t))
+# define loop_ticks(f)							\
+    do {								\
+	if (((f)->rlim->ticks -= 5) <= 0) {				\
+	    if ((f)->rlim->noticks) {					\
+		(f)->rlim->ticks = 0x7fffffff;				\
+	    } else {							\
+		error("Out of ticks");					\
+	    }								\
+	}								\
+    } while (FALSE)

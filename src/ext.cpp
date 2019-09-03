@@ -415,6 +415,1224 @@ static void ext_runtime_error(Frame *f, char *mesg)
     error(mesg);
 }
 
+
+/*
+ * push int on the stack
+ */
+static void ext_vm_int(Frame *f, Int n)
+{
+    PUSH_INTVAL(f, n);
+}
+
+/*
+ * push float on the stack
+ */
+static void ext_vm_float(Frame *f, double flt)
+{
+    ext_float_putval(--f->sp, flt);
+}
+
+/*
+ * push string on the stack
+ */
+static void ext_vm_string(Frame *f, uint16_t inherit, uint16_t index)
+{
+    PUSH_STRVAL(f, f->p_ctrl->strconst(inherit, index));
+}
+
+/*
+ * push parameter on the stack
+ */
+static void ext_vm_param(Frame *f, uint8_t param)
+{
+    f->pushValue(f->argp + param);
+}
+
+/*
+ * get int parameter
+ */
+static Int ext_vm_param_int(Frame *f, uint8_t param)
+{
+    return f->argp[param].number;
+}
+
+/*
+ * get float parameter
+ */
+static double ext_vm_param_float(Frame *f, uint8_t param)
+{
+    return ext_float_getval(f->argp + param);
+}
+
+/*
+ * push local variable on the stack
+ */
+static void ext_vm_local(Frame *f, uint8_t local)
+{
+    f->pushValue(f->fp - local);
+}
+
+/*
+ * get int local variable
+ */
+static Int ext_vm_local_int(Frame *f, uint8_t local)
+{
+    return (f->fp - local)->number;
+}
+
+/*
+ * get float local variable
+ */
+static double ext_vm_local_float(Frame *f, uint8_t local)
+{
+    return ext_float_getval(f->fp - local);
+}
+
+/*
+ * get global variable
+ */
+static void ext_vm_global(Frame *f, uint16_t inherit, uint8_t index)
+{
+    f->pushValue(f->global(inherit, index));
+}
+
+/*
+ * get integer global variable
+ */
+static Int ext_vm_global_int(Frame *f, uint16_t inherit, uint8_t index)
+{
+    return f->global(inherit, index)->number;
+}
+
+/*
+ * get float global variable
+ */
+static double ext_vm_global_float(Frame *f, uint16_t inherit, uint8_t index)
+{
+    return ext_float_getval(f->global(inherit, index));
+}
+
+/*
+ * index value on the stack
+ */
+static void ext_vm_index(Frame *f)
+{
+    try {
+	Value val;
+
+	f->index(f->sp + 1, f->sp, &val, FALSE);
+	*++f->sp = val;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * index string
+ */
+static Int ext_vm_index_int(Frame *f)
+{
+    try {
+	Value val;
+
+	f->index(f->sp + 1, f->sp, &val, FALSE);
+	f->sp += 2;
+	return val.number;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * index and keep
+ */
+static void ext_vm_index2(Frame *f)
+{
+    try {
+	Value val;
+
+	f->index(f->sp + 1, f->sp, &val, TRUE);
+	*--f->sp = val;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * index string and keep, and return int
+ */
+static Int ext_vm_index2_int(Frame *f)
+{
+    try {
+	Value val;
+
+	f->index(f->sp + 1, f->sp, &val, TRUE);
+	return val.number;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * array aggregate
+ */
+static void ext_vm_aggregate(Frame *f, uint16_t size)
+{
+    try {
+	f->aggregate(size);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * mapping aggregate
+ */
+static void ext_vm_map_aggregate(Frame *f, uint16_t size)
+{
+    try {
+	f->mapAggregate(size);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * cast value to a type
+ */
+static void ext_vm_cast(Frame *f, uint8_t type, uint16_t inherit,
+			uint16_t index)
+{
+    try {
+	f->cast(f->sp, type, ((Uint) inherit << 16) + index);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * cast value to an int
+ */
+static Int ext_vm_cast_int(Frame *f)
+{
+    try {
+	if (f->sp->type != T_INT) {
+	    error("Value is not an int");
+	}
+	return (f->sp++)->number;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * cast value to a float
+ */
+static double ext_vm_cast_float(Frame *f)
+{
+    try {
+	if (f->sp->type != T_FLOAT) {
+	    error("Value is not a float");
+	}
+	return ext_float_getval(f->sp++);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * obj <= "/path/to/thing"
+ */
+static Int ext_vm_instanceof(Frame *f, uint16_t inherit, uint16_t index)
+{
+    Int instance;
+
+    instance = f->instanceOf(((Uint) inherit << 16) + index);
+    f->sp++;
+    return instance;
+}
+
+/*
+ * check range
+ */
+static void ext_vm_range(Frame *f)
+{
+    try {
+	kf_ckrangeft(f, 0, NULL);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * check range from
+ */
+static void ext_vm_range_from(Frame *f)
+{
+    try {
+	kf_ckrangef(f, 0, NULL);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * check range to
+ */
+static void ext_vm_range_to(Frame *f)
+{
+    try {
+	kf_ckranget(f, 0, NULL);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * store parameter
+ */
+static void ext_vm_store_param(Frame *f, uint8_t param)
+{
+    f->storeParam(param, f->sp);
+}
+
+/*
+ * store int in parameter
+ */
+static void ext_vm_store_param_int(Frame *f, uint8_t param, Int number)
+{
+    Value val;
+
+    PUT_INTVAL(&val, number);
+    f->storeParam(param, &val);
+}
+
+/*
+ * store float in parameter
+ */
+static void ext_vm_store_param_float(Frame *f, uint8_t param, double flt)
+{
+    Value val;
+
+    ext_float_putval(&val, flt);
+    f->storeParam(param, &val);
+}
+
+/*
+ * store local variable
+ */
+static void ext_vm_store_local(Frame *f, uint8_t local)
+{
+    f->storeLocal(local, f->sp);
+}
+
+/*
+ * store int in local variable
+ */
+static void ext_vm_store_local_int(Frame *f, uint8_t local, Int number)
+{
+    Value val;
+
+    PUT_INTVAL(&val, number);
+    f->storeLocal(local, &val);
+}
+
+/*
+ * store float in local variable
+ */
+static void ext_vm_store_local_float(Frame *f, uint8_t local, double flt)
+{
+    Value val;
+
+    ext_float_putval(&val, flt);
+    f->storeLocal(local, &val);
+}
+
+/*
+ * store global variable
+ */
+static void ext_vm_store_global(Frame *f, uint16_t inherit, uint8_t index)
+{
+    f->storeGlobal(inherit, index, f->sp);
+}
+
+/*
+ * store int in global variable
+ */
+static void ext_vm_store_global_int(Frame *f, uint16_t inherit,
+				    uint8_t index, Int number)
+{
+    Value val;
+
+    PUT_INTVAL(&val, number);
+    f->storeGlobal(inherit, index, &val);
+}
+
+/*
+ * store float in global variable
+ */
+static void ext_vm_store_global_float(Frame *f, uint16_t inherit,
+				      uint8_t index, double flt)
+{
+    Value val;
+
+    ext_float_putval(&val, flt);
+    f->storeGlobal(inherit, index, &val);
+}
+
+/*
+ * indexed store
+ */
+static void ext_vm_store_index(Frame *f)
+{
+    try {
+	f->storeIndex(f->sp);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * indexed store in parameter
+ */
+static void ext_vm_store_param_index(Frame *f, uint8_t param)
+{
+    try {
+	f->storeParamIndex(param, f->sp);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * indexed store in local variable
+ */
+static void ext_vm_store_local_index(Frame *f, uint8_t local)
+{
+    try {
+	f->storeLocalIndex(local, f->sp);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * indexed store in global variable
+ */
+static void ext_vm_store_global_index(Frame *f, uint16_t inherit, uint8_t index)
+{
+    try {
+	f->storeGlobalIndex(inherit, index, f->sp);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * indexed indexed store
+ */
+static void ext_vm_store_index_index(Frame *f)
+{
+    try {
+	f->storeIndexIndex(f->sp);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * prepare for a number of stores
+ */
+static void ext_vm_stores(Frame *f, uint8_t n)
+{
+    try {
+	if (f->sp->type != T_ARRAY) {
+	    error("Value is not an array");
+	}
+	if (n > f->sp->array->size) {
+	    error("Wrong number of lvalues");
+	}
+	Dataspace::elts(f->sp->array);
+	f->nStores = n;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * prepare for a number of stores
+ */
+static void ext_vm_stores_lval(Frame *f, uint8_t n)
+{
+    try {
+	if (n < f->sp->array->size) {
+	    error("Missing lvalue");
+	}
+	f->nStores = n;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * prepare for a number of stores
+ */
+static void ext_vm_stores_spread(Frame *f, uint8_t n, uint8_t offset,
+				 uint8_t type, uint16_t inherit, uint16_t index)
+{
+    try {
+	--n;
+	if (n < f->storesSpread(n, offset, type,
+				((Uint) inherit << 16) + index)) {
+	    error("Missing lvalue");
+	}
+	f->nStores = n;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * cast value to a type
+ */
+static void ext_vm_stores_cast(Frame *f, uint8_t type,
+			       uint16_t inherit, uint16_t index)
+{
+    try {
+	if (f->nStores <= f->sp->array->size) {
+	    f->cast(&f->sp->array->elts[f->nStores - 1], type,
+		    ((Uint) inherit << 16) + index);
+	}
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * store value in parameter
+ */
+static void ext_vm_stores_param(Frame *f, uint8_t param)
+{
+    if (--(f->nStores) < f->sp->array->size) {
+	f->storeParam(param, &f->sp->array->elts[f->nStores]);
+    }
+}
+
+/*
+ * store int in parameter
+ */
+static Int ext_vm_stores_param_int(Frame *f, uint8_t param)
+{
+    if (--(f->nStores) < f->sp->array->size) {
+	f->storeParam(param, &f->sp->array->elts[f->nStores]);
+    }
+    return f->argp[param].number;
+}
+
+/*
+ * store float in parameter
+ */
+static double ext_vm_stores_param_float(Frame *f, uint8_t param)
+{
+    if (--(f->nStores) < f->sp->array->size) {
+	f->storeParam(param, &f->sp->array->elts[f->nStores]);
+    }
+    return ext_float_getval(f->argp + param);
+}
+
+/*
+ * store value in local variable
+ */
+static void ext_vm_stores_local(Frame *f, uint8_t local)
+{
+    if (--(f->nStores) < f->sp->array->size) {
+	f->storeLocal(local, &f->sp->array->elts[f->nStores]);
+    }
+}
+
+/*
+ * store int in local variable
+ */
+static Int ext_vm_stores_local_int(Frame *f, uint8_t local, Int n)
+{
+    if (--(f->nStores) < f->sp->array->size) {
+	f->storeLocal(local, &f->sp->array->elts[f->nStores]);
+	return (f->fp - local)->number;
+    }
+    return n;
+}
+
+/*
+ * store float in local variable
+ */
+static double ext_vm_stores_local_float(Frame *f, uint8_t local, double flt)
+{
+    if (--(f->nStores) < f->sp->array->size) {
+	f->storeLocal(local, &f->sp->array->elts[f->nStores]);
+	return ext_float_getval(f->fp - local);
+    }
+    return flt;
+}
+
+/*
+ * store value in global variable
+ */
+static void ext_vm_stores_global(Frame *f, uint16_t inherit, uint8_t index)
+{
+    if (--(f->nStores) < f->sp->array->size) {
+	f->storeGlobal(inherit, index, &f->sp->array->elts[f->nStores]);
+    }
+}
+
+/*
+ * indexed store
+ */
+static void ext_vm_stores_index(Frame *f)
+{
+    try {
+	if (--(f->nStores) < f->sp->array->size) {
+	    f->storeIndex(&f->sp->array->elts[f->nStores]);
+	} else {
+	    f->storeSkip();
+	}
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * indexed store in parameter
+ */
+static void ext_vm_stores_param_index(Frame *f, uint8_t param)
+{
+    try {
+	if (--(f->nStores) < f->sp->array->size) {
+	    f->storeParamIndex(param, &f->sp->array->elts[f->nStores]);
+	} else {
+	    f->storeSkip();
+	}
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * indexed store in local variable
+ */
+static void ext_vm_stores_local_index(Frame *f, uint8_t local)
+{
+    try {
+	if (--(f->nStores) < f->sp->array->size) {
+	    f->storeLocalIndex(local, &f->sp->array->elts[f->nStores]);
+	} else {
+	    f->storeSkip();
+	}
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * indexed store in global variable
+ */
+static void ext_vm_stores_global_index(Frame *f, uint16_t inherit,
+				       uint8_t index)
+{
+    try {
+	if (--(f->nStores) < f->sp->array->size) {
+	    f->storeGlobalIndex(inherit, index,
+				&f->sp->array->elts[f->nStores]);
+	} else {
+	    f->storeSkip();
+	}
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * indexed indexed store
+ */
+static void ext_vm_stores_index_index(Frame *f)
+{
+    try {
+	if (--(f->nStores) < f->sp->array->size) {
+	    f->storeIndexIndex(&f->sp->array->elts[f->nStores]);
+	} else {
+	    f->storeSkipSkip();
+	}
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * integer division
+ */
+static Int ext_vm_div_int(Frame *f, Int num, Int denom)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	return Frame::div(num, denom);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * integer left shift
+ */
+static Int ext_vm_lshift_int(Frame *f, Int num, Int shift)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	return Frame::lshift(num, shift);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * integer modulus
+ */
+static Int ext_vm_mod_int(Frame *f, Int num, Int denom)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	return Frame::mod(num, denom);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * integer right shift
+ */
+static Int ext_vm_rshift_int(Frame *f, Int num, Int shift)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	return Frame::rshift(num, shift);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * convert to float
+ */
+static double ext_vm_tofloat(Frame *f)
+{
+    try {
+	Float flt;
+	Value val;
+
+	f->toFloat(&flt);
+	PUT_FLT(&val, flt);
+	return ext_float_getval(&val);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * convert to int
+ */
+static Int ext_vm_toint(Frame *f)
+{
+    try {
+	return f->toInt();
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * convert float to int
+ */
+static Int ext_vm_toint_float(Frame *f, double iflt)
+{
+    try {
+	Value val;
+	Float flt;
+
+	ext_float_putval(&val, iflt);
+	GET_FLT(&val, flt);
+	return flt.ftoi();
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * nil
+ */
+static void ext_vm_nil(Frame *f)
+{
+    *--f->sp = Value::nil;
+}
+
+/*
+ * float addition
+ */
+static double ext_vm_add_float(Frame *f, double flt1, double flt2)
+{
+    try {
+	Value val;
+	Float f1, f2;
+
+	i_add_ticks(f, 1);
+	ext_float_putval(&val, flt1);
+	GET_FLT(&val, f1);
+	ext_float_putval(&val, flt2);
+	GET_FLT(&val, f2);
+	f1.add(f2);
+	PUT_FLTVAL(&val, f1);
+	return ext_float_getval(&val);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * float division
+ */
+static double ext_vm_div_float(Frame *f, double flt1, double flt2)
+{
+    try {
+	Value val;
+	Float f1, f2;
+
+	i_add_ticks(f, 1);
+	ext_float_putval(&val, flt1);
+	GET_FLT(&val, f1);
+	ext_float_putval(&val, flt2);
+	GET_FLT(&val, f2);
+	f1.div(f2);
+	PUT_FLTVAL(&val, f1);
+	return ext_float_getval(&val);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * float multiplication
+ */
+static double ext_vm_mult_float(Frame *f, double flt1, double flt2)
+{
+    try {
+	Value val;
+	Float f1, f2;
+
+	i_add_ticks(f, 1);
+	ext_float_putval(&val, flt1);
+	GET_FLT(&val, f1);
+	ext_float_putval(&val, flt2);
+	GET_FLT(&val, f2);
+	f1.mult(f2);
+	PUT_FLTVAL(&val, f1);
+	return ext_float_getval(&val);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * float subtraction
+ */
+static double ext_vm_sub_float(Frame *f, double flt1, double flt2)
+{
+    try {
+	Value val;
+	Float f1, f2;
+
+	i_add_ticks(f, 1);
+	ext_float_putval(&val, flt1);
+	GET_FLT(&val, f1);
+	ext_float_putval(&val, flt2);
+	GET_FLT(&val, f2);
+	f1.sub(f2);
+	PUT_FLTVAL(&val, f1);
+	return ext_float_getval(&val);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call kernel function
+ */
+static void ext_vm_kfunc(Frame *f, uint16_t n, int nargs)
+{
+    try {
+	f->kfunc(n, nargs);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call kernel function with int result
+ */
+static Int ext_vm_kfunc_int(Frame *f, uint16_t n, int nargs)
+{
+    try {
+	f->kfunc(n, nargs);
+	return (f->sp++)->number;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call kfun with float result
+ */
+static double ext_vm_kfunc_float(Frame *f, uint16_t n, int nargs)
+{
+    try {
+	f->kfunc(n, nargs);
+	return ext_float_getval(f->sp++);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call kfun with spread
+ */
+static void ext_vm_kfunc_spread(Frame *f, uint16_t n, int nargs)
+{
+    try {
+	f->kfunc(n, nargs + f->spread(-1));
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call kfun with spread and int result
+ */
+static Int ext_vm_kfunc_spread_int(Frame *f, uint16_t n, int nargs)
+{
+    try {
+	f->kfunc(n, nargs + f->spread(-1));
+	return (f->sp++)->number;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call kfun with spread and float result
+ */
+static double ext_vm_kfunc_spread_float(Frame *f, uint16_t n, int nargs)
+{
+    try {
+	f->kfunc(n, nargs + f->spread(-1));
+	return ext_float_getval(f->sp++);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call kfun with lvalue spread
+ */
+static void ext_vm_kfunc_spread_lval(Frame *f, uint16_t lval, uint16_t n,
+				     int nargs)
+{
+    try {
+	f->kfunc(n, nargs + f->spread(lval));
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call direct function
+ */
+static void ext_vm_dfunc(Frame *f, uint16_t inherit, uint8_t n, int nargs)
+{
+    try {
+	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n, nargs);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call direct function with int result
+ */
+static Int ext_vm_dfunc_int(Frame *f, uint16_t inherit, uint8_t n, int nargs)
+{
+    try {
+	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n, nargs);
+	return (f->sp++)->number;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call direct function with float result
+ */
+static double ext_vm_dfunc_float(Frame *f, uint16_t inherit, uint8_t n,
+				 int nargs)
+{
+    try {
+	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n, nargs);
+	return ext_float_getval(f->sp++);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call direct function with spread
+ */
+static void ext_vm_dfunc_spread(Frame *f, uint16_t inherit, uint8_t n,
+				int nargs)
+{
+    try {
+	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n,
+		   nargs + f->spread(-1));
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call direct function with spread and int result
+ */
+static Int ext_vm_dfunc_spread_int(Frame *f, uint16_t inherit, uint8_t n,
+				   int nargs)
+{
+    try {
+	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n,
+		   nargs + f->spread(-1));
+	return (f->sp++)->number;
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call direct function wit spread and float result
+ */
+static double ext_vm_dfunc_spread_float(Frame *f, uint16_t inherit,
+					uint8_t n, int nargs)
+{
+    try {
+	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n,
+		   nargs + f->spread(-1));
+	return ext_float_getval(f->sp++);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call virtual function
+ */
+static void ext_vm_func(Frame *f, uint16_t index, int nargs)
+{
+    try {
+	f->vfunc(index, nargs);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * call virtual function with spread
+ */
+static void ext_vm_func_spread(Frame *f, uint16_t index, int nargs)
+{
+    try {
+	f->vfunc(index, nargs + f->spread(-1));
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * pop value from stack
+ */
+static void ext_vm_pop(Frame *f)
+{
+    (f->sp++)->del();
+}
+
+/*
+ * pop value and return boolean result
+ */
+static bool ext_vm_pop_bool(Frame *f)
+{
+    bool flag;
+
+    flag = VAL_TRUE(f->sp);
+    (f->sp++)->del();
+
+    return flag;
+}
+
+/*
+ * pop value and return int result
+ */
+static Int ext_vm_pop_int(Frame *f)
+{
+    return (f->sp++)->number;
+}
+
+/*
+ * pop value and return float result
+ */
+static double ext_vm_pop_float(Frame *f)
+{
+    return ext_float_getval(f->sp++);
+}
+
+/*
+ * is there an int on the stack?
+ */
+static bool ext_vm_switch_int(Frame *f)
+{
+    return (f->sp->type == T_INT);
+}
+
+/*
+ * perform a range switch
+ */
+static uint32_t ext_vm_switch_range(Int *table, uint32_t size, Int number)
+{
+    uint32_t mid, low, high;
+
+    low = 0;
+    high = size;
+    while (low < high) {
+	mid = (low + high) & ~0x01;
+	if (number >= table[mid]) {
+	    if (number <= table[mid + 1]) {
+		return mid >> 1;
+	    }
+	    high = mid >> 1;
+	} else {
+	    low = (mid >> 1) + 1;
+	}
+    }
+
+    return size;
+}
+
+/*
+ * perform a string switch
+ */
+static uint32_t ext_vm_switch_string(Frame *f, uint16_t *table, uint32_t size)
+{
+    String *str;
+    Control *ctrl;
+    uint32_t mid, low, high;
+    int cmp;
+
+    if (f->sp->type == T_STRING) {
+	str = f->sp->string;
+	ctrl = f->p_ctrl;
+
+	low = (table[0] == 0 && table[1] == 0xffff);
+	high = size;
+	while (low < high) {
+	    mid = (low + high) & ~0x01;
+
+	    cmp = str->cmp(ctrl->strconst(table[mid], table[mid + 1]));
+	    if (cmp == 0) {
+		size = mid >> 1;
+		break;
+	    }
+	    if (cmp < 0) {
+		high = mid >> 1;
+	    } else {
+		low = (mid >> 1) + 1;
+	    }
+	}
+    } else if (f->sp->type == T_NIL && table[0] == 0 && table[1] == 0xffff) {
+	size = 0;	/* case nil */
+    }
+
+    (f->sp++)->del();
+    return size;
+}
+
+/*
+ * start rlimits
+ */
+static void ext_vm_rlimits(Frame *f, bool privileged)
+{
+    try {
+	f->rlimits(privileged);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
+}
+
+/*
+ * end rlimits
+ */
+static void ext_vm_rlimits_end(Frame *f)
+{
+    f->setRlimits(f->rlim->next);
+}
+
+/*
+ * catch an error
+ */
+static jmp_buf *ext_vm_catch(Frame *f)
+{
+    return ErrorContext::push(Frame::runtimeError);
+}
+
+/*
+ * caught an error
+ */
+static void ext_vm_caught(Frame *f, bool push)
+{
+    if (push) {
+	PUSH_STRVAL(f, ErrorContext::exception());
+    }
+}
+
+/*
+ * end catch
+ */
+static void ext_vm_catch_end(Frame *f, bool push)
+{
+    ErrorContext::pop();
+    if (push) {
+	*--f->sp = Value::nil;
+    }
+}
+
+/*
+ * set current line
+ */
+static void ext_vm_line(Frame *f, uint16_t line)
+{
+    f->source = line;
+}
+
+/*
+ * add ticks at end of loop
+ */
+static void ext_vm_loop_ticks(Frame *f)
+{
+    loop_ticks(f);
+}
+
+
 static void (*mod_fdlist)(int*, int);
 static void (*mod_finish)();
 
@@ -466,9 +1684,105 @@ static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, int,
 void ext_kfuns(char *protos, int size, int nkfun)
 {
     if (jit_compile != NULL) {
-	void *vmtab[88];
+	voidf *vmtab[96];
 
-	memset(vmtab, '\0', sizeof(vmtab));
+	vmtab[ 0] = (voidf *) &ext_vm_int;
+	vmtab[ 1] = (voidf *) &ext_vm_float;
+	vmtab[ 2] = (voidf *) &ext_vm_string;
+	vmtab[ 3] = (voidf *) &ext_vm_param;
+	vmtab[ 4] = (voidf *) &ext_vm_param_int;
+	vmtab[ 5] = (voidf *) &ext_vm_param_float;
+	vmtab[ 6] = (voidf *) &ext_vm_local;
+	vmtab[ 7] = (voidf *) &ext_vm_local_int;
+	vmtab[ 8] = (voidf *) &ext_vm_local_float;
+	vmtab[ 9] = (voidf *) &ext_vm_global;
+	vmtab[10] = (voidf *) &ext_vm_global_int;
+	vmtab[11] = (voidf *) &ext_vm_global_float;
+	vmtab[12] = (voidf *) &ext_vm_index;
+	vmtab[13] = (voidf *) &ext_vm_index_int;
+	vmtab[14] = (voidf *) &ext_vm_index2;
+	vmtab[15] = (voidf *) &ext_vm_index2_int;
+	vmtab[16] = (voidf *) &ext_vm_aggregate;
+	vmtab[17] = (voidf *) &ext_vm_map_aggregate;
+	vmtab[18] = (voidf *) &ext_vm_cast;
+	vmtab[19] = (voidf *) &ext_vm_cast_int;
+	vmtab[20] = (voidf *) &ext_vm_cast_float;
+	vmtab[21] = (voidf *) &ext_vm_instanceof;
+	vmtab[22] = (voidf *) &ext_vm_range;
+	vmtab[23] = (voidf *) &ext_vm_range_from;
+	vmtab[24] = (voidf *) &ext_vm_range_to;
+	vmtab[25] = (voidf *) &ext_vm_store_param;
+	vmtab[26] = (voidf *) &ext_vm_store_param_int;
+	vmtab[27] = (voidf *) &ext_vm_store_param_float;
+	vmtab[28] = (voidf *) &ext_vm_store_local;
+	vmtab[29] = (voidf *) &ext_vm_store_local_int;
+	vmtab[30] = (voidf *) &ext_vm_store_local_float;
+	vmtab[31] = (voidf *) &ext_vm_store_global;
+	vmtab[32] = (voidf *) &ext_vm_store_global_int;
+	vmtab[33] = (voidf *) &ext_vm_store_global_float;
+	vmtab[34] = (voidf *) &ext_vm_store_index;
+	vmtab[35] = (voidf *) &ext_vm_store_param_index;
+	vmtab[36] = (voidf *) &ext_vm_store_local_index;
+	vmtab[37] = (voidf *) &ext_vm_store_global_index;
+	vmtab[38] = (voidf *) &ext_vm_store_index_index;
+	vmtab[39] = (voidf *) &ext_vm_stores;
+	vmtab[40] = (voidf *) &ext_vm_stores_lval;
+	vmtab[41] = (voidf *) &ext_vm_stores_spread;
+	vmtab[42] = (voidf *) &ext_vm_stores_cast;
+	vmtab[43] = (voidf *) &ext_vm_stores_param;
+	vmtab[44] = (voidf *) &ext_vm_stores_param_int;
+	vmtab[45] = (voidf *) &ext_vm_stores_param_float;
+	vmtab[46] = (voidf *) &ext_vm_stores_local;
+	vmtab[47] = (voidf *) &ext_vm_stores_local_int;
+	vmtab[48] = (voidf *) &ext_vm_stores_local_float;
+	vmtab[49] = (voidf *) &ext_vm_stores_global;
+	vmtab[50] = (voidf *) &ext_vm_stores_index;
+	vmtab[51] = (voidf *) &ext_vm_stores_param_index;
+	vmtab[52] = (voidf *) &ext_vm_stores_local_index;
+	vmtab[53] = (voidf *) &ext_vm_stores_global_index;
+	vmtab[54] = (voidf *) &ext_vm_stores_index_index;
+	vmtab[55] = (voidf *) &ext_vm_div_int;
+	vmtab[56] = (voidf *) &ext_vm_lshift_int;
+	vmtab[57] = (voidf *) &ext_vm_mod_int;
+	vmtab[58] = (voidf *) &ext_vm_rshift_int;
+	vmtab[59] = (voidf *) &ext_vm_tofloat;
+	vmtab[60] = (voidf *) &ext_vm_toint;
+	vmtab[61] = (voidf *) &ext_vm_toint_float;
+	vmtab[62] = (voidf *) &ext_vm_nil;
+	vmtab[63] = (voidf *) &ext_vm_add_float;
+	vmtab[64] = (voidf *) &ext_vm_div_float;
+	vmtab[65] = (voidf *) &ext_vm_mult_float;
+	vmtab[66] = (voidf *) &ext_vm_sub_float;
+	vmtab[67] = (voidf *) &ext_vm_kfunc;
+	vmtab[68] = (voidf *) &ext_vm_kfunc_int;
+	vmtab[69] = (voidf *) &ext_vm_kfunc_float;
+	vmtab[70] = (voidf *) &ext_vm_kfunc_spread;
+	vmtab[71] = (voidf *) &ext_vm_kfunc_spread_int;
+	vmtab[72] = (voidf *) &ext_vm_kfunc_spread_float;
+	vmtab[73] = (voidf *) &ext_vm_kfunc_spread_lval;
+	vmtab[74] = (voidf *) &ext_vm_dfunc;
+	vmtab[75] = (voidf *) &ext_vm_dfunc_int;
+	vmtab[76] = (voidf *) &ext_vm_dfunc_float;
+	vmtab[77] = (voidf *) &ext_vm_dfunc_spread;
+	vmtab[78] = (voidf *) &ext_vm_dfunc_spread_int;
+	vmtab[79] = (voidf *) &ext_vm_dfunc_spread_float;
+	vmtab[80] = (voidf *) &ext_vm_func;
+	vmtab[81] = (voidf *) &ext_vm_func_spread;
+	vmtab[82] = (voidf *) &ext_vm_pop;
+	vmtab[83] = (voidf *) &ext_vm_pop_bool;
+	vmtab[84] = (voidf *) &ext_vm_pop_int;
+	vmtab[85] = (voidf *) &ext_vm_pop_float;
+	vmtab[86] = (voidf *) &ext_vm_switch_int;
+	vmtab[87] = (voidf *) &ext_vm_switch_range;
+	vmtab[88] = (voidf *) &ext_vm_switch_string;
+	vmtab[89] = (voidf *) &ext_vm_rlimits;
+	vmtab[90] = (voidf *) &ext_vm_rlimits_end;
+	vmtab[91] = (voidf *) &ext_vm_catch;
+	vmtab[92] = (voidf *) &ext_vm_caught;
+	vmtab[93] = (voidf *) &ext_vm_catch_end;
+	vmtab[94] = (voidf *) &ext_vm_line;
+	vmtab[95] = (voidf *) &ext_vm_loop_ticks;
+
 	if (!(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR, sizeof(Int), 1,
 			 conf_typechecking(), KF_BUILTINS, nkfun,
 			 (uint8_t *) protos, size, vmtab)) {
@@ -478,17 +1792,63 @@ void ext_kfuns(char *protos, int size, int nkfun)
 }
 
 /*
+ * JIT compile program
+ */
+static void ext_compile(const Frame *f, Control *ctrl)
+{
+    int i, j, nftypes;
+    const Inherit *inh;
+    char *ft, *vt;
+    const FuncDef *fdef;
+    const VarDef *vdef;
+
+    /*
+     * compile new program
+     */
+    /* count function types & variable types */
+    nftypes = 0;
+    for (inh = ctrl->inherits, i = ctrl->ninherits; i > 0; inh++, --i) {
+	nftypes += OBJR(inh->oindex)->control()->nfuncdefs;
+    }
+
+    char *ftypes = ALLOCA(char, ctrl->ninherits + nftypes);
+    char *vtypes = ALLOCA(char, ctrl->ninherits + ctrl->nvariables);
+
+    /* collect function types & variable types */
+    ft = ftypes;
+    vt = vtypes;
+    for (inh = ctrl->inherits, i = ctrl->ninherits; i > 0; inh++, --i) {
+	ctrl = OBJR(inh->oindex)->ctrl;
+	ctrl->program();
+	*ft++ = ctrl->nfuncdefs;
+	for (fdef = ctrl->funcs(), j = ctrl->nfuncdefs; j > 0; fdef++, --j)
+	{
+	    *ft++ = PROTO_FTYPE(ctrl->prog + fdef->offset);
+	}
+	*vt++ = ctrl->nvardefs;
+	for (vdef = ctrl->vars(), j = ctrl->nvardefs; j > 0; vdef++, --j) {
+	    *vt++ = vdef->type;
+	}
+    }
+
+    /* start JIT compiler */
+    ctrl = f->p_ctrl;
+    (*jit_compile)(ctrl->oindex, ctrl->instance, ctrl->ninherits,
+		   (uint8_t *) ctrl->prog, ctrl->progsize, ctrl->nfuncdefs,
+		   (uint8_t *) ftypes, ctrl->ninherits + nftypes,
+		   (uint8_t *) vtypes, ctrl->ninherits + ctrl->nvariables);
+
+    AFREE(ftypes);
+    AFREE(vtypes);
+}
+
+/*
  * NAME:	ext->execute()
  * DESCRIPTION:	JIT-compile and execute a function
  */
 bool ext_execute(const Frame *f, int func)
 {
     Control *ctrl;
-    int i, j, nftypes;
-    const Inherit *inh;
-    char *ft, *vt;
-    const FuncDef *fdef;
-    const VarDef *vdef;
     int result;
 
     if (jit_compile == NULL) {
@@ -498,47 +1858,17 @@ bool ext_execute(const Frame *f, int func)
     if (ctrl->instance == 0) {
 	return FALSE;
     }
-    result = (*jit_execute)(ctrl->oindex, ctrl->instance, ctrl->version, func,
-			    (void *) f);
+
+    if (!setjmp(*ErrorContext::push())) {
+	result = (*jit_execute)(ctrl->oindex, ctrl->instance, ctrl->version,
+				func, (void *) f);
+	ErrorContext::pop();
+    } else {
+	error((char *) NULL);
+    }
+
     if (result < 0) {
-	/*
-	 * compile new program
-	 */
-	/* count function types & variable types */
-	nftypes = 0;
-	for (inh = ctrl->inherits, i = ctrl->ninherits; i > 0; inh++, --i) {
-	    nftypes += OBJR(inh->oindex)->control()->nfuncdefs;
-	}
-
-	char *ftypes = ALLOCA(char, ctrl->ninherits + nftypes);
-	char *vtypes = ALLOCA(char, ctrl->ninherits + ctrl->nvariables);
-
-	/* collect function types & variable types */
-	ft = ftypes;
-	vt = vtypes;
-	for (inh = ctrl->inherits, i = ctrl->ninherits; i > 0; inh++, --i) {
-	    ctrl = OBJR(inh->oindex)->ctrl;
-	    ctrl->program();
-	    *ft++ = ctrl->nfuncdefs;
-	    for (fdef = ctrl->funcs(), j = ctrl->nfuncdefs; j > 0; fdef++, --j)
-	    {
-		*ft++ = PROTO_FTYPE(ctrl->prog + fdef->offset);
-	    }
-	    *vt++ = ctrl->nvardefs;
-	    for (vdef = ctrl->vars(), j = ctrl->nvardefs; j > 0; vdef++, --j) {
-		*vt++ = vdef->type;
-	    }
-	}
-
-	/* start JIT compiler */
-	ctrl = f->p_ctrl;
-	(*jit_compile)(ctrl->oindex, ctrl->instance, ctrl->ninherits,
-		       (uint8_t *) ctrl->prog, ctrl->progsize, ctrl->nfuncdefs,
-		       (uint8_t *) ftypes, ctrl->ninherits + nftypes,
-		       (uint8_t *) vtypes, ctrl->ninherits + ctrl->nvariables);
-
-	AFREE(ftypes);
-	AFREE(vtypes);
+	ext_compile(f, ctrl);
 
 	return FALSE;
     } else {

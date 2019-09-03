@@ -461,7 +461,6 @@ char pt_div[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  */
 int kf_div(Frame *f, int n, kfunc *kf)
 {
-    Int i, d;
     Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
@@ -472,12 +471,7 @@ int kf_div(Frame *f, int n, kfunc *kf)
 	if (f->sp->type != T_INT) {
 	    kf_argerror(KF_DIV, 2);
 	}
-	i = f->sp[1].number;
-	d = f->sp->number;
-	if (d == 0) {
-	    error("Division by zero");
-	}
-	PUT_INT(&f->sp[1], i / d);
+	PUT_INT(&f->sp[1], Frame::div(f->sp[1].number, f->sp->number));
 	f->sp++;
 	return 0;
 
@@ -519,17 +513,10 @@ char pt_div_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  */
 int kf_div_int(Frame *f, int n, kfunc *kf)
 {
-    Int i, d;
-
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i = f->sp[1].number;
-    d = f->sp->number;
-    if (d == 0) {
-	error("Division by zero");
-    }
-    PUT_INT(&f->sp[1], i / d);
+    PUT_INT(&f->sp[1], Frame::div(f->sp[1].number, f->sp->number));
     f->sp++;
     return 0;
 }
@@ -909,14 +896,7 @@ int kf_lshift(Frame *f, int n, kfunc *kf)
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_LSHIFT, 2);
     }
-    if ((f->sp->number & ~31) != 0) {
-	if (f->sp->number < 0) {
-	    error("Negative left shift");
-	}
-	PUT_INT(&f->sp[1], 0);
-    } else {
-	PUT_INT(&f->sp[1], (Uint) f->sp[1].number << f->sp->number);
-    }
+    PUT_INT(&f->sp[1], Frame::lshift(f->sp[1].number, f->sp->number));
     f->sp++;
     return 0;
 }
@@ -937,14 +917,7 @@ int kf_lshift_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if ((f->sp->number & ~31) != 0) {
-	if (f->sp->number < 0) {
-	    error("Negative left shift");
-	}
-	PUT_INT(&f->sp[1], 0);
-    } else {
-	PUT_INT(&f->sp[1], (Uint) f->sp[1].number << f->sp->number);
-    }
+    PUT_INT(&f->sp[1], Frame::lshift(f->sp[1].number, f->sp->number));
     f->sp++;
     return 0;
 }
@@ -1047,8 +1020,6 @@ char pt_mod[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  */
 int kf_mod(Frame *f, int n, kfunc *kf)
 {
-    Int i, d;
-
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
@@ -1063,12 +1034,7 @@ int kf_mod(Frame *f, int n, kfunc *kf)
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_MOD, 2);
     }
-    i = f->sp[1].number;
-    d = f->sp->number;
-    if (d == 0) {
-	error("Modulus by zero");
-    }
-    PUT_INT(&f->sp[1], i % d);
+    PUT_INT(&f->sp[1], Frame::mod(f->sp[1].number, f->sp->number));
     f->sp++;
     return 0;
 }
@@ -1086,17 +1052,10 @@ char pt_mod_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  */
 int kf_mod_int(Frame *f, int n, kfunc *kf)
 {
-    Int i, d;
-
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i = f->sp[1].number;
-    d = f->sp->number;
-    if (d == 0) {
-	error("Modulus by zero");
-    }
-    PUT_INT(&f->sp[1], i % d);
+    PUT_INT(&f->sp[1], Frame::mod(f->sp[1].number, f->sp->number));
     f->sp++;
     return 0;
 }
@@ -1755,14 +1714,7 @@ int kf_rshift(Frame *f, int n, kfunc *kf)
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_RSHIFT, 2);
     }
-    if ((f->sp->number & ~31) != 0) {
-	if (f->sp->number < 0) {
-	    error("Negative right shift");
-	}
-	PUT_INT(&f->sp[1], 0);
-    } else {
-	PUT_INT(&f->sp[1], (Uint) f->sp[1].number >> f->sp->number);
-    }
+    PUT_INT(&f->sp[1], Frame::rshift(f->sp[1].number, f->sp->number));
     f->sp++;
     return 0;
 }
@@ -1783,14 +1735,7 @@ int kf_rshift_int(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if ((f->sp->number & ~31) != 0) {
-	if (f->sp->number < 0) {
-	    error("Negative right shift");
-	}
-	PUT_INT(&f->sp[1], 0);
-    } else {
-	PUT_INT(&f->sp[1], (Uint) f->sp[1].number >> f->sp->number);
-    }
+    PUT_INT(&f->sp[1], Frame::rshift(f->sp[1].number, f->sp->number));
     f->sp++;
     return 0;
 }
@@ -1970,29 +1915,8 @@ int kf_tofloat(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
-    if (f->sp->type == T_INT) {
-	/* from int */
-	Float::itof(f->sp->number, &flt);
-	PUT_FLTVAL(f->sp, flt);
-	return 0;
-    } else if (f->sp->type == T_STRING) {
-	char *p;
-
-	/* from string */
-	p = f->sp->string->text;
-	if (!Float::atof(&p, &flt) ||
-	    p != f->sp->string->text + f->sp->string->len) {
-	    error("String cannot be converted to float");
-	}
-	f->sp->string->del();
-	PUT_FLTVAL(f->sp, flt);
-	return 0;
-    }
-
-    if (f->sp->type != T_FLOAT) {
-	error("Value is not a float");
-    }
+    f->toFloat(&flt);
+    PUSH_FLTVAL(f, flt);
     return 0;
 }
 # endif
@@ -2009,35 +1933,13 @@ char pt_toint[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  */
 int kf_toint(Frame *f, int n, kfunc *kf)
 {
-    Float flt;
+    Int num;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (f->sp->type == T_FLOAT) {
-	/* from float */
-	i_add_ticks(f, 1);
-	GET_FLT(f->sp, flt);
-	PUT_INTVAL(f->sp, flt.ftoi());
-	return 0;
-    } else if (f->sp->type == T_STRING) {
-	char *p;
-	Int i;
-
-	/* from string */
-	p = f->sp->string->text;
-	i = strtoint(&p);
-	if (p != f->sp->string->text + f->sp->string->len) {
-	    error("String cannot be converted to int");
-	}
-	f->sp->string->del();
-	PUT_INTVAL(f->sp, i);
-	return 0;
-    }
-
-    if (f->sp->type != T_INT) {
-	error("Value is not an int");
-    }
+    num = f->toInt();
+    PUSH_INTVAL(f, num);
     return 0;
 }
 # endif

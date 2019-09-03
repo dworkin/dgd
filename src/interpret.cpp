@@ -329,15 +329,15 @@ int Frame::spread(int n)
 /*
  * push a global value on the stack
  */
-void Frame::global(int inherit, int index)
+Value *Frame::global(int inherit, int index)
 {
     i_add_ticks(this, 4);
     inherit = UCHAR(ctrl->imap[p_index + inherit]);
     inherit = ctrl->inherits[inherit].varoffset;
     if (lwobj == (Array *) NULL) {
-	pushValue(data->variable(inherit + index));
+	return data->variable(inherit + index);
     } else {
-	pushValue(&lwobj->elts[2 + inherit + index]);
+	return &lwobj->elts[2 + inherit + index];
     }
 }
 
@@ -487,6 +487,35 @@ int Frame::instanceOf(unsigned int oindex, Uint sclass)
 }
 
 /*
+ * is an object on the stack an instance of the named program?
+ */
+int Frame::instanceOf(Uint sclass)
+{
+    int instance;
+
+    switch (sp->type) {
+    case T_OBJECT:
+	instance = instanceOf(sp->oindex, sclass);
+	break;
+
+    case T_LWOBJECT:
+	if (sp->array->elts->type != T_OBJECT) {
+	    instance = (strcmp(Object::builtinName(sp->array->elts->number),
+			       className(sclass)) == 0);
+	} else {
+	    instance = instanceOf(sp->array->elts->oindex, sclass);
+	}
+	sp->array->del();
+	break;
+
+    default:
+	error("Instance of bad type");
+    }
+
+    return instance;
+}
+
+/*
  * is an object an instance of the named program?
  */
 int Frame::instanceOf(unsigned int oindex, char *prog)
@@ -538,43 +567,35 @@ void Frame::cast(Value *val, unsigned int type, Uint sclass)
 }
 
 /*
+ * assign a value to a parameter
+ */
+void Frame::storeParam(int param, Value *val)
+{
+    data->assignVar(argp + param, val);
+}
+
+/*
  * assign a value to a local variable
  */
-void Frame::storeLocal(int local, Value *val, Value *verify)
+void Frame::storeLocal(int local, Value *val)
 {
-    Value *var;
-
-    i_add_ticks(this, 1);
-    var = (local < 0) ? fp + local : argp + local;
-    if (verify == NULL ||
-	(var->type == T_STRING && var->string == verify->string)) {
-	data->assignVar(var, val);
-    }
+    data->assignVar(fp - local, val);
 }
 
 /*
  * assign a value to a global variable
  */
-void Frame::storeGlobal(int inherit, int index, Value *val, Value *verify)
+void Frame::storeGlobal(int inherit, int index, Value *val)
 {
     unsigned short offset;
-    Value *var;
 
     i_add_ticks(this, 5);
     inherit = ctrl->imap[p_index + inherit];
     offset = ctrl->inherits[inherit].varoffset + index;
     if (lwobj == NULL) {
-	var = data->variable(offset);
-	if (verify == NULL ||
-	    (var->type == T_STRING && var->string == verify->string)) {
-	    data->assignVar(var, val);
-	}
+	data->assignVar(data->variable(offset), val);
     } else {
-	var = &lwobj->elts[2 + offset];
-	if (verify == NULL ||
-	    (var->type == T_STRING && var->string == verify->string)) {
-	    data->assignElt(lwobj, var, val);
-	}
+	data->assignElt(lwobj, &lwobj->elts[2 + offset], val);
     }
 }
 
@@ -641,13 +662,144 @@ bool Frame::storeIndex(Value *var, Value *aval, Value *ival, Value *val)
 }
 
 /*
+ * perform an indexed assignment
+ */
+void Frame::storeIndex(Value *val)
+{
+    Value var;
+
+    var = Value::nil;
+    if (storeIndex(&var, sp + 2, sp + 1, val)) {
+	sp[2].string->del();
+	var.string->del();
+    }
+    sp[2] = sp[0];
+    sp += 2;
+}
+
+/*
+ * perform an indexed parameter assignment
+ */
+void Frame::storeParamIndex(int param, Value *val)
+{
+    Value var, *lvar;
+
+    var = Value::nil;
+    if (storeIndex(&var, sp + 2, sp + 1, val)) {
+	lvar = argp + param;
+	if (lvar->type == T_STRING && lvar->string == sp[2].string) {
+	    data->assignVar(lvar, &var);
+	}
+	sp[2].string->del();
+	var.string->del();
+    }
+    sp[2] = sp[0];
+    sp += 2;
+}
+
+/*
+ * perform an indexed local variable assignment
+ */
+void Frame::storeLocalIndex(int local, Value *val)
+{
+    Value var, *lvar;
+
+    var = Value::nil;
+    if (storeIndex(&var, sp + 2, sp + 1, val)) {
+	lvar = fp - local;
+	if (lvar->type == T_STRING && lvar->string == sp[2].string) {
+	    data->assignVar(lvar, &var);
+	}
+	sp[2].string->del();
+	var.string->del();
+    }
+    sp[2] = sp[0];
+    sp += 2;
+}
+
+/*
+ * perform an indexed global var assignment
+ */
+void Frame::storeGlobalIndex(int inherit, int index, Value *val)
+{
+    unsigned short offset;
+    Value var, *gvar;
+
+    var = Value::nil;
+    if (storeIndex(&var, sp + 2, sp + 1, val)) {
+	i_add_ticks(this, 5);
+	inherit = ctrl->imap[p_index + inherit];
+	offset = ctrl->inherits[inherit].varoffset + index;
+	if (lwobj == NULL) {
+	    gvar = data->variable(offset);
+	    if (gvar->type == T_STRING && gvar->string == sp[2].string) {
+		data->assignVar(gvar, &var);
+	    }
+	} else {
+	    gvar = &lwobj->elts[2 + offset];
+	    if (gvar->type == T_STRING && gvar->string == sp[2].string) {
+		data->assignElt(lwobj, gvar, &var);
+	    }
+	}
+	sp[2].string->del();
+	var.string->del();
+    }
+    sp[2] = sp[0];
+    sp += 2;
+}
+
+/*
+ * perform an indexed indexed assignment
+ */
+void Frame::storeIndexIndex(Value *val)
+{
+    Value var;
+
+    var = Value::nil;
+    if (storeIndex(&var, sp + 2, sp + 1, val)) {
+	sp[1] = var;
+	storeIndex(sp + 2, sp + 4, sp + 3, sp + 1);
+	sp[1].string->del();
+	sp[2].string->del();
+    } else {
+	sp[3].del();
+	sp[4].del();
+    }
+    sp[4] = sp[0];
+    sp += 4;
+}
+
+/*
+ * skip indexed store
+ */
+void Frame::storeSkip()
+{
+    sp[1].del();
+    sp[2].del();
+    sp[2] = sp[0];
+    sp += 2;
+}
+
+/*
+ * skip indexed indexed store
+ */
+void Frame::storeSkipSkip()
+{
+    sp[1].del();
+    sp[2].del();
+    sp[3].del();
+    sp[4].del();
+    sp[4] = sp[0];
+    sp += 4;
+}
+
+/*
  * perform a sequence of special stores
  */
 void Frame::stores(int skip, int assign)
 {
     unsigned short u, u2, instr;
     Uint sclass;
-    Value val;
 
     instr = 0;
 
@@ -678,10 +830,7 @@ void Frame::stores(int skip, int assign)
 
 	case I_STORE_INDEX:
 	case I_STORE_INDEX | I_POP_BIT:
-	    sp[1].del();
-	    sp[2].del();
-	    sp[2] = sp[0];
-	    sp += 2;
+	    storeSkip();
 	    break;
 
 	case I_STORE_LOCAL_INDEX:
@@ -689,29 +838,18 @@ void Frame::stores(int skip, int assign)
 	case I_STORE_GLOBAL_INDEX:
 	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
 	    pc++;
-	    sp[1].del();
-	    sp[2].del();
-	    sp[2] = sp[0];
-	    sp += 2;
+	    storeSkip();
 	    break;
 
 	case I_STORE_FAR_GLOBAL_INDEX:
 	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
 	    pc += 2;
-	    sp[1].del();
-	    sp[2].del();
-	    sp[2] = sp[0];
-	    sp += 2;
+	    storeSkip();
 	    break;
 
 	case I_STORE_INDEX_INDEX:
 	case I_STORE_INDEX_INDEX | I_POP_BIT:
-	    sp[1].del();
-	    sp[2].del();
-	    sp[3].del();
-	    sp[4].del();
-	    sp[4] = sp[0];
-	    sp += 4;
+	    storeSkipSkip();
 	    break;
 
 # ifdef DEBUG
@@ -740,93 +878,56 @@ void Frame::stores(int skip, int assign)
 
 	case I_STORE_LOCAL:
 	case I_STORE_LOCAL | I_POP_BIT:
-	    storeLocal(FETCH1S(pc), &sp->array->elts[assign - 1],
-		       (Value *) NULL);
+	    u = FETCH1U(pc);
+	    if (SCHAR(u) >= 0) {
+		storeParam(u, &sp->array->elts[assign - 1]);
+	    } else {
+		storeLocal(-SCHAR(u), &sp->array->elts[assign - 1]);
+	    }
 	    break;
 
 	case I_STORE_GLOBAL:
 	case I_STORE_GLOBAL | I_POP_BIT:
 	    storeGlobal(p_ctrl->ninherits - 1, FETCH1U(pc),
-			&sp->array->elts[assign - 1], (Value *) NULL);
+			&sp->array->elts[assign - 1]);
 	    break;
 
 	case I_STORE_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    storeGlobal(u, FETCH1U(pc), &sp->array->elts[assign - 1],
-			(Value *) NULL);
+	    storeGlobal(u, FETCH1U(pc), &sp->array->elts[assign - 1]);
 	    break;
 
 	case I_STORE_INDEX:
 	case I_STORE_INDEX | I_POP_BIT:
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, &sp->array->elts[assign - 1]))
-	    {
-		sp[2].string->del();
-		val.string->del();
-	    }
-	    sp[2] = sp[0];
-	    sp += 2;
+	    storeIndex(&sp->array->elts[assign - 1]);
 	    break;
 
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
 	    u = FETCH1S(pc);
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, &sp->array->elts[assign - 1]))
-	    {
-		storeLocal((short) u, &val, &sp[2]);
-		sp[2].string->del();
-		val.string->del();
+	    if (SCHAR(u) >= 0) {
+		storeParamIndex(u, &sp->array->elts[assign - 1]);
+	    } else {
+		storeLocalIndex(-SCHAR(u), &sp->array->elts[assign - 1]);
 	    }
-	    sp[2] = sp[0];
-	    sp += 2;
 	    break;
 
 	case I_STORE_GLOBAL_INDEX:
 	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
-	    u = FETCH1U(pc);
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, &sp->array->elts[assign - 1]))
-	    {
-		storeGlobal(p_ctrl->ninherits - 1, u, &val, &sp[2]);
-		sp[2].string->del();
-		val.string->del();
-	    }
-	    sp[2] = sp[0];
-	    sp += 2;
+	    storeGlobalIndex(p_ctrl->ninherits - 1, FETCH1U(pc),
+			     &sp->array->elts[assign - 1]);
 	    break;
 
 	case I_STORE_FAR_GLOBAL_INDEX:
 	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    u2 = FETCH1U(pc);
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, &sp->array->elts[assign - 1]))
-	    {
-		storeGlobal(u, u2, &val, &sp[2]);
-		sp[2].string->del();
-		val.string->del();
-	    }
-	    sp[2] = sp[0];
-	    sp += 2;
+	    storeGlobalIndex(u, FETCH1U(pc), &sp->array->elts[assign - 1]);
 	    break;
 
 	case I_STORE_INDEX_INDEX:
 	case I_STORE_INDEX_INDEX | I_POP_BIT:
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, &sp->array->elts[assign - 1]))
-	    {
-		sp[1] = val;
-		storeIndex(sp + 2, sp + 4, sp + 3, sp + 1);
-		sp[1].string->del();
-		sp[2].string->del();
-	    } else {
-		(sp + 3)->del();
-		(sp + 4)->del();
-	    }
-	    sp[4] = sp[0];
-	    sp += 4;
+	    storeIndexIndex(&sp->array->elts[assign - 1]);
 	    break;
 
 # ifdef DEBUG
@@ -842,13 +943,46 @@ void Frame::stores(int skip, int assign)
 }
 
 /*
+ * spread lvalues
+ */
+unsigned short Frame::storesSpread(int n, int offset, int type, Uint sclass)
+{
+    unsigned short nassign, nspread;
+
+    nassign = sp->array->size;
+    if (n < nassign && sp[1].array->size > offset) {
+	nspread = sp[1].array->size - offset;
+	if (nspread >= nassign - n) {
+	    nspread = nassign - n;
+	    i_add_ticks(this, nspread * 3);
+	    while (nspread != 0) {
+		--nassign;
+		if (type != 0) {
+		    cast(&sp->array->elts[nassign], type, sclass);
+		}
+		--nspread;
+		data->assignElt(sp[1].array,
+				&sp[1].array->elts[offset + nspread],
+				&sp->array->elts[nassign]);
+	    }
+	}
+    }
+
+    sp[1].array->del();
+    sp[1] = sp[0];
+    sp++;
+
+    return nassign;
+}
+
+/*
  * perform assignments for lvalue arguments
  */
 void Frame::lvalues(int n)
 {
     char *pc;
     int offset, type;
-    unsigned short nassign, nspread;
+    unsigned short nassign;
     Uint sclass;
 
     pc = this->pc;
@@ -869,27 +1003,7 @@ void Frame::lvalues(int n)
 	    }
 	    this->pc = pc;
 
-	    if (--n < nassign && sp[1].array->size > offset) {
-		nspread = sp[1].array->size - offset;
-		if (nspread >= nassign - n) {
-		    nspread = nassign - n;
-		    i_add_ticks(this, nspread * 3);
-		    while (nspread != 0) {
-			--nassign;
-			if (type != 0) {
-			    cast(&sp->array->elts[nassign], type, sclass);
-			}
-			--nspread;
-			data->assignElt(sp[1].array,
-					&sp[1].array->elts[offset + nspread],
-					&sp->array->elts[nassign]);
-		    }
-		}
-	    }
-
-	    sp[1].array->del();
-	    sp[1] = sp[0];
-	    sp++;
+	    nassign = storesSpread(--n, offset, type, sclass);
 	}
 
 	if (n < nassign) {
@@ -898,6 +1012,118 @@ void Frame::lvalues(int n)
     }
 
     stores(n - nassign, nassign);
+}
+
+/*
+ * integer division
+ */
+Int Frame::div(Int num, Int denom)
+{
+    if (denom == 0) {
+	error("Division by zero");
+    }
+    return num / denom;
+}
+
+/*
+ * left shift
+ */
+Int Frame::lshift(Int num, Int shift)
+{
+    if ((shift & ~31) != 0) {
+	if (shift < 0) {
+	    error("Negative left shift");
+	}
+	return 0;
+    } else {
+	return (Uint) num << shift;
+    }
+}
+
+/*
+ * integer modulus
+ */
+Int Frame::mod(Int num, Int denom)
+{
+    if (denom == 0) {
+	error("Modulus by zero");
+    }
+    return num % denom;
+}
+
+/*
+ * right shift
+ */
+Int Frame::rshift(Int num, Int shift)
+{
+    if ((shift & ~31) != 0) {
+	if (shift < 0) {
+	    error("Negative right shift");
+	}
+	return 0;
+    } else {
+	return (Uint) num >> shift;
+    }
+}
+
+/*
+ * convert to float
+ */
+void Frame::toFloat(Float *flt)
+{
+    i_add_ticks(this, 1);
+    if (sp->type == T_INT) {
+	/* from int */
+	Float::itof(sp->number, flt);
+    } else if (sp->type == T_STRING) {
+	char *p;
+
+	/* from string */
+	p = sp->string->text;
+	if (!Float::atof(&p, flt) ||
+	    p != sp->string->text + sp->string->len) {
+	    error("String cannot be converted to float");
+	}
+	sp->string->del();
+    } else if (sp->type == T_FLOAT) {
+	GET_FLT(sp, *flt);
+    } else {
+	error("Value is not a float");
+    }
+
+    sp++;
+}
+
+/*
+ * convert to integer
+ */
+Int Frame::toInt()
+{
+    Float flt;
+
+    if (sp->type == T_FLOAT) {
+	/* from float */
+	GET_FLT(sp, flt);
+	sp++;
+	return flt.ftoi();
+    } else if (sp->type == T_STRING) {
+	char *p;
+	Int i;
+
+	/* from string */
+	p = sp->string->text;
+	i = strtoint(&p);
+	if (p != sp->string->text + sp->string->len) {
+	    error("String cannot be converted to int");
+	}
+	sp->string->del();
+	sp++;
+	return i;
+    } else if (sp->type != T_INT) {
+	error("Value is not an int");
+    }
+
+    return (sp++)->number;
 }
 
 /*
@@ -995,6 +1221,31 @@ void Frame::newRlimits(Int depth, Int t)
 
     rlim->next = this->rlim;
     this->rlim = rlim;
+}
+
+/*
+ * start rlimits scope
+ */
+void Frame::rlimits(bool privileged)
+{
+    Int newdepth, newticks;
+
+    if (sp[1].type != T_INT) {
+	error("Bad rlimits depth type");
+    }
+    if (sp->type != T_INT) {
+	error("Bad rlimits ticks type");
+    }
+    newdepth = sp[1].number;
+    newticks = sp->number;
+    if (!privileged) {
+	/* runtime check */
+	checkRlimits();
+    } else {
+	/* pop limits */
+	sp += 2;
+    }
+    newRlimits(newdepth, newticks);
 }
 
 /*
@@ -1385,6 +1636,47 @@ unsigned short Frame::switchStr(char *pc)
 }
 
 /*
+ * call kernel function
+ */
+void Frame::kfunc(int n, int nargs)
+{
+    struct kfunc *kf;
+
+    kf = &KFUN(n);
+    if (PROTO_VARGS(kf->proto) == 0 && nargs != PROTO_NARGS(kf->proto)) {
+	if (nargs < PROTO_NARGS(kf->proto)) {
+	    error("Too few arguments for kfun %s", kf->name);
+	} else {
+	    error("Too many arguments for kfun %s", kf->name);
+	}
+    }
+    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
+	typecheck((Frame *) NULL, kf->name, "kfun", kf->proto, nargs, TRUE);
+    }
+    nargs = (*kf->func)(this, nargs, kf);
+    if (nargs != 0) {
+	if (nargs < 0) {
+	    error("Too few arguments for kfun %s", kf->name);
+	} else if (nargs <= PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto)) {
+	    error("Bad argument %d for kfun %s", nargs, kf->name);
+	} else {
+	    error("Too many arguments for kfun %s", kf->name);
+	}
+    }
+}
+
+/*
+ * call function (virtually)
+ */
+void Frame::vfunc(int n, int nargs)
+{
+    char *p;
+
+    p = &ctrl->funcalls[2L * (foffset + n)];
+    funcall((Object *) NULL, (Array *) NULL, UCHAR(p[0]), UCHAR(p[1]), nargs);
+}
+
+/*
  * Main interpreter function. Interpret stack machine code.
  */
 void Frame::interpret(char *pc)
@@ -1392,7 +1684,7 @@ void Frame::interpret(char *pc)
     unsigned short instr, u, u2;
     Uint l;
     char *p;
-    kfunc *kf;
+    struct kfunc *kf;
     int size, instance;
     bool atomic;
     Int newdepth, newticks;
@@ -1400,17 +1692,6 @@ void Frame::interpret(char *pc)
 
     size = 0;
     l = 0;
-
-# define CHECK_LOOP_TICKS()						\
-    do {								\
-	if ((rlim->ticks -= 5) <= 0) {					\
-	    if (rlim->noticks) {					\
-		rlim->ticks = 0x7fffffff;				\
-	    } else {							\
-		error("Out of ticks");					\
-	    }								\
-	}								\
-    } while (FALSE)
 
     for (;;) {
 # ifdef DEBUG
@@ -1460,12 +1741,12 @@ void Frame::interpret(char *pc)
 	    continue;
 
 	case I_PUSH_GLOBAL:
-	    global(p_ctrl->ninherits - 1, FETCH1U(pc));
+	    pushValue(global(p_ctrl->ninherits - 1, FETCH1U(pc)));
 	    continue;
 
 	case I_PUSH_FAR_GLOBAL:
 	    u = FETCH1U(pc);
-	    global(u, FETCH1U(pc));
+	    pushValue(global(u, FETCH1U(pc)));
 	    continue;
 
 	case I_INDEX:
@@ -1504,27 +1785,7 @@ void Frame::interpret(char *pc)
 
 	case I_INSTANCEOF:
 	case I_INSTANCEOF | I_POP_BIT:
-	    FETCH3U(pc, l);
-	    switch (sp->type) {
-	    case T_OBJECT:
-		instance = instanceOf(sp->oindex, l);
-		break;
-
-	    case T_LWOBJECT:
-		if (sp->array->elts->type != T_OBJECT) {
-		    instance =
-		    (strcmp(Object::builtinName(sp->array->elts->number),
-			    className(l)) == 0);
-		} else {
-		    instance = instanceOf(sp->array->elts->oindex, l);
-		}
-		sp->array->del();
-		break;
-
-	    default:
-		error("Instance of bad type");
-	    }
-
+	    instance = instanceOf(FETCH3U(pc, l));
 	    PUT_INTVAL(sp, instance);
 	    break;
 
@@ -1550,92 +1811,61 @@ void Frame::interpret(char *pc)
 
 	case I_STORE_LOCAL:
 	case I_STORE_LOCAL | I_POP_BIT:
-	    storeLocal(FETCH1S(pc), sp, NULL);
+	    u = FETCH1U(pc);
+	    if (SCHAR(u) >= 0) {
+		storeParam(u, sp);
+	    } else {
+		storeLocal(-SCHAR(u), sp);
+	    }
 	    break;
 
 	case I_STORE_GLOBAL:
 	case I_STORE_GLOBAL | I_POP_BIT:
-	    storeGlobal(p_ctrl->ninherits - 1, FETCH1U(pc), sp, NULL);
+	    storeGlobal(p_ctrl->ninherits - 1, FETCH1U(pc), sp);
 	    break;
 
 	case I_STORE_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    storeGlobal(u, FETCH1U(pc), sp, NULL);
+	    storeGlobal(u, FETCH1U(pc), sp);
 	    break;
 
 	case I_STORE_INDEX:
 	case I_STORE_INDEX | I_POP_BIT:
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, sp)) {
-		sp[2].string->del();
-		val.string->del();
-	    }
-	    sp[2] = sp[0];
-	    sp += 2;
+	    storeIndex(sp);
 	    break;
 
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
 	    u = FETCH1S(pc);
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, sp)) {
-		storeLocal((short) u, &val, sp + 2);
-		sp[2].string->del();
-		val.string->del();
+	    if (SCHAR(u) >= 0) {
+		storeParamIndex(u, sp);
+	    } else {
+		storeLocalIndex(-SCHAR(u), sp);
 	    }
-	    sp[2] = sp[0];
-	    sp += 2;
 	    break;
 
 	case I_STORE_GLOBAL_INDEX:
 	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
-	    u = FETCH1U(pc);
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, sp)) {
-		storeGlobal(p_ctrl->ninherits - 1, u, &val, sp + 2);
-		sp[2].string->del();
-		val.string->del();
-	    }
-	    sp[2] = sp[0];
-	    sp += 2;
+	    storeGlobalIndex(p_ctrl->ninherits - 1, FETCH1U(pc), sp);
 	    break;
 
 	case I_STORE_FAR_GLOBAL_INDEX:
 	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    u2 = FETCH1U(pc);
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, sp)) {
-		storeGlobal(u, u2, &val, sp + 2);
-		sp[2].string->del();
-		val.string->del();
-	    }
-	    sp[2] = sp[0];
-	    sp += 2;
+	    storeGlobalIndex(u, FETCH1U(pc), sp);
 	    break;
 
 	case I_STORE_INDEX_INDEX:
 	case I_STORE_INDEX_INDEX | I_POP_BIT:
-	    val = Value::nil;
-	    if (storeIndex(&val, sp + 2, sp + 1, sp)) {
-		sp[1] = val;
-		storeIndex(sp + 2, sp + 4, sp + 3, sp + 1);
-		sp[1].string->del();
-		sp[2].string->del();
-	    } else {
-		sp[3].del();
-		sp[4].del();
-	    }
-	    sp[4] = sp[0];
-	    sp += 4;
+	    storeIndexIndex(sp);
 	    break;
 
 	case I_JUMP_ZERO:
 	    p = prog + FETCH2U(pc, u);
 	    if (!VAL_TRUE(sp)) {
 		if (p < pc) {
-		    CHECK_LOOP_TICKS();
+		    loop_ticks(this);
 		}
 		pc = p;
 	    }
@@ -1646,7 +1876,7 @@ void Frame::interpret(char *pc)
 	    p = prog + FETCH2U(pc, u);
 	    if (VAL_TRUE(sp)) {
 		if (p < pc) {
-		    CHECK_LOOP_TICKS();
+		    loop_ticks(this);
 		}
 		pc = p;
 	    }
@@ -1656,7 +1886,7 @@ void Frame::interpret(char *pc)
 	case I_JUMP:
 	    p = prog + FETCH2U(pc, u);
 	    if (p < pc) {
-		CHECK_LOOP_TICKS();
+		loop_ticks(this);
 	    }
 	    pc = p;
 	    continue;
@@ -1676,7 +1906,7 @@ void Frame::interpret(char *pc)
 		break;
 	    }
 	    if (p < pc) {
-		CHECK_LOOP_TICKS();
+		loop_ticks(this);
 	    }
 	    pc = p;
 	    (sp++)->del();
@@ -1684,105 +1914,55 @@ void Frame::interpret(char *pc)
 
 	case I_CALL_KFUNC:
 	case I_CALL_KFUNC | I_POP_BIT:
-	    kf = &KFUN(FETCH1U(pc));
+	    u = FETCH1U(pc);
+	    kf = &KFUN(u);
 	    if (PROTO_VARGS(kf->proto) != 0) {
 		/* variable # of arguments */
-		u = FETCH1U(pc) + size;
+		u2 = FETCH1U(pc) + size;
 		size = 0;
 	    } else {
 		/* fixed # of arguments */
-		u = PROTO_NARGS(kf->proto);
-	    }
-	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		typecheck((Frame *) NULL, kf->name, "kfun", kf->proto, u, TRUE);
+		u2 = PROTO_NARGS(kf->proto);
 	    }
 	    this->pc = pc;
-	    u = (*kf->func)(this, u, kf);
-	    if (u != 0) {
-		if ((short) u < 0) {
-		    error("Too few arguments for kfun %s", kf->name);
-		} else if (u <= PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto))
-		{
-		    error("Bad argument %d for kfun %s", u, kf->name);
-		} else {
-		    error("Too many arguments for kfun %s", kf->name);
-		}
-	    }
+	    kfunc(u, u2);
 	    pc = this->pc;
 	    break;
 
 	case I_CALL_EFUNC:
 	case I_CALL_EFUNC | I_POP_BIT:
-	    kf = &KFUN(FETCH2U(pc, u));
+	    FETCH2U(pc, u);
+	    kf = &KFUN(u);
 	    if (PROTO_VARGS(kf->proto) != 0) {
 		/* variable # of arguments */
-		u = FETCH1U(pc) + size;
+		u2 = FETCH1U(pc) + size;
 		size = 0;
 	    } else {
 		/* fixed # of arguments */
-		u = PROTO_NARGS(kf->proto);
-	    }
-	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		typecheck((Frame *) NULL, kf->name, "kfun", kf->proto, u, TRUE);
+		u2 = PROTO_NARGS(kf->proto);
 	    }
 	    this->pc = pc;
-	    u = (*kf->func)(this, u, kf);
-	    if (u != 0) {
-		if ((short) u < 0) {
-		    error("Too few arguments for kfun %s", kf->name);
-		} else if (u <= PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto))
-		{
-		    error("Bad argument %d for kfun %s", u, kf->name);
-		} else {
-		    error("Too many arguments for kfun %s", kf->name);
-		}
-	    }
+	    kfunc(u, u2);
 	    pc = this->pc;
 	    break;
 
 	case I_CALL_CKFUNC:
 	case I_CALL_CKFUNC | I_POP_BIT:
-	    kf = &KFUN(FETCH1U(pc));
-	    u = FETCH1U(pc) + size;
+	    u = FETCH1U(pc);
+	    u2 = FETCH1U(pc) + size;
 	    size = 0;
-	    if (u != PROTO_NARGS(kf->proto)) {
-		if (u < PROTO_NARGS(kf->proto)) {
-		    error("Too few arguments for kfun %s", kf->name);
-		} else {
-		    error("Too many arguments for kfun %s", kf->name);
-		}
-	    }
-	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		typecheck((Frame *) NULL, kf->name, "kfun", kf->proto, u, TRUE);
-	    }
 	    this->pc = pc;
-	    u = (*kf->func)(this, u, kf);
-	    if (u != 0) {
-		error("Bad argument %d for kfun %s", u, kf->name);
-	    }
+	    kfunc(u, u2);
 	    pc = this->pc;
 	    break;
 
 	case I_CALL_CEFUNC:
 	case I_CALL_CEFUNC | I_POP_BIT:
-	    kf = &KFUN(FETCH2U(pc, u));
-	    u = FETCH1U(pc) + size;
+	    FETCH2U(pc, u);
+	    u2 = FETCH1U(pc) + size;
 	    size = 0;
-	    if (u != PROTO_NARGS(kf->proto)) {
-		if (u < PROTO_NARGS(kf->proto)) {
-		    error("Too few arguments for kfun %s", kf->name);
-		} else {
-		    error("Too many arguments for kfun %s", kf->name);
-		}
-	    }
-	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		typecheck((Frame *) NULL, kf->name, "kfun", kf->proto, u, TRUE);
-	    }
 	    this->pc = pc;
-	    u = (*kf->func)(this, u, kf);
-	    if (u != 0) {
-		error("Bad argument %d for kfun %s", u, kf->name);
-	    }
+	    kfunc(u, u2);
 	    pc = this->pc;
 	    break;
 
@@ -1804,9 +1984,8 @@ void Frame::interpret(char *pc)
 
 	case I_CALL_FUNC:
 	case I_CALL_FUNC | I_POP_BIT:
-	    p = &ctrl->funcalls[2L * (foffset + FETCH2U(pc, u))];
-	    funcall((Object *) NULL, (Array *) NULL, UCHAR(p[0]),
-		      UCHAR(p[1]), FETCH1U(pc) + size);
+	    FETCH2U(pc, u);
+	    vfunc(u, FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
@@ -1825,7 +2004,7 @@ void Frame::interpret(char *pc)
 		/* error */
 		this->pc = p;
 		if (p < pc) {
-		    CHECK_LOOP_TICKS();
+		    loop_ticks(this);
 		}
 		pc = p;
 		PUSH_STRVAL(this, ErrorContext::exception());
@@ -1834,22 +2013,7 @@ void Frame::interpret(char *pc)
 	    break;
 
 	case I_RLIMITS:
-	    if (sp[1].type != T_INT) {
-		error("Bad rlimits depth type");
-	    }
-	    if (sp->type != T_INT) {
-		error("Bad rlimits ticks type");
-	    }
-	    newdepth = sp[1].number;
-	    newticks = sp->number;
-	    if (!FETCH1U(pc)) {
-		/* runtime check */
-		checkRlimits();
-	    } else {
-		/* pop limits */
-		sp += 2;
-	    }
-	    newRlimits(newdepth, newticks);
+	    rlimits(FETCH1U(pc));
 	    interpret(pc);
 	    pc = this->pc;
 	    setRlimits(rlim->next);
@@ -2079,9 +2243,11 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
 	} while (--n > 0);
     }
 
+    f.ctrl->funCalls();	/* make sure they are available */
+
     /* execute code */
     if (!ext_execute(&f, funci)) {
-	f.ctrl->funCalls();	/* make sure they are available */
+	f.source = 0;
 	f.prog = pc += 2;
 	f.interpret(pc);
     }
@@ -2431,7 +2597,7 @@ Array *Frame::funcTrace(Dataspace *data)
     v++;
 
     /* line number */
-    PUT_INTVAL(v, line());
+    PUT_INTVAL(v, source != 0 ? source : line());
     v++;
 
     /* external flag */

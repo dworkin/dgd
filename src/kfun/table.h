@@ -41,6 +41,10 @@ struct extkfunc {
 
 extern void kf_clear	();
 extern void kf_ext_kfun	(const extkfunc*, int);
+extern int  kf_ckrangeft(Frame*, int, kfunc*);
+extern int  kf_ckrangef	(Frame*, int, kfunc*);
+extern int  kf_ckranget	(Frame*, int, kfunc*);
+extern int  kf_nil	(Frame*, int, kfunc*);
 extern int  kf_unused	(Frame*, int, kfunc*);
 extern void kf_init	();
 extern void kf_jit	();

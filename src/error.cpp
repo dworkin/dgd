@@ -30,6 +30,7 @@
 
 static ErrorContext *econtext;		/* current error context */
 static ErrorContext *atomicec;		/* first context beyond atomic */
+jmp_buf *ErrorContext::env;		/* current error env */
 String *ErrorContext::err;		/* current error string */
 
 ErrorContext::ErrorContext(Frame *frame, Handler handler)
@@ -46,19 +47,24 @@ ErrorContext::ErrorContext(Frame *frame, Handler handler)
 /*
  * push a new errorcontext
  */
-void ErrorContext::push(Handler handler)
+jmp_buf *ErrorContext::push(Handler handler)
 {
     ErrorContext *e;
+    jmp_buf *jump;
 
     if (econtext == (ErrorContext *) NULL) {
 	Alloc::staticMode();
 	e = new ErrorContext(cframe, handler);
 	Alloc::dynamicMode();
+	jump = (jmp_buf *) NULL;
     } else {
 	e = new ErrorContext(cframe, handler);
+	jump = &econtext->extEnv;
     }
     e->next = econtext;
     econtext = e;
+    env = &e->extEnv;
+    return jump;
 }
 
 /*
@@ -81,8 +87,10 @@ void ErrorContext::pop()
 	delete e;
 	Alloc::dynamicMode();
 	clearException();
+	env = (jmp_buf *) NULL;
     } else {
 	delete e;
+	env = &econtext->extEnv;
     }
 }
 
