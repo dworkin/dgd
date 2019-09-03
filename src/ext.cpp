@@ -634,14 +634,10 @@ static void ext_vm_cast(Frame *f, uint8_t type, uint16_t inherit,
  */
 static Int ext_vm_cast_int(Frame *f)
 {
-    try {
-	if (f->sp->type != T_INT) {
-	    error("Value is not an int");
-	}
-	return (f->sp++)->number;
-    } catch (...) {
-	longjmp(*ErrorContext::env, 1);
+    if (f->sp->type != T_INT) {
+	ext_runtime_error(f, "Value is not an int");
     }
+    return (f->sp++)->number;
 }
 
 /*
@@ -649,14 +645,10 @@ static Int ext_vm_cast_int(Frame *f)
  */
 static double ext_vm_cast_float(Frame *f)
 {
-    try {
-	if (f->sp->type != T_FLOAT) {
-	    error("Value is not a float");
-	}
-	return ext_float_getval(f->sp++);
-    } catch (...) {
-	longjmp(*ErrorContext::env, 1);
+    if (f->sp->type != T_FLOAT) {
+	ext_runtime_error(f, "Value is not a float");
     }
+    return ext_float_getval(f->sp++);
 }
 
 /*
@@ -864,18 +856,14 @@ static void ext_vm_store_index_index(Frame *f)
  */
 static void ext_vm_stores(Frame *f, uint8_t n)
 {
-    try {
-	if (f->sp->type != T_ARRAY) {
-	    error("Value is not an array");
-	}
-	if (n > f->sp->array->size) {
-	    error("Wrong number of lvalues");
-	}
-	Dataspace::elts(f->sp->array);
-	f->nStores = n;
-    } catch (...) {
-	longjmp(*ErrorContext::env, 1);
+    if (f->sp->type != T_ARRAY) {
+	ext_runtime_error(f, "Value is not an array");
     }
+    if (n > f->sp->array->size) {
+	ext_runtime_error(f, "Wrong number of lvalues");
+    }
+    Dataspace::elts(f->sp->array);
+    f->nStores = n;
 }
 
 /*
@@ -883,14 +871,10 @@ static void ext_vm_stores(Frame *f, uint8_t n)
  */
 static void ext_vm_stores_lval(Frame *f, uint8_t n)
 {
-    try {
-	if (n < f->sp->array->size) {
-	    error("Missing lvalue");
-	}
-	f->nStores = n;
-    } catch (...) {
-	longjmp(*ErrorContext::env, 1);
+    if (n < f->sp->array->size) {
+	ext_runtime_error(f, "Missing lvalue");
     }
+    f->nStores = n;
 }
 
 /*
@@ -899,16 +883,11 @@ static void ext_vm_stores_lval(Frame *f, uint8_t n)
 static void ext_vm_stores_spread(Frame *f, uint8_t n, uint8_t offset,
 				 uint8_t type, uint16_t inherit, uint16_t index)
 {
-    try {
-	--n;
-	if (n < f->storesSpread(n, offset, type,
-				((Uint) inherit << 16) + index)) {
-	    error("Missing lvalue");
-	}
-	f->nStores = n;
-    } catch (...) {
-	longjmp(*ErrorContext::env, 1);
+    --n;
+    if (n < f->storesSpread(n, offset, type, ((Uint) inherit << 16) + index)) {
+	ext_runtime_error(f, "Missing lvalue");
     }
+    f->nStores = n;
 }
 
 /*
