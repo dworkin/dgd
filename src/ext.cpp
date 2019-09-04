@@ -1798,6 +1798,7 @@ void ext_kfuns(char *protos, int size, int nkfun)
  */
 static void ext_compile(const Frame *f, Control *ctrl)
 {
+    Object *obj;
     int i, j, nftypes;
     const Inherit *inh;
     char *ft, *vt;
@@ -1807,6 +1808,12 @@ static void ext_compile(const Frame *f, Control *ctrl)
     /*
      * compile new program
      */
+    obj = OBJ(ctrl->oindex);
+    if (obj->flags & O_COMPILED) {
+	return;
+    }
+    obj->flags |= O_COMPILED;
+
     /* count function types & variable types */
     nftypes = 0;
     for (inh = ctrl->inherits, i = ctrl->ninherits; i > 0; inh++, --i) {
@@ -1875,6 +1882,16 @@ bool ext_execute(const Frame *f, int func)
 	return FALSE;
     } else {
 	return (bool) result;
+    }
+}
+
+/*
+ * remove JIT-compiled object
+ */
+void ext_release(uint64_t index, uint64_t instance)
+{
+    if (jit_compile != NULL) {
+	(*jit_release)(index, instance);
     }
 }
 

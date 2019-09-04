@@ -28,6 +28,8 @@
 # include "interpret.h"
 
 
+extern void ext_release(uint64_t, uint64_t);
+
 class ObjPatch : public ChunkAllocated {
 public:
     ObjPatch(class ObjPlane *plane, ObjPatch **o, ObjPatch *prev, Object *obj) :
@@ -380,6 +382,7 @@ void Object::commitPlane()
 			op->obj.update = obj->update;
 		    }
 		    BCLR(ocmap, op->obj.index);
+		    op->obj.flags |= obj->flags & O_COMPILED;
 		    *obj = op->obj;
 		    *o = op->next;
 		    delete op;
@@ -1064,6 +1067,11 @@ void Object::clean()
 		baseplane.destruct = o->index;
 	    }
 
+	    if (up->flags & O_COMPILED) {
+		up->flags &= ~O_COMPILED;
+		ext_release(up->index, up->ctrl->instance);
+	    }
+
 	    /* swap control blocks */
 	    up->ctrl = o->ctrl;
 	    up->ctrl->oindex = up->index;
@@ -1094,6 +1102,10 @@ void Object::clean()
     while (baseplane.destruct != OBJ_NONE) {
 	o = OBJ(baseplane.destruct);
 	baseplane.destruct = o->cref;
+
+	if (o->flags & O_COMPILED) {
+	    ext_release(o->index, o->control()->instance);
+	}
 
 	/* free control block */
 	o->control()->del();
