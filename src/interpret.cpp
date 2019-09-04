@@ -2246,8 +2246,8 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
     f.ctrl->funCalls();	/* make sure they are available */
 
     /* execute code */
+    f.source = 0;
     if (!ext_execute(&f, funci)) {
-	f.source = 0;
 	f.prog = pc += 2;
 	f.interpret(pc);
     }

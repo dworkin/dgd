@@ -1627,7 +1627,11 @@ static void ext_vm_line(Frame *f, uint16_t line)
  */
 static void ext_vm_loop_ticks(Frame *f)
 {
-    loop_ticks(f);
+    try {
+	loop_ticks(f);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
 }
 
 
