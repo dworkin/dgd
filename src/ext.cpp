@@ -1154,6 +1154,8 @@ static Int ext_vm_toint(Frame *f)
  */
 static Int ext_vm_toint_float(Frame *f, double iflt)
 {
+    UNREFERENCED_PARAMETER(f);
+
     try {
 	Value val;
 	Float flt;
@@ -1590,6 +1592,8 @@ static void ext_vm_rlimits_end(Frame *f)
  */
 static jmp_buf *ext_vm_catch(Frame *f)
 {
+    UNREFERENCED_PARAMETER(f);
+
     return ErrorContext::push(Frame::runtimeError);
 }
 
@@ -1787,7 +1791,7 @@ void ext_kfuns(char *protos, int size, int nkfun)
 
 	if (!(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR, sizeof(Int), 1,
 			 conf_typechecking(), KF_BUILTINS, nkfun,
-			 (uint8_t *) protos, size, vmtab)) {
+			 (uint8_t *) protos, size, (void **) vmtab)) {
 	    jit_compile = NULL;
 	}
     }
