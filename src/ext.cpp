@@ -1690,7 +1690,7 @@ static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, int,
 void ext_kfuns(char *protos, int size, int nkfun)
 {
     if (jit_compile != NULL) {
-	voidf *vmtab[96];
+	static voidf *vmtab[96];
 
 	vmtab[ 0] = (voidf *) &ext_vm_int;
 	vmtab[ 1] = (voidf *) &ext_vm_float;
