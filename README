@@ -1,4 +1,4 @@
-This file was written for release 1.6 of DGD, Dworkin's Game Driver.
+This file was written for release 1.6.8 of DGD, Dworkin's Game Driver.
 
 DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS
 and many versions of Unix.  The source repository for DGD can be found at:
@@ -8,6 +8,16 @@ and many versions of Unix.  The source repository for DGD can be found at:
 DGD's home page is at:
 
     http://www.dworkin.nl/dgd/
+
+DGD 1.6.8 is the first version to offer JIT compiler support.  This requires
+the jit extension module version 1.0 from <https://github.com/dworkin/lpc-ext>.
+
+Alongside DGD, there is Hydra.  Hydra is fully compatible with DGD, but offers
+acceleration for multi-core systems.  Hydra also supports JIT compilation,
+using the same extension module as DGD.  Learn more at:
+
+    http://www.dworkin.nl/hydra/
+
 
 			*** PLEASE NOTE ***
 DGD 1.6 is backward compatible with snapshots from DGD 1.5.9 and later, only.
@@ -19,9 +29,6 @@ This distribution is organized as follows:
 
 bin		Installation binaries will be created here (Unix).
 doc		Documentation, still very incomplete.
-src		Where the source of DGD resides, and where you issue your
+src		Where the source code of DGD resides, and where you issue your
 		`make' command on Unix.
 src/host/*	Subdirectories for various platform-dependent files.
-
-
-This version of DGD is released under the GNU Affero General Public License.
