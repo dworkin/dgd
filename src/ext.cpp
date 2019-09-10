@@ -30,8 +30,8 @@
 # include <float.h>
 # include <math.h>
 
-# define EXTENSION_MAJOR	0
-# define EXTENSION_MINOR	13
+# define EXTENSION_MAJOR	1
+# define EXTENSION_MINOR	0
 
 
 /*
