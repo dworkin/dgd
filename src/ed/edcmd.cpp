@@ -64,7 +64,7 @@ CmdBuf::CmdBuf(char *tmpfile) :
     memset(zbuf, '\0', sizeof(zbuf));
     memset(fname, '\0', sizeof(fname));
     undo = (Block) -1;				/* not 0! */
-    Int uthis = 0;
+    uthis = 0;
     memset(umark, '\0', sizeof(umark));
     memset(search, '\0', sizeof(search));
     memset(replace, '\0', sizeof(replace));

@@ -150,7 +150,7 @@ class COPatch : public ChunkAllocated {
 public:
     COPatch(Dataplane *plane, COPatch **c, int type, unsigned int handle,
 	    DCallOut *co, Uint time, unsigned int mtime, uindex *q) :
-	type(type), handle(handle), time(time), mtime(mtime), plane(plane),
+	type(type), handle(handle), plane(plane), time(time), mtime(mtime),
 	queue(q) {
 	int i;
 	Value *v;

@@ -798,7 +798,7 @@ void Frame::storeSkipSkip()
  */
 void Frame::stores(int skip, int assign)
 {
-    unsigned short u, u2, instr;
+    unsigned short u, instr;
     Uint sclass;
 
     instr = 0;
@@ -1687,7 +1687,6 @@ void Frame::interpret(char *pc)
     struct kfunc *kf;
     int size, instance;
     bool atomic;
-    Int newdepth, newticks;
     Value val;
 
     size = 0;
