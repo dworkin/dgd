@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,7 +17,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-struct node : public ChunkAllocated {
+class Node : public ChunkAllocated {
+public:
+    void toint(Int i);
+    void tostr(String *str);
+
+    static void init(int);
+    static void clear();
+
+    static Node *create(unsigned short line);
+    static Node *createInt(Int num);
+    static Node *createFloat(Float *flt);
+    static Node *createNil();
+    static Node *createStr(String *str);
+    static Node *createVar(unsigned int type, int idx);
+    static Node *createType(int, String*);
+    static Node *createFcall(int mod, String *tclass, char *func, Int call);
+    static Node *createOp(const char *op);
+    static Node *createMon(int type, int mod, Node *left);
+    static Node *createBin(int type, int mod, Node *left, Node *right);
+
     unsigned char type;		/* type of node */
     char flags;			/* bitflags */
     unsigned short mod;		/* modifier */
@@ -28,13 +47,16 @@ struct node : public ChunkAllocated {
 	unsigned short fhigh;	/* high word of float */
 	String *string;		/* string value */
 	char *ptr;		/* character pointer */
-	node *left;		/* left child */
+	Node *left;		/* left child */
     } l;
     union {
 	Int number;		/* numeric value */
 	Uint flow;		/* low longword of float */
-	node *right;		/* right child */
+	Node *right;		/* right child */
     } r;
+
+private:
+    Node(unsigned short line);
 };
 
 # define NFLT_GET(n, f)	((f).high = (n)->l.fhigh, (f).low = (n)->r.flow)
@@ -55,22 +77,6 @@ struct node : public ChunkAllocated {
 # define F_FLOW		(F_ENTRY | F_CASE | F_END)
 # define F_VARARGS	0x04	/* varargs in parameter list */
 # define F_ELLIPSIS	0x08	/* ellipsis in parameter list */
-
-extern void  node_init	(int);
-extern node *node_new	(unsigned int);
-extern node *node_int	(Int);
-extern node *node_float	(Float*);
-extern node *node_nil	();
-extern node *node_str	(String*);
-extern node *node_var	(unsigned int, int);
-extern node *node_type	(int, String*);
-extern node *node_fcall	(int, String*, char*, Int);
-extern node *node_op	(const char*);
-extern node *node_mon	(int, int, node*);
-extern node *node_bin	(int, int, node*, node*);
-extern void  node_toint	(node*, Int);
-extern void  node_tostr	(node*, String*);
-extern void  node_clear	();
 
 # define N_ADD			  1
 # define N_ADD_INT		  2

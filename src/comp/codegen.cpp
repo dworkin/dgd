@@ -311,7 +311,7 @@ static void code_clear()
 struct jmplist : public ChunkAllocated {
     Uint where;				/* where to jump from */
     Uint to;				/* where to jump to */
-    node *label;			/* label to jump to */
+    Node *label;			/* label to jump to */
     jmplist *next;			/* next in list */
 };
 
@@ -445,9 +445,9 @@ static void jump_clear()
 }
 
 
-static void cg_expr (node*, int);
-static void cg_cond (node*, int);
-static void cg_stmt (node*);
+static void cg_expr (Node*, int);
+static void cg_cond (Node*, int);
+static void cg_stmt (Node*);
 
 static Int kd_allocate, kd_allocate_int, kd_allocate_float;
 static int nparams;		/* number of parameters */
@@ -456,7 +456,7 @@ static int nparams;		/* number of parameters */
  * NAME:	codegen->type()
  * DESCRIPTION:	return the type of a node
  */
-static int cg_type(node *n, long *l)
+static int cg_type(Node *n, long *l)
 {
     int type;
 
@@ -474,7 +474,7 @@ static int cg_type(node *n, long *l)
  * NAME:	codegen->cast()
  * DESCRIPTION:	generate code for a cast
  */
-static void cg_cast(node *n)
+static void cg_cast(Node *n)
 {
     int type;
     long l;
@@ -494,10 +494,10 @@ static void cg_cast(node *n)
  * NAME:	codegen->lvalue()
  * DESCRIPTION:	generate code for an lvalue
  */
-static int cg_lvalue(node *n, int fetch)
+static int cg_lvalue(Node *n, int fetch)
 {
     int stack;
-    node *m, *l;
+    Node *m, *l;
 
     stack = 0;
     m = n;
@@ -540,7 +540,7 @@ static int cg_lvalue(node *n, int fetch)
  * NAME:	codegen->store()
  * DESCRIPTION:	generate code for a store
  */
-static void cg_store(node *n)
+static void cg_store(Node *n)
 {
     if (n->type == N_CAST) {
 	n = n->l.left;
@@ -598,7 +598,7 @@ static void cg_store(node *n)
  * NAME:	codegen->asgnop()
  * DESCRIPTION:	generate code for an assignment operator
  */
-static void cg_asgnop(node *n, int op)
+static void cg_asgnop(Node *n, int op)
 {
     cg_lvalue(n->l.left, TRUE);
     cg_expr(n->r.right, FALSE);
@@ -610,11 +610,11 @@ static void cg_asgnop(node *n, int op)
  * NAME:	codegen->aggr()
  * DESCRIPTION:	generate code for an aggregate
  */
-static int cg_aggr(node *n)
+static int cg_aggr(Node *n)
 {
     int i;
 
-    if (n == (node *) NULL) {
+    if (n == (Node *) NULL) {
 	return 0;
     }
     for (i = 1; n->type == N_PAIR; i++) {
@@ -629,11 +629,11 @@ static int cg_aggr(node *n)
  * NAME:	codegen->map_aggr()
  * DESCRIPTION:	generate code for a mapping aggregate
  */
-static int cg_map_aggr(node *n)
+static int cg_map_aggr(Node *n)
 {
     int i;
 
-    if (n == (node *) NULL) {
+    if (n == (Node *) NULL) {
 	return 0;
     }
     for (i = 2; n->type == N_PAIR; i += 2) {
@@ -650,10 +650,10 @@ static int cg_map_aggr(node *n)
  * NAME:	codegen->lval_aggr()
  * DESCRIPTION:	generate code for an lvalue aggregate
  */
-static int cg_lval_aggr(node **l)
+static int cg_lval_aggr(Node **l)
 {
     int i;
-    node *n, *m;
+    Node *n, *m;
 
     i = 1;
     n = *l;
@@ -682,7 +682,7 @@ static int cg_lval_aggr(node **l)
  * NAME:	CodeGen->store_aggr()
  * DESCRIPTION:	generate stores for an lvalue aggregate
  */
-static void cg_store_aggr(node *n)
+static void cg_store_aggr(Node *n)
 {
     while (n->type == N_PAIR) {
 	cg_cast(n->r.right);
@@ -697,10 +697,10 @@ static void cg_store_aggr(node *n)
  * NAME:	codegen->sumargs()
  * DESCRIPTION:	generate code for summand arguments
  */
-static int cg_sumargs(node *n)
+static int cg_sumargs(Node *n)
 {
     int i;
-    node *m;
+    Node *m;
 
     if (n->type == N_SUM) {
 	i = cg_sumargs(n->l.left);
@@ -719,15 +719,15 @@ static int cg_sumargs(node *n)
     case N_RANGE:
 	cg_expr(n->l.left, FALSE);
 	n = n->r.right;
-	if (n->l.left != (node *) NULL) {
+	if (n->l.left != (Node *) NULL) {
 	    cg_expr(n->l.left, FALSE);
-	    if (n->r.right != (node *) NULL) {
+	    if (n->r.right != (Node *) NULL) {
 		cg_expr(n->r.right, FALSE);
 		code_kfun(KF_CKRANGEFT, n->line);
 	    } else {
 		code_kfun(KF_CKRANGEF, n->line);
 	    }
-	} else if (n->r.right != (node *) NULL) {
+	} else if (n->r.right != (Node *) NULL) {
 	    cg_expr(n->r.right, FALSE);
 	    code_kfun(KF_CKRANGET, n->line);
 	} else {
@@ -739,7 +739,7 @@ static int cg_sumargs(node *n)
 
     case N_FUNC:
 	m = n->l.left->r.right;
-	if (m != (node *) NULL && m->type != N_PAIR && m->type != N_SPREAD &&
+	if (m != (Node *) NULL && m->type != N_PAIR && m->type != N_SPREAD &&
 	    m->mod == T_INT) {
 	    if (n->r.number == kd_allocate) {
 		cg_expr(m, FALSE);
@@ -773,16 +773,16 @@ static int cg_sumargs(node *n)
  * NAME:	codegen->funargs()
  * DESCRIPTION:	generate code for function arguments
  */
-static int cg_funargs(node **l, int *nargs, bool *spread)
+static int cg_funargs(Node **l, int *nargs, bool *spread)
 {
-    node *n, *m;
+    Node *n, *m;
     int stack;
 
     *spread = FALSE;
     n = *l;
-    *l = (node *) NULL;
+    *l = (Node *) NULL;
     *nargs = 0;
-    if (n == (node *) NULL) {
+    if (n == (Node *) NULL) {
 	return 0;
     }
 
@@ -792,7 +792,7 @@ static int cg_funargs(node **l, int *nargs, bool *spread)
 	n = n->r.right;
 	if (m->l.left->type == N_LVALUE) {
 	    stack += cg_lvalue(m->l.left->l.left, FALSE);
-	    if (*l != (node *) NULL) {
+	    if (*l != (Node *) NULL) {
 		(*l)->r.right = m->l.left;
 		m->l.left = *l;
 	    }
@@ -809,7 +809,7 @@ static int cg_funargs(node **l, int *nargs, bool *spread)
 	code_instr(I_SPREAD, n->line);
 	code_byte(-(short) n->mod - 2);
 	if ((short) n->mod >= 0) {
-	    if (*l == (node *) NULL) {
+	    if (*l == (Node *) NULL) {
 		*l = n;
 	    }
 	    (*nargs)++;
@@ -817,7 +817,7 @@ static int cg_funargs(node **l, int *nargs, bool *spread)
 	*spread = TRUE;
     } else if (n->type == N_LVALUE) {
 	stack += cg_lvalue(n->l.left, FALSE);
-	if (*l == (node *) NULL) {
+	if (*l == (Node *) NULL) {
 	    *l = n;
 	}
 	(*nargs)++;
@@ -832,7 +832,7 @@ static int cg_funargs(node **l, int *nargs, bool *spread)
  * NAME:	codegen->storearg()
  * DESCRIPTION:	generate storage code for one lvalue argument
  */
-static void cg_storearg(node *n)
+static void cg_storearg(Node *n)
 {
     if (n->type == N_SPREAD) {
 	int type;
@@ -861,7 +861,7 @@ static void cg_storearg(node *n)
  * NAME:	codegen->storeargs()
  * DESCRIPTION:	generate storage code for lvalue arguments
  */
-static void cg_storeargs(node *n)
+static void cg_storeargs(Node *n)
 {
     while (n->type == N_PAIR) {
 	cg_storearg(n->r.right);
@@ -874,12 +874,12 @@ static void cg_storeargs(node *n)
  * NAME:	codegen->expr()
  * DESCRIPTION:	generate code for an expression
  */
-static void cg_expr(node *n, int pop)
+static void cg_expr(Node *n, int pop)
 {
     jmplist *jlist, *j2list;
     unsigned short i;
     long l;
-    node *args;
+    Node *args;
     int nargs;
     bool spread;
 
@@ -1102,7 +1102,7 @@ static void cg_expr(node *n, int pop)
 		/* generate stores */
 		code_instr(I_STORES, n->line);
 		code_byte(nargs);
-		if (args != (node *) NULL) {
+		if (args != (Node *) NULL) {
 		    char *instr;
 
 		    instr = last_instruction;
@@ -1413,12 +1413,12 @@ static void cg_expr(node *n, int pop)
 	break;
 
     case N_QUEST:
-	if (n->r.right->l.left != (node *) NULL) {
+	if (n->r.right->l.left != (Node *) NULL) {
 	    jlist = false_list;
 	    false_list = (jmplist *) NULL;
 	    cg_cond(n->l.left, FALSE);
 	    cg_expr(n->r.right->l.left, pop);
-	    if (n->r.right->r.right != (node *) NULL) {
+	    if (n->r.right->r.right != (Node *) NULL) {
 		j2list = jump(I_JUMP, (jmplist *) NULL);
 		jump_resolve(false_list, here);
 		false_list = jlist;
@@ -1432,7 +1432,7 @@ static void cg_expr(node *n, int pop)
 	    jlist = true_list;
 	    true_list = (jmplist *) NULL;
 	    cg_cond(n->l.left, TRUE);
-	    if (n->r.right->r.right != (node *) NULL) {
+	    if (n->r.right->r.right != (Node *) NULL) {
 		cg_expr(n->r.right->r.right, pop);
 	    }
 	    jump_resolve(true_list, here);
@@ -1443,15 +1443,15 @@ static void cg_expr(node *n, int pop)
     case N_RANGE:
 	cg_expr(n->l.left, FALSE);
 	n = n->r.right;
-	if (n->l.left != (node *) NULL) {
+	if (n->l.left != (Node *) NULL) {
 	    cg_expr(n->l.left, FALSE);
-	    if (n->r.right != (node *) NULL) {
+	    if (n->r.right != (Node *) NULL) {
 		cg_expr(n->r.right, FALSE);
 		code_kfun(KF_RANGEFT, n->line);
 	    } else {
 		code_kfun(KF_RANGEF, n->line);
 	    }
-	} else if (n->r.right != (node *) NULL) {
+	} else if (n->r.right != (Node *) NULL) {
 	    cg_expr(n->r.right, FALSE);
 	    code_kfun(KF_RANGET, n->line);
 	} else {
@@ -1748,7 +1748,7 @@ static void cg_expr(node *n, int pop)
  * NAME:	codegen->cond()
  * DESCRIPTION:	generate code for a condition
  */
-static void cg_cond(node *n, int jmptrue)
+static void cg_cond(Node *n, int jmptrue)
 {
     jmplist *jlist;
 
@@ -1831,9 +1831,9 @@ static case_label *switch_table;	/* label table for current switch */
  * NAME:	codegen->switch_start()
  * DESCRIPTION:	generate code for the start of a switch statement
  */
-static void cg_switch_start(node *n)
+static void cg_switch_start(Node *n)
 {
-    node *m;
+    Node *m;
 
     /*
      * initializers
@@ -1861,9 +1861,9 @@ static void cg_switch_start(node *n)
  * NAME:	codegen->switch_int()
  * DESCRIPTION:	generate single label code for a switch statement
  */
-static void cg_switch_int(node *n)
+static void cg_switch_int(Node *n)
 {
-    node *m;
+    Node *m;
     int i, size, sz;
     case_label *table;
 
@@ -1872,7 +1872,7 @@ static void cg_switch_int(node *n)
     m = n->l.left;
     size = n->mod;
     sz = n->r.right->mod;
-    if (m->l.left == (node *) NULL) {
+    if (m->l.left == (Node *) NULL) {
 	/* explicit default */
 	m = m->r.right;
     } else {
@@ -1934,9 +1934,9 @@ static void cg_switch_int(node *n)
  * NAME:	codegen->switch_range()
  * DESCRIPTION:	generate range label code for a switch statement
  */
-static void cg_switch_range(node *n)
+static void cg_switch_range(Node *n)
 {
-    node *m;
+    Node *m;
     int i, size, sz;
     case_label *table;
 
@@ -1945,7 +1945,7 @@ static void cg_switch_range(node *n)
     m = n->l.left;
     size = n->mod;
     sz = n->r.right->mod;
-    if (m->l.left == (node *) NULL) {
+    if (m->l.left == (Node *) NULL) {
 	/* explicit default */
 	m = m->r.right;
     } else {
@@ -2025,9 +2025,9 @@ static void cg_switch_range(node *n)
  * NAME:	codegen->switch_str()
  * DESCRIPTION:	generate code for a string switch statement
  */
-static void cg_switch_str(node *n)
+static void cg_switch_str(Node *n)
 {
-    node *m;
+    Node *m;
     int i, size;
     case_label *table;
 
@@ -2035,7 +2035,7 @@ static void cg_switch_str(node *n)
     code_byte(SWITCH_STRING);
     m = n->l.left;
     size = n->mod;
-    if (m->l.left == (node *) NULL) {
+    if (m->l.left == (Node *) NULL) {
 	/* explicit default */
 	m = m->r.right;
     } else {
@@ -2092,19 +2092,19 @@ static void cg_switch_str(node *n)
  * NAME:	codegen->stmt()
  * DESCRIPTION:	generate code for a statement
  */
-static void cg_stmt(node *n)
+static void cg_stmt(Node *n)
 {
-    node *m;
+    Node *m;
     jmplist *jlist, *j2list;
     Uint where;
 
-    while (n != (node *) NULL) {
+    while (n != (Node *) NULL) {
 	if (n->type == N_PAIR) {
 	    m = n->l.left;
 	    n = n->r.right;
 	} else {
 	    m = n;
-	    n = (node *) NULL;
+	    n = (Node *) NULL;
 	}
 	switch (m->type) {
 	case N_BLOCK:
@@ -2141,7 +2141,7 @@ static void cg_stmt(node *n)
 	    break;
 
 	case N_COMPOUND:
-	    if (m->r.right != (node *) NULL) {
+	    if (m->r.right != (Node *) NULL) {
 		cg_stmt(m->r.right);
 	    }
 	    cg_stmt(m->l.left);
@@ -2166,7 +2166,7 @@ static void cg_stmt(node *n)
 	    break;
 
 	case N_FOR:
-	    if (m->r.right != (node *) NULL) {
+	    if (m->r.right != (Node *) NULL) {
 		jlist = jump(I_JUMP, (jmplist *) NULL);
 		where = here;
 		cg_stmt(m->r.right);
@@ -2184,7 +2184,7 @@ static void cg_stmt(node *n)
 
 	case N_FOREVER:
 	    where = here;
-	    if (m->l.left != (node *) NULL) {
+	    if (m->l.left != (Node *) NULL) {
 		cg_expr(m->l.left, TRUE);
 	    }
 	    cg_stmt(m->r.right);
@@ -2220,12 +2220,12 @@ static void cg_stmt(node *n)
 	    cg_stmt(m->l.left);
 	    if (m->l.left->flags & F_END) {
 		jump_resolve(jlist, here);
-		if (m->r.right != (node *) NULL) {
+		if (m->r.right != (Node *) NULL) {
 		    cg_stmt(m->r.right);
 		}
 	    } else {
 		code_instr(I_RETURN, 0);
-		if (m->r.right != (node *) NULL) {
+		if (m->r.right != (Node *) NULL) {
 		    j2list = jump(I_JUMP, (jmplist *) NULL);
 		    jump_resolve(jlist, here);
 		    cg_stmt(m->r.right);
@@ -2237,7 +2237,7 @@ static void cg_stmt(node *n)
 	    break;
 
 	case N_IF:
-	    if (m->r.right->l.left != (node *) NULL &&
+	    if (m->r.right->l.left != (Node *) NULL &&
 		m->r.right->l.left->mod == 0) {
 		if (m->r.right->l.left->type == N_BREAK) {
 		    jlist = true_list;
@@ -2245,7 +2245,7 @@ static void cg_stmt(node *n)
 		    cg_cond(m->l.left, TRUE);
 		    break_list = true_list;
 		    true_list = jlist;
-		    if (m->r.right->r.right != (node *) NULL) {
+		    if (m->r.right->r.right != (Node *) NULL) {
 			/* else */
 			cg_stmt(m->r.right->r.right);
 		    }
@@ -2256,7 +2256,7 @@ static void cg_stmt(node *n)
 		    cg_cond(m->l.left, TRUE);
 		    continue_list = true_list;
 		    true_list = jlist;
-		    if (m->r.right->r.right != (node *) NULL) {
+		    if (m->r.right->r.right != (Node *) NULL) {
 			/* else */
 			cg_stmt(m->r.right->r.right);
 		    }
@@ -2267,9 +2267,9 @@ static void cg_stmt(node *n)
 	    false_list = (jmplist *) NULL;
 	    cg_cond(m->l.left, FALSE);
 	    cg_stmt(m->r.right->l.left);
-	    if (m->r.right->r.right != (node *) NULL) {
+	    if (m->r.right->r.right != (Node *) NULL) {
 		/* else */
-		if (m->r.right->l.left != (node *) NULL &&
+		if (m->r.right->l.left != (Node *) NULL &&
 		    (m->r.right->l.left->flags & F_END)) {
 		    jump_resolve(false_list, here);
 		    false_list = jlist;
@@ -2340,7 +2340,7 @@ void cg_init(int inherited)
  * NAME:	codegen->function()
  * DESCRIPTION:	generate code for a function
  */
-char *cg_function(String *fname, node *n, int nvar, int npar,
+char *cg_function(String *fname, Node *n, int nvar, int npar,
 	unsigned int depth, unsigned short *size)
 {
     char *prog;

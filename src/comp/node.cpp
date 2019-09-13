@@ -30,13 +30,13 @@
 
 # define NODE_CHUNK	128
 
-static class nodechunk : public Chunk<node, NODE_CHUNK> {
+static class nodechunk : public Chunk<Node, NODE_CHUNK> {
 public:
     /*
      * NAME:		item()
      * DESCRIPTION:	dereference strings when iterating through items
      */
-    virtual bool item(node *n) {
+    virtual bool item(Node *n) {
 	if (n->type == N_STR || n->type == N_GOTO || n->type == N_LABEL) {
 	    n->l.string->del();
 	}
@@ -50,42 +50,43 @@ public:
 int nil_node;				/* N_NIL or N_INT */
 
 /*
- * NAME:	node->init()
- * DESCRIPTION:	initialize node handling
+ * initialize node handling
  */
-void node_init(int flag)
+void Node::init(int flag)
 {
     nil_node = (flag) ? N_NIL : N_INT;
 }
 
 /*
- * NAME:	node->new()
- * DESCRIPTION:	create a new node
+ * constructor
  */
-node *node_new(unsigned int line)
+Node::Node(unsigned short line)
 {
-    node *n;
-
-    n = chunknew (nchunk) node;
-    n->type = N_INT;
-    n->flags = 0;
-    n->mod = 0;
-    n->line = line;
-    n->sclass = (String *) NULL;
-    n->l.left = (node *) NULL;
-    n->r.right = (node *) NULL;
-    return n;
+    type = N_INT;
+    flags = 0;
+    mod = 0;
+    this->line = line;
+    sclass = (String *) NULL;
+    l.left = (Node *) NULL;
+    r.right = (Node *) NULL;
 }
 
 /*
- * NAME:	node->int()
- * DESCRIPTION:	create an integer node
+ * create a new node
  */
-node *node_int(Int num)
+Node *Node::create(unsigned short line)
 {
-    node *n;
+    return chunknew (nchunk) Node(line);
+}
 
-    n = node_new(TokenBuf::line());
+/*
+ * create an integer node
+ */
+Node *Node::createInt(Int num)
+{
+    Node *n;
+
+    n = create(TokenBuf::line());
     n->type = N_INT;
     n->flags = F_CONST;
     n->mod = T_INT;
@@ -95,14 +96,13 @@ node *node_int(Int num)
 }
 
 /*
- * NAME:	node->float()
- * DESCRIPTION:	create a float node
+ * create a float node
  */
-node *node_float(Float *flt)
+Node *Node::createFloat(Float *flt)
 {
-    node *n;
+    Node *n;
 
-    n = node_new(TokenBuf::line());
+    n = create(TokenBuf::line());
     n->type = N_FLOAT;
     n->flags = F_CONST;
     n->mod = T_FLOAT;
@@ -112,14 +112,13 @@ node *node_float(Float *flt)
 }
 
 /*
- * NAME:	node->nil()
- * DESCRIPTION:	create a nil node
+ * create a nil node
  */
-node *node_nil()
+Node *Node::createNil()
 {
-    node *n;
+    Node *n;
 
-    n = node_new(TokenBuf::line());
+    n = create(TokenBuf::line());
     n->type = nil_node;
     n->flags = F_CONST;
     n->mod = Value::nil.type;
@@ -129,33 +128,31 @@ node *node_nil()
 }
 
 /*
- * NAME:	node->str()
- * DESCRIPTION:	create a string node
+ * create a string node
  */
-node *node_str(String *str)
+Node *Node::createStr(String *str)
 {
-    node *n;
+    Node *n;
 
-    n = node_new(TokenBuf::line());
+    n = create(TokenBuf::line());
     n->type = N_STR;
     n->flags = F_CONST;
     n->mod = T_STRING;
     n->l.string = str;
     n->l.string->ref();
-    n->r.right = (node *) NULL;
+    n->r.right = (Node *) NULL;
 
     return n;
 }
 
 /*
- * NAME:	node->var()
- * DESCRIPTION:	create a variable type node
+ * create a variable type node
  */
-node *node_var(unsigned int type, int idx)
+Node *Node::createVar(unsigned int type, int idx)
 {
-    node *n;
+    Node *n;
 
-    n = node_new(TokenBuf::line());
+    n = create(TokenBuf::line());
     n->type = N_VAR;
     n->mod = type;
     n->l.number = idx;
@@ -164,14 +161,13 @@ node *node_var(unsigned int type, int idx)
 }
 
 /*
- * NAME:	node->type()
- * DESCRIPTION:	create a type node
+ * create a type node
  */
-node *node_type(int type, String *tclass)
+Node *Node::createType(int type, String *tclass)
 {
-    node *n;
+    Node *n;
 
-    n = node_new(TokenBuf::line());
+    n = create(TokenBuf::line());
     n->type = N_TYPE;
     n->mod = type;
     n->sclass = tclass;
@@ -183,14 +179,13 @@ node *node_type(int type, String *tclass)
 }
 
 /*
- * NAME:	node->fcall()
- * DESCRIPTION:	create a function call node
+ * create a function call node
  */
-node *node_fcall(int mod, String *tclass, char *func, Int call)
+Node *Node::createFcall(int mod, String *tclass, char *func, Int call)
 {
-    node *n;
+    Node *n;
 
-    n = node_new(TokenBuf::line());
+    n = create(TokenBuf::line());
     n->type = N_FUNC;
     n->mod = mod;
     n->sclass = tclass;
@@ -204,27 +199,25 @@ node *node_fcall(int mod, String *tclass, char *func, Int call)
 }
 
 /*
- * NAME:	node->op()
- * DESCRIPTION:	create an operator node
+ * create an operator node
  */
-node *node_op(const char *op)
+Node *Node::createOp(const char *op)
 {
-    return node_str(String::create(op, strlen(op)));
+    return createStr(String::create(op, strlen(op)));
 }
 
 /*
- * NAME:	node->mon()
- * DESCRIPTION:	create a node for a monadic operator
+ * create a node for a monadic operator
  */
-node *node_mon(int type, int mod, node *left)
+Node *Node::createMon(int type, int mod, Node *left)
 {
-    node *n;
+    Node *n;
 
-    n = node_new(TokenBuf::line());
+    n = create(TokenBuf::line());
     n->type = type;
     n->mod = mod;
     n->l.left = left;
-    n->r.right = (node *) NULL;
+    n->r.right = (Node *) NULL;
 
     return n;
 }
@@ -233,11 +226,11 @@ node *node_mon(int type, int mod, node *left)
  * NAME:	node->bin()
  * DESCRIPTION:	create a node for a binary operator
  */
-node *node_bin(int type, int mod, node *left, node *right)
+Node *Node::createBin(int type, int mod, Node *left, Node *right)
 {
-    node *n;
+    Node *n;
 
-    n = node_new(TokenBuf::line());
+    n = create(TokenBuf::line());
     n->type = type;
     n->mod = mod;
     n->l.left = left;
@@ -247,43 +240,40 @@ node *node_bin(int type, int mod, node *left, node *right)
 }
 
 /*
- * NAME:	node->toint()
- * DESCRIPTION:	convert node type to integer constant
+ * convert node type to integer constant
  */
-void node_toint(node *n, Int i)
+void Node::toint(Int i)
 {
-    if (n->type == N_STR) {
-	n->l.string->del();
-    } else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
-	n->sclass->del();
+    if (type == N_STR) {
+	l.string->del();
+    } else if (type == N_TYPE && sclass != (String *) NULL) {
+	sclass->del();
     }
-    n->type = N_INT;
-    n->flags = F_CONST;
-    n->l.number = i;
+    type = N_INT;
+    flags = F_CONST;
+    l.number = i;
 }
 
 /*
- * NAME:	node->tostr()
- * DESCRIPTION:	convert node type to string constant
+ * convert node type to string constant
  */
-void node_tostr(node *n, String *str)
+void Node::tostr(String *str)
 {
     str->ref();
-    if (n->type == N_STR) {
-	n->l.string->del();
-    } else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
-	n->sclass->del();
+    if (type == N_STR) {
+	l.string->del();
+    } else if (type == N_TYPE && sclass != (String *) NULL) {
+	sclass->del();
     }
-    n->type = N_STR;
-    n->flags = F_CONST;
-    n->l.string = str;
+    type = N_STR;
+    flags = F_CONST;
+    l.string = str;
 }
 
 /*
- * NAME:	node->clear()
- * DESCRIPTION:	cleanup after node handling
+ * cleanup after node handling
  */
-void node_clear()
+void Node::clear()
 {
     nchunk.items();
     nchunk.clean();

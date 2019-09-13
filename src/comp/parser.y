@@ -47,33 +47,33 @@ static int ndeclarations;	/* number of declarations */
 static int nstatements;		/* number of statements in current function */
 static bool typechecking;	/* does the current function have it? */
 
-static void  t_void	(node*);
-static bool  t_unary	(node*, const char*);
-static node *prefix	(int, node*, const char*);
-static node *postfix	(int, node*, const char*);
-static node *cast	(node*, node*);
-static node *idx	(node*, node*);
-static node *range	(node*, node*, node*);
-static node *bini	(int, node*, node*, const char*);
-static node *bina	(int, node*, node*, const char*);
-static node *mult	(int, node*, node*, const char*);
-static node *mdiv	(int, node*, node*, const char*);
-static node *mod	(int, node*, node*, const char*);
-static node *add	(int, node*, node*, const char*);
-static node *sub	(int, node*, node*, const char*);
-static node *umin	(node*);
-static node *lshift	(int, node*, node*, const char*);
-static node *rshift	(int, node*, node*, const char*);
-static node *rel	(int, node*, node*, const char*);
-static node *eq		(node*, node*);
-static node *_and	(int, node*, node*, const char*);
-static node *_xor	(int, node*, node*, const char*);
-static node *_or	(int, node*, node*, const char*);
-static node *land	(node*, node*);
-static node *lor	(node*, node*);
-static node *quest	(node*, node*, node*);
-static node *assign	(node*, node*);
-static node *comma	(node*, node*);
+static void  t_void	(Node*);
+static bool  t_unary	(Node*, const char*);
+static Node *prefix	(int, Node*, const char*);
+static Node *postfix	(int, Node*, const char*);
+static Node *cast	(Node*, Node*);
+static Node *idx	(Node*, Node*);
+static Node *range	(Node*, Node*, Node*);
+static Node *bini	(int, Node*, Node*, const char*);
+static Node *bina	(int, Node*, Node*, const char*);
+static Node *mult	(int, Node*, Node*, const char*);
+static Node *mdiv	(int, Node*, Node*, const char*);
+static Node *mod	(int, Node*, Node*, const char*);
+static Node *add	(int, Node*, Node*, const char*);
+static Node *sub	(int, Node*, Node*, const char*);
+static Node *umin	(Node*);
+static Node *lshift	(int, Node*, Node*, const char*);
+static Node *rshift	(int, Node*, Node*, const char*);
+static Node *rel	(int, Node*, Node*, const char*);
+static Node *eq		(Node*, Node*);
+static Node *_and	(int, Node*, Node*, const char*);
+static Node *_xor	(int, Node*, Node*, const char*);
+static Node *_or	(int, Node*, Node*, const char*);
+static Node *land	(Node*, Node*);
+static Node *lor	(Node*, Node*);
+static Node *quest	(Node*, Node*, Node*);
+static Node *assign	(Node*, Node*);
+static Node *comma	(Node*, Node*);
 
 %}
 
@@ -96,7 +96,7 @@ static node *comma	(node*, node*);
     Int number;			/* lex input */
     Float real;			/* lex input */
     unsigned short type;	/* internal */
-    struct node *node;		/* internal */
+    class Node *node;		/* internal */
 }
 
 /*
@@ -174,19 +174,19 @@ top_level_declaration
 
 opt_inherit_label
 	: /* empty */
-		{ $$ = (node *) NULL; }
+		{ $$ = (Node *) NULL; }
 	| ident
 	;
 
 ident
 	: IDENTIFIER
-		{ $$ = node_str(String::create(yytext, yyleng)); }
+		{ $$ = Node::createStr(String::create(yytext, yyleng)); }
 	;
 
 composite_string
 	: string_exp
 	| composite_string '+' string_exp
-		{ $$ = node_str($1->l.string->add($3->l.string)); }
+		{ $$ = Node::createStr($1->l.string->add($3->l.string)); }
 	;
 
 string_exp
@@ -197,7 +197,7 @@ string_exp
 
 string
 	: STRING_CONST
-		{ $$ = node_str(String::create(yytext, yyleng)); }
+		{ $$ = Node::createStr(String::create(yytext, yyleng)); }
 	;
 
 data_declaration
@@ -220,9 +220,10 @@ function_declaration
 	| class_specifier_list ident '(' formals_declaration ')'
 		{
 		  typechecking = c_typechecking();
-		  c_function($1, node_type((typechecking) ? T_VOID : T_NIL,
-					   (String *) NULL),
-			     node_bin(N_FUNC, 0, $2, $4));
+		  c_function($1, Node::createType((typechecking) ?
+						   T_VOID : T_NIL,
+						  (String *) NULL),
+			     Node::createBin(N_FUNC, 0, $2, $4));
 		}
 	  compound_stmt
 		{
@@ -239,8 +240,8 @@ local_data_declaration
 
 formals_declaration
 	: /* empty */
-		{ $$ = (node *) NULL; }
-	| VOID	{ $$ = (node *) NULL; }
+		{ $$ = (Node *) NULL; }
+	| VOID	{ $$ = (Node *) NULL; }
 	| formal_declaration_list
 	| formal_declaration_list ELLIPSIS
 		{
@@ -252,7 +253,7 @@ formals_declaration
 formal_declaration_list
 	: varargs_formal_declaration
 	| formal_declaration_list ',' varargs_formal_declaration
-		{ $$ = node_bin(N_PAIR, 0, $1, $3); }
+		{ $$ = Node::createBin(N_PAIR, 0, $1, $3); }
 	;
 
 varargs_formal_declaration
@@ -318,24 +319,24 @@ non_private
 	;
 
 type_specifier
-	: INT	{ $$ = node_type(T_INT, (String *) NULL); }
-	| FLOAT	{ $$ = node_type(T_FLOAT, (String *) NULL); }
+	: INT	{ $$ = Node::createType(T_INT, (String *) NULL); }
+	| FLOAT	{ $$ = Node::createType(T_FLOAT, (String *) NULL); }
 	| STRING
-		{ $$ = node_type(T_STRING, (String *) NULL); }
+		{ $$ = Node::createType(T_STRING, (String *) NULL); }
 	| OBJECT
-		{ $$ = node_type(T_OBJECT, (String *) NULL); }
+		{ $$ = Node::createType(T_OBJECT, (String *) NULL); }
 	| OBJECT composite_string
-		{ $$ = node_type(T_CLASS, c_objecttype($2)); }
+		{ $$ = Node::createType(T_CLASS, c_objecttype($2)); }
 	| MAPPING
-		{ $$ = node_type(T_MAPPING, (String *) NULL); }
+		{ $$ = Node::createType(T_MAPPING, (String *) NULL); }
 	| FUNCTION
 		{
-		  $$ = node_str(String::create("/" BIPREFIX "function",
-					       BIPREFIXLEN + 9));
-		  $$ = node_type(T_CLASS, c_objecttype($$));
+		  $$ = Node::createStr(String::create("/" BIPREFIX "function",
+						      BIPREFIXLEN + 9));
+		  $$ = Node::createType(T_CLASS, c_objecttype($$));
 		}
-	| MIXED	{ $$ = node_type(T_MIXED, (String *) NULL); }
-	| VOID	{ $$ = node_type(T_VOID, (String *) NULL); }
+	| MIXED	{ $$ = Node::createType(T_MIXED, (String *) NULL); }
+	| VOID	{ $$ = Node::createType(T_VOID, (String *) NULL); }
 	;
 
 opt_object
@@ -365,45 +366,45 @@ data_dcltr
 
 operator
 	: OPERATOR '+'
-		{ $$ = node_op("+"); }
+		{ $$ = Node::createOp("+"); }
 	| OPERATOR '-'
-		{ $$ = node_op("-"); }
+		{ $$ = Node::createOp("-"); }
 	| OPERATOR '*'
-		{ $$ = node_op("*"); }
+		{ $$ = Node::createOp("*"); }
 	| OPERATOR '/'
-		{ $$ = node_op("/"); }
+		{ $$ = Node::createOp("/"); }
 	| OPERATOR '%'
-		{ $$ = node_op("%"); }
+		{ $$ = Node::createOp("%"); }
 	| OPERATOR '&'
-		{ $$ = node_op("&"); }
+		{ $$ = Node::createOp("&"); }
 	| OPERATOR '^'
-		{ $$ = node_op("^"); }
+		{ $$ = Node::createOp("^"); }
 	| OPERATOR '|'
-		{ $$ = node_op("|"); }
+		{ $$ = Node::createOp("|"); }
 	| OPERATOR '<'
-		{ $$ = node_op("<"); }
+		{ $$ = Node::createOp("<"); }
 	| OPERATOR '>'
-		{ $$ = node_op(">"); }
+		{ $$ = Node::createOp(">"); }
 	| OPERATOR LE
-		{ $$ = node_op("<="); }
+		{ $$ = Node::createOp("<="); }
 	| OPERATOR GE
-		{ $$ = node_op(">="); }
+		{ $$ = Node::createOp(">="); }
 	| OPERATOR LSHIFT
-		{ $$ = node_op("<<"); }
+		{ $$ = Node::createOp("<<"); }
 	| OPERATOR RSHIFT
-		{ $$ = node_op(">>"); }
+		{ $$ = Node::createOp(">>"); }
 	| OPERATOR '~'
-		{ $$ = node_op("~"); }
+		{ $$ = Node::createOp("~"); }
 	| OPERATOR PLUS_PLUS
-		{ $$ = node_op("++"); }
+		{ $$ = Node::createOp("++"); }
 	| OPERATOR MIN_MIN
-		{ $$ = node_op("--"); }
+		{ $$ = Node::createOp("--"); }
 	| OPERATOR '[' ']'
-		{ $$ = node_op("[]"); }
+		{ $$ = Node::createOp("[]"); }
 	| OPERATOR '[' ']' '='
-		{ $$ = node_op("[]="); }
+		{ $$ = Node::createOp("[]="); }
 	| OPERATOR '[' DOT_DOT ']'
-		{ $$ = node_op("[..]"); }
+		{ $$ = Node::createOp("[..]"); }
 	;
 
 function_name
@@ -413,7 +414,10 @@ function_name
 
 function_dcltr
 	: star_list function_name '(' formals_declaration ')'
-		{ $$ = node_bin(N_FUNC, ($1 << REFSHIFT) & T_REF, $2, $4); }
+		{
+		  $$ = Node::createBin(N_FUNC, ($1 << REFSHIFT) & T_REF, $2,
+				       $4);
+		}
 	;
 
 dcltr
@@ -424,12 +428,12 @@ dcltr
 list_dcltr
 	: dcltr
 	| list_dcltr ',' dcltr
-		{ $$ = node_bin(N_PAIR, 0, $1, $3); }
+		{ $$ = Node::createBin(N_PAIR, 0, $1, $3); }
 	;
 
 dcltr_or_stmt_list
 	: /* empty */
-		{ $$ = (node *) NULL; }
+		{ $$ = (Node *) NULL; }
 	| dcltr_or_stmt_list dcltr_or_stmt
 		{ $$ = c_concat($1, $2); }
 	;
@@ -440,7 +444,7 @@ dcltr_or_stmt
 		  if (nstatements > 0) {
 		      c_error("declaration after statement");
 		  }
-		  $$ = (node *) NULL;
+		  $$ = (Node *) NULL;
 		}
 	| stmt	{
 		  nstatements++;
@@ -451,7 +455,7 @@ dcltr_or_stmt
 		  if (nerrors >= MAX_ERRORS) {
 		      YYABORT;
 		  }
-		  $$ = (node *) NULL;
+		  $$ = (Node *) NULL;
 		}
 	;
 
@@ -468,7 +472,7 @@ stmt
 	| if_stmt
 		{
 		  c_endcond();
-		  $$ = c_endif($1, (node *) NULL);
+		  $$ = c_endif($1, (Node *) NULL);
 		}
 /* will cause shift/reduce conflict */
 	| if_stmt ELSE
@@ -543,10 +547,10 @@ stmt
 		  $$ = c_endswitch($3, $6);
 		}
 	| CASE exp ':'
-		{ $2 = c_case($2, (node *) NULL); }
+		{ $2 = c_case($2, (Node *) NULL); }
 	  stmt	{
 		  $$ = $2;
-		  if ($$ != (node *) NULL) {
+		  if ($$ != (Node *) NULL) {
 		      $$->l.left = $5;
 		  } else {
 		      $$ = $5;
@@ -556,7 +560,7 @@ stmt
 		{ $2 = c_case($2, $4); }
 	  stmt	{
 		  $$ = $2;
-		  if ($$ != (node *) NULL) {
+		  if ($$ != (Node *) NULL) {
 		      $$->l.left = $7;
 		  } else {
 		      $$ = $7;
@@ -566,7 +570,7 @@ stmt
 		{ $<node>2 = c_default(); }
 	  stmt	{
 		  $$ = $<node>2;
-		  if ($$ != (node *) NULL) {
+		  if ($$ != (Node *) NULL) {
 		      $$->l.left = $4;
 		  } else {
 		      $$ = $4;
@@ -589,7 +593,7 @@ stmt
 		}
 	| RETURN f_opt_list_exp ';'
 		{ $$ = c_return($2, typechecking); }
-	| ';'	{ $$ = (node *) NULL; }
+	| ';'	{ $$ = (Node *) NULL; }
 	;
 
 compound_stmt
@@ -606,7 +610,7 @@ compound_stmt
 
 opt_caught_stmt
 	: /* empty */
-		{ $$ = (node *) NULL; }
+		{ $$ = (Node *) NULL; }
 	| ':' stmt
 		{ $$ = $2; }
 	;
@@ -615,17 +619,17 @@ function_call
 	: function_name
 		{ $$ = c_flookup($1, typechecking); }
 	| COLON_COLON function_name
-		{ $$ = c_iflookup($2, (node *) NULL); }
+		{ $$ = c_iflookup($2, (Node *) NULL); }
 	| function_name COLON_COLON function_name
 		{ $$ = c_iflookup($3, $1); }
 	;
 
 primary_p1_exp
 	: INT_CONST
-		{ $$ = node_int($1); }
+		{ $$ = Node::createInt($1); }
 	| FLOAT_CONST
-		{ $$ = node_float(&$1); }
-	| NIL	{ $$ = node_nil(); }
+		{ $$ = Node::createFloat(&$1); }
+	| NIL	{ $$ = Node::createNil(); }
 	| string
 	| '(' '{' opt_arg_list_comma '}' ')'
 		{ $$ = c_aggregate($3, T_MIXED | (1 << REFSHIFT)); }
@@ -633,7 +637,7 @@ primary_p1_exp
 		{ $$ = c_aggregate($3, T_MAPPING); }
 	| ident	{
 		  $$ = c_local_var($1);
-		  if ($$ == (node *) NULL) {
+		  if ($$ == (Node *) NULL) {
 		      $$ = c_global_var($1);
 		      if (typechecking) {
 			  if ($$->mod != T_MIXED && !conf_typechecking()) {
@@ -641,7 +645,7 @@ primary_p1_exp
 			       * global vars might be modified by untypechecked
 			       * functions...
 			       */
-			      $$ = node_mon(N_CAST, $$->mod, $$);
+			      $$ = Node::createMon(N_CAST, $$->mod, $$);
 			      $$->sclass = $$->l.left->sclass;
 			      if ($$->sclass != (String *) NULL) {
 				  $$->sclass->ref();
@@ -662,7 +666,7 @@ primary_p1_exp
 			   * global vars might be modified by untypechecked
 			   * functions...
 			   */
-			  $$ = node_mon(N_CAST, $$->mod, $$);
+			  $$ = Node::createMon(N_CAST, $$->mod, $$);
 			  $$->sclass = $$->l.left->sclass;
 			  if ($$->sclass != (String *) NULL) {
 			      $$->sclass->ref();
@@ -688,10 +692,10 @@ primary_p1_exp
 	  list_exp ')'
 		{
 		  c_endcond();
-		  $$ = node_mon(N_CATCH, T_STRING, $4);
+		  $$ = Node::createMon(N_CATCH, T_STRING, $4);
 		}
 	| NEW opt_object string_exp
-		{ $$ = c_new_object($3, (node *) NULL); }
+		{ $$ = c_new_object($3, (Node *) NULL); }
 	| NEW opt_object string_exp '(' opt_arg_list ')'
 		{ $$ = c_new_object($3, $5); }
 	| primary_p2_exp RARROW ident '(' opt_arg_list ')'
@@ -739,9 +743,9 @@ prefix_exp
 		  $$ = $2;
 		  t_void($$);
 		  if ($$->mod == T_INT) {
-		      $$ = _xor(N_XOR, $$, node_int((Int) -1), "^");
+		      $$ = _xor(N_XOR, $$, Node::createInt((Int) -1), "^");
 		  } else if ($$->mod == T_OBJECT || $$->mod == T_CLASS) {
-		      $$ = node_mon(N_NEG, T_OBJECT, $$);
+		      $$ = Node::createMon(N_NEG, T_OBJECT, $$);
 		  } else {
 		      if (typechecking && $$->mod != T_MIXED) {
 			  char tnbuf[TNBUFSIZE];
@@ -749,7 +753,7 @@ prefix_exp
 			  c_error("bad argument type for ~ (%s)",
 				  Value::typeName(tnbuf, $$->mod));
 		      }
-		      $$ = node_mon(N_NEG, T_MIXED, $$);
+		      $$ = Node::createMon(N_NEG, T_MIXED, $$);
 		  }
 		}
 	;
@@ -886,7 +890,7 @@ list_exp
 
 opt_list_exp
 	: /* empty */
-		{ $$ = (node *) NULL; }
+		{ $$ = (Node *) NULL; }
 	| list_exp
 	;
 
@@ -905,28 +909,28 @@ arg_list
 	| arg_list ',' exp
 		{
 		  t_void($3);
-		  $$ = node_bin(N_PAIR, 0, $1, $3);
+		  $$ = Node::createBin(N_PAIR, 0, $1, $3);
 		}
 	;
 
 opt_arg_list
 	: /* empty */
-		{ $$ = (node *) NULL; }
+		{ $$ = (Node *) NULL; }
 	| arg_list
 	| arg_list ELLIPSIS
 		{
 		  $$ = $1;
 		  if ($$->type == N_PAIR) {
-		      $$->r.right = node_mon(N_SPREAD, -1, $$->r.right);
+		      $$->r.right = Node::createMon(N_SPREAD, -1, $$->r.right);
 		  } else {
-		      $$ = node_mon(N_SPREAD, -1, $$);
+		      $$ = Node::createMon(N_SPREAD, -1, $$);
 		  }
 		}
 	;
 
 opt_arg_list_comma
 	: /* empty */
-		{ $$ = (node *) NULL; }
+		{ $$ = (Node *) NULL; }
 	| arg_list
 	| arg_list ','
 		{ $$ = $1; }
@@ -937,19 +941,19 @@ assoc_exp
 		{
 		  t_void($1);
 		  t_void($3);
-		  $$ = node_bin(N_COMMA, 0, $1, $3);
+		  $$ = Node::createBin(N_COMMA, 0, $1, $3);
 		}
 	;
 
 assoc_arg_list
 	: assoc_exp
 	| assoc_arg_list ',' assoc_exp
-		{ $$ = node_bin(N_PAIR, 0, $1, $3); }
+		{ $$ = Node::createBin(N_PAIR, 0, $1, $3); }
 	;
 
 opt_assoc_arg_list_comma
 	: /* empty */
-		{ $$ = (node *) NULL; }
+		{ $$ = (Node *) NULL; }
 	| assoc_arg_list
 	| assoc_arg_list ','
 		{ $$ = $1; }
@@ -961,9 +965,9 @@ opt_assoc_arg_list_comma
  * NAME:	t_void()
  * DESCRIPTION:	if the argument is of type void, an error will result
  */
-static void t_void(node *n)
+static void t_void(Node *n)
 {
-    if (n != (node *) NULL && n->mod == T_VOID) {
+    if (n != (Node *) NULL && n->mod == T_VOID) {
 	c_error("void value not ignored");
 	n->mod = T_MIXED;
     }
@@ -973,7 +977,7 @@ static void t_void(node *n)
  * NAME:	t_unary()
  * DESCRIPTION:	typecheck the argument of a unary operator
  */
-static bool t_unary(node *n, const char *name)
+static bool t_unary(Node *n, const char *name)
 {
     char tnbuf[TNBUFSIZE];
 
@@ -991,17 +995,18 @@ static bool t_unary(node *n, const char *name)
  * NAME:	postfix()
  * DESCRIPTION:	handle a postfix assignment operator
  */
-static node *postfix(int op, node *n, const char *name)
+static Node *postfix(int op, Node *n, const char *name)
 {
     t_unary(n, name);
-    return node_mon((n->mod == T_INT) ? op + 1 : op, n->mod, c_lvalue(n, name));
+    return Node::createMon((n->mod == T_INT) ? op + 1 : op, n->mod,
+			   c_lvalue(n, name));
 }
 
 /*
  * NAME:	prefix()
  * DESCRIPTION:	handle a prefix assignment operator
  */
-static node *prefix(int op, node *n, const char *name)
+static Node *prefix(int op, Node *n, const char *name)
 {
     unsigned short type;
 
@@ -1011,14 +1016,15 @@ static node *prefix(int op, node *n, const char *name)
 	t_unary(n, name);
 	type = n->mod;
     }
-    return node_mon((type == T_INT) ? op + 1 : op, type, c_lvalue(n, name));
+    return Node::createMon((type == T_INT) ? op + 1 : op, type,
+			   c_lvalue(n, name));
 }
 
 /*
  * NAME:	cast()
  * DESCRIPTION:	cast an expression to a type
  */
-static node *cast(node *n, node *type)
+static Node *cast(Node *n, Node *type)
 {
     Float flt;
     Int i;
@@ -1031,14 +1037,14 @@ static node *cast(node *n, node *type)
 	    case N_FLOAT:
 		/* cast float constant to int */
 		NFLT_GET(n, flt);
-		return node_int(flt.ftoi());
+		return Node::createInt(flt.ftoi());
 
 	    case N_STR:
 		/* cast string to int */
 		p = n->l.string->text;
 		i = strtoint(&p);
 		if (p == n->l.string->text + n->l.string->len) {
-		    return node_int(i);
+		    return Node::createInt(i);
 		} else {
 		    c_error("cast of invalid string constant");
 		    n->mod = T_MIXED;
@@ -1055,7 +1061,7 @@ static node *cast(node *n, node *type)
 	    default:
 		if (n->mod == T_FLOAT || n->mod == T_STRING ||
 		    n->mod == T_MIXED) {
-		    return node_mon(N_TOINT, T_INT, n);
+		    return Node::createMon(N_TOINT, T_INT, n);
 		}
 		break;
 	    }
@@ -1066,14 +1072,14 @@ static node *cast(node *n, node *type)
 	    case N_INT:
 		/* cast int constant to float */
 		Float::itof(n->l.number, &flt);
-		return node_float(&flt);
+		return Node::createFloat(&flt);
 
 	    case N_STR:
 		/* cast string to float */
 		p = n->l.string->text;
 		if (Float::atof(&p, &flt) &&
 		    p == n->l.string->text + n->l.string->len) {
-		    return node_float(&flt);
+		    return Node::createFloat(&flt);
 		} else {
 		    yyerror("cast of invalid string constant");
 		    n->mod = T_MIXED;
@@ -1082,13 +1088,13 @@ static node *cast(node *n, node *type)
 
 	    case N_TOSTRING:
 		if (n->l.left->mod == T_INT) {
-		    return node_mon(N_TOFLOAT, T_FLOAT, n->l.left);
+		    return Node::createMon(N_TOFLOAT, T_FLOAT, n->l.left);
 		}
 		/* fall through */
 	    default:
 		if (n->mod == T_INT || n->mod == T_STRING || n->mod == T_MIXED)
 		{
-		    return node_mon(N_TOFLOAT, T_FLOAT, n);
+		    return Node::createMon(N_TOFLOAT, T_FLOAT, n);
 		}
 		break;
 	    }
@@ -1099,17 +1105,17 @@ static node *cast(node *n, node *type)
 	    case N_INT:
 		/* cast int constant to string */
 		sprintf(buffer, "%ld", (long) n->l.number);
-		return node_str(String::create(buffer, strlen(buffer)));
+		return Node::createStr(String::create(buffer, strlen(buffer)));
 
 	    case N_FLOAT:
 		/* cast float constant to string */
 		NFLT_GET(n, flt);
 		flt.ftoa(buffer);
-		return node_str(String::create(buffer, strlen(buffer)));
+		return Node::createStr(String::create(buffer, strlen(buffer)));
 
 	    default:
 		if (n->mod == T_INT || n->mod == T_FLOAT || n->mod == T_MIXED) {
-		    return node_mon(N_TOSTRING, T_STRING, n);
+		    return Node::createMon(N_TOSTRING, T_STRING, n);
 		}
 		break;
 	    }
@@ -1135,7 +1141,7 @@ static node *cast(node *n, node *type)
 	} else {
 	    if ((type->mod & T_REF) == 0 || (n->mod & T_REF) == 0) {
 		/* runtime cast */
-		n = node_mon(N_CAST, type->mod, n);
+		n = Node::createMon(N_CAST, type->mod, n);
 	    } else {
 		n->mod = type->mod;
 	    }
@@ -1148,7 +1154,7 @@ static node *cast(node *n, node *type)
 	/*
 	 * cast to different object class
 	 */
-	n = node_mon(N_CAST, type->mod, n);
+	n = Node::createMon(N_CAST, type->mod, n);
 	n->sclass = type->sclass;
 	if (n->sclass != (String *) NULL) {
 	    n->sclass->ref();
@@ -1161,7 +1167,7 @@ static node *cast(node *n, node *type)
  * NAME:	idx()
  * DESCRIPTION:	handle the [ ] operator
  */
-static node *idx(node *n1, node *n2)
+static Node *idx(Node *n1, Node *n2)
 {
     char tnbuf[TNBUFSIZE];
     unsigned short type;
@@ -1188,7 +1194,8 @@ static node *idx(node *n1, node *n2)
 	    }
 	    if (type != T_MIXED) {
 		/* you can't trust these arrays */
-		n2 = node_mon(N_CAST, type, node_bin(N_INDEX, type, n1, n2));
+		n2 = Node::createMon(N_CAST, type,
+				     Node::createBin(N_INDEX, type, n1, n2));
 		n2->sclass = n1->sclass;
 		if (n2->sclass != (String *) NULL) {
 		    n2->sclass->ref();
@@ -1212,28 +1219,28 @@ static node *idx(node *n1, node *n2)
 	}
 	type = T_MIXED;
     }
-    return node_bin(N_INDEX, type, n1, n2);
+    return Node::createBin(N_INDEX, type, n1, n2);
 }
 
 /*
  * NAME:	range()
  * DESCRIPTION:	handle the [ .. ] operator
  */
-static node *range(node *n1, node *n2, node *n3)
+static Node *range(Node *n1, Node *n2, Node *n3)
 {
     unsigned short type;
 
-    if (n1->type == N_STR && (n2 == (node *) NULL || n2->type == N_INT) &&
-	(n3 == (node *) NULL || n3->type == N_INT)) {
+    if (n1->type == N_STR && (n2 == (Node *) NULL || n2->type == N_INT) &&
+	(n3 == (Node *) NULL || n3->type == N_INT)) {
 	Int from, to;
 
 	/* str [ int .. int ] */
-	from = (n2 == (node *) NULL) ? 0 : n2->l.number;
-	to = (n3 == (node *) NULL) ? n1->l.string->len - 1 : n3->l.number;
+	from = (n2 == (Node *) NULL) ? 0 : n2->l.number;
+	to = (n3 == (Node *) NULL) ? n1->l.string->len - 1 : n3->l.number;
 	if (from < 0 || from > to + 1 || to >= n1->l.string->len) {
 	    c_error("invalid string range");
 	} else {
-	    return node_str(n1->l.string->range(from, to));
+	    return Node::createStr(n1->l.string->range(from, to));
 	}
     }
 
@@ -1246,10 +1253,10 @@ static node *range(node *n1, node *n2, node *n3)
 	char tnbuf[TNBUFSIZE];
 
 	/* indices */
-	if (n2 != (node *) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
+	if (n2 != (Node *) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
 	    c_error("bad index type (%s)", Value::typeName(tnbuf, n2->mod));
 	}
-	if (n3 != (node *) NULL && n3->mod != T_INT && n3->mod != T_MIXED) {
+	if (n3 != (Node *) NULL && n3->mod != T_INT && n3->mod != T_MIXED) {
 	    c_error("bad index type (%s)", Value::typeName(tnbuf, n3->mod));
 	}
 	/* range */
@@ -1260,14 +1267,15 @@ static node *range(node *n1, node *n2, node *n3)
 	type = n1->mod;
     }
 
-    return node_bin(N_RANGE, type, n1, node_bin(N_PAIR, 0, n2, n3));
+    return Node::createBin(N_RANGE, type, n1,
+			   Node::createBin(N_PAIR, 0, n2, n3));
 }
 
 /*
  * NAME:	bini()
  * DESCRIPTION:	handle a binary int operator
  */
-static node *bini(int op, node *n1, node *n2, const char *name)
+static Node *bini(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     unsigned short type;
@@ -1288,7 +1296,7 @@ static node *bini(int op, node *n1, node *n2, const char *name)
     if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
     }
-    return node_bin(op, type, n1, n2);
+    return Node::createBin(op, type, n1, n2);
 }
 
 
@@ -1296,7 +1304,7 @@ static node *bini(int op, node *n1, node *n2, const char *name)
  * NAME:	bina()
  * DESCRIPTION:	handle a binary arithmetic operator
  */
-static node *bina(int op, node *n1, node *n2, const char *name)
+static Node *bina(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     unsigned short type;
@@ -1344,14 +1352,14 @@ static node *bina(int op, node *n1, node *n2, const char *name)
 		Value::typeName(tnbuf2, n2->mod));
     }
 
-    return node_bin(op, type, n1, n2);
+    return Node::createBin(op, type, n1, n2);
 }
 
 /*
  * NAME:	mult()
  * DESCRIPTION:	handle the * *= operators
  */
-static node *mult(int op, node *n1, node *n2, const char *name)
+static Node *mult(int op, Node *n1, Node *n2, const char *name)
 {
     Float f1, f2;
 
@@ -1374,7 +1382,7 @@ static node *mult(int op, node *n1, node *n2, const char *name)
  * NAME:	mdiv()
  * DESCRIPTION:	handle the / /= operators
  */
-static node *mdiv(int op, node *n1, node *n2, const char *name)
+static Node *mdiv(int op, Node *n1, Node *n2, const char *name)
 {
     Float f1, f2;
 
@@ -1412,7 +1420,7 @@ static node *mdiv(int op, node *n1, node *n2, const char *name)
  * NAME:	mod()
  * DESCRIPTION:	handle the % %= operators
  */
-static node *mod(int op, node *n1, node *n2, const char *name)
+static Node *mod(int op, Node *n1, Node *n2, const char *name)
 {
     if (n1->type == N_INT && n2->type == N_INT) {
 	Int i, d;
@@ -1437,7 +1445,7 @@ static node *mod(int op, node *n1, node *n2, const char *name)
  * DESCRIPTION:	handle the + += operators, possibly rearranging the order
  *		of the expression
  */
-static node *add(int op, node *n1, node *n2, const char *name)
+static Node *add(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     Float f1, f2;
@@ -1449,11 +1457,11 @@ static node *add(int op, node *n1, node *n2, const char *name)
     if (n1->mod == T_STRING) {
 	if (n2->mod == T_INT || n2->mod == T_FLOAT ||
 	    (n2->mod == T_MIXED && typechecking)) {
-	    n2 = cast(n2, node_type(T_STRING, (String *) NULL));
+	    n2 = cast(n2, Node::createType(T_STRING, (String *) NULL));
 	}
     } else if (n2->mod == T_STRING && op == N_ADD) {
 	if (n1->mod == T_INT || n1->mod == T_FLOAT) {
-	    n1 = cast(n1, node_type(T_STRING, (String *) NULL));
+	    n1 = cast(n1, Node::createType(T_STRING, (String *) NULL));
 	}
     }
 
@@ -1472,7 +1480,7 @@ static node *add(int op, node *n1, node *n2, const char *name)
     }
     if (n1->type == N_STR && n2->type == N_STR) {
 	/* s + s */
-	return node_str(n1->l.string->add(n2->l.string));
+	return Node::createStr(n1->l.string->add(n2->l.string));
     }
 
     if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
@@ -1489,22 +1497,22 @@ static node *add(int op, node *n1, node *n2, const char *name)
     } else if (op == N_ADD_EQ && n1->mod != n2->mod) {
 	type = n1->mod;
 	if (n1->mod == T_INT) {
-	    n2 = node_mon(N_CAST, T_INT, n2);
+	    n2 = Node::createMon(N_CAST, T_INT, n2);
 	    type = T_INT;
 	    op++;
 	} else if (n1->mod == T_FLOAT) {
-	    n2 = node_mon(N_CAST, T_FLOAT, n2);
+	    n2 = Node::createMon(N_CAST, T_FLOAT, n2);
 	    type = T_FLOAT;
 	}
     }
-    return node_bin(op, type, n1, n2);
+    return Node::createBin(op, type, n1, n2);
 }
 
 /*
  * NAME:	sub()
  * DESCRIPTION:	handle the - -= operators
  */
-static node *sub(int op, node *n1, node *n2, const char *name)
+static Node *sub(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     Float f1, f2;
@@ -1547,27 +1555,27 @@ static node *sub(int op, node *n1, node *n2, const char *name)
     } else if (n1->mod == T_MIXED && (n2->mod & T_REF)) {
 	type = T_MIXED;
     }
-    return node_bin(op, type, n1, n2);
+    return Node::createBin(op, type, n1, n2);
 }
 
 /*
  * NAME:	umin()
  * DESCRIPTION:	handle unary minus
  */
-static node *umin(node *n)
+static Node *umin(Node *n)
 {
     Float flt;
 
     if (n->mod == T_OBJECT || n->mod == T_CLASS) {
-	return node_mon(N_UMIN, T_OBJECT, n);
+	return Node::createMon(N_UMIN, T_OBJECT, n);
     } else if (n->mod == T_MIXED) {
-	return node_mon(N_UMIN, T_MIXED, n);
+	return Node::createMon(N_UMIN, T_MIXED, n);
     } else if (t_unary(n, "unary -")) {
 	if (n->mod == T_FLOAT) {
 	    flt.initZero();
-	    n = sub(N_SUB, node_float(&flt), n, "-");
+	    n = sub(N_SUB, Node::createFloat(&flt), n, "-");
 	} else {
-	    n = sub(N_SUB, node_int((Int) 0), n, "-");
+	    n = sub(N_SUB, Node::createInt((Int) 0), n, "-");
 	}
     }
     return n;
@@ -1577,7 +1585,7 @@ static node *umin(node *n)
  * NAME:	lshift()
  * DESCRIPTION:	handle the << <<= operators
  */
-static node *lshift(int op, node *n1, node *n2, const char *name)
+static Node *lshift(int op, Node *n1, Node *n2, const char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
@@ -1599,7 +1607,7 @@ static node *lshift(int op, node *n1, node *n2, const char *name)
  * NAME:	rshift()
  * DESCRIPTION:	handle the >> >>= operators
  */
-static node *rshift(int op, node *n1, node *n2, const char *name)
+static Node *rshift(int op, Node *n1, Node *n2, const char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
@@ -1621,7 +1629,7 @@ static node *rshift(int op, node *n1, node *n2, const char *name)
  * NAME:	rel()
  * DESCRIPTION:	handle the < > <= >= operators
  */
-static node *rel(int op, node *n1, node *n2, const char *name)
+static Node *rel(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
 
@@ -1658,16 +1666,16 @@ static node *rel(int op, node *n1, node *n2, const char *name)
 
 	switch (op) {
 	case N_GE:
-	    return node_int((Int) (f1.cmp(f2) >= 0));
+	    return Node::createInt((Int) (f1.cmp(f2) >= 0));
 
 	case N_GT:
-	    return node_int((Int) (f1.cmp(f2) > 0));
+	    return Node::createInt((Int) (f1.cmp(f2) > 0));
 
 	case N_LE:
-	    return node_int((Int) (f1.cmp(f2) <= 0));
+	    return Node::createInt((Int) (f1.cmp(f2) <= 0));
 
 	case N_LT:
-	    return node_int((Int) (f1.cmp(f2) < 0));
+	    return Node::createInt((Int) (f1.cmp(f2) < 0));
 	}
 	return n1;
     }
@@ -1675,16 +1683,16 @@ static node *rel(int op, node *n1, node *n2, const char *name)
 	/* s . s */
 	switch (op) {
 	case N_GE:
-	    return node_int((Int) (n1->l.string->cmp(n2->l.string) >= 0));
+	    return Node::createInt((Int)(n1->l.string->cmp(n2->l.string) >= 0));
 
 	case N_GT:
-	    return node_int((Int) (n1->l.string->cmp(n2->l.string) > 0));
+	    return Node::createInt((Int) (n1->l.string->cmp(n2->l.string) > 0));
 
 	case N_LE:
-	    return node_int((Int) (n1->l.string->cmp(n2->l.string) <= 0));
+	    return Node::createInt((Int)(n1->l.string->cmp(n2->l.string) <= 0));
 
 	case N_LT:
-	    return node_int((Int) (n1->l.string->cmp(n2->l.string) < 0));
+	    return Node::createInt((Int) (n1->l.string->cmp(n2->l.string) < 0));
 	}
     }
 
@@ -1698,14 +1706,14 @@ static node *rel(int op, node *n1, node *n2, const char *name)
     } else if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
     }
-    return node_bin(op, T_INT, n1, n2);
+    return Node::createBin(op, T_INT, n1, n2);
 }
 
 /*
  * NAME:	eq()
  * DESCRIPTION:	handle the == operator
  */
-static node *eq(node *n1, node *n2)
+static Node *eq(Node *n1, Node *n2)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     Float f1, f2;
@@ -1723,7 +1731,7 @@ static node *eq(node *n1, node *n2)
 	}
 	if (nil_node == N_INT && n1->l.number == 0 && n2->type == N_STR) {
 	    /* nil == str */
-	    return node_int((Int) FALSE);
+	    return Node::createInt((Int) FALSE);
 	}
 	break;
 
@@ -1732,29 +1740,29 @@ static node *eq(node *n1, node *n2)
 	    /* f == f */
 	    NFLT_GET(n1, f1);
 	    NFLT_GET(n2, f2);
-	    return node_int((Int) (f1.cmp(f2) == 0));
+	    return Node::createInt((Int) (f1.cmp(f2) == 0));
 	}
 	break;
 
     case N_STR:
 	if (n2->type == N_STR) {
 	    /* s == s */
-	    return node_int((Int) (n1->l.string->cmp(n2->l.string) == 0));
+	    return Node::createInt((Int)(n1->l.string->cmp(n2->l.string) == 0));
 	}
 	if (n2->type == nil_node && n2->l.number == 0) {
 	    /* s == nil */
-	    return node_int((Int) FALSE);
+	    return Node::createInt((Int) FALSE);
 	}
 	break;
 
     case N_NIL:
 	if (n2->type == N_NIL) {
 	    /* nil == nil */
-	    return node_int((Int) TRUE);
+	    return Node::createInt((Int) TRUE);
 	}
 	if (n2->type == N_STR) {
 	    /* nil == str */
-	    return node_int((Int) FALSE);
+	    return Node::createInt((Int) FALSE);
 	}
 	break;
     }
@@ -1771,14 +1779,14 @@ static node *eq(node *n1, node *n2)
     } else if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
     }
-    return node_bin(op, T_INT, n1, n2);
+    return Node::createBin(op, T_INT, n1, n2);
 }
 
 /*
  * NAME:	_and()
  * DESCRIPTION:	handle the & &= operators
  */
-static node *_and(int op, node *n1, node *n2, const char *name)
+static Node *_and(int op, Node *n1, Node *n2, const char *name)
 {
     unsigned short type;
 
@@ -1793,7 +1801,7 @@ static node *_and(int op, node *n1, node *n2, const char *name)
 	/*
 	 * possibly array & array or mapping & array
 	 */
-	return node_bin(op, type, n1, n2);
+	return Node::createBin(op, type, n1, n2);
     }
     return bini(op, n1, n2, name);
 }
@@ -1802,7 +1810,7 @@ static node *_and(int op, node *n1, node *n2, const char *name)
  * NAME:	_xor()
  * DESCRIPTION:	handle the ^ ^= operators
  */
-static node *_xor(int op, node *n1, node *n2, const char *name)
+static Node *_xor(int op, Node *n1, Node *n2, const char *name)
 {
     unsigned short type;
 
@@ -1816,7 +1824,7 @@ static node *_xor(int op, node *n1, node *n2, const char *name)
 	/*
 	 * possibly array ^ array
 	 */
-	return node_bin(op, type, n1, n2);
+	return Node::createBin(op, type, n1, n2);
     }
     return bini(op, n1, n2, name);
 }
@@ -1825,7 +1833,7 @@ static node *_xor(int op, node *n1, node *n2, const char *name)
  * NAME:	_or()
  * DESCRIPTION:	handle the | |= operators
  */
-static node *_or(int op, node *n1, node *n2, const char *name)
+static Node *_or(int op, Node *n1, Node *n2, const char *name)
 {
     unsigned short type;
 
@@ -1839,7 +1847,7 @@ static node *_or(int op, node *n1, node *n2, const char *name)
 	/*
 	 * possibly array | array
 	 */
-	return node_bin(op, type, n1, n2);
+	return Node::createBin(op, type, n1, n2);
     }
     return bini(op, n1, n2, name);
 }
@@ -1848,7 +1856,7 @@ static node *_or(int op, node *n1, node *n2, const char *name)
  * NAME:	land()
  * DESCRIPTION:	handle the && operator
  */
-static node *land(node *n1, node *n2)
+static Node *land(Node *n1, Node *n2)
 {
     t_void(n1);
     t_void(n2);
@@ -1860,14 +1868,14 @@ static node *land(node *n1, node *n2)
 	return n1;
     }
 
-    return node_bin(N_LAND, T_INT, n1, n2);
+    return Node::createBin(N_LAND, T_INT, n1, n2);
 }
 
 /*
  * NAME:	lor()
  * DESCRIPTION:	handle the || operator
  */
-static node *lor(node *n1, node *n2)
+static Node *lor(Node *n1, Node *n2)
 {
     t_void(n1);
     t_void(n2);
@@ -1879,14 +1887,14 @@ static node *lor(node *n1, node *n2)
 	return n1;
     }
 
-    return node_bin(N_LOR, T_INT, n1, n2);
+    return Node::createBin(N_LOR, T_INT, n1, n2);
 }
 
 /*
  * NAME:	quest()
  * DESCRIPTION:	handle the ? : operator
  */
-static node *quest(node *n1, node *n2, node *n3)
+static Node *quest(Node *n1, Node *n2, Node *n3)
 {
     unsigned short type;
 
@@ -1935,7 +1943,7 @@ static node *quest(node *n1, node *n2, node *n3)
 	}
     }
 
-    n1 = node_bin(N_QUEST, type, n1, node_bin(N_PAIR, 0, n2, n3));
+    n1 = Node::createBin(N_QUEST, type, n1, Node::createBin(N_PAIR, 0, n2, n3));
     if ((type & T_TYPE) == T_CLASS) {
 	if (n2->sclass == (String *) NULL) {
 	    n1->sclass = n3->sclass;
@@ -1960,10 +1968,10 @@ static node *quest(node *n1, node *n2, node *n3)
  * NAME:	assign()
  * DESCRIPTION:	handle the assignment operator
  */
-static node *assign(node *n1, node *n2)
+static Node *assign(Node *n1, Node *n2)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
-    node *n, *m;
+    Node *n, *m;
     unsigned short type;
 
     if (n1->type == N_AGGR) {
@@ -1975,7 +1983,7 @@ static node *assign(node *n1, node *n2)
 	    if ((n2->mod & T_REF) != 0) {
 		type -= 1 << REFSHIFT;
 		if (type != T_MIXED) {
-		    n = node_mon(N_TYPE, type, (node *) NULL);
+		    n = Node::createMon(N_TYPE, type, (Node *) NULL);
 		    n->sclass = n2->sclass;
 		    if (n->sclass != (String *) NULL) {
 			n->sclass->ref();
@@ -1990,13 +1998,13 @@ static node *assign(node *n1, node *n2)
 	    }
 
 	    n = n1->l.left;
-	    while (n != (node *) NULL) {
+	    while (n != (Node *) NULL) {
 		if (n->type == N_PAIR) {
 		    m = n->l.left;
 		    n = n->r.right;
 		} else {
 		    m = n;
-		    n = (node *) NULL;
+		    n = (Node *) NULL;
 		}
 		if (c_tmatch(m->mod, type) == T_NIL) {
 		    c_error("incompatible types for = (%s, %s)",
@@ -2005,7 +2013,7 @@ static node *assign(node *n1, node *n2)
 		}
 	    }
 	}
-	n1 = node_bin(N_ASSIGN, n2->mod, n1, n2);
+	n1 = Node::createBin(N_ASSIGN, n2->mod, n1, n2);
 	n1->sclass = n2->sclass;
 	if (n1->sclass != (String *) NULL) {
 	    n1->sclass->ref();
@@ -2024,7 +2032,7 @@ static node *assign(node *n1, node *n2)
 		       (n1->mod == T_CLASS &&
 			(n2->mod != T_CLASS ||
 			 n1->sclass->cmp(n2->sclass) != 0))) {
-		n2 = node_mon(N_CAST, n1->mod, n2);
+		n2 = Node::createMon(N_CAST, n1->mod, n2);
 		n2->sclass = n1->sclass;
 		if (n2->sclass != (String *) NULL) {
 		    n2->sclass->ref();
@@ -2032,7 +2040,7 @@ static node *assign(node *n1, node *n2)
 	    }
 	}
 
-	n2 = node_bin(N_ASSIGN, n1->mod, n1, n2);
+	n2 = Node::createBin(N_ASSIGN, n1->mod, n1, n2);
 	n2->sclass = n1->sclass;
 	if (n2->sclass != (String *) NULL) {
 	    n2->sclass->ref();
@@ -2046,14 +2054,14 @@ static node *assign(node *n1, node *n2)
  * DESCRIPTION:	handle the comma operator, rearranging the order of the
  *		expression if needed
  */
-static node *comma(node *n1, node *n2)
+static Node *comma(Node *n1, Node *n2)
 {
     if (n2->type == N_COMMA) {
 	/* a, (b, c) --> (a, b), c */
 	n2->l.left = comma(n1, n2->l.left);
 	return n2;
     } else {
-	n1 = node_bin(N_COMMA, n2->mod, n1, n2);
+	n1 = Node::createBin(N_COMMA, n2->mod, n1, n2);
 	n1->sclass = n2->sclass;
 	    if (n1->sclass != (String *) NULL) {
 		n1->sclass->ref();

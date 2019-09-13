@@ -48,18 +48,18 @@ static Uint max3(Uint a, Uint b, Uint c)
     return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
 }
 
-static node **aside;
+static Node **aside;
 static Uint sidedepth;
 
 /*
  * NAME:	side->start()
  * DESCRIPTION:	start a side expression
  */
-static node **side_start(node **n, Uint *depth)
+static Node **side_start(Node **n, Uint *depth)
 {
-    node **old;
+    Node **old;
 
-    *n = (node *) NULL;
+    *n = (Node *) NULL;
     old = aside;
     aside = n;
     *depth = sidedepth;
@@ -71,9 +71,9 @@ static node **side_start(node **n, Uint *depth)
  * NAME:	side->add()
  * DESCRIPTION:	deal with a side expression
  */
-static void side_add(node **n, Uint depth)
+static void side_add(Node **n, Uint depth)
 {
-    node *m;
+    Node *m;
 
     if (depth != 0) {
 	m = *aside;
@@ -92,12 +92,12 @@ static void side_add(node **n, Uint depth)
  * NAME:	side->end()
  * DESCRIPTION:	end a side expression
  */
-static Uint side_end(node **n, node *side, node **oldside, Uint olddepth)
+static Uint side_end(Node **n, Node *side, Node **oldside, Uint olddepth)
 {
     Uint depth;
 
-    if (side != (node *) NULL) {
-	if (*n == (node *) NULL) {
+    if (side != (Node *) NULL) {
+	if (*n == (Node *) NULL) {
 	    *n = side->r.right;
 	} else {
 	    side->l.left = side->r.right;
@@ -129,15 +129,15 @@ void opt_init()
     kd_allocate_float = ((long) KFCALL << 24) | kf_func("allocate_float");
 }
 
-static Uint opt_expr (node**, bool);
+static Uint opt_expr (Node**, bool);
 
 /*
  * NAME:	optimize->lvalue()
  * DESCRIPTION:	optimize an lvalue
  */
-static Uint opt_lvalue(node *n)
+static Uint opt_lvalue(Node *n)
 {
-    node *m;
+    Node *m;
 
     if (n->type == N_CAST) {
 	n = n->l.left;
@@ -169,18 +169,18 @@ static Uint opt_lvalue(node *n)
  * NAME:	optimize->binconst()
  * DESCRIPTION:	optimize a binary operator constant expression
  */
-static Uint opt_binconst(node **m)
+static Uint opt_binconst(Node **m)
 {
-    node *n;
+    Node *n;
     Float f1, f2;
     bool flag;
 
     n = *m;
     if (n->l.left->type != n->r.right->type) {
 	if (n->type == N_EQ) {
-	    node_toint(n, (Int) FALSE);
+	    n->toint((Int) FALSE);
 	} else if (n->type == N_NE) {
-	    node_toint(n, (Int) TRUE);
+	    n->toint((Int) TRUE);
 	} else {
 	    return 2;	/* runtime error expected */
 	}
@@ -305,27 +305,27 @@ static Uint opt_binconst(node **m)
 
 	case N_EQ:
 	case N_EQ_FLOAT:
-	    node_toint(n->l.left, (Int) (f1.cmp(f2) == 0));
+	    n->l.left->toint((Int) (f1.cmp(f2) == 0));
 	    break;
 
 	case N_GE:
 	case N_GE_FLOAT:
-	    node_toint(n->l.left, (Int) (f1.cmp(f2) >= 0));
+	    n->l.left->toint((Int) (f1.cmp(f2) >= 0));
 	    break;
 
 	case N_GT:
 	case N_GT_FLOAT:
-	    node_toint(n->l.left, (Int) (f1.cmp(f2) > 0));
+	    n->l.left->toint((Int) (f1.cmp(f2) > 0));
 	    break;
 
 	case N_LE:
 	case N_LE_FLOAT:
-	    node_toint(n->l.left, (Int) (f1.cmp(f2) <= 0));
+	    n->l.left->toint((Int) (f1.cmp(f2) <= 0));
 	    break;
 
 	case N_LT:
 	case N_LT_FLOAT:
-	    node_toint(n->l.left, (Int) (f1.cmp(f2) < 0));
+	    n->l.left->toint((Int) (f1.cmp(f2) < 0));
 	    break;
 
 	case N_MULT:
@@ -335,7 +335,7 @@ static Uint opt_binconst(node **m)
 
 	case N_NE:
 	case N_NE_FLOAT:
-	    node_toint(n->l.left, (Int) (f1.cmp(f2) != 0));
+	    n->l.left->toint((Int) (f1.cmp(f2) != 0));
 	    break;
 
 	case N_SUB:
@@ -355,7 +355,7 @@ static Uint opt_binconst(node **m)
     case N_STR:
 	switch (n->type) {
 	case N_ADD:
-	    node_tostr(n, n->l.left->l.string->add(n->r.right->l.string));
+	    n->tostr(n->l.left->l.string->add(n->r.right->l.string));
 	    return 1;
 
 	case N_EQ:
@@ -386,7 +386,7 @@ static Uint opt_binconst(node **m)
 	    return 2;	/* runtime error expected */
 	}
 
-	node_toint(n, (Int) flag);
+	n->toint((Int) flag);
 	return 1;
 
     case N_NIL:
@@ -403,7 +403,7 @@ static Uint opt_binconst(node **m)
 	    return 2;	/* runtime error expected */
 	}
 
-	node_toint(n, (Int) flag);
+	n->toint((Int) flag);
 	return 1;
     }
 
@@ -414,9 +414,9 @@ static Uint opt_binconst(node **m)
  * NAME:	optimize->tst()
  * DESCRIPTION:	optimize a tst operation
  */
-static node *opt_tst(node *n)
+static Node *opt_tst(Node *n)
 {
-    node *m;
+    Node *m;
 
     switch (n->type) {
     case N_INT:
@@ -424,15 +424,15 @@ static node *opt_tst(node *n)
 	return n;
 
     case N_FLOAT:
-	node_toint(n, (Int) !NFLT_ISZERO(n));
+	n->toint((Int) !NFLT_ISZERO(n));
 	return n;
 
     case N_STR:
-	node_toint(n, (Int) TRUE);
+	n->toint((Int) TRUE);
 	return n;
 
     case N_NIL:
-	node_toint(n, (Int) FALSE);
+	n->toint((Int) FALSE);
 	return n;
 
     case N_TST:
@@ -464,7 +464,7 @@ static node *opt_tst(node *n)
 	return n;
 
     default:
-	m = node_new(n->line);
+	m = Node::create(n->line);
 	m->type = N_TST;
 	m->mod = T_INT;
 	m->l.left = n;
@@ -476,25 +476,25 @@ static node *opt_tst(node *n)
  * NAME:	optimize->not()
  * DESCRIPTION:	optimize a not operation
  */
-static node *opt_not(node *n)
+static Node *opt_not(Node *n)
 {
-    node *m;
+    Node *m;
 
     switch (n->type) {
     case N_INT:
-	node_toint(n, (Int) (n->l.number == 0));
+	n->toint((Int) (n->l.number == 0));
 	return n;
 
     case N_FLOAT:
-	node_toint(n, (Int) NFLT_ISZERO(n));
+	n->toint((Int) NFLT_ISZERO(n));
 	return n;
 
     case N_STR:
-	node_toint(n, (Int) FALSE);
+	n->toint((Int) FALSE);
 	return n;
 
     case N_NIL:
-	node_toint(n, (Int) TRUE);
+	n->toint((Int) TRUE);
 	return n;
 
     case N_LAND:
@@ -595,7 +595,7 @@ static node *opt_not(node *n)
 	return n;
 
     default:
-	m = node_new(n->line);
+	m = Node::create(n->line);
 	m->type = N_NOT;
 	m->mod = T_INT;
 	m->l.left = n;
@@ -607,9 +607,9 @@ static node *opt_not(node *n)
  * NAME:	optimize->binop()
  * DESCRIPTION:	optimize a binary operator expression
  */
-static Uint opt_binop(node **m)
+static Uint opt_binop(Node **m)
 {
-    node *n, *t;
+    Node *n, *t;
     Uint d1, d2, d;
     Float f1, f2;
 
@@ -649,7 +649,7 @@ static Uint opt_binop(node **m)
 	    (n->l.left->type == N_ADD || n->l.left->type == N_SUM) &&
 	    n->l.left->r.right->type == N_STR) {
 	    /* (x + s1) + s2 */
-	    node_tostr(n->r.right,
+	    n->r.right->tostr(
 		       n->l.left->r.right->l.string->add(n->r.right->l.string));
 	    n->l.left = n->l.left->l.left;
 	    return d1;
@@ -679,7 +679,7 @@ static Uint opt_binop(node **m)
 		    n->l.left->r.number == kd_allocate_int ||
 		    n->l.left->r.number == kd_allocate_float) {
 		    t = n->l.left->l.left->r.right;
-		    if (t != (node *) NULL && t->type != N_PAIR &&
+		    if (t != (Node *) NULL && t->type != N_PAIR &&
 			t->type != N_SPREAD && t->mod == T_INT) {
 			d1++;			/* add SUM_ALLOCATE */
 			n->type = N_SUM;
@@ -701,7 +701,7 @@ static Uint opt_binop(node **m)
 			break;
 		    }
 		    t = n->r.right->l.left->r.right;
-		    if (t == (node *) NULL || t->type == N_PAIR ||
+		    if (t == (Node *) NULL || t->type == N_PAIR ||
 			t->type == N_SPREAD || t->mod != T_INT) {
 			break;
 		    }
@@ -1159,9 +1159,9 @@ static Uint opt_binop(node **m)
  * NAME:	optimize->asgnexp()
  * DESCRIPTION:	optimize an assignment expression
  */
-static Uint opt_asgnexp(node **m, bool pop)
+static Uint opt_asgnexp(Node **m, bool pop)
 {
-    node *n, *t;
+    Node *n, *t;
     Uint d1, d2;
 
     n = *m;
@@ -1350,7 +1350,7 @@ static Uint opt_asgnexp(node **m, bool pop)
 		n->r.right->r.number == kd_allocate_int ||
 		n->r.right->r.number == kd_allocate_float) {
 		t = n->r.right->l.left->r.right;
-		if (t != (node *) NULL && t->type != N_PAIR &&
+		if (t != (Node *) NULL && t->type != N_PAIR &&
 		    t->type != N_SPREAD && t->mod == T_INT) {
 		    d2++;			/* add SUM_ALLOCATE */
 		    n->type = N_SUM_EQ;
@@ -1369,11 +1369,11 @@ static Uint opt_asgnexp(node **m, bool pop)
  * NAME:	optimize->ctest()
  * DESCRIPTION:	test a constant expression
  */
-static bool opt_ctest(node *n)
+static bool opt_ctest(Node *n)
 {
     if (n->type != N_INT) {
-	node_toint(n, (Int) (n->type != N_NIL &&
-			     (n->type != T_FLOAT || !NFLT_ISZERO(n))));
+	n->toint((Int) (n->type != N_NIL &&
+			(n->type != T_FLOAT || !NFLT_ISZERO(n))));
     }
     return (n->l.number != 0);
 }
@@ -1382,12 +1382,12 @@ static bool opt_ctest(node *n)
  * NAME:	optimize->cond()
  * DESCRIPTION:	optimize a condition
  */
-static Uint opt_cond(node **m, bool pop)
+static Uint opt_cond(Node **m, bool pop)
 {
     Uint d;
 
     d = opt_expr(m, pop);
-    if (*m != (node *) NULL && (*m)->type == N_TST) {
+    if (*m != (Node *) NULL && (*m)->type == N_TST) {
 	*m = (*m)->l.left;
     }
     return d;
@@ -1397,11 +1397,11 @@ static Uint opt_cond(node **m, bool pop)
  * NAME:	optimize->expr()
  * DESCRIPTION:	optimize an expression
  */
-static Uint opt_expr(node **m, bool pop)
+static Uint opt_expr(Node **m, bool pop)
 {
     Uint d1, d2, i;
-    node *n;
-    node **oldside, *side;
+    Node *n;
+    Node **oldside, *side;
     Uint olddepth;
 
     n = *m;
@@ -1426,11 +1426,11 @@ static Uint opt_expr(node **m, bool pop)
 	oldside = side_start(&side, &olddepth);
 	d1 = opt_expr(&n->l.left, TRUE);
 	if (d1 == 0) {
-	    n->l.left = (node *) NULL;
+	    n->l.left = (Node *) NULL;
 	}
 	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
 	if (d1 == 0) {
-	    *m = node_nil();
+	    *m = Node::createNil();
 	    (*m)->line = n->line;
 	    return !pop;
 	}
@@ -1506,7 +1506,7 @@ static Uint opt_expr(node **m, bool pop)
     case N_FUNC:
 	m = &n->l.left->r.right;
 	n = *m;
-	if (n == (node *) NULL) {
+	if (n == (Node *) NULL) {
 	    return 1;
 	}
 
@@ -1633,13 +1633,13 @@ static Uint opt_expr(node **m, bool pop)
 		n->r.right->l.number >= (long) n->l.left->l.string->len) {
 		return 2;
 	    }
-	    node_toint(n, (Int) n->l.left->l.string->index(n->r.right->l.number));
+	    n->toint((Int) n->l.left->l.string->index(n->r.right->l.number));
 	    return !pop;
 	}
 	if (n->l.left->type == N_FUNC && n->r.right->mod == T_INT) {
 	    if (n->l.left->r.number == kd_status) {
 		n->type = N_FUNC;
-		if (n->l.left->l.left->r.right != (node *) NULL) {
+		if (n->l.left->l.left->r.right != (Node *) NULL) {
 		    /* status(obj)[i] */
 		    n = n->l.left;
 		    n->type = N_STR;
@@ -1733,7 +1733,7 @@ static Uint opt_expr(node **m, bool pop)
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_cond(&n->r.right, pop);
 	if (d2 == 0) {
-	    n->r.right = (node *) NULL;
+	    n->r.right = (Node *) NULL;
 	}
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
 	if (d2 == 0) {
@@ -1783,7 +1783,7 @@ static Uint opt_expr(node **m, bool pop)
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_cond(&n->r.right, pop);
 	if (d2 == 0) {
-	    n->r.right = (node *) NULL;
+	    n->r.right = (Node *) NULL;
 	}
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
 	if (d2 == 0) {
@@ -1841,27 +1841,27 @@ static Uint opt_expr(node **m, bool pop)
 	oldside = side_start(&side, &olddepth);
 	d1 = opt_expr(&n->l.left, pop);
 	if (d1 == 0) {
-	    n->l.left = (node *) NULL;
+	    n->l.left = (Node *) NULL;
 	}
 	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
 	if (d1 == 0) {
-	    n->l.left = (node *) NULL;
+	    n->l.left = (Node *) NULL;
 	}
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_expr(&n->r.right, pop);
 	if (d2 == 0) {
-	    n->r.right = (node *) NULL;
+	    n->r.right = (Node *) NULL;
 	}
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
 	if (d2 == 0) {
-	    n->r.right = (node *) NULL;
+	    n->r.right = (Node *) NULL;
 	}
 	return max3(i, d1, d2);
 
     case N_RANGE:
 	d1 = opt_expr(&n->l.left, FALSE);
 	d2 = 1;
-	if (n->r.right->l.left != (node *) NULL) {
+	if (n->r.right->l.left != (Node *) NULL) {
 	    d2 = opt_expr(&n->r.right->l.left, FALSE);
 	    if ((n->l.left->mod == T_STRING || (n->l.left->mod & T_REF) != 0) &&
 		n->r.right->l.left->type == N_INT &&
@@ -1869,20 +1869,20 @@ static Uint opt_expr(node **m, bool pop)
 		/*
 		 * str[0 .. x] or arr[0 .. x]
 		 */
-		n->r.right->l.left = (node *) NULL;
+		n->r.right->l.left = (Node *) NULL;
 		d2 = 1;
 	    } else {
 		d1 = max2(d1, d2 + 1);
 		d2 = 2;
 	    }
 	}
-	if (n->r.right->r.right != (node *) NULL) {
+	if (n->r.right->r.right != (Node *) NULL) {
 	    d1 = max2(d1, d2 + opt_expr(&n->r.right->r.right, FALSE));
 	}
 	if (n->l.left->type == N_STR) {
 	    long from, to;
 
-	    if (n->r.right->l.left == (node *) NULL) {
+	    if (n->r.right->l.left == (Node *) NULL) {
 		from = 0;
 	    } else {
 		if (n->r.right->l.left->type != N_INT) {
@@ -1890,7 +1890,7 @@ static Uint opt_expr(node **m, bool pop)
 		}
 		from = n->r.right->l.left->l.number;
 	    }
-	    if (n->r.right->r.right == (node *) NULL) {
+	    if (n->r.right->r.right == (Node *) NULL) {
 		to = n->l.left->l.string->len - 1;
 	    } else {
 		if (n->r.right->r.right->type != N_INT) {
@@ -1900,7 +1900,7 @@ static Uint opt_expr(node **m, bool pop)
 	    }
 	    if (from >= 0 && from <= to + 1 &&
 		to < (long) n->l.left->l.string->len) {
-		node_tostr(n, n->l.left->l.string->range(from, to));
+		n->tostr(n->l.left->l.string->range(from, to));
 		return !pop;
 	    }
 	    return d1;
@@ -1910,7 +1910,7 @@ static Uint opt_expr(node **m, bool pop)
     case N_AGGR:
 	if (n->mod == T_MAPPING) {
 	    n = n->l.left;
-	    if (n == (node *) NULL) {
+	    if (n == (Node *) NULL) {
 		return 1;
 	    }
 
@@ -1938,7 +1938,7 @@ static Uint opt_expr(node **m, bool pop)
 	} else {
 	    m = &n->l.left;
 	    n = *m;
-	    if (n == (node *) NULL) {
+	    if (n == (Node *) NULL) {
 		return 1;
 	    }
 
@@ -1967,7 +1967,7 @@ static Uint opt_expr(node **m, bool pop)
  * NAME:	optimize->const()
  * DESCRIPTION:	check if a condition is a constant
  */
-static int opt_const(node *n)
+static int opt_const(Node *n)
 {
     if (n->type == N_COMMA) {
 	n = n->r.right;
@@ -1994,12 +1994,12 @@ static int opt_const(node *n)
  * NAME:	optimize->skip()
  * DESCRIPTION:	skip a statement
  */
-static node *opt_skip(node *n)
+static Node *opt_skip(Node *n)
 {
-    node *m;
+    Node *m;
 
-    if (n == (node *) NULL || !(n->flags & F_REACH)) {
-	return (node *) NULL;
+    if (n == (Node *) NULL || !(n->flags & F_REACH)) {
+	return (Node *) NULL;
     }
 
     for (;;) {
@@ -2012,7 +2012,7 @@ static node *opt_skip(node *n)
 	switch (m->type) {
 	case N_BLOCK:
 	    m->l.left = opt_skip(m->l.left);
-	    if (m->l.left != (node *) NULL) {
+	    if (m->l.left != (Node *) NULL) {
 		return n;
 	    }
 	    break;
@@ -2023,7 +2023,7 @@ static node *opt_skip(node *n)
 
 	case N_COMPOUND:
 	    m->l.left = opt_skip(m->l.left);
-	    if (m->l.left != (node *) NULL) {
+	    if (m->l.left != (Node *) NULL) {
 		return n;
 	    }
 	    break;
@@ -2032,7 +2032,7 @@ static node *opt_skip(node *n)
 	case N_FOR:
 	case N_FOREVER:
 	    m->r.right = opt_skip(m->r.right);
-	    if (m->r.right != (node *) NULL) {
+	    if (m->r.right != (Node *) NULL) {
 		return n;
 	    }
 	    break;
@@ -2040,14 +2040,14 @@ static node *opt_skip(node *n)
 	case N_IF:
 	    m->r.right->l.left = opt_skip(m->r.right->l.left);
 	    m->r.right->r.right = opt_skip(m->r.right->r.right);
-	    if (m->r.right->l.left != (node *) NULL) {
-		if (m->r.right->r.right != (node *) NULL) {
-		    node_toint(m->l.left, (Int) TRUE);
+	    if (m->r.right->l.left != (Node *) NULL) {
+		if (m->r.right->r.right != (Node *) NULL) {
+		    m->l.left->toint((Int) TRUE);
 		} else {
 		    *m = *(m->r.right->l.left);
 		}
 		return n;
-	    } else if (m->r.right->r.right != (node *) NULL) {
+	    } else if (m->r.right->r.right != (Node *) NULL) {
 		*m = *(m->r.right->r.right);
 		return n;
 	    }
@@ -2055,7 +2055,7 @@ static node *opt_skip(node *n)
 
 	case N_CATCH:
 	    m->r.right = opt_skip(m->r.right);
-	    if (m->r.right != (node *) NULL) {
+	    if (m->r.right != (Node *) NULL) {
 		*m = *(m->r.right);
 		return n;
 	    }
@@ -2067,7 +2067,7 @@ static node *opt_skip(node *n)
 		    return opt_skip(m);
 		} else {
 		    m = opt_skip(m);
-		    if (m != (node *) NULL) {
+		    if (m != (Node *) NULL) {
 			n->l.left = m;
 			return n;
 		    }
@@ -2079,7 +2079,7 @@ static node *opt_skip(node *n)
 	if (n->type == N_PAIR) {
 	    n = n->r.right;
 	} else {
-	    return (node *) NULL;
+	    return (Node *) NULL;
 	}
     }
 }
@@ -2088,18 +2088,18 @@ static node *opt_skip(node *n)
  * NAME:	optimize->stmt()
  * DESCRIPTION:	optimize a statement
  */
-node *opt_stmt(node *first, Uint *depth)
+Node *opt_stmt(Node *first, Uint *depth)
 {
-    node *n, **m, **prev;
+    Node *n, **m, **prev;
     Uint d;
     Uint d1, d2;
     int i;
-    node *side;
+    Node *side;
 
 
-    if (first == (node *) NULL) {
+    if (first == (Node *) NULL) {
 	*depth = 0;
-	return (node *) NULL;
+	return (Node *) NULL;
     }
 
     d = 0;
@@ -2110,8 +2110,8 @@ node *opt_stmt(node *first, Uint *depth)
 	switch (n->type) {
 	case N_BLOCK:
 	    n->l.left = opt_stmt(n->l.left, &d1);
-	    if (n->l.left == (node *) NULL) {
-		n = (node *) NULL;
+	    if (n->l.left == (Node *) NULL) {
+		n = (Node *) NULL;
 	    }
 	    d = max2(d, d1);
 	    break;
@@ -2123,9 +2123,9 @@ node *opt_stmt(node *first, Uint *depth)
 
 	case N_COMPOUND:
 	    n->l.left = opt_stmt(n->l.left, &d1);
-	    if (n->l.left == (node *) NULL) {
-		n = (node *) NULL;
-	    } else if (n->r.right != (node *) NULL) {
+	    if (n->l.left == (Node *) NULL) {
+		n = (Node *) NULL;
+	    } else if (n->r.right != (Node *) NULL) {
 		n->r.right = opt_stmt(n->r.right, &d2);
 		d1 = max2(d1, d2);
 	    }
@@ -2136,19 +2136,19 @@ node *opt_stmt(node *first, Uint *depth)
 	    n->r.right = opt_stmt(n->r.right, &d1);
 	    side_start(&side, depth);
 	    d2 = opt_cond(&n->l.left, FALSE);
-	    d2 = max2(d2, side_end(&n->l.left, side, (node **) NULL, 0));
+	    d2 = max2(d2, side_end(&n->l.left, side, (Node **) NULL, 0));
 	    d = max3(d, d1, d2);
 	    break;
 
 	case N_FOR:
 	    side_start(&side, depth);
 	    d1 = opt_cond(&n->l.left, FALSE);
-	    d1 = max2(d1, side_end(&n->l.left, side, (node **) NULL, 0));
+	    d1 = max2(d1, side_end(&n->l.left, side, (Node **) NULL, 0));
 	    i = opt_const(n->l.left);
 	    if (i == 0) {
 		/* never */
 		n->r.right = opt_skip(n->r.right);
-		if (n->r.right == (node *) NULL) {
+		if (n->r.right == (Node *) NULL) {
 		    n->type = N_POP;
 		    n = opt_stmt(n, &d1);
 		    d = max2(d, d1);
@@ -2167,15 +2167,15 @@ node *opt_stmt(node *first, Uint *depth)
 	    break;
 
 	case N_FOREVER:
-	    if (n->l.left != (node *) NULL) {
+	    if (n->l.left != (Node *) NULL) {
 		side_start(&side, depth);
 		d1 = opt_expr(&n->l.left, TRUE);
 		if (d1 == 0) {
-		    n->l.left = (node *) NULL;
+		    n->l.left = (Node *) NULL;
 		}
-		d1 = max2(d1, side_end(&n->l.left, side, (node **) NULL, 0));
+		d1 = max2(d1, side_end(&n->l.left, side, (Node **) NULL, 0));
 		if (d1 == 0) {
-		    n->l.left = (node *) NULL;
+		    n->l.left = (Node *) NULL;
 		}
 	    } else {
 		d1 = 0;
@@ -2187,12 +2187,12 @@ node *opt_stmt(node *first, Uint *depth)
 	case N_RLIMITS:
 	    side_start(&side, depth);
 	    d1 = opt_expr(&n->l.left->l.left, FALSE);
-	    d1 = max2(d1, side_end(&n->l.left->l.left, side, (node **) NULL,
+	    d1 = max2(d1, side_end(&n->l.left->l.left, side, (Node **) NULL,
 				   0));
 
 	    side_start(&side, depth);
 	    d2 = opt_expr(&n->l.left->r.right, FALSE);
-	    d2 = max2(d2, side_end(&n->l.left->r.right, side, (node **) NULL,
+	    d2 = max2(d2, side_end(&n->l.left->r.right, side, (Node **) NULL,
 				   0));
 
 	    d1 = max2(d1, d2 + 1);
@@ -2202,7 +2202,7 @@ node *opt_stmt(node *first, Uint *depth)
 
 	case N_CATCH:
 	    n->l.left = opt_stmt(n->l.left, &d1);
-	    if (n->l.left == (node *) NULL) {
+	    if (n->l.left == (Node *) NULL) {
 		n = opt_stmt(opt_skip(n->r.right), &d1);
 		d = max2(d, d1);
 	    } else {
@@ -2214,7 +2214,7 @@ node *opt_stmt(node *first, Uint *depth)
 	case N_IF:
 	    side_start(&side, depth);
 	    d1 = opt_cond(&n->l.left, FALSE);
-	    d1 = max2(d1, side_end(&n->l.left, side, (node **) NULL, 0));
+	    d1 = max2(d1, side_end(&n->l.left, side, (Node **) NULL, 0));
 
 	    i = opt_const(n->l.left);
 	    if (i == 0) {
@@ -2226,8 +2226,8 @@ node *opt_stmt(node *first, Uint *depth)
 	    d1 = max2(d1, d2);
 	    n->r.right->r.right = opt_stmt(n->r.right->r.right, &d2);
 
-	    if (n->r.right->l.left == (node *) NULL) {
-		if (n->r.right->r.right == (node *) NULL) {
+	    if (n->r.right->l.left == (Node *) NULL) {
+		if (n->r.right->r.right == (Node *) NULL) {
 		    n->type = N_POP;
 		    n = opt_stmt(n, &d1);
 		    d = max2(d, d1);
@@ -2235,7 +2235,7 @@ node *opt_stmt(node *first, Uint *depth)
 		}
 		n->l.left = opt_not(n->l.left);
 		n->r.right->l.left = n->r.right->r.right;
-		n->r.right->r.right = (node *) NULL;
+		n->r.right->r.right = (Node *) NULL;
 	    }
 	    d = max3(d, d1, d2);
 	    break;
@@ -2249,25 +2249,25 @@ node *opt_stmt(node *first, Uint *depth)
 	    side_start(&side, depth);
 	    d1 = opt_expr(&n->l.left, TRUE);
 	    if (d1 == 0) {
-		n->l.left = (node *) NULL;
+		n->l.left = (Node *) NULL;
 	    }
-	    d = max3(d, d1, side_end(&n->l.left, side, (node **) NULL, 0));
-	    if (n->l.left == (node *) NULL) {
-		n = (node *) NULL;
+	    d = max3(d, d1, side_end(&n->l.left, side, (Node **) NULL, 0));
+	    if (n->l.left == (Node *) NULL) {
+		n = (Node *) NULL;
 	    }
 	    break;
 
 	case N_RETURN:
 	    side_start(&side, depth);
 	    d1 = opt_expr(&n->l.left, FALSE);
-	    d = max3(d, d1, side_end(&n->l.left, side, (node **) NULL, 0));
+	    d = max3(d, d1, side_end(&n->l.left, side, (Node **) NULL, 0));
 	    break;
 
 	case N_SWITCH_INT:
 	case N_SWITCH_RANGE:
 	case N_SWITCH_STR:
 	    n->r.right->r.right = opt_stmt(n->r.right->r.right, &d1);
-	    if (n->r.right->r.right == (node *) NULL) {
+	    if (n->r.right->r.right == (Node *) NULL) {
 		n = n->r.right;
 		n->type = N_POP;
 		n = opt_stmt(n, &d1);
@@ -2276,20 +2276,20 @@ node *opt_stmt(node *first, Uint *depth)
 		side_start(&side, depth);
 		d2 = opt_expr(&n->r.right->l.left, FALSE);
 		d2 = max2(d2, side_end(&n->r.right->l.left, side,
-				       (node **) NULL, 0));
+				       (Node **) NULL, 0));
 		d = max3(d, d1, d2);
 	    }
 	    break;
 	}
 
 	if ((*m)->type == N_PAIR) {
-	    if (n == (node *) NULL) {
+	    if (n == (Node *) NULL) {
 		*m = (*m)->r.right;
 	    } else {
 		(*m)->l.left = n;
 		if (n->flags & F_END) {
 		    n = opt_skip((*m)->r.right);
-		    if (n == (node *) NULL) {
+		    if (n == (Node *) NULL) {
 			*m = (*m)->l.left;
 			break;
 		    }
@@ -2300,7 +2300,7 @@ node *opt_stmt(node *first, Uint *depth)
 	    }
 	} else {
 	    *m = n;
-	    if (n == (node *) NULL && prev != m) {
+	    if (n == (Node *) NULL && prev != m) {
 		*prev = (*prev)->l.left;
 	    }
 	    break;
