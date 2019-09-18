@@ -324,7 +324,11 @@ static void ext_array_putval(Value *val, Array *a)
  */
 static Array *ext_array_new(Dataspace *data, int size)
 {
-    return Array::createNil(data, size);
+    try {
+	return Array::createNil(data, size);
+    } catch (...) {
+	longjmp(*ErrorContext::env, 1);
+    }
 }
 
 /*
