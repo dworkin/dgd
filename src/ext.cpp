@@ -31,7 +31,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	1
-# define EXTENSION_MINOR	0
+# define EXTENSION_MINOR	1
 
 
 /*
@@ -436,6 +436,15 @@ void ext_runtime_error(Frame *f, const char *mesg)
     } catch (...) {
 	longjmp(*ErrorContext::env, 1);
     }
+}
+
+/*
+ * NAME:	ext->runtime_ticks()
+ * DESCRIPTION:	spend ticks
+ */
+void ext_runtime_ticks(Frame *f, int ticks)
+{
+    i_add_ticks(f, ticks);
 }
 
 
@@ -1678,7 +1687,8 @@ static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, int,
 		    void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
 				    int, uint8_t*, size_t, uint8_t*, size_t),
 		    int (*execute)(uint64_t, uint64_t, int, int, void*),
-		    void (*release)(uint64_t, uint64_t))
+		    void (*release)(uint64_t, uint64_t),
+		    int (*functions)(uint64_t, uint64_t, int, void*))
 {
     jit_init = init;
     jit_finish = finish;
@@ -1920,7 +1930,7 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     voidf *ext_object[6];
     voidf *ext_array[6];
     voidf *ext_mapping[7];
-    voidf *ext_runtime[4];
+    voidf *ext_runtime[5];
     voidf **ftabs[11];
     int sizes[11];
     int (*init) (int, int, voidf**[], int[], const char*);
@@ -1983,9 +1993,10 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     ext_mapping[5] = (voidf *) &ext_mapping_enum;
     ext_mapping[6] = (voidf *) &ext_mapping_size;
     ext_runtime[0] = (voidf *) &ext_runtime_error;
-    ext_runtime[1] = (voidf *) hash_md5_start;
-    ext_runtime[2] = (voidf *) hash_md5_block;
-    ext_runtime[3] = (voidf *) hash_md5_end;
+    ext_runtime[1] = (voidf *) &hash_md5_start;
+    ext_runtime[2] = (voidf *) &hash_md5_block;
+    ext_runtime[3] = (voidf *) &hash_md5_end;
+    ext_runtime[4] = (voidf *) &ext_runtime_ticks;
 
     ftabs[ 0] = ext_ext;	sizes[ 0] = 5;
     ftabs[ 1] = ext_frame;	sizes[ 1] = 4;
@@ -1997,7 +2008,7 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     ftabs[ 7] = ext_object;	sizes[ 7] = 6;
     ftabs[ 8] = ext_array;	sizes[ 8] = 6;
     ftabs[ 9] = ext_mapping;	sizes[ 9] = 7;
-    ftabs[10] = ext_runtime;	sizes[10] = 4;
+    ftabs[10] = ext_runtime;	sizes[10] = 5;
 
     if (!init(EXTENSION_MAJOR, EXTENSION_MINOR, ftabs, sizes, config)) {
 	fatal("incompatible runtime extension");
