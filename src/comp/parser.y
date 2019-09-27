@@ -118,13 +118,14 @@ static node *comma	(node*, node*);
 	     formal_declaration_list varargs_formal_declaration string_exp
 	     formal_declaration type_specifier data_dcltr operator
 	     function_name function_dcltr dcltr list_dcltr dcltr_or_stmt_list
-	     dcltr_or_stmt if_stmt stmt compound_stmt opt_caught_stmt
-	     function_call primary_p1_exp primary_p2_exp postfix_exp prefix_exp
-	     cast_exp mult_oper_exp add_oper_exp shift_oper_exp rel_oper_exp
-	     equ_oper_exp bitand_oper_exp bitxor_oper_exp bitor_oper_exp
-	     and_oper_exp or_oper_exp cond_exp exp list_exp opt_list_exp
-	     f_list_exp f_opt_list_exp arg_list opt_arg_list opt_arg_list_comma
-	     assoc_exp assoc_arg_list opt_assoc_arg_list_comma ident
+	     dcltr_or_stmt if_stmt stmt nocase_stmt compound_stmt
+	     opt_caught_stmt case_list case function_call primary_p1_exp
+	     primary_p2_exp postfix_exp prefix_exp cast_exp mult_oper_exp
+	     add_oper_exp shift_oper_exp rel_oper_exp equ_oper_exp
+	     bitand_oper_exp bitxor_oper_exp bitor_oper_exp and_oper_exp
+	     or_oper_exp cond_exp exp list_exp opt_list_exp f_list_exp
+	     f_opt_list_exp arg_list opt_arg_list opt_arg_list_comma assoc_exp
+	     assoc_arg_list opt_assoc_arg_list_comma ident
 
 %%
 
@@ -461,6 +462,19 @@ if_stmt
 	;
 
 stmt
+	: nocase_stmt
+	| case_list nocase_stmt
+		{
+		  if ($1 != NULL) {
+		      $$ = $1;
+		      $$->r.right->l.left = $2;
+		  } else {
+		      $$ = $2;
+		  }
+		}
+	;
+
+nocase_stmt
 	: list_exp ';'
 		{ $$ = c_exp_stmt($1); }
 	| compound_stmt
@@ -541,36 +555,6 @@ stmt
 		  c_endcond();
 		  $$ = c_endswitch($3, $6);
 		}
-	| CASE exp ':'
-		{ $2 = c_case($2, (node *) NULL); }
-	  stmt	{
-		  $$ = $2;
-		  if ($$ != (node *) NULL) {
-		      $$->l.left = $5;
-		  } else {
-		      $$ = $5;
-		  }
-		}
-	| CASE exp DOT_DOT exp ':'
-		{ $2 = c_case($2, $4); }
-	  stmt	{
-		  $$ = $2;
-		  if ($$ != (node *) NULL) {
-		      $$->l.left = $7;
-		  } else {
-		      $$ = $7;
-		  }
-		}
-	| DEFAULT ':'
-		{ $<node>2 = c_default(); }
-	  stmt	{
-		  $$ = $<node>2;
-		  if ($$ != (node *) NULL) {
-		      $$->l.left = $4;
-		  } else {
-		      $$ = $4;
-		  }
-		}
 	| ident ':'
 		{ $<node>2 = c_label($1); }
 	  stmt	{ $$ = c_concat($<node>2, $4); }
@@ -608,6 +592,34 @@ opt_caught_stmt
 		{ $$ = (node *) NULL; }
 	| ':' stmt
 		{ $$ = $2; }
+	;
+
+case_list
+	: case	{
+		  $$ = $1;
+		  $$->r.right = $$;
+		}
+	| case_list case
+		{
+		  if ($2 != (node *) NULL) {
+		      $$ = $2;
+		      if ($1 != (node *) NULL) {
+			  $$->l.left = $1;
+			  $$->r.right = $1->r.right;
+		      }
+		  } else {
+		      $$ = $1;
+		  }
+		}
+	;
+
+case
+	: CASE exp ':'
+		{ $$ = c_case($2, (node *) NULL); }
+	| CASE exp DOT_DOT exp ':'
+		{ $$ = c_case($2, $4); }
+	| DEFAULT ':'
+		{ $$ = c_default(); }
 	;
 
 function_call
