@@ -1533,9 +1533,9 @@ static uint32_t ext_vm_switch_range(Int *table, uint32_t size, Int number)
 	    if (number <= table[mid + 1]) {
 		return mid >> 1;
 	    }
-	    high = mid >> 1;
-	} else {
 	    low = (mid >> 1) + 1;
+	} else {
+	    high = mid >> 1;
 	}
     }
 
