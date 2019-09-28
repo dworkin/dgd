@@ -1605,9 +1605,11 @@ static void ext_vm_rlimits_end(Frame *f)
  */
 static jmp_buf *ext_vm_catch(Frame *f)
 {
-    UNREFERENCED_PARAMETER(f);
+    jmp_buf *env;
 
-    return ErrorContext::push(Frame::runtimeError);
+    env = ErrorContext::push(Frame::runtimeError);
+    f->atomic = FALSE;
+    return env;
 }
 
 /*
