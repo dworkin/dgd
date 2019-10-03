@@ -179,7 +179,7 @@ String *ed_command(Object *obj, char *cmd)
     outbufsz = 0;
     internal = FALSE;
     try {
-	ErrorContext::push((ErrorContext::Handler) ed_handler);
+	ErrorContext::push();
 	recursion = TRUE;
 	if (e->ed->command(cmd)) {
 	    e->ed->edbuf.lb.inact();
@@ -246,10 +246,14 @@ void output(const char *f, ...)
 void ed_error(const char *f, ...)
 {
     va_list args;
+
     if (f != (char *) NULL) {
 	internal = TRUE;
+	ErrorContext::push((ErrorContext::Handler) ed_handler);
+	va_start(args, f);
+	error(f, args);
+	va_end(args);
+    } else {
+	error((char *) NULL);
     }
-    va_start(args, f);
-    error(f, args);
-    va_end(args);
 }
