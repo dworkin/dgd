@@ -249,10 +249,14 @@ void ed_error(const char *f, ...)
 
     if (f != (char *) NULL) {
 	internal = TRUE;
-	ErrorContext::push((ErrorContext::Handler) ed_handler);
-	va_start(args, f);
-	error(f, args);
-	va_end(args);
+	try {
+	    ErrorContext::push((ErrorContext::Handler) ed_handler);
+	    va_start(args, f);
+	    error(f, args);
+	    va_end(args);
+	} catch (...) {
+	    error((char *) NULL);
+	}
     } else {
 	error((char *) NULL);
     }
