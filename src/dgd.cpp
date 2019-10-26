@@ -85,14 +85,14 @@ void endtask()
     Dataspace::xport();
     Object::clean();
     Frame::clear();
-    ed_clear();
+    Editor::clear();
     ErrorContext::clearException();
 
     CallOut::swapcount(Dataspace::swapout(fragment));
 
     if (Object::stop) {
 	Comm::clear();
-	ed_finish();
+	Editor::finish();
 # ifdef DEBUG
 	Object::swap = TRUE;
 # endif

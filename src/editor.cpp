@@ -26,13 +26,8 @@
 # include "editor.h"
 # include <stdarg.h>
 
-struct editor {
-    CmdBuf *ed;			/* editor instance */
-    editor *next;		/* next in free list */
-};
-
-static editor *editors;		/* editor table */
-static editor *flist;		/* free list */
+static Editor *editors;		/* editor table */
+static Editor *flist;		/* free list */
 static int neditors;		/* # of editors */
 static char *tmpedfile;		/* proto temporary file */
 static char *outbuf;		/* output buffer */
@@ -42,19 +37,18 @@ static bool recursion;		/* recursion in editor command */
 static bool internal;		/* flag editor internal error */
 
 /*
- * NAME:	ed->init()
- * DESCRIPTION:	initialize editor handling
+ * initialize editor handling
  */
-void ed_init(char *tmp, int num)
+void Editor::init(char *tmp, int num)
 {
-    editor *e, *f;
+    Editor *e, *f;
 
     tmpedfile = tmp;
-    f = (editor *) NULL;
+    f = (Editor *) NULL;
     neditors = num;
     if (num != 0) {
 	outbuf = ALLOC(char, USHRT_MAX + 1);
-	editors = ALLOC(editor, num);
+	editors = ALLOC(Editor, num);
 	for (e = editors + num; num != 0; --num) {
 	    (--e)->ed = (CmdBuf *) NULL;
 	    e->next = f;
@@ -66,13 +60,12 @@ void ed_init(char *tmp, int num)
 }
 
 /*
- * NAME:	ed->finish()
- * DESCRIPTION:	terminate all editor sessions
+ * terminate all editor sessions
  */
-void ed_finish()
+void Editor::finish()
 {
     int i;
-    editor *e;
+    Editor *e;
 
     for (i = neditors, e = editors; i > 0; --i, e++) {
 	delete e->ed;
@@ -80,19 +73,17 @@ void ed_finish()
 }
 
 /*
- * NAME:	ed->clear()
- * DESCRIPTION:	allow new editor to be created
+ * allow new editor to be created
  */
-void ed_clear()
+void Editor::clear()
 {
     newed = EINDEX_MAX;
 }
 
 /*
- * NAME:	check_recursion()
- * DESCRIPTION:	check for recursion in editor commands
+ * check for recursion in editor commands
  */
-static void check_recursion()
+void Editor::checkRecursion()
 {
     if (recursion) {
 	error("Recursion in editor command");
@@ -100,20 +91,19 @@ static void check_recursion()
 }
 
 /*
- * NAME:	ed->new()
- * DESCRIPTION:	start a new editor
+ * start a new editor
  */
-void ed_new(Object *obj)
+void Editor::create(Object *obj)
 {
     char tmp[STRINGSZ + 3];
-    editor *e;
+    Editor *e;
 
-    check_recursion();
+    checkRecursion();
     if (EINDEX(newed) != EINDEX_MAX) {
 	error("Too many simultaneous editors started");
     }
     e = flist;
-    if (e == (editor *) NULL) {
+    if (e == (Editor *) NULL) {
 	error("Too many editor instances");
     }
     flist = e->next;
@@ -127,14 +117,13 @@ void ed_new(Object *obj)
 }
 
 /*
- * NAME:	ed->del()
- * DESCRIPTION:	delete an editor instance
+ * delete an editor instance
  */
-void ed_del(Object *obj)
+void Editor::del(Object *obj)
 {
-    editor *e;
+    Editor *e;
 
-    check_recursion();
+    checkRecursion();
     e = &editors[EINDEX(obj->etabi)];
     delete e->ed;
     if (obj->etabi == newed) {
@@ -147,8 +136,7 @@ void ed_del(Object *obj)
 }
 
 /*
- * NAME:	ed->handler()
- * DESCRIPTION:	fake error handler
+ * fake error handler
  */
 static void ed_handler(Frame *f, Int depth)
 {
@@ -163,14 +151,13 @@ static void ed_handler(Frame *f, Int depth)
 extern void output(const char *, ...);
 
 /*
- * NAME:	ed->command()
- * DESCRIPTION:	handle an editor command
+ * handle an editor command
  */
-String *ed_command(Object *obj, char *cmd)
+String *Editor::command(Object *obj, char *cmd)
 {
-    editor *e;
+    Editor *e;
 
-    check_recursion();
+    checkRecursion();
     if (strchr(cmd, LF) != (char *) NULL) {
 	error("Newline in editor command");
     }
@@ -186,7 +173,7 @@ String *ed_command(Object *obj, char *cmd)
 	    recursion = FALSE;
 	} else {
 	    recursion = FALSE;
-	    ed_del(obj);
+	    del(obj);
 	}
 	ErrorContext::pop();
     } catch (...) {
@@ -206,10 +193,9 @@ String *ed_command(Object *obj, char *cmd)
 }
 
 /*
- * NAME:	ed->status()
- * DESCRIPTION:	return the editor status of an object
+ * return the editor status of an object
  */
-const char *ed_status(Object *obj)
+const char *Editor::status(Object *obj)
 {
     if (editors[EINDEX(obj->etabi)].ed->flags & CB_INSERT) {
 	return "insert";
@@ -219,8 +205,7 @@ const char *ed_status(Object *obj)
 }
 
 /*
- * NAME:	output()
- * DESCRIPTION:	handle output from the editor
+ * handle output from the editor
  */
 void output(const char *f, ...)
 {
@@ -240,8 +225,7 @@ void output(const char *f, ...)
 }
 
 /*
- * NAME:	ed_error()
- * DESCRIPTION:	handle an editor internal error
+ * handle an editor internal error
  */
 void ed_error(const char *f, ...)
 {

@@ -1578,8 +1578,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     *fragment = conf[SWAP_FRAGMENT].num;
 
     /* initalize editor */
-    ed_init(conf[ED_TMPFILE].str,
-	    (int) conf[EDITORS].num);
+    Editor::init(conf[ED_TMPFILE].str,
+		 (int) conf[EDITORS].num);
 
     /* initialize call_outs */
     if (!CallOut::init((uindex) conf[CALL_OUTS].num)) {
@@ -1682,7 +1682,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	Swap::finish();
 	Comm::clear();
 	Comm::finish();
-	ed_finish();
+	Editor::finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
 	}

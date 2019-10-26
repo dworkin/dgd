@@ -55,12 +55,12 @@ int kf_editor(Frame *f, int nargs, kfunc *kf)
 	error("editor() within atomic function");
     }
     if (!(obj->flags & O_EDITOR)) {
-	ed_new(obj);
+	Editor::create(obj);
     }
     if (nargs == 0) {
 	*--f->sp = Value::nil;
     } else {
-	str = ed_command(obj, f->sp->string->text);
+	str = Editor::command(obj, f->sp->string->text);
 	f->sp->string->del();
 	if (str != (String *) NULL) {
 	    PUT_STR(f->sp, str);
@@ -94,7 +94,7 @@ int kf_query_editor(Frame *f, int n, kfunc *kf)
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
 	if ((obj->flags & O_SPECIAL) == O_EDITOR) {
-	    status = ed_status(obj);
+	    status = Editor::status(obj);
 	    PUT_STRVAL(f->sp, String::create(status, strlen(status)));
 	    return 0;
 	}

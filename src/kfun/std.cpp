@@ -402,7 +402,7 @@ int kf_destruct_object(Frame *f, int n, kfunc *kf)
 	if (f->level != 0) {
 	    error("Destructing editor object in atomic function");
 	}
-	ed_del(obj);
+	Editor::del(obj);
 	break;
     }
     obj->del(f);

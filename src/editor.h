@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,10 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void	   ed_init	(char*, int);
-extern void	   ed_finish	();
-extern void	   ed_clear	();
-extern void	   ed_new	(Object*);
-extern void	   ed_del	(Object*);
-extern String	  *ed_command	(Object*, char*);
-extern const char *ed_status	(Object*);
+class Editor {
+public:
+    class CmdBuf *ed;		/* editor instance */
+    Editor *next;		/* next in free list */
+
+    static void init(char *tmp, int num);
+    static void finish();
+    static void clear();
+    static void create(Object *obj);
+    static void del(Object *obj);
+    static String *command(Object *obj, char *cmd);
+    static const char *status(Object *obj);
+
+private:
+    static void checkRecursion();
+};
