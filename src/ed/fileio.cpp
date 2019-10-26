@@ -103,7 +103,7 @@ bool IO::load(EditBuf *eb, char *fname, Int l)
     struct stat sbuf;
 
     /* open file */
-    if (path_ed_read(filename, fname) == (char *) NULL ||
+    if (Path::edRead(filename, fname) == (char *) NULL ||
 	P_stat(filename, &sbuf) < 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
 	return FALSE;
     }
@@ -180,7 +180,7 @@ bool IO::save(EditBuf *eb, char *fname, Int first, Int last, int append)
     char buf[BUF_SIZE];
     struct stat sbuf;
 
-    if (path_ed_write(filename, fname) == (char *) NULL ||
+    if (Path::edWrite(filename, fname) == (char *) NULL ||
 	(P_stat(filename, &sbuf) >= 0 && (sbuf.st_mode & S_IFMT) != S_IFREG))
     {
 	return FALSE;

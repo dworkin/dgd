@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,9 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern char *path_resolve	(char*, char*);
-extern char *path_string	(char*, char*, unsigned int);
-extern char *path_from		(char*, char*, char*);
-extern char *path_ed_read	(char*, char*);
-extern char *path_ed_write	(char*, char*);
-extern char *path_include	(char*, char*, char*, String***, int*);
+class Path {
+public:
+    static char *resolve(char *buf, char *file);
+    static char *string(char *buf, char *file, unsigned int);
+    static char *from(char*, char *from, char *file);
+    static char *edRead(char *buf, char *file);
+    static char *edWrite(char *buf, char *file);
+    static char *include(char *buf, char *from, char *file, String ***strs,
+			 int *nstr);
+};

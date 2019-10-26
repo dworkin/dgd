@@ -29,10 +29,9 @@
 # include "compile.h"
 
 /*
- * NAME:	path->resolve()
- * DESCRIPTION:	resolve a path
+ * resolve a path
  */
-char *path_resolve(char *buf, char *file)
+char *Path::resolve(char *buf, char *file)
 {
     char *p, *q, *d;
 
@@ -78,22 +77,20 @@ char *path_resolve(char *buf, char *file)
 }
 
 /*
- * NAME:	path_string()
- * DESCRIPTION:	check and resolve a string path
+ * check and resolve a string path
  */
-char *path_string(char *buf, char *file, unsigned int len)
+char *Path::string(char *buf, char *file, unsigned int len)
 {
     if (len >= STRINGSZ || strlen(file) != len) {
 	return (char *) NULL;
     }
-    return path_resolve(buf, file);
+    return resolve(buf, file);
 }
 
 /*
- * NAME:	path->from()
- * DESCRIPTION:	resolve a (possibly relative) path
+ * resolve a (possibly relative) path
  */
-char *path_from(char *buf, char *from, char *file)
+char *Path::from(char *buf, char *from, char *file)
 {
     char buf2[STRINGSZ];
 
@@ -101,20 +98,19 @@ char *path_from(char *buf, char *from, char *file)
 	sprintf(buf2, "%s/../%s", from, file);
 	file = buf2;
     }
-    return path_resolve(buf, file);
+    return resolve(buf, file);
 }
 
 /*
- * NAME:	path->ed_read()
- * DESCRIPTION:	resolve an editor read file path
+ * resolve an editor read file path
  */
-char *path_ed_read(char *buf, char *file)
+char *Path::edRead(char *buf, char *file)
 {
     Frame *f;
 
     f = cframe;
     if (OBJR(f->oindex)->flags & O_DRIVER) {
-	return path_resolve(buf, file);
+	return resolve(buf, file);
     } else {
 	PUSH_STRVAL(f, String::create(file, strlen(file)));
 	call_driver_object(f, "path_read", 1);
@@ -122,23 +118,22 @@ char *path_ed_read(char *buf, char *file)
 	    (f->sp++)->del();
 	    return (char *) NULL;
 	}
-	path_resolve(buf, f->sp->string->text);
+	resolve(buf, f->sp->string->text);
 	(f->sp++)->string->del();
 	return buf;
     }
 }
 
 /*
- * NAME:	path->ed_write()
- * DESCRIPTION:	resolve an editor write file path
+ * resolve an editor write file path
  */
-char *path_ed_write(char *buf, char *file)
+char *Path::edWrite(char *buf, char *file)
 {
     Frame *f;
 
     f = cframe;
     if (OBJR(f->oindex)->flags & O_DRIVER) {
-	return path_resolve(buf, file);
+	return resolve(buf, file);
     } else {
 	PUSH_STRVAL(f, String::create(file, strlen(file)));
 	call_driver_object(f, "path_write", 1);
@@ -146,17 +141,17 @@ char *path_ed_write(char *buf, char *file)
 	    (f->sp++)->del();
 	    return (char *) NULL;
 	}
-	path_resolve(buf, f->sp->string->text);
+	resolve(buf, f->sp->string->text);
 	(f->sp++)->string->del();
 	return buf;
     }
 }
 
 /*
- * NAME:	path->include()
- * DESCRIPTION:	resolve an include path
+ * resolve an include path
  */
-char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
+char *Path::include(char *buf, char *from, char *file, String ***strs,
+		    int *nstr)
 {
     Frame *f;
     int i;
@@ -166,7 +161,7 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
     *strs = NULL;
     *nstr = 0;
     if (c_autodriver()) {
-	return path_from(buf, from, file);
+	return Path::from(buf, from, file);
     }
 
     f = cframe;
@@ -174,12 +169,12 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
     PUSH_STRVAL(f, String::create(file, strlen(file)));
     if (!call_driver_object(f, "include_file", 2)) {
 	f->sp++;
-	return path_from(buf, from, file);
+	return Path::from(buf, from, file);
     }
 
     if (f->sp->type == T_STRING) {
 	/* simple path */
-	path_resolve(buf, f->sp->string->text);
+	resolve(buf, f->sp->string->text);
 	(f->sp++)->string->del();
 	return buf;
     } else if (f->sp->type == T_ARRAY) {
@@ -202,7 +197,7 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
 		    (f->sp++)->array->del();
 
 		    /* return the untranslated path, as well */
-		    return path_from(buf, from, file);
+		    return Path::from(buf, from, file);
 		}
 	    }
 	}

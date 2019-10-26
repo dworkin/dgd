@@ -462,7 +462,7 @@ void PP::do_include()
 	TokenBuf::skiptonl(TRUE);
 
 	/* first try the path direct */
-	include = path_include(buf, TokenBuf::filename(), file, &strs, &nstr);
+	include = Path::include(buf, TokenBuf::filename(), file, &strs, &nstr);
 	if (TokenBuf::include(include, strs, nstr)) {
 	    include_level++;
 	    return;
@@ -480,7 +480,7 @@ void PP::do_include()
 	strcpy(path, *idir);
 	strcat(path, "/");
 	strcat(path, file);
-	include = path_include(buf, TokenBuf::filename(), path, &strs, &nstr);
+	include = Path::include(buf, TokenBuf::filename(), path, &strs, &nstr);
 	if (TokenBuf::include(include, strs, nstr)) {
 	    include_level++;
 	    return;

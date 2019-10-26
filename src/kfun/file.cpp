@@ -390,8 +390,8 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(file, f->sp->string->text,
-		    f->sp->string->len) == (char *) NULL) {
+    if (Path::string(file, f->sp->string->text,
+		     f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
@@ -902,8 +902,8 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     obj = OBJR(f->oindex);
-    if (path_string(x.file, f->sp->string->text,
-		    f->sp->string->len) == (char *) NULL) {
+    if (Path::string(x.file, f->sp->string->text,
+		     f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
 
@@ -1138,8 +1138,8 @@ int kf_write_file(Frame *f, int nargs, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     l = (nargs < 3) ? 0 : (f->sp++)->number;
-    if (path_string(file, f->sp[1].string->text,
-		    f->sp[1].string->len) == (char *) NULL) {
+    if (Path::string(file, f->sp[1].string->text,
+		     f->sp[1].string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
@@ -1212,8 +1212,8 @@ int kf_read_file(Frame *f, int nargs, kfunc *kf)
 	l = (f->sp++)->number;	/* offset in file */
 	break;
     }
-    if (path_string(file, f->sp->string->text,
-		    f->sp->string->len) == (char *) NULL) {
+    if (Path::string(file, f->sp->string->text,
+		     f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
 
@@ -1300,12 +1300,12 @@ int kf_rename_file(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(from, f->sp[1].string->text,
-		    f->sp[1].string->len) == (char *) NULL) {
+    if (Path::string(from, f->sp[1].string->text,
+		     f->sp[1].string->len) == (char *) NULL) {
 	return 1;
     }
-    if (path_string(to, f->sp->string->text,
-		    f->sp->string->len) == (char *) NULL) {
+    if (Path::string(to, f->sp->string->text,
+		     f->sp->string->len) == (char *) NULL) {
 	return 2;
     }
 
@@ -1336,8 +1336,8 @@ int kf_remove_file(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(file, f->sp->string->text,
-		    f->sp->string->len) == (char *) NULL) {
+    if (Path::string(file, f->sp->string->text,
+		     f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
@@ -1368,8 +1368,8 @@ int kf_make_dir(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(file, f->sp->string->text,
-		    f->sp->string->len) == (char *) NULL) {
+    if (Path::string(file, f->sp->string->text,
+		     f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
@@ -1401,8 +1401,8 @@ int kf_remove_dir(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (path_string(file, f->sp->string->text,
-		    f->sp->string->len) == (char *) NULL) {
+    if (Path::string(file, f->sp->string->text,
+		     f->sp->string->len) == (char *) NULL) {
 	return 1;
     }
     if (f->level != 0) {
@@ -1588,7 +1588,7 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
     UNREFERENCED_PARAMETER(nargs);
     UNREFERENCED_PARAMETER(kf);
 
-    file = path_string(buf, f->sp->string->text, f->sp->string->len);
+    file = Path::string(buf, f->sp->string->text, f->sp->string->len);
     if (file == (char *) NULL) {
 	return 1;
     }

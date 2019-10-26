@@ -906,7 +906,7 @@ static bool conf_config()
 	    break;
 
 	case STRING_CONST:
-	    p = (conf[m].resolv) ? path_resolve(buf, yytext) : yytext;
+	    p = (conf[m].resolv) ? Path::resolve(buf, yytext) : yytext;
 	    l = strlen(p);
 	    if (l >= STRINGSZ) {
 		l = STRINGSZ - 1;
@@ -1176,7 +1176,7 @@ static bool copen(char *file)
 {
     char fname[STRINGSZ];
 
-    path_resolve(fname, file);
+    Path::resolve(fname, file);
     if ((fd=P_open(fname, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
 	message("Config error: cannot create \"/%s\"\012", fname);	/* LF */
 	return FALSE;
