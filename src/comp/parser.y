@@ -652,7 +652,7 @@ primary_p1_exp
 		  if ($$ == (Node *) NULL) {
 		      $$ = c_global_var($1);
 		      if (typechecking) {
-			  if ($$->mod != T_MIXED && !conf_typechecking()) {
+			  if ($$->mod != T_MIXED && !Config::typechecking()) {
 			      /*
 			       * global vars might be modified by untypechecked
 			       * functions...
@@ -673,7 +673,7 @@ primary_p1_exp
 	| COLON_COLON ident {
 		  $$ = c_global_var($2);
 		  if (typechecking) {
-		      if ($$->mod != T_MIXED && !conf_typechecking()) {
+		      if ($$->mod != T_MIXED && !Config::typechecking()) {
 			  /*
 			   * global vars might be modified by untypechecked
 			   * functions...
