@@ -539,10 +539,10 @@ Uint Swap::convert(char *m, Sector *vec, const char *layout, Uint n, Uint idx,
     Uint bufsize;
     char *buf;
 
-    bufsize = (conf_dsize(layout) & 0xff) * n;
+    bufsize = (Config::dsize(layout) & 0xff) * n;
     buf = ALLOC(char, bufsize);
     (*readv)(buf, vec, bufsize, idx);
-    conf_dconv(m, buf, layout, n);
+    Config::dconv(m, buf, layout, n);
     FREE(buf);
 
     return bufsize;
@@ -826,7 +826,7 @@ int Swap::save(char *snapshot, bool keep)
 /*
  * finish snapshot
  */
-void Swap::save2(char *header, int size, bool incr)
+void Swap::save2(SnapshotInfo *header, int size, bool incr)
 {
     static off_t prev;
     off_t sectors;
@@ -909,8 +909,8 @@ void Swap::restore(int fd, unsigned int secsize)
     DumpHeader dh;
 
     /* restore swap header */
-    P_lseek(fd, -(off_t) (conf_dsize(dh_layout) & 0xff), SEEK_CUR);
-    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    P_lseek(fd, -(off_t) (Config::dsize(dh_layout) & 0xff), SEEK_CUR);
+    Config::dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.secsize != secsize) {
 	error("Wrong sector size (%d)", dh.secsize);
     }
@@ -926,7 +926,7 @@ void Swap::restore(int fd, unsigned int secsize)
     P_lseek(fd, (off_t) (dh.ssectors + 1L) * secsize, SEEK_SET);
 
     /* restore swap map */
-    conf_dread(fd, (char *) map, "d", (Uint) dh.nsectors);
+    Config::dread(fd, (char *) map, "d", (Uint) dh.nsectors);
     nsectors = dh.nsectors;
     mfree = dh.mfree;
     nfree = dh.nfree;

@@ -48,7 +48,7 @@ public:
     static Sector count();
     static bool copy(Uint);
     static int save(char*, bool);
-    static void save2(char*, int, bool);
+    static void save2(SnapshotInfo*, int, bool);
     static void restore(int, unsigned int);
     static void restore2(int);
 

@@ -1311,13 +1311,13 @@ void Object::restore(int fd, bool part)
     p = NULL;
 
     /* read header and object table */
-    conf_dread(fd, (char *) &dh, oh_layout, (Uint) 1);
+    Config::dread(fd, (char *) &dh, oh_layout, (Uint) 1);
 
     if (dh.nobjects > otabsize) {
 	error("Too many objects in restore file (%u)", dh.nobjects);
     }
 
-    conf_dread(fd, (char *) objTable, OBJ_LAYOUT, (Uint) dh.nobjects);
+    Config::dread(fd, (char *) objTable, OBJ_LAYOUT, (Uint) dh.nobjects);
     baseplane.free = dh.free;
     baseplane.nobjects = dh.nobjects;
     baseplane.nfreeobjs = dh.nfreeobjs;
@@ -1377,7 +1377,7 @@ void Object::restore(int fd, bool part)
 	Uint *cmap, *dmap;
 	uindex nctrl, ndata;
 
-	conf_dread(fd, (char *) &mh, mh_layout, (Uint) 1);
+	Config::dread(fd, (char *) &mh, mh_layout, (Uint) 1);
 	nctrl = mh.nctrl;
 	ndata = mh.ndata;
 	count = mh.count;
@@ -1386,18 +1386,18 @@ void Object::restore(int fd, bool part)
 	if (nctrl != 0) {
 	    cmap = ALLOC(Uint, BMAP(dh.nobjects));
 	    memset(cmap, '\0', BMAP(dh.nobjects) * sizeof(Uint));
-	    conf_dread(fd, (char *) (cmap + BOFF(mh.cobject)), "i",
-		       BMAP(dh.nobjects) - BOFF(mh.cobject));
+	    Config::dread(fd, (char *) (cmap + BOFF(mh.cobject)), "i",
+			  BMAP(dh.nobjects) - BOFF(mh.cobject));
 	}
 	if (ndata != 0) {
 	    dmap = ALLOC(Uint, BMAP(dh.nobjects));
 	    memset(dmap, '\0', BMAP(dh.nobjects) * sizeof(Uint));
-	    conf_dread(fd, (char *) (dmap + BOFF(mh.dobject)), "i",
-		       BMAP(dh.nobjects) - BOFF(mh.dobject));
+	    Config::dread(fd, (char *) (dmap + BOFF(mh.dobject)), "i",
+			  BMAP(dh.nobjects) - BOFF(mh.dobject));
 	}
 
 	if (count != 0) {
-	    conf_dread(fd, (char *) counttab, "i", dh.nobjects);
+	    Config::dread(fd, (char *) counttab, "i", dh.nobjects);
 	    rcount = FALSE;
 	} else {
 	    count = recount(baseplane.nobjects);

@@ -2309,7 +2309,7 @@ int kf_status_idx(Frame *f, int n, kfunc *kf)
 	error("Non-numeric array index");
     }
     i_add_ticks(f, 6);
-    if (!conf_statusi(f, f->sp->number, f->sp)) {
+    if (!Config::statusi(f, f->sp->number, f->sp)) {
 	error("Index out of range");
     }
     return 0;
@@ -2341,7 +2341,7 @@ int kf_statuso_idx(Frame *f, int nargs, kfunc *kf)
 	    error("Index on bad type");
 	}
 	i_add_ticks(f, 6);
-	if (!conf_statusi(f, f->sp->number, &f->sp[1])) {
+	if (!Config::statusi(f, f->sp->number, &f->sp[1])) {
 	    error("Index out of range");
 	}
 	f->sp++;
@@ -2369,7 +2369,7 @@ int kf_statuso_idx(Frame *f, int nargs, kfunc *kf)
 	error("Non-numeric array index");
     }
     i_add_ticks(f, 6);
-    if (!conf_objecti(f->data, OBJR(n), f->sp->number, &f->sp[1])) {
+    if (!Config::objecti(f->data, OBJR(n), f->sp->number, &f->sp[1])) {
 	error("Index out of range");
     }
     f->sp++;
@@ -3228,7 +3228,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	    if (v->number < 0) {
 		error("Bad argument 1 for kfun allocate");
 	    }
-	    if (v->number > conf_array_size()) {
+	    if (v->number > Config::arraySize()) {
 		error("Array too large");
 	    }
 	    size += v->number;
@@ -3240,7 +3240,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	    if (v->number < 0) {
 		error("Bad argument 1 for kfun allocate_int");
 	    }
-	    if (v->number > conf_array_size()) {
+	    if (v->number > Config::arraySize()) {
 		error("Array too large");
 	    }
 	    size += v->number;
@@ -3252,7 +3252,7 @@ int kf_sum(Frame *f, int nargs, kfunc *kf)
 	    if (v->number < 0) {
 		error("Bad argument 1 for kfun allocate_float");
 	    }
-	    if (v->number > conf_array_size()) {
+	    if (v->number > Config::arraySize()) {
 		error("Array too large");
 	    }
 	    size += v->number;

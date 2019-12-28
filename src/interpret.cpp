@@ -2558,7 +2558,7 @@ Array *Frame::funcTrace(Dataspace *data)
     Array *a;
     unsigned short max_args;
 
-    max_args = conf_array_size() - 5;
+    max_args = Config::arraySize() - 5;
 
     n = nargs;
     args = argp + n;

@@ -49,7 +49,7 @@ bool call_driver_object(Frame *f, const char *func, int narg)
 
     if (dindex == UINDEX_MAX || dcount != (driver=OBJR(dindex))->count ||
 	!(driver->flags & O_DRIVER)) {
-	driver_name = conf_driver();
+	driver_name = Config::driver();
 	driver = Object::find(driver_name, OACC_READ);
 	if (driver == (Object *) NULL) {
 	    driver = c_compile(f, driver_name, (Object *) NULL,
@@ -113,7 +113,7 @@ void endtask()
 	/*
 	 * create a snapshot
 	 */
-	conf_dump(Object::incr, Object::boot);
+	Config::dump(Object::incr, Object::boot);
 	Object::dump = FALSE;
 	if (!Object::incr) {
 	    rebuild = TRUE;
@@ -123,7 +123,7 @@ void endtask()
 
     if (Object::stop) {
 	Swap::finish();
-	conf_mod_finish();
+	Config::modFinish();
 	ext_finish();
 
 	if (Object::boot) {
@@ -132,7 +132,7 @@ void endtask()
 	    /*
 	     * attempt to hotboot
 	     */
-	    hotboot = conf_hotboot();
+	    hotboot = Config::hotbootExec();
 	    P_execv(hotboot[0], hotboot);
 	    message("Hotboot failed\012");	/* LF */
 	}
@@ -192,9 +192,9 @@ int dgd_main(int argc, char **argv)
     Object::swap = Object::dump = Object::incr = Object::stop = FALSE;
     rebuild = TRUE;
     rtime = 0;
-    if (!conf_init(argv[0], (argc > 1) ? argv[1] : (char *) NULL,
-		   (argc > 2) ? argv[2] : (char *) NULL, module,
-		   &fragment)) {
+    if (!Config::init(argv[0], (argc > 1) ? argv[1] : (char *) NULL,
+		      (argc > 2) ? argv[2] : (char *) NULL, module,
+		      &fragment)) {
 	return 2;	/* initialization failed */
     }
 

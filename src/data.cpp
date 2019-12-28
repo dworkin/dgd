@@ -3064,13 +3064,13 @@ Array *Dataspace::listCallouts(Dataspace *data)
     for (n = fcallouts; n != 0; n = callouts[n - 1].co_next) {
 	--count;
     }
-    if (count > conf_array_size()) {
+    if (count > Config::arraySize()) {
 	return (Array *) NULL;
     }
 
     list = Array::create(data, count);
     elts = list->elts;
-    max_args = conf_array_size() - 3;
+    max_args = Config::arraySize() - 3;
 
     for (co = callouts; count > 0; co++) {
 	if (co->val[0].type == T_STRING) {

@@ -448,7 +448,7 @@ void Udp::recv6(int n)
     for (;;) {
 	conn = (XConnection *) *hash;
 	if (conn == (XConnection *) NULL) {
-	    if (!conf_attach(n)) {
+	    if (!Config::attach(n)) {
 		if (!udescs[n].accept) {
 		    udescs[n].addr.addr6 = from.sin6_addr;
 		    udescs[n].addr.ipv6 = TRUE;
@@ -541,7 +541,7 @@ void Udp::recv(int n)
     for (;;) {
 	conn = (XConnection *) *hash;
 	if (conn == (XConnection *) NULL) {
-	    if (!conf_attach(n)) {
+	    if (!Config::attach(n)) {
 		if (!udescs[n].accept) {
 		    udescs[n].addr.addr = from.sin_addr;
 		    udescs[n].addr.ipv6 = FALSE;
@@ -1348,7 +1348,7 @@ Connection *Connection::createDgram(int port)
  */
 bool XConnection::attach()
 {
-    return conf_attach(at);
+    return Config::attach(at);
 }
 
 /*

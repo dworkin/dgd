@@ -1499,7 +1499,7 @@ int kf_shutdown(Frame *f, int nargs, kfunc *kf)
 
     if (nargs != 0) {
 	boot = (f->sp->number != 0);
-	if (boot && conf_hotboot() == (char **) NULL) {
+	if (boot && Config::hotbootExec() == (char **) NULL) {
 	    error("Hotbooting is disabled");
 	}
 	f->sp++;
@@ -1534,7 +1534,7 @@ int kf_status(Frame *f, int nargs, kfunc *kf)
 
     i_add_ticks(f, 100);
     if (nargs == 0) {
-	a = conf_status(f);
+	a = Config::status(f);
 	--f->sp;
     } else {
 	switch (f->sp->type) {
@@ -1543,18 +1543,18 @@ int kf_status(Frame *f, int nargs, kfunc *kf)
 		*f->sp = Value::nil;
 		return 0;
 	    }
-	    a = conf_status(f);
+	    a = Config::status(f);
 	    break;
 
 	case T_OBJECT:
 	    n = f->sp->oindex;
-	    a = conf_object(f->data, OBJR(n));
+	    a = Config::object(f->data, OBJR(n));
 	    break;
 
 	case T_LWOBJECT:
 	    n = f->sp->array->elts[0].oindex;
 	    f->sp->array->del();
-	    a = conf_object(f->data, OBJR(n));
+	    a = Config::object(f->data, OBJR(n));
 	    break;
 
 	default:

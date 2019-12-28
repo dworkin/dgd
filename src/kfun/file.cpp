@@ -235,7 +235,7 @@ static void save_array(savecontext *x, Array *a)
 
 	case T_OBJECT:
 	case T_LWOBJECT:
-	    if (conf_typechecking() >= 2) {
+	    if (Config::typechecking() >= 2) {
 		put(x, "nil", 3);
 	    } else {
 		put(x, "0", 1);
@@ -1063,7 +1063,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 			     */
 			    buf = restore_value(&x, buf, &tmp);
 			    if (v->type != tmp.type && v->type != T_MIXED &&
-				conf_typechecking() &&
+				Config::typechecking() &&
 				(!VAL_NIL(&tmp) || !T_POINTER(v->type)) &&
 				(tmp.type != T_ARRAY || (v->type & T_REF) == 0))
 			    {
@@ -1617,7 +1617,7 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
 	    /*
 	     * read files from directory
 	     */
-	    i = conf_array_size();
+	    i = Config::arraySize();
 	    while (nfiles < i && (file=P_readdir()) != (char *) NULL) {
 		if (match(pat, file) > 0 && getinfo(file, file, &finf)) {
 		    /* add file */
@@ -1637,7 +1637,7 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
 	}
 
 	if (strcmp(dir, ".") != 0 &&
-	    P_chdir(path_native(buf, conf_base_dir())) < 0) {
+	    P_chdir(path_native(buf, Config::baseDir())) < 0) {
 	    fatal("cannot chdir back to base dir");
 	}
     }

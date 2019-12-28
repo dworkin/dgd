@@ -40,19 +40,7 @@
 # include "compile.h"
 # include "table.h"
 
-struct config {
-    const char *name;	/* name of the option */
-    short type;		/* option type */
-    bool resolv;	/* TRUE if path name must be resolved */
-    bool set;		/* TRUE if option is set */
-    Uint low, high;	/* lower and higher bound, for numeric values */
-    union {
-	long num;	/* numeric value */
-	char *str;	/* string value */
-    };
-};
-
-static config conf[] = {
+static Config conf[] = {
 # define ARRAY_SIZE	0
 				{ "array_size",		INT_CONST, FALSE, FALSE,
 							1, USHRT_MAX / 2 },
@@ -136,69 +124,19 @@ struct alignz { char c;			};
 
 # define FORMAT_VERSION	16
 
-# define DUMP_VALID	0	/* valid dump flag */
-# define DUMP_VERSION	1	/* snapshot version number */
-# define DUMP_MODEL	2	/* 0: vanilla DGD, 1: iChat DGD */
-# define DUMP_TYPECHECK	3	/* global typechecking */
-# define DUMP_SECSIZE	4	/* sector size */
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
 # define DUMP_HEADERSZ	28	/* header size */
-# define DUMP_STARTTIME	28	/* start time */
-# define DUMP_ELAPSED	32	/* elapsed time */
-# define DUMP_VSTRING	42	/* version string */
 
 # define FLAGS_PARTIAL	0x01	/* partial snapshot */
 # define FLAGS_COMP159	0x02	/* all programs compiled by 1.5.9+ */
 # define FLAGS_HOTBOOT	0x04	/* hotboot snapshot */
 
-typedef char dumpinfo[64];
-
-static dumpinfo header;		/* snapshot header */
-# define s0	(header[ 6])	/* short, msb */
-# define s1	(header[ 7])	/* short, lsb */
-# define i0	(header[ 8])	/* Int, msb */
-# define i1	(header[ 9])
-# define i2	(header[10])
-# define i3	(header[11])	/* Int, lsb */
-# define utsize	(header[20])	/* sizeof(uindex) + sizeof(ssizet) */
-# define desize	(header[21])	/* sizeof(sector) + sizeof(eindex) */
-# define psize	(header[22])	/* sizeof(char*), upper nibble reserved */
-# define calign	(header[23])	/* align(char) */
-# define salign	(header[24])	/* align(short) */
-# define ialign	(header[25])	/* align(Int) */
-# define palign	(header[26])	/* align(char*) */
-# define zalign	(header[27])	/* align(struct) */
-# define zero1	(header[36])	/* reserved (0) */
-# define zero2	(header[37])	/* reserved (0) */
-# define zero3	(header[38])	/* reserved (0) */
-# define zero4	(header[39])	/* reserved (0) */
-# define dflags	(header[40])	/* flags */
-# define zero5	(header[41])	/* reserved (0) */
+static SnapshotInfo header;	/* snapshot header */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
 static int ealign;		/* align(eindex) */
-static dumpinfo rheader;	/* restored header */
-# define rs0	(rheader[ 6])	/* short, msb */
-# define rs1	(rheader[ 7])	/* short, lsb */
-# define ri0	(rheader[ 8])	/* Int, msb */
-# define ri1	(rheader[ 9])
-# define ri2	(rheader[10])
-# define ri3	(rheader[11])	/* Int, lsb */
-# define rutsize (rheader[20])	/* sizeof(uindex) + sizeof(ssizet) */
-# define rdesize (rheader[21])	/* sizeof(sector) + sizeof(eindex) */
-# define rpsize	(rheader[22])	/* sizeof(char*), upper nibble reserved */
-# define rcalign (rheader[23])	/* align(char) */
-# define rsalign (rheader[24])	/* align(short) */
-# define rialign (rheader[25])	/* align(Int) */
-# define rpalign (rheader[26])	/* align(char*) */
-# define rzalign (rheader[27])	/* align(struct) */
-# define rzero1	 (rheader[36])	/* reserved (0) */
-# define rzero2	 (rheader[37])	/* reserved (0) */
-# define rzero3	 (rheader[38])	/* reserved (0) */
-# define rzero4	 (rheader[39])	/* reserved (0) */
-# define rdflags (rheader[40])	/* flags */
-# define rzero5	 (rheader[41])	/* reserved (0) */
+static SnapshotInfo rheader;	/* restored header */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
@@ -212,10 +150,36 @@ static Uint elapsed;		/* elapsed time */
 static Uint boottime;		/* boot time */
 
 /*
- * NAME:	conf->dumpinit()
- * DESCRIPTION:	initialize snapshot information
+ * restore a snapshot header
  */
-static void conf_dumpinit()
+unsigned int SnapshotInfo::restore(int fd)
+{
+    unsigned int secsize;
+    off_t offset;
+
+    for (;;) {
+	if (P_read(fd, this, sizeof(SnapshotInfo)) != sizeof(SnapshotInfo) ||
+		   valid != 1 || version < 2 || version > FORMAT_VERSION) {
+	    error("Bad or incompatible restore file header");
+	}
+	secsize = (UCHAR(secsize0) << 8) | UCHAR(secsize1);
+	offset = (UCHAR(offset0) << 24) |
+		 (UCHAR(offset1) << 16) |
+		 (UCHAR(offset2) << 8) |
+		  UCHAR(offset3);
+	if (offset == 0) {
+	    P_lseek(fd, secsize - sizeof(SnapshotInfo), SEEK_CUR);
+	    return secsize;
+	}
+
+	P_lseek(fd, offset * secsize, SEEK_SET);
+    }
+}
+
+/*
+ * initialize snapshot information
+ */
+void Config::dumpinit()
 {
     short s;
     Int i;
@@ -224,78 +188,77 @@ static void conf_dumpinit()
     aligni idummy;
     alignp pdummy;
 
-    header[DUMP_VALID] = TRUE;			/* valid dump flag */
-    header[DUMP_VERSION] = FORMAT_VERSION;	/* snapshot version number */
-    header[DUMP_MODEL] = 0;			/* vanilla DGD */
-    header[DUMP_TYPECHECK] = conf[TYPECHECKING].num;
-    header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].num >> 8;
-    header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].num;
-    strcpy(header + DUMP_VSTRING, VERSION);
+    header.valid = TRUE;			/* valid dump flag */
+    header.version = FORMAT_VERSION;	/* snapshot version number */
+    header.model = 0;			/* vanilla DGD */
+    header.typecheck = conf[TYPECHECKING].num;
+    header.secsize0 = conf[SECTOR_SIZE].num >> 8;
+    header.secsize1 = conf[SECTOR_SIZE].num;
+    strcpy(&header.vstr0, VERSION);
 
     starttime = boottime = P_time();
 
     s = 0x1234;
     i = 0x12345678L;
-    s0 = strchr((char *) &s, 0x12) - (char *) &s;
-    s1 = strchr((char *) &s, 0x34) - (char *) &s;
-    i0 = strchr((char *) &i, 0x12) - (char *) &i;
-    i1 = strchr((char *) &i, 0x34) - (char *) &i;
-    i2 = strchr((char *) &i, 0x56) - (char *) &i;
-    i3 = strchr((char *) &i, 0x78) - (char *) &i;
-    utsize = sizeof(uindex) | (sizeof(ssizet) << 4);
-    desize = sizeof(Sector) | (sizeof(eindex) << 4);
-    psize = sizeof(char*) | (sizeof(char) << 4);
-    calign = (char *) &cdummy.c - (char *) &cdummy.fill;
-    salign = (char *) &sdummy.s - (char *) &sdummy.fill;
-    ialign = (char *) &idummy.i - (char *) &idummy.fill;
-    palign = (char *) &pdummy.p - (char *) &pdummy.fill;
-    zalign = sizeof(alignz);
-    zero1 = zero2 = 0;
+    header.s0 = strchr((char *) &s, 0x12) - (char *) &s;
+    header.s1 = strchr((char *) &s, 0x34) - (char *) &s;
+    header.i0 = strchr((char *) &i, 0x12) - (char *) &i;
+    header.i1 = strchr((char *) &i, 0x34) - (char *) &i;
+    header.i2 = strchr((char *) &i, 0x56) - (char *) &i;
+    header.i3 = strchr((char *) &i, 0x78) - (char *) &i;
+    header.utsize = sizeof(uindex) | (sizeof(ssizet) << 4);
+    header.desize = sizeof(Sector) | (sizeof(eindex) << 4);
+    header.psize = sizeof(char*) | (sizeof(char) << 4);
+    header.calign = (char *) &cdummy.c - (char *) &cdummy.fill;
+    header.salign = (char *) &sdummy.s - (char *) &sdummy.fill;
+    header.ialign = (char *) &idummy.i - (char *) &idummy.fill;
+    header.palign = (char *) &pdummy.p - (char *) &pdummy.fill;
+    header.zalign = sizeof(alignz);
+    header.zero1 = header.zero2 = 0;
 
-    ualign = (sizeof(uindex) == sizeof(short)) ? salign : ialign;
-    talign = (sizeof(ssizet) == sizeof(short)) ? salign : ialign;
-    dalign = (sizeof(Sector) == sizeof(short)) ? salign : ialign;
+    ualign = (sizeof(uindex) == sizeof(short)) ? header.salign : header.ialign;
+    talign = (sizeof(ssizet) == sizeof(short)) ? header.salign : header.ialign;
+    dalign = (sizeof(Sector) == sizeof(short)) ? header.salign : header.ialign;
     switch (sizeof(eindex)) {
-    case sizeof(char):	ealign = calign; break;
-    case sizeof(short):	ealign = salign; break;
-    case sizeof(Int):	ealign = ialign; break;
+    case sizeof(char):	ealign = header.calign; break;
+    case sizeof(short):	ealign = header.salign; break;
+    case sizeof(Int):	ealign = header.ialign; break;
     }
 }
 
 /*
- * NAME:	conf->dump()
- * DESCRIPTION:	dump system state on file
+ * dump system state on file
  */
-void conf_dump(bool incr, bool boot)
+void Config::dump(bool incr, bool boot)
 {
     int fd;
     Uint etime;
 
-    header[DUMP_VERSION] = FORMAT_VERSION;
-    header[DUMP_TYPECHECK] = conf[TYPECHECKING].num;
-    header[DUMP_STARTTIME + 0] = starttime >> 24;
-    header[DUMP_STARTTIME + 1] = starttime >> 16;
-    header[DUMP_STARTTIME + 2] = starttime >> 8;
-    header[DUMP_STARTTIME + 3] = starttime;
+    header.version = FORMAT_VERSION;
+    header.typecheck = conf[TYPECHECKING].num;
+    header.start0 = starttime >> 24;
+    header.start1 = starttime >> 16;
+    header.start2 = starttime >> 8;
+    header.start3 = starttime;
     etime = P_time();
     if (etime < boottime) {
 	etime = boottime;
     }
     etime += elapsed - boottime;
-    header[DUMP_ELAPSED + 0] = etime >> 24;
-    header[DUMP_ELAPSED + 1] = etime >> 16;
-    header[DUMP_ELAPSED + 2] = etime >> 8;
-    header[DUMP_ELAPSED + 3] = etime;
+    header.elapsed0 = etime >> 24;
+    header.elapsed1 = etime >> 16;
+    header.elapsed2 = etime >> 8;
+    header.elapsed3 = etime;
 
     if (!incr) {
 	Object::copy(0);
     }
     Dataspace::swapout(1);
-    dflags = 0;
+    header.dflags = 0;
     if (Object::dobjects() > 0) {
-	dflags |= FLAGS_PARTIAL;
+	header.dflags |= FLAGS_PARTIAL;
     }
-    fd = Swap::save(conf[DUMP_FILE].str, dflags & FLAGS_PARTIAL);
+    fd = Swap::save(conf[DUMP_FILE].str, header.dflags & FLAGS_PARTIAL);
     if (!kf_dump(fd)) {
 	fatal("failed to dump kfun table");
     }
@@ -308,131 +271,100 @@ void conf_dump(bool incr, bool boot)
     if (boot) {
 	boot = Comm::save(fd);
 	if (boot) {
-	    dflags |= FLAGS_HOTBOOT;
+	    header.dflags |= FLAGS_HOTBOOT;
 	}
     }
 
-    Swap::save2(header, sizeof(dumpinfo), incr);
+    Swap::save2(&header, sizeof(SnapshotInfo), incr);
 }
 
 /*
- * NAME:	conf->header()
- * DESCRIPTION:	restore a snapshot header
+ * restore system state from file
  */
-static unsigned int conf_header(int fd, dumpinfo h)
-{
-    unsigned int secsize;
-    off_t offset;
-
-    for (;;) {
-	if (P_read(fd, h, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
-		   h[DUMP_VALID] != 1 ||
-		   h[DUMP_VERSION] < 2 ||
-		   h[DUMP_VERSION] > FORMAT_VERSION) {
-	    error("Bad or incompatible restore file header");
-	}
-	secsize = (UCHAR(h[DUMP_SECSIZE + 0]) << 8) |
-		   UCHAR(h[DUMP_SECSIZE + 1]);
-	offset = (UCHAR(h[sizeof(dumpinfo) - 4]) << 24) |
-		 (UCHAR(h[sizeof(dumpinfo) - 3]) << 16) |
-		 (UCHAR(h[sizeof(dumpinfo) - 2]) << 8) |
-		  UCHAR(h[sizeof(dumpinfo) - 1]);
-	if (offset == 0) {
-	    P_lseek(fd, secsize - sizeof(dumpinfo), SEEK_CUR);
-	    return secsize;
-	}
-
-	P_lseek(fd, offset * secsize, SEEK_SET);
-    }
-}
-
-/*
- * NAME:	conf->restore()
- * DESCRIPTION:	restore system state from file
- */
-static bool conf_restore(int fd, int fd2)
+bool Config::restore(int fd, int fd2)
 {
     bool conv_14, conv_15;
     unsigned int secsize;
 
-    secsize = conf_header(fd, rheader);
+    secsize = rheader.restore(fd);
     conv_14 = conv_15 = FALSE;
-    if (rheader[DUMP_VERSION] < 14) {
+    if (rheader.version < 14) {
 	error("Incompatible snapshot version");
     }
-    if (rheader[DUMP_VERSION] < 15) {
-	if (!(rdflags & FLAGS_COMP159)) {
+    if (rheader.version < 15) {
+	if (!(rheader.dflags & FLAGS_COMP159)) {
 	    error("Snapshot contains legacy programs");
 	}
 	conv_14 = TRUE;
     }
-    if (rheader[DUMP_VERSION] < 16) {
+    if (rheader.version < 16) {
 	conv_15 = TRUE;
     }
-    header[DUMP_VERSION] = rheader[DUMP_VERSION];
-    if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0 ||
-	rzero3 != 0 || rzero4 != 0 || rzero5 != 0) {
+    header.version = rheader.version;
+    if (memcmp(&header, &rheader, DUMP_TYPE) != 0 || rheader.zero1 != 0 ||
+	rheader.zero2 != 0 || rheader.zero3 != 0 || rheader.zero4 != 0 ||
+	rheader.zero5 != 0) {
 	error("Bad or incompatible snapshot header");
     }
-    if (rdflags & FLAGS_PARTIAL) {
-	dumpinfo h;
+    if (rheader.dflags & FLAGS_PARTIAL) {
+	SnapshotInfo *h;
 
 	/* secondary snapshot required */
 	if (fd2 < 0) {
 	    error("Missing secondary snapshot");
 	}
-	conf_header(fd2, h);
-	if (memcmp(rheader, h, DUMP_HEADERSZ) != 0) {
+	h->restore(fd2);
+	if (memcmp(&rheader, h, DUMP_HEADERSZ) != 0) {
 	    error("Secondary snapshot has different type");
 	}
 	Swap::restore2(fd2);
     }
 
-    starttime = (UCHAR(rheader[DUMP_STARTTIME + 0]) << 24) |
-		(UCHAR(rheader[DUMP_STARTTIME + 1]) << 16) |
-		(UCHAR(rheader[DUMP_STARTTIME + 2]) << 8) |
-		 UCHAR(rheader[DUMP_STARTTIME + 3]);
-    elapsed =  (UCHAR(rheader[DUMP_ELAPSED + 0]) << 24) |
-	       (UCHAR(rheader[DUMP_ELAPSED + 1]) << 16) |
-	       (UCHAR(rheader[DUMP_ELAPSED + 2]) << 8) |
-		UCHAR(rheader[DUMP_ELAPSED + 3]);
-    rusize = rutsize & 0xf;
-    rtsize = rutsize >> 4;
+    starttime = (UCHAR(rheader.start0) << 24) |
+		(UCHAR(rheader.start1) << 16) |
+		(UCHAR(rheader.start2) << 8) |
+		 UCHAR(rheader.start3);
+    elapsed =  (UCHAR(rheader.elapsed0) << 24) |
+	       (UCHAR(rheader.elapsed1) << 16) |
+	       (UCHAR(rheader.elapsed2) << 8) |
+		UCHAR(rheader.elapsed3);
+    rusize = rheader.utsize & 0xf;
+    rtsize = rheader.utsize >> 4;
     if (rtsize == 0) {
 	rtsize = sizeof(unsigned short);	/* backward compat */
     }
-    rdsize = rdesize & 0xf;
-    resize = rdesize >> 4;
+    rdsize = rheader.desize & 0xf;
+    resize = rheader.desize >> 4;
     if (resize == 0) {
 	resize = sizeof(char);			/* backward compat */
     }
-    if ((rcalign >> 4) != 0) {
+    if ((rheader.calign >> 4) != 0) {
 	error("Cannot restore arrsize > 2");
     }
-    if ((rsalign >> 4) != 0) {
+    if ((rheader.salign >> 4) != 0) {
 	error("Cannot restore Int size > 4");
     }
-    rialign &= 0xf;
-    rualign = (rusize == sizeof(short)) ? rsalign : rialign;
-    rtalign = (rtsize == sizeof(short)) ? rsalign : rialign;
-    rdalign = (rdsize == sizeof(short)) ? rsalign : rialign;
+    rheader.ialign &= 0xf;
+    rualign = (rusize == sizeof(short)) ? rheader.salign : rheader.ialign;
+    rtalign = (rtsize == sizeof(short)) ? rheader.salign : rheader.ialign;
+    rdalign = (rdsize == sizeof(short)) ? rheader.salign : rheader.ialign;
     switch (resize) {
-    case sizeof(char):	realign = rcalign; break;
-    case sizeof(short):	realign = rsalign; break;
-    case sizeof(Int):	realign = rialign; break;
+    case sizeof(char):	realign = rheader.calign; break;
+    case sizeof(short):	realign = rheader.salign; break;
+    case sizeof(Int):	realign = rheader.ialign; break;
     }
     if (sizeof(uindex) < rusize || sizeof(ssizet) < rtsize ||
 	sizeof(Sector) < rdsize) {
 	error("Cannot restore uindex, ssizet or sector of greater width");
     }
-    if ((rpsize >> 4) > 1) {
+    if ((rheader.psize >> 4) > 1) {
 	error("Cannot restore hindex > 1");	/* Hydra only */
     }
-    rpsize &= 0xf;
+    rheader.psize &= 0xf;
 
     Swap::restore(fd, secsize);
     kf_restore(fd);
-    Object::restore(fd, rdflags & FLAGS_PARTIAL);
+    Object::restore(fd, rheader.dflags & FLAGS_PARTIAL);
     Dataspace::initConv(conv_14);
     Control::initConv(conv_14, conv_15);
     if (conv_14) {
@@ -447,7 +379,7 @@ static bool conf_restore(int fd, int fd2)
 	    Uint nfuncalls;
 	} dh;
 
-	conf_dread(fd, (char *) &dh, "uiiiiiii", (Uint) 1);
+	dread(fd, (char *) &dh, "uiiiiiii", (Uint) 1);
 	if (dh.nprecomps != 0) {
 	    fatal("precompiled objects in snapshot");
 	}
@@ -459,18 +391,17 @@ static bool conf_restore(int fd, int fd2)
 	P_close(fd2);
     }
 
-    return ((rdflags & FLAGS_HOTBOOT) && Comm::restore(fd));
+    return ((rheader.dflags & FLAGS_HOTBOOT) && Comm::restore(fd));
 }
 
 /*
- * NAME:	conf->dsize()
- * DESCRIPTION:	compute the size and alignment of a struct
- *		0x000000ff size in snapshot
- *		0x0000ff00 alignment in snapshot
- *		0x00ff0000 size
- *		0xff000000 alignment
+ * compute the size and alignment of a struct
+ * 0x000000ff size in snapshot
+ * 0x0000ff00 alignment in snapshot
+ * 0x00ff0000 size
+ * 0xff000000 alignment
  */
-Uint conf_dsize(const char *layout)
+Uint Config::dsize(const char *layout)
 {
     const char *p;
     Uint sz, rsz, al, ral;
@@ -485,14 +416,14 @@ Uint conf_dsize(const char *layout)
 	switch (*p++) {
 	case 'c':	/* character */
 	    sz = rsz = sizeof(char);
-	    al = calign;
-	    ral = rcalign;
+	    al = header.calign;
+	    ral = rheader.calign;
 	    break;
 
 	case 's':	/* short */
 	    sz = rsz = sizeof(short);
-	    al = salign;
-	    ral = rsalign;
+	    al = header.salign;
+	    ral = rheader.salign;
 	    break;
 
 	case 'u':	/* uindex */
@@ -504,8 +435,8 @@ Uint conf_dsize(const char *layout)
 
 	case 'i':	/* Int */
 	    sz = rsz = sizeof(Int);
-	    al = ialign;
-	    ral = rialign;
+	    al = header.ialign;
+	    ral = rheader.ialign;
 	    break;
 
 	case 't':	/* ssizet */
@@ -531,30 +462,30 @@ Uint conf_dsize(const char *layout)
 
 	case 'p':	/* pointer */
 	    sz = sizeof(char*);
-	    rsz = rpsize;
-	    al = palign;
-	    ral = rpalign;
+	    rsz = rheader.psize;
+	    al = header.palign;
+	    ral = rheader.palign;
 	    break;
 
 	case 'x':	/* hte */
-	    size = ALGN(size, zalign);
-	    size = ALGN(size, palign);
+	    size = ALGN(size, header.zalign);
+	    size = ALGN(size, header.palign);
 	    size += sizeof(char*);
-	    size = ALGN(size, palign);
+	    size = ALGN(size, header.palign);
 	    size += sizeof(char*);
-	    size = ALGN(size, zalign);
-	    rsize = ALGN(rsize, rzalign);
-	    rsize = ALGN(rsize, rpalign);
-	    rsize += rpsize;
-	    rsize = ALGN(rsize, rpalign);
-	    rsize += rpsize;
-	    rsize = ALGN(rsize, rzalign);
-	    align = ALGN(align, palign);
-	    ralign = ALGN(ralign, rpalign);
+	    size = ALGN(size, header.zalign);
+	    rsize = ALGN(rsize, rheader.zalign);
+	    rsize = ALGN(rsize, rheader.palign);
+	    rsize += rheader.psize;
+	    rsize = ALGN(rsize, rheader.palign);
+	    rsize += rheader.psize;
+	    rsize = ALGN(rsize, rheader.zalign);
+	    align = ALGN(align, header.palign);
+	    ralign = ALGN(ralign, rheader.palign);
 	    continue;
 
 	case '[':	/* struct */
-	    sz = conf_dsize(p);
+	    sz = dsize(p);
 	    al = (sz >> 8) & 0xff;
 	    rsz = (sz >> 16) & 0xff;
 	    ral = sz >> 24;
@@ -566,8 +497,8 @@ Uint conf_dsize(const char *layout)
 	case '\0':	/* end of layout */
 	    if (p != layout + 2) {
 		/* a stuct and not an array element */
-		align = ALGN(align, zalign);
-		ralign = ALGN(ralign, rzalign);
+		align = ALGN(align, header.zalign);
+		ralign = ALGN(ralign, rheader.zalign);
 	    }
 	    return ALGN(rsize, ralign) |
 		   (ralign << 8) |
@@ -583,15 +514,14 @@ Uint conf_dsize(const char *layout)
 }
 
 /*
- * NAME:	conf_dconv()
- * DESCRIPTION:	convert structs from snapshot format
+ * convert structs from snapshot format
  */
-Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
+Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 {
     Uint i, ri, j, size, rsize;
     const char *p;
 
-    rsize = conf_dsize(layout);
+    rsize = Config::dsize(layout);
     size = (rsize >> 16) & 0xff;
     rsize &= 0xff;
     while (n > 0) {
@@ -599,18 +529,18 @@ Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 	for (p = layout; *p != '\0' && *p != ']'; p++) {
 	    switch (*p) {
 	    case 'c':
-		i = ALGN(i, calign);
-		ri = ALGN(ri, rcalign);
+		i = ALGN(i, header.calign);
+		ri = ALGN(ri, rheader.calign);
 		buf[i] = rbuf[ri];
 		i += sizeof(char);
 		ri += sizeof(char);
 		break;
 
 	    case 's':
-		i = ALGN(i, salign);
-		ri = ALGN(ri, rsalign);
-		buf[i + s0] = rbuf[ri + rs0];
-		buf[i + s1] = rbuf[ri + rs1];
+		i = ALGN(i, header.salign);
+		ri = ALGN(ri, rheader.salign);
+		buf[i + header.s0] = rbuf[ri + rheader.s0];
+		buf[i + header.s1] = rbuf[ri + rheader.s1];
 		i += sizeof(short);
 		ri += sizeof(short);
 		break;
@@ -620,33 +550,33 @@ Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		ri = ALGN(ri, rualign);
 		if (sizeof(uindex) == rusize) {
 		    if (sizeof(uindex) == sizeof(short)) {
-			buf[i + s0] = rbuf[ri + rs0];
-			buf[i + s1] = rbuf[ri + rs1];
+			buf[i + header.s0] = rbuf[ri + rheader.s0];
+			buf[i + header.s1] = rbuf[ri + rheader.s1];
 		    } else {
-			buf[i + i0] = rbuf[ri + ri0];
-			buf[i + i1] = rbuf[ri + ri1];
-			buf[i + i2] = rbuf[ri + ri2];
-			buf[i + i3] = rbuf[ri + ri3];
+			buf[i + header.i0] = rbuf[ri + rheader.i0];
+			buf[i + header.i1] = rbuf[ri + rheader.i1];
+			buf[i + header.i2] = rbuf[ri + rheader.i2];
+			buf[i + header.i3] = rbuf[ri + rheader.i3];
 		    }
 		} else {
-		    j = (UCHAR(rbuf[ri + rs0] & rbuf[ri + rs1]) == 0xff) ?
+		    j = (UCHAR(rbuf[ri + rheader.s0] & rbuf[ri + rheader.s1]) == 0xff) ?
 			 -1 : 0;
-		    buf[i + i0] = j;
-		    buf[i + i1] = j;
-		    buf[i + i2] = rbuf[ri + rs0];
-		    buf[i + i3] = rbuf[ri + rs1];
+		    buf[i + header.i0] = j;
+		    buf[i + header.i1] = j;
+		    buf[i + header.i2] = rbuf[ri + rheader.s0];
+		    buf[i + header.i3] = rbuf[ri + rheader.s1];
 		}
 		i += sizeof(uindex);
 		ri += rusize;
 		break;
 
 	    case 'i':
-		i = ALGN(i, ialign);
-		ri = ALGN(ri, rialign);
-		buf[i + i0] = rbuf[ri + ri0];
-		buf[i + i1] = rbuf[ri + ri1];
-		buf[i + i2] = rbuf[ri + ri2];
-		buf[i + i3] = rbuf[ri + ri3];
+		i = ALGN(i, header.ialign);
+		ri = ALGN(ri, rheader.ialign);
+		buf[i + header.i0] = rbuf[ri + rheader.i0];
+		buf[i + header.i1] = rbuf[ri + rheader.i1];
+		buf[i + header.i2] = rbuf[ri + rheader.i2];
+		buf[i + header.i3] = rbuf[ri + rheader.i3];
 		i += sizeof(Int);
 		ri += sizeof(Int);
 		break;
@@ -656,19 +586,19 @@ Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		ri = ALGN(ri, rtalign);
 		if (sizeof(ssizet) == rtsize) {
 		    if (sizeof(ssizet) == sizeof(short)) {
-			buf[i + s0] = rbuf[ri + rs0];
-			buf[i + s1] = rbuf[ri + rs1];
+			buf[i + header.s0] = rbuf[ri + rheader.s0];
+			buf[i + header.s1] = rbuf[ri + rheader.s1];
 		    } else {
-			buf[i + i0] = rbuf[ri + ri0];
-			buf[i + i1] = rbuf[ri + ri1];
-			buf[i + i2] = rbuf[ri + ri2];
-			buf[i + i3] = rbuf[ri + ri3];
+			buf[i + header.i0] = rbuf[ri + rheader.i0];
+			buf[i + header.i1] = rbuf[ri + rheader.i1];
+			buf[i + header.i2] = rbuf[ri + rheader.i2];
+			buf[i + header.i3] = rbuf[ri + rheader.i3];
 		    }
 		} else {
-		    buf[i + i0] = 0;
-		    buf[i + i1] = 0;
-		    buf[i + i2] = rbuf[ri + rs0];
-		    buf[i + i3] = rbuf[ri + rs1];
+		    buf[i + header.i0] = 0;
+		    buf[i + header.i1] = 0;
+		    buf[i + header.i2] = rbuf[ri + rheader.s0];
+		    buf[i + header.i3] = rbuf[ri + rheader.s1];
 		}
 		i += sizeof(ssizet);
 		ri += rtsize;
@@ -679,21 +609,21 @@ Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		ri = ALGN(ri, rdalign);
 		if (sizeof(Sector) == rdsize) {
 		    if (sizeof(Sector) == sizeof(short)) {
-			buf[i + s0] = rbuf[ri + rs0];
-			buf[i + s1] = rbuf[ri + rs1];
+			buf[i + header.s0] = rbuf[ri + rheader.s0];
+			buf[i + header.s1] = rbuf[ri + rheader.s1];
 		    } else {
-			buf[i + i0] = rbuf[ri + ri0];
-			buf[i + i1] = rbuf[ri + ri1];
-			buf[i + i2] = rbuf[ri + ri2];
-			buf[i + i3] = rbuf[ri + ri3];
+			buf[i + header.i0] = rbuf[ri + rheader.i0];
+			buf[i + header.i1] = rbuf[ri + rheader.i1];
+			buf[i + header.i2] = rbuf[ri + rheader.i2];
+			buf[i + header.i3] = rbuf[ri + rheader.i3];
 		    }
 		} else {
-		    j = (UCHAR(rbuf[ri + rs0] & rbuf[ri + rs1]) == 0xff) ?
+		    j = (UCHAR(rbuf[ri + rheader.s0] & rbuf[ri + rheader.s1]) == 0xff) ?
 			 -1 : 0;
-		    buf[i + i0] = j;
-		    buf[i + i1] = j;
-		    buf[i + i2] = rbuf[ri + rs0];
-		    buf[i + i3] = rbuf[ri + rs1];
+		    buf[i + header.i0] = j;
+		    buf[i + header.i1] = j;
+		    buf[i + header.i2] = rbuf[ri + rheader.s0];
+		    buf[i + header.i3] = rbuf[ri + rheader.s1];
 		}
 		i += sizeof(Sector);
 		ri += rdsize;
@@ -707,39 +637,39 @@ Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		break;
 
 	    case 'p':
-		i = ALGN(i, palign);
-		ri = ALGN(ri, rpalign);
+		i = ALGN(i, header.palign);
+		ri = ALGN(ri, rheader.palign);
 		for (j = sizeof(char*); j > 0; --j) {
 		    buf[i++] = 0;
 		}
-		ri += rpsize;
+		ri += rheader.psize;
 		break;
 
 	    case '[':
-		j = conf_dsize(++p);
+		j = Config::dsize(++p);
 		i = ALGN(i, j >> 24);
 		ri = ALGN(ri, (j >> 8) & 0xff);
-		j = conf_dconv(buf + i, rbuf + ri, p, (Uint) 1);
+		j = Config::dconv(buf + i, rbuf + ri, p, (Uint) 1);
 		i += (j >> 16) & 0xff;
 		ri += j & 0xff;
 		p = strchr(p, ']');
 		break;
 
 	    case 'x':
-		i = ALGN(i, zalign);
-		i = ALGN(i, palign);
+		i = ALGN(i, header.zalign);
+		i = ALGN(i, header.palign);
 		for (j = sizeof(char*); j > 0; --j) {
 		    buf[i++] = 0;
 		}
-		i = ALGN(i, palign);
+		i = ALGN(i, header.palign);
 		for (j = sizeof(char*); j > 0; --j) {
 		    buf[i++] = 0;
 		}
-		ri = ALGN(ri, rzalign);
-		ri = ALGN(ri, rpalign);
-		ri += rpsize;
-		ri = ALGN(ri, rpalign);
-		for (j = rpsize; j > 0; --j) {
+		ri = ALGN(ri, rheader.zalign);
+		ri = ALGN(ri, rheader.palign);
+		ri += rheader.psize;
+		ri = ALGN(ri, rheader.palign);
+		for (j = rheader.psize; j > 0; --j) {
 		    if (rbuf[ri] != 0) {
 			buf[i - 1] = 1;
 			break;
@@ -747,8 +677,8 @@ Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		    ri++;
 		}
 		ri += j;
-		i = ALGN(i, zalign);
-		ri = ALGN(ri, rzalign);
+		i = ALGN(i, header.zalign);
+		ri = ALGN(ri, rheader.zalign);
 		break;
 	    }
 	}
@@ -762,16 +692,15 @@ Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 }
 
 /*
- * NAME:	conf->dread()
- * DESCRIPTION:	read from snapshot
+ * read from snapshot
  */
-void conf_dread(int fd, char *buf, const char *layout, Uint n)
+void Config::dread(int fd, char *buf, const char *layout, Uint n)
 {
     char buffer[16384];
     unsigned int i, size, rsize;
     Uint tmp;
 
-    tmp = conf_dsize(layout);
+    tmp = Config::dsize(layout);
     size = (tmp >> 16) & 0xff;
     rsize = tmp & 0xff;
     while (n != 0) {
@@ -782,7 +711,7 @@ void conf_dread(int fd, char *buf, const char *layout, Uint n)
 	if (P_read(fd, buffer, i * rsize) != i * rsize) {
 	    fatal("cannot read from snapshot");
 	}
-	conf_dconv(buf, buffer, layout, (Uint) i);
+	Config::dconv(buf, buffer, layout, (Uint) i);
 	buf += size * i;
 	n -= i;
     }
@@ -798,23 +727,21 @@ static void (*mfdlist[MAX_STRINGS + 1])(int*, int);
 static void (*mfinish[MAX_STRINGS + 1])();
 static char *bhosts[MAX_PORTS], *dhosts[MAX_PORTS], *thosts[MAX_PORTS];
 static unsigned short bports[MAX_PORTS], dports[MAX_PORTS], tports[MAX_PORTS];
-static bool attach[MAX_PORTS];
+static bool attached[MAX_PORTS];
 static int ntports, nbports, ndports;
 
 /*
- * NAME:	conferr()
- * DESCRIPTION:	error during the configuration phase
+ * error during the configuration phase
  */
-static void conferr(const char *err)
+void Config::err(const char *err)
 {
     message("Config error, line %u: %s\012", TokenBuf::line(), err);	/* LF */
 }
 
 /*
- * NAME:	config->config()
- * DESCRIPTION:	read config file
+ * read config file
  */
-static bool conf_config()
+bool Config::config()
 {
     char buf[STRINGSZ];
     char *p;
@@ -831,7 +758,7 @@ static bool conf_config()
 
     while ((c=PP::gettok()) != EOF) {
 	if (c != IDENTIFIER) {
-	    conferr("option expected");
+	    err("option expected");
 	    return FALSE;
 	}
 
@@ -849,25 +776,25 @@ static bool conf_config()
 		l = m + 1;	/* search in upper half */
 	    }
 	    if (l >= h) {
-		conferr("unknown option");
+		err("unknown option");
 		return FALSE;
 	    }
 	}
 
 	if (PP::gettok() != '=') {
-	    conferr("'=' expected");
+	    err("'=' expected");
 	    return FALSE;
 	}
 
 	if ((c=PP::gettok()) != conf[m].type) {
 	    if (c != INT_CONST && c != STRING_CONST && c != '(') {
-		conferr("syntax error");
+		err("syntax error");
 		return FALSE;
 	    } else if (conf[m].type != '[' || c != INT_CONST) {
 		if ((conf[m].type == '[' || conf[m].type == ']') && c == '(') {
 		    c = conf[m].type;
 		} else {
-		    conferr("bad value type");
+		    err("bad value type");
 		    return FALSE;
 		}
 	    }
@@ -877,7 +804,7 @@ static bool conf_config()
 	case INT_CONST:
 	    if (yylval.number < conf[m].low ||
 		(conf[m].high != 0 && yylval.number > conf[m].high)) {
-		conferr("int value out of range");
+		err("int value out of range");
 		return FALSE;
 	    }
 	    switch (m) {
@@ -919,7 +846,7 @@ static bool conf_config()
 
 	case '(':
 	    if (PP::gettok() != '{') {
-		conferr("'{' expected");
+		err("'{' expected");
 		return FALSE;
 	    }
 	    l = 0;
@@ -929,11 +856,11 @@ static bool conf_config()
 	    }
 	    for (;;) {
 		if (PP::gettok() != STRING_CONST) {
-		    conferr("string expected");
+		    err("string expected");
 		    return FALSE;
 		}
 		if (l == MAX_STRINGS - 1) {
-		    conferr("array too large");
+		    err("array too large");
 		    return FALSE;
 		}
 		Alloc::staticMode();
@@ -944,12 +871,12 @@ static bool conf_config()
 		    break;
 		}
 		if (c != ',') {
-		    conferr("',' expected");
+		    err("',' expected");
 		    return FALSE;
 		}
 	    }
 	    if (PP::gettok() != ')') {
-		conferr("')' expected");
+		err("')' expected");
 		return FALSE;
 	    }
 	    strs[l] = (char *) NULL;
@@ -957,7 +884,7 @@ static bool conf_config()
 
 	case '[':
 	    if (PP::gettok() != '[') {
-		conferr("'[' expected");
+		err("'[' expected");
 		return FALSE;
 	    }
 	    l = 0;
@@ -980,11 +907,11 @@ static bool conf_config()
 		}
 		for (;;) {
 		    if (l == MAX_PORTS) {
-			conferr("too many ports");
+			err("too many ports");
 			return FALSE;
 		    }
 		    if (c != STRING_CONST) {
-			conferr("string expected");
+			err("string expected");
 			return FALSE;
 		    }
 		    if (strcmp(yytext, "*") == 0) {
@@ -996,15 +923,15 @@ static bool conf_config()
 			Alloc::dynamicMode();
 		    }
 		    if (PP::gettok() != ':') {
-			conferr("':' expected");
+			err("':' expected");
 			return FALSE;
 		    }
 		    if (PP::gettok() != INT_CONST) {
-			conferr("integer expected");
+			err("integer expected");
 			return FALSE;
 		    }
 		    if (yylval.number <= 0 || yylval.number > USHRT_MAX) {
-			conferr("int value out of range");
+			err("int value out of range");
 			return FALSE;
 		    }
 		    ports[l++] = yylval.number;
@@ -1012,14 +939,14 @@ static bool conf_config()
 			break;
 		    }
 		    if (c != ',') {
-			conferr("',' expected");
+			err("',' expected");
 			return FALSE;
 		    }
 		    c = PP::gettok();
 		}
 	    }
 	    if (PP::gettok() != ')') {
-		conferr("')' expected");
+		err("')' expected");
 		return FALSE;
 	    }
 	    switch (m) {
@@ -1039,18 +966,18 @@ static bool conf_config()
 
 	case ']':
 	    if (PP::gettok() != '[') {
-		conferr("'[' expected");
+		err("'[' expected");
 		return FALSE;
 	    }
 	    l = 0;
 	    if ((c=PP::gettok()) != ']') {
 		for (;;) {
 		    if (l == MAX_STRINGS - 1) {
-			conferr("mapping too large");
+			err("mapping too large");
 			return FALSE;
 		    }
 		    if (c != STRING_CONST) {
-			conferr("string expected");
+			err("string expected");
 			return FALSE;
 		    }
 		    Alloc::staticMode();
@@ -1058,11 +985,11 @@ static bool conf_config()
 					yytext);
 		    Alloc::dynamicMode();
 		    if (PP::gettok() != ':') {
-			conferr("':' expected");
+			err("':' expected");
 			return FALSE;
 		    }
 		    if (PP::gettok() != STRING_CONST) {
-			conferr("string expected");
+			err("string expected");
 			return FALSE;
 		    }
 		    Alloc::staticMode();
@@ -1073,14 +1000,14 @@ static bool conf_config()
 			break;
 		    }
 		    if (c != ',') {
-			conferr("',' expected");
+			err("',' expected");
 			return FALSE;
 		    }
 		    c = PP::gettok();
 		}
 	    }
 	    if (PP::gettok() != ')') {
-		conferr("')' expected");
+		err("')' expected");
 		return FALSE;
 	    }
 	    modules[l] = modconf[l] = (char *) NULL;
@@ -1088,7 +1015,7 @@ static bool conf_config()
 	}
 	conf[m].set = TRUE;
 	if (PP::gettok() != ';') {
-	    conferr("';' expected");
+	    err("';' expected");
 	    return FALSE;
 	}
     }
@@ -1099,36 +1026,35 @@ static bool conf_config()
 	    char buffer[64];
 
 	    sprintf(buffer, "unspecified option %s", conf[l].name);
-	    conferr(buffer);
+	    err(buffer);
 	    return FALSE;
 	}
     }
 
     if (conf[USERS].num + conf[DATAGRAM_USERS].num == 0) {
-	conferr("no users");
+	err("no users");
 	return FALSE;
     }
     if (conf[USERS].num + conf[DATAGRAM_USERS].num > EINDEX_MAX) {
-	conferr("total number of users too high");
+	err("total number of users too high");
 	return FALSE;
     }
 
     h = (nbports < ndports) ? nbports : ndports;
     for (l = 0; l < h; l++) {
-	attach[l] = (bports[l] == dports[l]);
+	attached[l] = (bports[l] == dports[l]);
     }
     while (l < ndports) {
-	attach[l++] = FALSE;
+	attached[l++] = FALSE;
     }
 
     return TRUE;
 }
 
 /*
- * NAME:	config->fdlist()
- * DESCRIPTION:	pass fdlist on to loaded modules
+ * pass fdlist on to loaded modules
  */
-static void conf_fdlist()
+void Config::fdlist()
 {
     int i, size, *list;
 
@@ -1150,10 +1076,9 @@ static void conf_fdlist()
 }
 
 /*
- * NAME:	config->mod_finish()
- * DESCRIPTION:	call finish for loaded modules
+ * call finish for loaded modules
  */
-void conf_mod_finish()
+void Config::modFinish()
 {
     int i;
 
@@ -1169,10 +1094,9 @@ static char *obuf;		/* output buffer */
 static unsigned int bufsz;	/* buffer size */
 
 /*
- * NAME:	config->open()
- * DESCRIPTION:	create a new file
+ * create a new file
  */
-static bool copen(char *file)
+bool Config::open(char *file)
 {
     char fname[STRINGSZ];
 
@@ -1187,10 +1111,9 @@ static bool copen(char *file)
 }
 
 /*
- * NAME:	config->put()
- * DESCRIPTION:	write a string to a file
+ * write a string to a file
  */
-static void cputs(const char *str)
+void Config::puts(const char *str)
 {
     unsigned int len, chunk;
 
@@ -1210,10 +1133,9 @@ static void cputs(const char *str)
 }
 
 /*
- * NAME:	config->close()
- * DESCRIPTION:	close a file
+ * close a file
  */
-static bool cclose()
+bool Config::close()
 {
     if (bufsz > 0 && P_write(fd, obuf, bufsz) != bufsz) {
 	message("Config error: cannot write include file\012");		/* LF */
@@ -1226,10 +1148,9 @@ static bool cclose()
 }
 
 /*
- * NAME:	config->includes()
- * DESCRIPTION:	create include files
+ * create include files
  */
-static bool conf_includes()
+bool Config::includes()
 {
     char buf[BUF_SIZE], buffer[STRINGSZ];
     int i;
@@ -1238,147 +1159,147 @@ static bool conf_includes()
     /* create status.h file */
     obuf = buf;
     sprintf(buffer, "%s/status.h", dirs[0]);
-    if (!copen(buffer)) {
+    if (!open(buffer)) {
 	return FALSE;
     }
-    cputs("/*\012 * This file defines the fields of the array returned ");
-    cputs("by the\012 * status() kfun.  It is automatically generated ");
-    cputs("by DGD on startup.\012 */\012\012");
-    cputs("# define ST_VERSION\t0\t/* driver version */\012");
-    cputs("# define ST_STARTTIME\t1\t/* system start time */\012");
-    cputs("# define ST_BOOTTIME\t2\t/* system reboot time */\012");
-    cputs("# define ST_UPTIME\t3\t/* system virtual uptime */\012");
-    cputs("# define ST_SWAPSIZE\t4\t/* # sectors on swap device */\012");
-    cputs("# define ST_SWAPUSED\t5\t/* # sectors in use */\012");
-    cputs("# define ST_SECTORSIZE\t6\t/* size of swap sector */\012");
-    cputs("# define ST_SWAPRATE1\t7\t/* # objects swapped out last minute */\012");
-    cputs("# define ST_SWAPRATE5\t8\t/* # objects swapped out last five minutes */\012");
-    cputs("# define ST_SMEMSIZE\t9\t/* static memory allocated */\012");
-    cputs("# define ST_SMEMUSED\t10\t/* static memory in use */\012");
-    cputs("# define ST_DMEMSIZE\t11\t/* dynamic memory allocated */\012");
-    cputs("# define ST_DMEMUSED\t12\t/* dynamic memory in use */\012");
-    cputs("# define ST_OTABSIZE\t13\t/* object table size */\012");
-    cputs("# define ST_NOBJECTS\t14\t/* # objects in use */\012");
-    cputs("# define ST_COTABSIZE\t15\t/* callout table size */\012");
-    cputs("# define ST_NCOSHORT\t16\t/* # short-term callouts */\012");
-    cputs("# define ST_NCOLONG\t17\t/* # long-term & millisecond callouts */\012");
-    cputs("# define ST_UTABSIZE\t18\t/* user table size */\012");
-    cputs("# define ST_ETABSIZE\t19\t/* editor table size */\012");
-    cputs("# define ST_STRSIZE\t20\t/* max string size */\012");
-    cputs("# define ST_ARRAYSIZE\t21\t/* max array/mapping size */\012");
-    cputs("# define ST_STACKDEPTH\t22\t/* remaining stack depth */\012");
-    cputs("# define ST_TICKS\t23\t/* remaining ticks */\012");
-    cputs("# define ST_DATAGRAMPORTS 24\t/* datagram ports */\012");
-    cputs("# define ST_TELNETPORTS\t25\t/* telnet ports */\012");
-    cputs("# define ST_BINARYPORTS\t26\t/* binary ports */\012");
+    puts("/*\012 * This file defines the fields of the array returned ");
+    puts("by the\012 * status() kfun.  It is automatically generated ");
+    puts("by DGD on startup.\012 */\012\012");
+    puts("# define ST_VERSION\t0\t/* driver version */\012");
+    puts("# define ST_STARTTIME\t1\t/* system start time */\012");
+    puts("# define ST_BOOTTIME\t2\t/* system reboot time */\012");
+    puts("# define ST_UPTIME\t3\t/* system virtual uptime */\012");
+    puts("# define ST_SWAPSIZE\t4\t/* # sectors on swap device */\012");
+    puts("# define ST_SWAPUSED\t5\t/* # sectors in use */\012");
+    puts("# define ST_SECTORSIZE\t6\t/* size of swap sector */\012");
+    puts("# define ST_SWAPRATE1\t7\t/* # objects swapped out last minute */\012");
+    puts("# define ST_SWAPRATE5\t8\t/* # objects swapped out last five minutes */\012");
+    puts("# define ST_SMEMSIZE\t9\t/* static memory allocated */\012");
+    puts("# define ST_SMEMUSED\t10\t/* static memory in use */\012");
+    puts("# define ST_DMEMSIZE\t11\t/* dynamic memory allocated */\012");
+    puts("# define ST_DMEMUSED\t12\t/* dynamic memory in use */\012");
+    puts("# define ST_OTABSIZE\t13\t/* object table size */\012");
+    puts("# define ST_NOBJECTS\t14\t/* # objects in use */\012");
+    puts("# define ST_COTABSIZE\t15\t/* callout table size */\012");
+    puts("# define ST_NCOSHORT\t16\t/* # short-term callouts */\012");
+    puts("# define ST_NCOLONG\t17\t/* # long-term & millisecond callouts */\012");
+    puts("# define ST_UTABSIZE\t18\t/* user table size */\012");
+    puts("# define ST_ETABSIZE\t19\t/* editor table size */\012");
+    puts("# define ST_STRSIZE\t20\t/* max string size */\012");
+    puts("# define ST_ARRAYSIZE\t21\t/* max array/mapping size */\012");
+    puts("# define ST_STACKDEPTH\t22\t/* remaining stack depth */\012");
+    puts("# define ST_TICKS\t23\t/* remaining ticks */\012");
+    puts("# define ST_DATAGRAMPORTS 24\t/* datagram ports */\012");
+    puts("# define ST_TELNETPORTS\t25\t/* telnet ports */\012");
+    puts("# define ST_BINARYPORTS\t26\t/* binary ports */\012");
 
-    cputs("\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
-    cputs("# define O_PROGSIZE\t1\t/* program size of object */\012");
-    cputs("# define O_DATASIZE\t2\t/* # variables in object */\012");
-    cputs("# define O_NSECTORS\t3\t/* # sectors used by object */\012");
-    cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012");
-    cputs("# define O_INDEX\t5\t/* unique ID for master object */\012");
-    cputs("# define O_UNDEFINED\t6\t/* undefined functions */\012");
+    puts("\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
+    puts("# define O_PROGSIZE\t1\t/* program size of object */\012");
+    puts("# define O_DATASIZE\t2\t/* # variables in object */\012");
+    puts("# define O_NSECTORS\t3\t/* # sectors used by object */\012");
+    puts("# define O_CALLOUTS\t4\t/* callouts in object */\012");
+    puts("# define O_INDEX\t5\t/* unique ID for master object */\012");
+    puts("# define O_UNDEFINED\t6\t/* undefined functions */\012");
 
-    cputs("\012# define CO_HANDLE\t0\t/* callout handle */\012");
-    cputs("# define CO_FUNCTION\t1\t/* function name */\012");
-    cputs("# define CO_DELAY\t2\t/* delay */\012");
-    cputs("# define CO_FIRSTXARG\t3\t/* first extra argument */\012");
-    if (!cclose()) {
+    puts("\012# define CO_HANDLE\t0\t/* callout handle */\012");
+    puts("# define CO_FUNCTION\t1\t/* function name */\012");
+    puts("# define CO_DELAY\t2\t/* delay */\012");
+    puts("# define CO_FIRSTXARG\t3\t/* first extra argument */\012");
+    if (!close()) {
 	return FALSE;
     }
 
     /* create type.h file */
     sprintf(buffer, "%s/type.h", dirs[0]);
-    if (!copen(buffer)) {
+    if (!open(buffer)) {
 	return FALSE;
     }
-    cputs("/*\012 * This file gives definitions for the value returned ");
-    cputs("by the\012 * typeof() kfun.  It is automatically generated ");
-    cputs("by DGD on startup.\012 */\012\012");
+    puts("/*\012 * This file gives definitions for the value returned ");
+    puts("by the\012 * typeof() kfun.  It is automatically generated ");
+    puts("by DGD on startup.\012 */\012\012");
     sprintf(buffer, "# define T_NIL\t\t%d\012", T_NIL);
-    cputs(buffer);
+    puts(buffer);
     sprintf(buffer, "# define T_INT\t\t%d\012", T_INT);
-    cputs(buffer);
+    puts(buffer);
     sprintf(buffer, "# define T_FLOAT\t%d\012", T_FLOAT);
-    cputs(buffer);
+    puts(buffer);
     sprintf(buffer, "# define T_STRING\t%d\012", T_STRING);
-    cputs(buffer);
+    puts(buffer);
     sprintf(buffer, "# define T_OBJECT\t%d\012", T_OBJECT);
-    cputs(buffer);
+    puts(buffer);
     sprintf(buffer, "# define T_ARRAY\t%d\012", T_ARRAY);
-    cputs(buffer);
+    puts(buffer);
     sprintf(buffer, "# define T_MAPPING\t%d\012", T_MAPPING);
-    cputs(buffer);
-    if (!cclose()) {
+    puts(buffer);
+    if (!close()) {
 	return FALSE;
     }
 
     /* create limits.h file */
     sprintf(buffer, "%s/limits.h", dirs[0]);
-    if (!copen(buffer)) {
+    if (!open(buffer)) {
 	return FALSE;
     }
-    cputs("/*\012 * This file defines some basic sizes of datatypes and ");
-    cputs("resources.\012 * It is automatically generated by DGD on ");
-    cputs("startup.\012 */\012\012");
-    cputs("# define CHAR_BIT\t\t8\t\t/* # bits in character */\012");
-    cputs("# define CHAR_MIN\t\t0\t\t/* min character value */\012");
-    cputs("# define CHAR_MAX\t\t255\t\t/* max character value */\012\012");
-    cputs("# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
-    cputs("# define INT_MAX\t\t2147483647\t/* max integer value */\012");
-    if (!cclose()) {
+    puts("/*\012 * This file defines some basic sizes of datatypes and ");
+    puts("resources.\012 * It is automatically generated by DGD on ");
+    puts("startup.\012 */\012\012");
+    puts("# define CHAR_BIT\t\t8\t\t/* # bits in character */\012");
+    puts("# define CHAR_MIN\t\t0\t\t/* min character value */\012");
+    puts("# define CHAR_MAX\t\t255\t\t/* max character value */\012\012");
+    puts("# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
+    puts("# define INT_MAX\t\t2147483647\t/* max integer value */\012");
+    if (!close()) {
 	return FALSE;
     }
 
     /* create float.h file */
     sprintf(buffer, "%s/float.h", dirs[0]);
-    if (!copen(buffer)) {
+    if (!open(buffer)) {
 	return FALSE;
     }
-    cputs("/*\012 * This file describes the floating point type. It is ");
-    cputs("automatically\012 * generated by DGD on startup.\012 */\012\012");
-    cputs("# define FLT_RADIX\t2\t\t\t/* binary */\012");
-    cputs("# define FLT_ROUNDS\t1\t\t\t/* round to nearest */\012");
-    cputs("# define FLT_EPSILON\t7.2759576142E-12\t/* smallest x: 1.0 + x != 1.0 */\012");
-    cputs("# define FLT_DIG\t11\t\t\t/* decimal digits of precision*/\012");
-    cputs("# define FLT_MANT_DIG\t37\t\t\t/* binary digits of precision */\012");
-    cputs("# define FLT_MIN\t2.22507385851E-308\t/* positive minimum */\012");
-    cputs("# define FLT_MIN_EXP\t(-1021)\t\t\t/* minimum binary exponent */\012");
-    cputs("# define FLT_MIN_10_EXP\t(-307)\t\t\t/* minimum decimal exponent */\012");
-    cputs("# define FLT_MAX\t1.79769313485E+308\t/* positive maximum */\012");
-    cputs("# define FLT_MAX_EXP\t1024\t\t\t/* maximum binary exponent */\012");
-    cputs("# define FLT_MAX_10_EXP\t308\t\t\t/* maximum decimal exponent */\012");
-    if (!cclose()) {
+    puts("/*\012 * This file describes the floating point type. It is ");
+    puts("automatically\012 * generated by DGD on startup.\012 */\012\012");
+    puts("# define FLT_RADIX\t2\t\t\t/* binary */\012");
+    puts("# define FLT_ROUNDS\t1\t\t\t/* round to nearest */\012");
+    puts("# define FLT_EPSILON\t7.2759576142E-12\t/* smallest x: 1.0 + x != 1.0 */\012");
+    puts("# define FLT_DIG\t11\t\t\t/* decimal digits of precision*/\012");
+    puts("# define FLT_MANT_DIG\t37\t\t\t/* binary digits of precision */\012");
+    puts("# define FLT_MIN\t2.22507385851E-308\t/* positive minimum */\012");
+    puts("# define FLT_MIN_EXP\t(-1021)\t\t\t/* minimum binary exponent */\012");
+    puts("# define FLT_MIN_10_EXP\t(-307)\t\t\t/* minimum decimal exponent */\012");
+    puts("# define FLT_MAX\t1.79769313485E+308\t/* positive maximum */\012");
+    puts("# define FLT_MAX_EXP\t1024\t\t\t/* maximum binary exponent */\012");
+    puts("# define FLT_MAX_10_EXP\t308\t\t\t/* maximum decimal exponent */\012");
+    if (!close()) {
 	return FALSE;
     }
 
     /* create trace.h file */
     sprintf(buffer, "%s/trace.h", dirs[0]);
-    if (!copen(buffer)) {
+    if (!open(buffer)) {
 	return FALSE;
     }
-    cputs("/*\012 * This file describes the fields of the array returned for ");
-    cputs("every stack\012 * frame by the call_trace() function.  It is ");
-    cputs("automatically generated by DGD\012 * on startup.\012 */\012\012");
-    cputs("# define TRACE_OBJNAME\t0\t/* name of the object */\012");
-    cputs("# define TRACE_PROGNAME\t1\t/* name of the object the function is in */\012");
-    cputs("# define TRACE_FUNCTION\t2\t/* function name */\012");
-    cputs("# define TRACE_LINE\t3\t/* line number */\012");
-    cputs("# define TRACE_EXTERNAL\t4\t/* external call flag */\012");
-    cputs("# define TRACE_FIRSTARG\t5\t/* first argument to function */\012");
-    if (!cclose()) {
+    puts("/*\012 * This file describes the fields of the array returned for ");
+    puts("every stack\012 * frame by the call_trace() function.  It is ");
+    puts("automatically generated by DGD\012 * on startup.\012 */\012\012");
+    puts("# define TRACE_OBJNAME\t0\t/* name of the object */\012");
+    puts("# define TRACE_PROGNAME\t1\t/* name of the object the function is in */\012");
+    puts("# define TRACE_FUNCTION\t2\t/* function name */\012");
+    puts("# define TRACE_LINE\t3\t/* line number */\012");
+    puts("# define TRACE_EXTERNAL\t4\t/* external call flag */\012");
+    puts("# define TRACE_FIRSTARG\t5\t/* first argument to function */\012");
+    if (!close()) {
 	return FALSE;
     }
 
     /* create kfun.h file */
     sprintf(buffer, "%s/kfun.h", dirs[0]);
-    if (!copen(buffer)) {
+    if (!open(buffer)) {
 	return FALSE;
     }
-    cputs("/*\012 * This file defines the version of each supported kfun.  ");
-    cputs("It is automatically\012 * generated by DGD on ");
-    cputs("startup.\012 */\012\012");
+    puts("/*\012 * This file defines the version of each supported kfun.  ");
+    puts("It is automatically\012 * generated by DGD on ");
+    puts("startup.\012 */\012\012");
     for (i = KF_BUILTINS; i < nkfun; i++) {
 	if (!isdigit(kftab[i].name[0])) {
 	    sprintf(buffer, "# define kf_%s\t\t%d\012", kftab[i].name,
@@ -1390,40 +1311,40 @@ static bool conf_includes()
 		    *p = toupper(*p);
 		}
 	    }
-	    cputs(buffer);
+	    puts(buffer);
 	}
     }
-    cputs("\012\012/*\012 * Supported ciphers and hashing algorithms.\012 */");
-    cputs("\012\012# define ENCRYPT_CIPHERS\t");
+    puts("\012\012/*\012 * Supported ciphers and hashing algorithms.\012 */");
+    puts("\012\012# define ENCRYPT_CIPHERS\t");
     for (i = 0; ; ) {
 	sprintf(buffer, "\"%s\"", kfenc[i].name);
-	cputs(buffer);
+	puts(buffer);
 	if (++i == ne) {
 	    break;
 	}
-	cputs(", ");
+	puts(", ");
     }
-    cputs("\012# define DECRYPT_CIPHERS\t");
+    puts("\012# define DECRYPT_CIPHERS\t");
     for (i = 0; ; ) {
 	sprintf(buffer, "\"%s\"", kfdec[i].name);
-	cputs(buffer);
+	puts(buffer);
 	if (++i == nd) {
 	    break;
 	}
-	cputs(", ");
+	puts(", ");
     }
-    cputs("\012# define HASH_ALGORITHMS\t");
+    puts("\012# define HASH_ALGORITHMS\t");
     for (i = 0; ; ) {
 	sprintf(buffer, "\"%s\"", kfhsh[i].name);
-	cputs(buffer);
+	puts(buffer);
 	if (++i == nh) {
 	    break;
 	}
-	cputs(", ");
+	puts(", ");
     }
-    cputs("\012");
+    puts("\012");
 
-    return cclose();
+    return close();
 }
 
 
@@ -1431,11 +1352,10 @@ extern bool ext_dgd (char*, char*, void (**)(int*, int), void (**)());
 extern void ext_finish();
 
 /*
- * NAME:	config->init()
- * DESCRIPTION:	initialize the driver
+ * initialize the driver
  */
-bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
-	       Sector *fragment)
+bool Config::init(char *configfile, char *snapshot, char *snapshot2,
+		  char *module, Sector *fragment)
 {
     char buf[STRINGSZ];
     int fd, fd2, i;
@@ -1453,7 +1373,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	Alloc::finish();
 	return FALSE;
     }
-    init = conf_config();
+    init = config();
     PP::clear();
     Alloc::purge();
     if (!init) {
@@ -1499,7 +1419,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    if (snapshot != (char *) NULL) {
 		P_close(fd);
 	    }
-	    conf_mod_finish();
+	    modFinish();
 	    ext_finish();
 	    Alloc::finish();
 	    return FALSE;
@@ -1515,7 +1435,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	conf_mod_finish();
+	modFinish();
 	ext_finish();
 	Alloc::finish();
 	return FALSE;
@@ -1534,7 +1454,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	conf_mod_finish();
+	modFinish();
 	ext_finish();
 	Alloc::finish();
 	return FALSE;
@@ -1554,7 +1474,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	conf_mod_finish();
+	modFinish();
 	ext_finish();
 	Alloc::finish();
 	return FALSE;
@@ -1592,7 +1512,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	conf_mod_finish();
+	modFinish();
 	ext_finish();
 	Alloc::finish();
 	return FALSE;
@@ -1617,7 +1537,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     /*
      * create include files
      */
-    if (!conf_includes()) {
+    if (!includes()) {
 	Swap::finish();
 	Comm::clear();
 	Comm::finish();
@@ -1627,14 +1547,14 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	conf_mod_finish();
+	modFinish();
 	ext_finish();
 	Alloc::finish();
 	return FALSE;
     }
 
     /* initialize snapshot header */
-    conf_dumpinit();
+    dumpinit();
 
     Alloc::staticMode();		/* allocate error context statically */
     ErrorContext::push();		/* guard error context */
@@ -1656,7 +1576,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    bool hotbooted;
 
 	    /* restore snapshot */
-	    hotbooted = conf_restore(fd, fd2);
+	    hotbooted = restore(fd, fd2);
 
 	    /* notify mudlib */
 	    try {
@@ -1691,7 +1611,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	}
 	Array::freeall();
 	String::clean();
-	conf_mod_finish();
+	modFinish();
 	ext_finish();
 	Alloc::finish();
 	return FALSE;
@@ -1701,7 +1621,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     ErrorContext::pop();		/* remove guard */
 
     /* inform extension modules about restored connections */
-    conf_fdlist();
+    fdlist();
 
     /* prepare JIT compiler */
     kf_jit();
@@ -1712,65 +1632,57 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 }
 
 /*
- * NAME:	config->base_dir()
- * DESCRIPTION:	return the driver base directory
+ * return the driver base directory
  */
-char *conf_base_dir()
+char *Config::baseDir()
 {
     return conf[DIRECTORY].str;
 }
 
 /*
- * NAME:	config->driver()
- * DESCRIPTION:	return the driver object name
+ * return the driver object name
  */
-char *conf_driver()
+char *Config::driver()
 {
     return conf[DRIVER_OBJECT].str;
 }
 
 /*
- * NAME:	config->hotboot()
- * DESCRIPTION:	return the hotboot executable
+ * return the hotboot executable
  */
-char **conf_hotboot()
+char **Config::hotbootExec()
 {
     return (conf[HOTBOOT].set) ? hotboot : (char **) NULL;
 }
 
 /*
- * NAME:	config->typechecking()
- * DESCRIPTION:	return the global typechecking flag
+ * return the global typechecking flag
  */
-int conf_typechecking()
+int Config::typechecking()
 {
     return conf[TYPECHECKING].num;
 }
 
 /*
- * NAME:	config->attach()
- * DESCRIPTION:	return TRUE if datagram channel can be attached to connections
- *		on this port
+ * return TRUE if datagram channel can be attached to connections on this port
  */
-bool conf_attach(int port)
+bool Config::attach(int port)
 {
-    return (port >= 0 && port < ndports && attach[port]);
+    return (port >= 0 && port < ndports && attached[port]);
 }
 
 /*
- * NAME:	config->array_size()
- * DESCRIPTION:	return the maximum array size
+ * return the maximum array size
  */
-unsigned short conf_array_size()
+unsigned short Config::arraySize()
 {
     return conf[ARRAY_SIZE].num;
 }
 
 /*
- * NAME:	putval()
- * DESCRIPTION:	store a size_t as an integer or as a float approximation
+ * store a size_t as an integer or as a float approximation
  */
-static void putval(Value *v, size_t n)
+void Config::putval(Value *v, size_t n)
 {
     Float f1, f2;
 
@@ -1786,10 +1698,9 @@ static void putval(Value *v, size_t n)
 }
 
 /*
- * NAME:	config->statusi()
- * DESCRIPTION:	return resource usage information
+ * return resource usage information
  */
-bool conf_statusi(Frame *f, Int idx, Value *v)
+bool Config::statusi(Frame *f, Int idx, Value *v)
 {
     const char *version;
     uindex ncoshort, ncolong;
@@ -1933,10 +1844,9 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 }
 
 /*
- * NAME:	config->status()
- * DESCRIPTION:	return an array with information about resource usage
+ * return an array with information about resource usage
  */
-Array *conf_status(Frame *f)
+Array *Config::status(Frame *f)
 {
     Value *v;
     Int i;
@@ -1946,7 +1856,7 @@ Array *conf_status(Frame *f)
 	ErrorContext::push();
 	a = Array::createNil(f->data, 27);
 	for (i = 0, v = a->elts; i < 27; i++, v++) {
-	    conf_statusi(f, i, v);
+	    statusi(f, i, v);
 	}
 	ErrorContext::pop();
     } catch (...) {
@@ -1959,10 +1869,9 @@ Array *conf_status(Frame *f)
 }
 
 /*
- * NAME:	config->objecti()
- * DESCRIPTION:	return object resource usage information
+ * return object resource usage information
  */
-bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
+bool Config::objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 {
     Control *ctrl;
     Object *prog;
@@ -2025,10 +1934,9 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 }
 
 /*
- * NAME:	config->object()
- * DESCRIPTION:	return resource usage of an object
+ * return resource usage of an object
  */
-Array *conf_object(Dataspace *data, Object *obj)
+Array *Config::object(Dataspace *data, Object *obj)
 {
     Value *v;
     Int i;
@@ -2038,7 +1946,7 @@ Array *conf_object(Dataspace *data, Object *obj)
     try {
 	ErrorContext::push();
 	for (i = 0, v = a->elts; i < 7; i++, v++) {
-	    conf_objecti(data, obj, i, v);
+	    objecti(data, obj, i, v);
 	}
 	ErrorContext::pop();
     } catch (...) {

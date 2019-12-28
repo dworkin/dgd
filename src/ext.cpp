@@ -1665,7 +1665,7 @@ static void (*mod_finish)();
 static void ext_spawn(void (*fdlist)(int*, int), void (*finish)())
 {
     /* close channels with other modules */
-    conf_mod_finish();
+    Config::modFinish();
 
     mod_fdlist = fdlist;
     mod_finish = finish;
@@ -1806,7 +1806,7 @@ void ext_kfuns(char *protos, int size, int nkfun)
 	vmtab[95] = (voidf *) &ext_vm_loop_ticks;
 
 	if (!(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR, sizeof(Int), 1,
-			 conf_typechecking(), KF_BUILTINS, nkfun,
+			 Config::typechecking(), KF_BUILTINS, nkfun,
 			 (uint8_t *) protos, size, (void **) vmtab)) {
 	    jit_compile = NULL;
 	}

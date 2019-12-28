@@ -98,24 +98,121 @@ typedef unsigned short kfindex;
 # define BIPREFIX	"builtin/"
 # define BIPREFIXLEN	8
 
-extern void		conf_mod_finish	();
-extern bool		conf_init	(char*, char*, char*, char*, Sector*);
-extern char	       *conf_base_dir	();
-extern char	       *conf_driver	();
-extern char	      **conf_hotboot	();
-extern int		conf_typechecking ();
-extern unsigned short	conf_array_size	();
-extern bool		conf_attach	(int);
 
-extern void   conf_dump		(bool, bool);
-extern Uint   conf_dsize	(const char*);
-extern Uint   conf_dconv	(char*, char*, const char*, Uint);
-extern void   conf_dread	(int, char*, const char*, Uint);
+class SnapshotInfo {
+public:
+    char valid;
+    char version;
+    char model;
+    char typecheck;
+    char secsize0;
+    char secsize1;
+    char s0;			/* short, msb */
+    char s1;			/* short, lsb */
+    char i0;			/* Int, msb */
+    char i1;
+    char i2;
+    char i3;			/* Int, lsb */
+    char l0;
+    char l1;
+    char l2;
+    char l3;
+    char l4;
+    char l5;
+    char l6;
+    char l7;
+    char utsize;		/* sizeof(uindex) + sizeof(ssizet) */
+    char desize;		/* sizeof(sector) + sizeof(eindex) */
+    char psize;			/* sizeof(char*), upper nibble reserved */
+    char calign;		/* align(char) */
+    char salign;		/* align(short) */
+    char ialign;		/* align(Int) */
+    char palign;		/* align(char*) */
+    char zalign;		/* align(struct) */
+    char start0;
+    char start1;
+    char start2;
+    char start3;
+    char elapsed0;
+    char elapsed1;
+    char elapsed2;
+    char elapsed3;
+    char zero1;			/* reserved (0) */
+    char zero2;			/* reserved (0) */
+    char zero3;			/* reserved (0) */
+    char zero4;			/* reserved (0) */
+    char dflags;		/* flags */
+    char zero5;			/* reserved (0) */
+    char vstr0;
+    char vstr1;
+    char vstr2;
+    char vstr3;
+    char vstr4;
+    char vstr5;
+    char vstr6;
+    char vstr7;
+    char vstr8;
+    char vstr9;
+    char vstr10;
+    char vstr11;
+    char vstr12;
+    char vstr13;
+    char vstr14;
+    char vstr15;
+    char vstr16;
+    char vstr17;
+    char offset0;
+    char offset1;
+    char offset2;
+    char offset3;
 
-extern bool   conf_statusi	(Frame*, Int, Value*);
-extern Array *conf_status	(Frame*);
-extern bool   conf_objecti	(Dataspace*, Object*, Int, Value*);
-extern Array *conf_object	(Dataspace*, Object*);
+    unsigned int restore(int fd);
+};
+
+class Config {
+public:
+    static void modFinish();
+    static bool init(char *configfile, char *snapshot, char *snapshot2,
+		     char *module, Sector *fragment);
+    static char *baseDir();
+    static char	*driver();
+    static char	**hotbootExec();
+    static int typechecking();
+    static unsigned short arraySize();
+    static bool attach(int port);
+
+    static void dump(bool incr, bool boot);
+    static Uint dsize(const char *layout);
+    static Uint dconv(char *buf, char *rbuf, const char *layout, Uint n);
+    static void dread(int fd, char *buf, const char *layout, Uint n);
+
+    static bool statusi(Frame *f, Int idx, Value *v);
+    static Array *status(Frame *f);
+    static bool objecti(Dataspace *data, Object *obj, Int idx, Value *v);
+    static Array *object(Dataspace *data, Object *obj);
+
+    const char *name;	/* name of the option */
+    short type;		/* option type */
+    bool resolv;	/* TRUE if path name must be resolved */
+    bool set;		/* TRUE if option is set */
+    Uint low, high;	/* lower and higher bound, for numeric values */
+    union {
+	long num;	/* numeric value */
+	char *str;	/* string value */
+    };
+
+private:
+    static void dumpinit();
+    static bool restore(int fd, int fd2);
+    static void err(const char *err);
+    static bool config();
+    static void fdlist();
+    static bool open(char *file);
+    static void puts(const char *str);
+    static bool close();
+    static bool includes();
+    static void putval(Value *v, size_t n);
+};
 
 /* utility functions */
 extern Int strtoint		(char**);

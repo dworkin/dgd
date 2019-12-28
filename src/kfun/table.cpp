@@ -529,7 +529,7 @@ void kf_restore(int fd)
     char *buffer;
 
     /* read header */
-    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    Config::dread(fd, (char *) &dh, dh_layout, (Uint) 1);
 
     /* fix kfuns */
     buffer = ALLOCA(char, dh.kfnamelen);

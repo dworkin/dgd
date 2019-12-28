@@ -830,7 +830,7 @@ void CallOut::restore(int fd, Uint t)
     /* read and check header */
     timediff = t;
 
-    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    Config::dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     queuebrk = dh.queuebrk;
     offset = cotabsz - dh.cotabsz;
     cycbrk = dh.cycbrk + offset;
@@ -850,15 +850,15 @@ void CallOut::restore(int fd, Uint t)
     /* read tables */
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	conf_dread(fd, (char *) cotab, CO_LAYOUT, (Uint) queuebrk);
-	conf_dread(fd, (char *) (cotab + cycbrk), CO_LAYOUT,
-		   (Uint) (cotabsz - cycbrk));
+	Config::dread(fd, (char *) cotab, CO_LAYOUT, (Uint) queuebrk);
+	Config::dread(fd, (char *) (cotab + cycbrk), CO_LAYOUT,
+		      (Uint) (cotabsz - cycbrk));
 
 	for (co = cotab, i = queuebrk; i != 0; co++, --i) {
 	    co->time += t;
 	}
     }
-    conf_dread(fd, (char *) buffer, "u", (Uint) CYCBUF_SIZE);
+    Config::dread(fd, (char *) buffer, "u", (Uint) CYCBUF_SIZE);
 
     /* cycle around cyclic buffer */
     t &= CYCBUF_MASK;

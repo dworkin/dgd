@@ -1675,7 +1675,7 @@ bool Comm::restore(int fd)
     tbuf = ubuf = (char *) NULL;
 
     /* read header */
-    conf_dread(fd, (char *) &dh, dh_layout, 1);
+    Config::dread(fd, (char *) &dh, dh_layout, 1);
     if (dh.nusers > maxusers) {
 	fatal("too many users");
     }
@@ -1683,7 +1683,7 @@ bool Comm::restore(int fd)
     if (dh.nusers != 0) {
 	/* read users and buffers */
 	du = ALLOC(SaveUser, dh.nusers);
-	conf_dread(fd, (char *) du, du_layout, dh.nusers);
+	Config::dread(fd, (char *) du, du_layout, dh.nusers);
 	if (dh.tbufsz != 0) {
 	    tbuf = ALLOC(char, dh.tbufsz);
 	    if (P_read(fd, tbuf, dh.tbufsz) != dh.tbufsz) {
