@@ -47,33 +47,38 @@ static int ndeclarations;	/* number of declarations */
 static int nstatements;		/* number of statements in current function */
 static bool typechecking;	/* does the current function have it? */
 
-static void  t_void	(Node*);
-static bool  t_unary	(Node*, const char*);
-static Node *prefix	(int, Node*, const char*);
-static Node *postfix	(int, Node*, const char*);
-static Node *cast	(Node*, Node*);
-static Node *idx	(Node*, Node*);
-static Node *range	(Node*, Node*, Node*);
-static Node *bini	(int, Node*, Node*, const char*);
-static Node *bina	(int, Node*, Node*, const char*);
-static Node *mult	(int, Node*, Node*, const char*);
-static Node *mdiv	(int, Node*, Node*, const char*);
-static Node *mod	(int, Node*, Node*, const char*);
-static Node *add	(int, Node*, Node*, const char*);
-static Node *sub	(int, Node*, Node*, const char*);
-static Node *umin	(Node*);
-static Node *lshift	(int, Node*, Node*, const char*);
-static Node *rshift	(int, Node*, Node*, const char*);
-static Node *rel	(int, Node*, Node*, const char*);
-static Node *eq		(Node*, Node*);
-static Node *_and	(int, Node*, Node*, const char*);
-static Node *_xor	(int, Node*, Node*, const char*);
-static Node *_or	(int, Node*, Node*, const char*);
-static Node *land	(Node*, Node*);
-static Node *lor	(Node*, Node*);
-static Node *quest	(Node*, Node*, Node*);
-static Node *assign	(Node*, Node*);
-static Node *comma	(Node*, Node*);
+class YYParser {
+public:
+    static void _void(Node *n);
+    static Node *prefix(int op, Node *n, const char *name);
+    static Node *postfix(int op, Node *n, const char *name);
+    static Node *cast(Node *n, Node *type);
+    static Node *idx(Node *n1, Node *n2);
+    static Node *range(Node *n1, Node *n2, Node *n3);
+    static Node *bini(int op, Node *n1, Node *n2, const char *name);
+    static Node *bina(int op, Node *n1, Node *n2, const char *name);
+    static Node *mult(int op, Node *n1, Node *n2, const char *name);
+    static Node *mdiv(int op, Node *n1, Node *n2, const char *name);
+    static Node *mod(int op, Node *n1, Node *n2, const char *name);
+    static Node *add(int op, Node *n1, Node *n2, const char *name);
+    static Node *sub(int op, Node *n1, Node *n2, const char *name);
+    static Node *umin(Node *n);
+    static Node *lshift(int op, Node *n1, Node *n2, const char *name);
+    static Node *rshift(int op, Node *n1, Node *n2, const char *name);
+    static Node *rel(int op, Node *n1, Node *n2, const char *name);
+    static Node *eq(Node *n1, Node *n2);
+    static Node *_and(int op, Node *n1, Node *n2, const char *name);
+    static Node *_xor(int op, Node *n1, Node *n2, const char *name);
+    static Node *_or(int op, Node *n1, Node *n2, const char *name);
+    static Node *land(Node *n1, Node *n2);
+    static Node *lor(Node *n1, Node *n2);
+    static Node *quest(Node *n1, Node *n2, Node *n3);
+    static Node *assign(Node *n1, Node *n2);
+    static Node *comma(Node *n1, Node *n2);
+
+private:
+    static bool unary(Node *n, const char *name);
+};
 
 %}
 
@@ -715,7 +720,7 @@ primary_p1_exp
 		{ $$ = Compile::newObject($3, $5); }
 	| primary_p2_exp RARROW ident '(' opt_arg_list ')'
 		{
-		  t_void($1);
+		  YYParser::_void($1);
 		  $$ = Compile::checkcall(Compile::arrow($1, $3, $5),
 					  typechecking);
 		}
@@ -726,40 +731,41 @@ primary_p1_exp
 primary_p2_exp
 	: primary_p1_exp
 	| primary_p2_exp '[' f_list_exp ']'
-		{ $$ = idx($1, $3); }
+		{ $$ = YYParser::idx($1, $3); }
 	| primary_p2_exp '[' f_opt_list_exp DOT_DOT f_opt_list_exp ']'
-		{ $$ = range($1, $3, $5); }
+		{ $$ = YYParser::range($1, $3, $5); }
 	;
 
 postfix_exp
 	: primary_p2_exp
 	| postfix_exp PLUS_PLUS
-		{ $$ = postfix(N_PLUS_PLUS, $1, "++"); }
+		{ $$ = YYParser::postfix(N_PLUS_PLUS, $1, "++"); }
 	| postfix_exp MIN_MIN
-		{ $$ = postfix(N_MIN_MIN, $1, "--"); }
+		{ $$ = YYParser::postfix(N_MIN_MIN, $1, "--"); }
 	;
 
 prefix_exp
 	: postfix_exp
 	| PLUS_PLUS cast_exp
-		{ $$ = prefix(N_ADD_EQ_1, $2, "++"); }
+		{ $$ = YYParser::prefix(N_ADD_EQ_1, $2, "++"); }
 	| MIN_MIN cast_exp
-		{ $$ = prefix(N_SUB_EQ_1, $2, "--"); }
+		{ $$ = YYParser::prefix(N_SUB_EQ_1, $2, "--"); }
 	| '-' cast_exp
-		{ $$ = umin($2); }
+		{ $$ = YYParser::umin($2); }
 	| '+' cast_exp
 		{ $$ = $2; }
 	| '!' cast_exp
 		{
-		  t_void($2);
+		  YYParser::_void($2);
 		  $$ = Compile::_not($2);
 		}
 	| '~' cast_exp
 		{
 		  $$ = $2;
-		  t_void($$);
+		  YYParser::_void($$);
 		  if ($$->mod == T_INT) {
-		      $$ = _xor(N_XOR, $$, Node::createInt((Int) -1), "^");
+		      $$ = YYParser::_xor(N_XOR, $$, Node::createInt((Int) -1),
+					  "^");
 		  } else if ($$->mod == T_OBJECT || $$->mod == T_CLASS) {
 		      $$ = Node::createMon(N_NEG, T_OBJECT, $$);
 		  } else {
@@ -779,84 +785,84 @@ cast_exp
 	| '(' type_specifier star_list ')' cast_exp
 		{
 		  $2->mod |= ($3 << REFSHIFT) & T_REF;
-		  $$ = cast($5, $2);
+		  $$ = YYParser::cast($5, $2);
 		}
 	;
 
 mult_oper_exp
 	: cast_exp
 	| mult_oper_exp '*' cast_exp
-		{ $$ = mult(N_MULT, $1, $3, "*"); }
+		{ $$ = YYParser::mult(N_MULT, $1, $3, "*"); }
 	| mult_oper_exp '/' cast_exp
-		{ $$ = mdiv(N_DIV, $1, $3, "/"); }
+		{ $$ = YYParser::mdiv(N_DIV, $1, $3, "/"); }
 	| mult_oper_exp '%' cast_exp
-		{ $$ = mod(N_MOD, $1, $3, "%"); }
+		{ $$ = YYParser::mod(N_MOD, $1, $3, "%"); }
 	;
 
 add_oper_exp
 	: mult_oper_exp
 	| add_oper_exp '+' mult_oper_exp
-		{ $$ = add(N_ADD, $1, $3, "+"); }
+		{ $$ = YYParser::add(N_ADD, $1, $3, "+"); }
 	| add_oper_exp '-' mult_oper_exp
-		{ $$ = sub(N_SUB, $1, $3, "-"); }
+		{ $$ = YYParser::sub(N_SUB, $1, $3, "-"); }
 	;
 
 shift_oper_exp
 	: add_oper_exp
 	| shift_oper_exp LSHIFT add_oper_exp
-		{ $$ = lshift(N_LSHIFT, $1, $3, "<<"); }
+		{ $$ = YYParser::lshift(N_LSHIFT, $1, $3, "<<"); }
 	| shift_oper_exp RSHIFT add_oper_exp
-		{ $$ = rshift(N_RSHIFT, $1, $3, ">>"); }
+		{ $$ = YYParser::rshift(N_RSHIFT, $1, $3, ">>"); }
 	;
 
 rel_oper_exp
 	: shift_oper_exp
 	| rel_oper_exp '<' shift_oper_exp
-		{ $$ = rel(N_LT, $$, $3, "<"); }
+		{ $$ = YYParser::rel(N_LT, $$, $3, "<"); }
 	| rel_oper_exp '>' shift_oper_exp
-		{ $$ = rel(N_GT, $$, $3, ">"); }
+		{ $$ = YYParser::rel(N_GT, $$, $3, ">"); }
 	| rel_oper_exp LE shift_oper_exp
-		{ $$ = rel(N_LE, $$, $3, "<="); }
+		{ $$ = YYParser::rel(N_LE, $$, $3, "<="); }
 	| rel_oper_exp GE shift_oper_exp
-		{ $$ = rel(N_GE, $$, $3, ">="); }
+		{ $$ = YYParser::rel(N_GE, $$, $3, ">="); }
 	;
 
 equ_oper_exp
 	: rel_oper_exp
 	| equ_oper_exp EQ rel_oper_exp
-		{ $$ = eq($1, $3); }
+		{ $$ = YYParser::eq($1, $3); }
 	| equ_oper_exp NE rel_oper_exp
-		{ $$ = Compile::_not(eq($1, $3)); }
+		{ $$ = Compile::_not(YYParser::eq($1, $3)); }
 	;
 
 bitand_oper_exp
 	: equ_oper_exp
 	| bitand_oper_exp '&' equ_oper_exp
-		{ $$ = _and(N_AND, $1, $3, "&"); }
+		{ $$ = YYParser::_and(N_AND, $1, $3, "&"); }
 	;
 
 bitxor_oper_exp
 	: bitand_oper_exp
 	| bitxor_oper_exp '^' bitand_oper_exp
-		{ $$ = _xor(N_XOR, $1, $3, "^"); }
+		{ $$ = YYParser::_xor(N_XOR, $1, $3, "^"); }
 	;
 
 bitor_oper_exp
 	: bitxor_oper_exp
 	| bitor_oper_exp '|' bitxor_oper_exp
-		{ $$ = _or(N_OR, $1, $3, "|"); }
+		{ $$ = YYParser::_or(N_OR, $1, $3, "|"); }
 	;
 
 and_oper_exp
 	: bitor_oper_exp
 	| and_oper_exp LAND bitor_oper_exp
-		{ $$ = land($1, $3); }
+		{ $$ = YYParser::land($1, $3); }
 	;
 
 or_oper_exp
 	: and_oper_exp
 	| or_oper_exp LOR and_oper_exp
-		{ $$ = lor($1, $3); }
+		{ $$ = YYParser::lor($1, $3); }
 	;
 
 cond_exp
@@ -868,46 +874,70 @@ cond_exp
 	  cond_exp
 		{
 		  Compile::matchCond();
-		  $$ = quest($1, $4, $7);
+		  $$ = YYParser::quest($1, $4, $7);
 		}
 	;
 
 exp
 	: cond_exp
 	| cond_exp '=' exp
-		{ $$ = assign(Compile::assign($1), $3); }
+		{ $$ = YYParser::assign(Compile::assign($1), $3); }
 	| cond_exp PLUS_EQ exp
-		{ $$ = add(N_ADD_EQ, Compile::lvalue($1, "+="), $3, "+="); }
+		{
+		  $$ = YYParser::add(N_ADD_EQ, Compile::lvalue($1, "+="), $3,
+				     "+=");
+		}
 	| cond_exp MIN_EQ exp
-		{ $$ = sub(N_SUB_EQ, Compile::lvalue($1, "-="), $3, "-="); }
+		{
+		  $$ = YYParser::sub(N_SUB_EQ, Compile::lvalue($1, "-="), $3,
+				     "-=");
+		}
 	| cond_exp MULT_EQ exp
-		{ $$ = mult(N_MULT_EQ, Compile::lvalue($1, "*="), $3, "*="); }
+		{
+		  $$ = YYParser::mult(N_MULT_EQ, Compile::lvalue($1, "*="), $3,
+				      "*=");
+		}
 	| cond_exp DIV_EQ exp
-		{ $$ = mdiv(N_DIV_EQ, Compile::lvalue($1, "/="), $3, "/="); }
+		{
+		  $$ = YYParser::mdiv(N_DIV_EQ, Compile::lvalue($1, "/="), $3,
+				      "/=");
+		}
 	| cond_exp MOD_EQ exp
-		{ $$ = mod(N_MOD_EQ, Compile::lvalue($1, "%="), $3, "%="); }
+		{
+		  $$ = YYParser::mod(N_MOD_EQ, Compile::lvalue($1, "%="), $3,
+				     "%=");
+		}
 	| cond_exp LSHIFT_EQ exp
 		{
-		  $$ = lshift(N_LSHIFT_EQ, Compile::lvalue($1, "<<="), $3,
-			      "<<=");
+		  $$ = YYParser::lshift(N_LSHIFT_EQ, Compile::lvalue($1, "<<="),
+					$3, "<<=");
 		}
 	| cond_exp RSHIFT_EQ exp
 		{
-		  $$ = rshift(N_RSHIFT_EQ, Compile::lvalue($1, ">>="), $3,
-			      ">>=");
+		  $$ = YYParser::rshift(N_RSHIFT_EQ, Compile::lvalue($1, ">>="),
+					$3, ">>=");
 		}
 	| cond_exp AND_EQ exp
-		{ $$ = _and(N_AND_EQ, Compile::lvalue($1, "&="), $3, "&="); }
+		{
+		  $$ = YYParser::_and(N_AND_EQ, Compile::lvalue($1, "&="), $3,
+				      "&=");
+		}
 	| cond_exp XOR_EQ exp
-		{ $$ = _xor(N_XOR_EQ, Compile::lvalue($1, "^="), $3, "^="); }
+		{
+		  $$ = YYParser::_xor(N_XOR_EQ, Compile::lvalue($1, "^="), $3,
+				      "^=");
+		}
 	| cond_exp OR_EQ exp
-		{ $$ = _or(N_OR_EQ, Compile::lvalue($1, "|="), $3, "|="); }
+		{
+		  $$ = YYParser::_or(N_OR_EQ, Compile::lvalue($1, "|="), $3,
+				     "|=");
+		}
 	;
 
 list_exp
 	: exp
 	| list_exp ',' exp
-		{ $$ = comma($1, $3); }
+		{ $$ = YYParser::comma($1, $3); }
 	;
 
 opt_list_exp
@@ -918,19 +948,19 @@ opt_list_exp
 
 f_list_exp
 	: list_exp
-		{ t_void($$ = $1); }
+		{ YYParser::_void($$ = $1); }
 	;
 
 f_opt_list_exp
 	: opt_list_exp
-		{ t_void($$ = $1); }
+		{ YYParser::_void($$ = $1); }
 	;
 
 arg_list
-	: exp	{ t_void($$ = $1); }
+	: exp	{ YYParser::_void($$ = $1); }
 	| arg_list ',' exp
 		{
-		  t_void($3);
+		  YYParser::_void($3);
 		  $$ = Node::createBin(N_PAIR, 0, $1, $3);
 		}
 	;
@@ -961,8 +991,8 @@ opt_arg_list_comma
 assoc_exp
 	: exp ':' exp
 		{
-		  t_void($1);
-		  t_void($3);
+		  YYParser::_void($1);
+		  YYParser::_void($3);
 		  $$ = Node::createBin(N_COMMA, 0, $1, $3);
 		}
 	;
@@ -984,10 +1014,9 @@ opt_assoc_arg_list_comma
 %%
 
 /*
- * NAME:	t_void()
- * DESCRIPTION:	if the argument is of type void, an error will result
+ * if the argument is of type void, an error will result
  */
-static void t_void(Node *n)
+void YYParser::_void(Node *n)
 {
     if (n != (Node *) NULL && n->mod == T_VOID) {
 	Compile::error("void value not ignored");
@@ -996,14 +1025,13 @@ static void t_void(Node *n)
 }
 
 /*
- * NAME:	t_unary()
- * DESCRIPTION:	typecheck the argument of a unary operator
+ * typecheck the argument of a unary operator
  */
-static bool t_unary(Node *n, const char *name)
+bool YYParser::unary(Node *n, const char *name)
 {
     char tnbuf[TNBUFSIZE];
 
-    t_void(n);
+    _void(n);
     if (typechecking && !T_ARITHMETIC(n->mod) && n->mod != T_MIXED) {
 	Compile::error("bad argument type for %s (%s)", name,
 		       Value::typeName(tnbuf, n->mod));
@@ -1014,28 +1042,26 @@ static bool t_unary(Node *n, const char *name)
 }
 
 /*
- * NAME:	postfix()
- * DESCRIPTION:	handle a postfix assignment operator
+ * handle a postfix assignment operator
  */
-static Node *postfix(int op, Node *n, const char *name)
+Node *YYParser::postfix(int op, Node *n, const char *name)
 {
-    t_unary(n, name);
+    unary(n, name);
     return Node::createMon((n->mod == T_INT) ? op + 1 : op, n->mod,
 			   Compile::lvalue(n, name));
 }
 
 /*
- * NAME:	prefix()
- * DESCRIPTION:	handle a prefix assignment operator
+ * handle a prefix assignment operator
  */
-static Node *prefix(int op, Node *n, const char *name)
+Node *YYParser::prefix(int op, Node *n, const char *name)
 {
     unsigned short type;
 
     if (n->mod == T_OBJECT || n->mod == T_CLASS) {
 	type = T_OBJECT;
     } else {
-	t_unary(n, name);
+	unary(n, name);
 	type = n->mod;
     }
     return Node::createMon((type == T_INT) ? op + 1 : op, type,
@@ -1043,10 +1069,9 @@ static Node *prefix(int op, Node *n, const char *name)
 }
 
 /*
- * NAME:	cast()
- * DESCRIPTION:	cast an expression to a type
+ * cast an expression to a type
  */
-static Node *cast(Node *n, Node *type)
+Node *YYParser::cast(Node *n, Node *type)
 {
     Float flt;
     Int i;
@@ -1187,10 +1212,9 @@ static Node *cast(Node *n, Node *type)
 }
 
 /*
- * NAME:	idx()
- * DESCRIPTION:	handle the [ ] operator
+ * handle the [ ] operator
  */
-static Node *idx(Node *n1, Node *n2)
+Node *YYParser::idx(Node *n1, Node *n2)
 {
     char tnbuf[TNBUFSIZE];
     unsigned short type;
@@ -1249,10 +1273,9 @@ static Node *idx(Node *n1, Node *n2)
 }
 
 /*
- * NAME:	range()
- * DESCRIPTION:	handle the [ .. ] operator
+ * handle the [ .. ] operator
  */
-static Node *range(Node *n1, Node *n2, Node *n3)
+Node *YYParser::range(Node *n1, Node *n2, Node *n3)
 {
     unsigned short type;
 
@@ -1301,16 +1324,15 @@ static Node *range(Node *n1, Node *n2, Node *n3)
 }
 
 /*
- * NAME:	bini()
- * DESCRIPTION:	handle a binary int operator
+ * handle a binary int operator
  */
-static Node *bini(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::bini(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     unsigned short type;
 
-    t_void(n1);
-    t_void(n2);
+    _void(n1);
+    _void(n2);
 
     type = T_MIXED;
     if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
@@ -1330,16 +1352,15 @@ static Node *bini(int op, Node *n1, Node *n2, const char *name)
 
 
 /*
- * NAME:	bina()
- * DESCRIPTION:	handle a binary arithmetic operator
+ * handle a binary arithmetic operator
  */
-static Node *bina(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::bina(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     unsigned short type;
 
-    t_void(n1);
-    t_void(n2);
+    _void(n1);
+    _void(n2);
 
     type = T_MIXED;
     if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
@@ -1385,10 +1406,9 @@ static Node *bina(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	mult()
- * DESCRIPTION:	handle the * *= operators
+ * handle the * *= operators
  */
-static Node *mult(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::mult(int op, Node *n1, Node *n2, const char *name)
 {
     Float f1, f2;
 
@@ -1408,10 +1428,9 @@ static Node *mult(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	mdiv()
- * DESCRIPTION:	handle the / /= operators
+ * handle the / /= operators
  */
-static Node *mdiv(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::mdiv(int op, Node *n1, Node *n2, const char *name)
 {
     Float f1, f2;
 
@@ -1446,10 +1465,9 @@ static Node *mdiv(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	mod()
- * DESCRIPTION:	handle the % %= operators
+ * handle the % %= operators
  */
-static Node *mod(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::mod(int op, Node *n1, Node *n2, const char *name)
 {
     if (n1->type == N_INT && n2->type == N_INT) {
 	Int i, d;
@@ -1470,18 +1488,17 @@ static Node *mod(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	add()
- * DESCRIPTION:	handle the + += operators, possibly rearranging the order
- *		of the expression
+ * handle the + += operators, possibly rearranging the order
+ * of the expression
  */
-static Node *add(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::add(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     Float f1, f2;
     unsigned short type;
 
-    t_void(n1);
-    t_void(n2);
+    _void(n1);
+    _void(n2);
 
     if (n1->mod == T_STRING) {
 	if (n2->mod == T_INT || n2->mod == T_FLOAT ||
@@ -1538,17 +1555,16 @@ static Node *add(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	sub()
- * DESCRIPTION:	handle the - -= operators
+ * handle the - -= operators
  */
-static Node *sub(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::sub(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     Float f1, f2;
     unsigned short type;
 
-    t_void(n1);
-    t_void(n2);
+    _void(n1);
+    _void(n2);
 
     if (n1->type == N_INT && n2->type == N_INT) {
 	/* i - i */
@@ -1588,10 +1604,9 @@ static Node *sub(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	umin()
- * DESCRIPTION:	handle unary minus
+ * handle unary minus
  */
-static Node *umin(Node *n)
+Node *YYParser::umin(Node *n)
 {
     Float flt;
 
@@ -1599,7 +1614,7 @@ static Node *umin(Node *n)
 	return Node::createMon(N_UMIN, T_OBJECT, n);
     } else if (n->mod == T_MIXED) {
 	return Node::createMon(N_UMIN, T_MIXED, n);
-    } else if (t_unary(n, "unary -")) {
+    } else if (unary(n, "unary -")) {
 	if (n->mod == T_FLOAT) {
 	    flt.initZero();
 	    n = sub(N_SUB, Node::createFloat(&flt), n, "-");
@@ -1611,10 +1626,9 @@ static Node *umin(Node *n)
 }
 
 /*
- * NAME:	lshift()
- * DESCRIPTION:	handle the << <<= operators
+ * handle the << <<= operators
  */
-static Node *lshift(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::lshift(int op, Node *n1, Node *n2, const char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
@@ -1633,10 +1647,9 @@ static Node *lshift(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	rshift()
- * DESCRIPTION:	handle the >> >>= operators
+ * handle the >> >>= operators
  */
-static Node *rshift(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::rshift(int op, Node *n1, Node *n2, const char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
@@ -1655,15 +1668,14 @@ static Node *rshift(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	rel()
- * DESCRIPTION:	handle the < > <= >= operators
+ * handle the < > <= >= operators
  */
-static Node *rel(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::rel(int op, Node *n1, Node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
 
-    t_void(n1);
-    t_void(n2);
+    _void(n1);
+    _void(n2);
 
     if (n1->type == N_INT && n2->type == N_INT) {
 	/* i . i */
@@ -1739,17 +1751,16 @@ static Node *rel(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	eq()
- * DESCRIPTION:	handle the == operator
+ * handle the == operator
  */
-static Node *eq(Node *n1, Node *n2)
+Node *YYParser::eq(Node *n1, Node *n2)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     Float f1, f2;
     int op;
 
-    t_void(n1);
-    t_void(n2);
+    _void(n1);
+    _void(n2);
 
     switch (n1->type) {
     case N_INT:
@@ -1812,10 +1823,9 @@ static Node *eq(Node *n1, Node *n2)
 }
 
 /*
- * NAME:	_and()
- * DESCRIPTION:	handle the & &= operators
+ * handle the & &= operators
  */
-static Node *_and(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::_and(int op, Node *n1, Node *n2, const char *name)
 {
     unsigned short type;
 
@@ -1836,10 +1846,9 @@ static Node *_and(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	_xor()
- * DESCRIPTION:	handle the ^ ^= operators
+ * handle the ^ ^= operators
  */
-static Node *_xor(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::_xor(int op, Node *n1, Node *n2, const char *name)
 {
     unsigned short type;
 
@@ -1859,10 +1868,9 @@ static Node *_xor(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	_or()
- * DESCRIPTION:	handle the | |= operators
+ * handle the | |= operators
  */
-static Node *_or(int op, Node *n1, Node *n2, const char *name)
+Node *YYParser::_or(int op, Node *n1, Node *n2, const char *name)
 {
     unsigned short type;
 
@@ -1882,13 +1890,12 @@ static Node *_or(int op, Node *n1, Node *n2, const char *name)
 }
 
 /*
- * NAME:	land()
- * DESCRIPTION:	handle the && operator
+ * handle the && operator
  */
-static Node *land(Node *n1, Node *n2)
+Node *YYParser::land(Node *n1, Node *n2)
 {
-    t_void(n1);
-    t_void(n2);
+    _void(n1);
+    _void(n2);
 
     if ((n1->flags & F_CONST) && (n2->flags & F_CONST)) {
 	n1 = Compile::tst(n1);
@@ -1901,13 +1908,12 @@ static Node *land(Node *n1, Node *n2)
 }
 
 /*
- * NAME:	lor()
- * DESCRIPTION:	handle the || operator
+ * handle the || operator
  */
-static Node *lor(Node *n1, Node *n2)
+Node *YYParser::lor(Node *n1, Node *n2)
 {
-    t_void(n1);
-    t_void(n2);
+    _void(n1);
+    _void(n2);
 
     if ((n1->flags & F_CONST) && (n2->flags & F_CONST)) {
 	n1 = Compile::tst(n1);
@@ -1920,14 +1926,13 @@ static Node *lor(Node *n1, Node *n2)
 }
 
 /*
- * NAME:	quest()
- * DESCRIPTION:	handle the ? : operator
+ * handle the ? : operator
  */
-static Node *quest(Node *n1, Node *n2, Node *n3)
+Node *YYParser::quest(Node *n1, Node *n2, Node *n3)
 {
     unsigned short type;
 
-    t_void(n1);
+    _void(n1);
 
     if ((n2->flags & F_CONST) && n3->type == n2->type) {
 	switch (n1->type) {
@@ -1994,10 +1999,9 @@ static Node *quest(Node *n1, Node *n2, Node *n3)
 }
 
 /*
- * NAME:	assign()
- * DESCRIPTION:	handle the assignment operator
+ * handle the assignment operator
  */
-static Node *assign(Node *n1, Node *n2)
+Node *YYParser::assign(Node *n1, Node *n2)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     Node *n, *m;
@@ -2079,11 +2083,10 @@ static Node *assign(Node *n1, Node *n2)
 }
 
 /*
- * NAME:	comma()
- * DESCRIPTION:	handle the comma operator, rearranging the order of the
- *		expression if needed
+ * handle the comma operator, rearranging the order of the
+ * expression if needed
  */
-static Node *comma(Node *n1, Node *n2)
+Node *YYParser::comma(Node *n1, Node *n2)
 {
     if (n2->type == N_COMMA) {
 	/* a, (b, c) --> (a, b), c */
