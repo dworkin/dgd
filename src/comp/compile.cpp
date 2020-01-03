@@ -435,7 +435,7 @@ void Compile::init(char *a, char *d, char *i, char **p, int tc)
 {
     stricttc = (tc == 2);
     Node::init(stricttc);
-    opt_init();
+    Optimize::init();
     auto_object = a;
     driver_object = d;
     include = i;
@@ -998,7 +998,7 @@ void Compile::funcbody(Node *n)
 	break;
     }
 
-    n = opt_stmt(n, &depth);
+    n = Optimize::stmt(n, &depth);
     if (depth > 0x7fff) {
 	error("function uses too much stack space");
     } else {
