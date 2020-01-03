@@ -32,36 +32,42 @@
 
 # define LINE_CHUNK	128
 
-struct linechunk {
-    linechunk *next;			/* next in list */
+class LineChunk : public Allocated {
+public:
+    static void byte(int byte);
+    static int fix(unsigned short newline);
+    static void make(char *buf);
+    static void clear();
+
+private:
+    LineChunk *next;			/* next in list */
     char info[LINE_CHUNK];		/* chunk of line number info */
 };
 
-static linechunk *lline, *tline;		/* line chunk list */
-static linechunk *fline;			/* free line chunk list */
+static LineChunk *lline, *tline;		/* line chunk list */
+static LineChunk *fline;			/* free line chunk list */
 static unsigned int lchunksz = LINE_CHUNK;	/* line chunk size */
 static unsigned short line;			/* current line number */
 static unsigned int line_info_size;		/* size of all line info */
 
 /*
- * NAME:	line->byte()
- * DESCRIPTION:	output a line description byte
+ * output a line description byte
  */
-static void line_byte(int byte)
+void LineChunk::byte(int byte)
 {
     if (lchunksz == LINE_CHUNK) {
-	linechunk *l;
+	LineChunk *l;
 
 	/* new chunk */
-	if (fline != (linechunk *) NULL) {
+	if (fline != (LineChunk *) NULL) {
 	    /* from free list */
 	    l = fline;
 	    fline = l->next;
 	} else {
-	    l = ALLOC(linechunk, 1);
+	    l = new LineChunk;
 	}
-	l->next = (linechunk *) NULL;
-	if (tline != (linechunk *) NULL) {
+	l->next = (LineChunk *) NULL;
+	if (tline != (LineChunk *) NULL) {
 	    tline->next = l;
 	} else {
 	    lline = l;
@@ -75,11 +81,10 @@ static void line_byte(int byte)
 }
 
 /*
- * NAME:	line->fix()
- * DESCRIPTION:	Fix the new line number.  Return 0 .. 2 for simple offsets,
- *		3 for special ones.
+ * Fix the new line number.  Return 0 .. 2 for simple offsets,
+ * 3 for special ones.
  */
-static int line_fix(unsigned short newline)
+int LineChunk::fix(unsigned short newline)
 {
     short offset;
 
@@ -96,24 +101,23 @@ static int line_fix(unsigned short newline)
 
     if (offset >= -64 && offset <= 63) {
 	/* one byte offset */
-	line_byte(offset + 128 + 64);
+	byte(offset + 128 + 64);
     } else {
 	/* two byte offset */
 	offset += 16384;
-	line_byte((offset >> 8) & 127);
-	line_byte(offset);
+	byte((offset >> 8) & 127);
+	byte(offset);
     }
     line = newline;
     return 3;
 }
 
 /*
- * NAME:	line->make()
- * DESCRIPTION:	put line number info after the function
+ * put line number info after the function
  */
-static void line_make(char *buf)
+void LineChunk::make(char *buf)
 {
-    linechunk *l;
+    LineChunk *l;
 
     /* collect all line blocks in one large block */
     for (l = lline; l != tline; l = l->next) {
@@ -126,62 +130,70 @@ static void line_make(char *buf)
     tline->next = fline;
     fline = lline;
     /* clear blocks */
-    lline = (linechunk *) NULL;
-    tline = (linechunk *) NULL;
+    lline = (LineChunk *) NULL;
+    tline = (LineChunk *) NULL;
     lchunksz = LINE_CHUNK;
     line = 0;
     line_info_size = 0;
 }
 
 /*
- * NAME:	line->clear()
- * DESCRIPTION:	clean up line number info chunks
+ * clean up line number info chunks
  */
-static void line_clear()
+void LineChunk::clear()
 {
-    linechunk *l, *f;
+    LineChunk *l, *f;
 
-    for (l = fline; l != (linechunk *) NULL; ) {
+    for (l = fline; l != (LineChunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	FREE(f);
+	delete f;
     }
-    fline = (linechunk *) NULL;
+    fline = (LineChunk *) NULL;
 }
 
 
 # define CODE_CHUNK	128
 
-struct codechunk {
-    codechunk *next;			/* next in list */
+class CodeChunk : public Allocated {
+public:
+    static void byte(char byte);
+    static void word(unsigned short word);
+    static void instr(int i, unsigned short line);
+    static void kfun(int kf, unsigned short line);
+    static void ckfun(int kf, unsigned short line);
+    static char *make(unsigned short depth, int nlocals, unsigned short *size);
+    static void clear();
+
+private:
+    CodeChunk *next;			/* next in list */
     char code[CODE_CHUNK];		/* chunk of code */
 };
 
-static codechunk *lcode, *tcode;		/* code chunk list */
-static codechunk *fcode;			/* free code chunk list */
+static CodeChunk *lcode, *tcode;		/* code chunk list */
+static CodeChunk *fcode;			/* free code chunk list */
 static unsigned int cchunksz = CODE_CHUNK;	/* code chunk size */
 static Uint here;				/* current offset */
 static char *last_instruction;			/* last instruction's address */
 
 /*
- * NAME:	code->byte()
- * DESCRIPTION:	output a byte of code
+ * output a byte of code
  */
-static void code_byte(char byte)
+void CodeChunk::byte(char byte)
 {
     if (cchunksz == CODE_CHUNK) {
-	codechunk *l;
+	CodeChunk *l;
 
 	/* new chunk */
-	if (fcode != (codechunk *) NULL) {
+	if (fcode != (CodeChunk *) NULL) {
 	    /* from free list */
 	    l = fcode;
 	    fcode = l->next;
 	} else {
-	    l = ALLOC(codechunk, 1);
+	    l = new CodeChunk;
 	}
-	l->next = (codechunk *) NULL;
-	if (tcode != (codechunk *) NULL) {
+	l->next = (CodeChunk *) NULL;
+	if (tcode != (CodeChunk *) NULL) {
 	    tcode->next = l;
 	} else {
 	    lcode = l;
@@ -194,62 +206,57 @@ static void code_byte(char byte)
 }
 
 /*
- * NAME:	code->word()
- * DESCRIPTION:	output a word of code
+ * output a word of code
  */
-static void code_word(unsigned short word)
+void CodeChunk::word(unsigned short word)
 {
-    code_byte(word >> 8);
-    code_byte(word);
+    byte(word >> 8);
+    byte(word);
 }
 
 /*
- * NAME:	code->instr()
- * DESCRIPTION:	generate an instruction code
+ * generate an instruction code
  */
-static void code_instr(int i, unsigned short line)
+void CodeChunk::instr(int i, unsigned short line)
 {
-    code_byte(i | (line_fix(line) << I_LINE_SHIFT));
+    byte(i | (LineChunk::fix(line) << I_LINE_SHIFT));
     last_instruction = &tcode->code[cchunksz - 1];
 }
 
 /*
- * NAME:	code->kfun()
- * DESCRIPTION:	generate code for a builtin kfun
+ * generate code for a builtin kfun
  */
-static void code_kfun(int kf, unsigned short line)
+void CodeChunk::kfun(int kf, unsigned short line)
 {
     if (kf < 256) {
-	code_instr(I_CALL_KFUNC, line);
-	code_byte(kf);
+	instr(I_CALL_KFUNC, line);
+	byte(kf);
     } else {
-	code_instr(I_CALL_EFUNC, line);
-	code_word(kf);
+	instr(I_CALL_EFUNC, line);
+	word(kf);
     }
 }
 
 /*
- * NAME:	code->ckfun()
- * DESCRIPTION:	generate code for a builtin kfun
+ * generate code for a builtin kfun
  */
-static void code_ckfun(int kf, unsigned short line)
+void CodeChunk::ckfun(int kf, unsigned short line)
 {
     if (kf < 256) {
-	code_instr(I_CALL_CKFUNC, line);
-	code_byte(kf);
+	instr(I_CALL_CKFUNC, line);
+	byte(kf);
     } else {
-	code_instr(I_CALL_CEFUNC, line);
-	code_word(kf);
+	instr(I_CALL_CEFUNC, line);
+	word(kf);
     }
 }
 
 /*
- * NAME:	code->make()
- * DESCRIPTION:	create function code block
+ * create function code block
  */
-static char *code_make(unsigned short depth, int nlocals, unsigned short *size)
+char *CodeChunk::make(unsigned short depth, int nlocals, unsigned short *size)
 {
-    codechunk *l;
+    CodeChunk *l;
     char *code;
     Uint sz;
 
@@ -272,15 +279,15 @@ static char *code_make(unsigned short depth, int nlocals, unsigned short *size)
     }
     memcpy(code, l->code, cchunksz);
     code += cchunksz;
-    line_make(code);
+    LineChunk::make(code);
     code -= 5 + here;
 
     /* add blocks to free list */
     tcode->next = fcode;
     fcode = lcode;
     /* clear blocks */
-    lcode = (codechunk *) NULL;
-    tcode = (codechunk *) NULL;
+    lcode = (CodeChunk *) NULL;
+    tcode = (CodeChunk *) NULL;
     cchunksz = CODE_CHUNK;
 
     here = 0;
@@ -288,40 +295,45 @@ static char *code_make(unsigned short depth, int nlocals, unsigned short *size)
 }
 
 /*
- * NAME:	code->clear()
- * DESCRIPTION:	clean up the code chunks
+ * clean up the code chunks
  */
-static void code_clear()
+void CodeChunk::clear()
 {
-    codechunk *l, *f;
+    CodeChunk *l, *f;
 
-    for (l = fcode; l != (codechunk *) NULL; ) {
+    for (l = fcode; l != (CodeChunk *) NULL; ) {
 	f = l;
 	l = l->next;
 	FREE(f);
     }
-    fcode = (codechunk *) NULL;
+    fcode = (CodeChunk *) NULL;
 
-    line_clear();
+    LineChunk::clear();
 }
 
 
 # define JUMP_CHUNK	128
 
-struct jmplist : public ChunkAllocated {
+class JmpList : public ChunkAllocated {
+public:
+    static JmpList *addr(JmpList *list);
+    static JmpList *jump(int i, JmpList *list);
+    static void resolve(JmpList *list, Uint to);
+    static void make(char *code);
+    static void clear();
+
     Uint where;				/* where to jump from */
     Uint to;				/* where to jump to */
     Node *label;			/* label to jump to */
-    jmplist *next;			/* next in list */
+    JmpList *next;			/* next in list */
 };
 
-static class jmpchunk : public Chunk<jmplist, JUMP_CHUNK> {
+static class JmpChunk : public Chunk<JmpList, JUMP_CHUNK> {
 public:
     /*
-     * NAME:		item()
-     * DESCRIPTION:	resolve jumps when iterating through items
+     * resolve jumps when iterating through items
      */
-    virtual bool item(jmplist *j) {
+    virtual bool item(JmpList *j) {
 	code[j->where    ] = j->to >> 8;
 	code[j->where + 1] = j->to;
 	if ((code[j->to] & I_INSTR_MASK) == I_JUMP) {
@@ -335,10 +347,9 @@ public:
     }
 
     /*
-     * NAME:		mkjumps()
-     * DESCRIPTION:	resolve jumps, and return list of jumps to jumps
+     * resolve jumps, and return list of jumps to jumps
      */
-    jmplist *mkjumps(char *prog) {
+    JmpList *make(char *prog) {
 	jmpjmp = NULL;
 	code = prog;
 	items();
@@ -346,67 +357,63 @@ public:
     }
 
 private:
-    jmplist *jmpjmp;			/* list of jumps to jumps */
+    JmpList *jmpjmp;			/* list of jumps to jumps */
     char *code;				/* program code */
 } jchunk;
 
-static jmplist *true_list;		/* list of true jumps */
-static jmplist *false_list;		/* list of false jumps */
-static jmplist *break_list;		/* list of break jumps */
-static jmplist *continue_list;		/* list of continue jumps */
-static jmplist *goto_list;		/* list of goto jumps */
+static JmpList *true_list;		/* list of true jumps */
+static JmpList *false_list;		/* list of false jumps */
+static JmpList *break_list;		/* list of break jumps */
+static JmpList *continue_list;		/* list of continue jumps */
+static JmpList *goto_list;		/* list of goto jumps */
 
 /*
- * NAME:	jump->addr()
- * DESCRIPTION:	generate a jump
+ * generate a jump
  */
-static jmplist *jump_addr(jmplist *list)
+JmpList *JmpList::addr(JmpList *list)
 {
-    jmplist *j;
+    JmpList *j;
 
-    j = chunknew (jchunk) jmplist;
+    j = chunknew (jchunk) JmpList;
     j->where = here;
     j->next = list;
-    code_word(0);	/* empty space in code block filled in later */
+    CodeChunk::word(0);	/* empty space in code block filled in later */
 
     return j;
 }
 
 /*
- * NAME:	jump()
- * DESCRIPTION:	create a jump
+ * create a jump
  */
-static jmplist *jump(int i, jmplist *list)
+JmpList *JmpList::jump(int i, JmpList *list)
 {
-    code_instr(i, 0);
-    return jump_addr(list);
+    CodeChunk::instr(i, 0);
+    return JmpList::addr(list);
 }
 
 /*
- * NAME:	jump->resolve()
- * DESCRIPTION:	resolve all jumps in a jump list
+ * resolve all jumps in a jump list
  */
-static void jump_resolve(jmplist *list, Uint to)
+void JmpList::resolve(JmpList *list, Uint to)
 {
-    while (list != (jmplist *) NULL) {
+    while (list != (JmpList *) NULL) {
 	list->to = to;
 	list = list->next;
     }
 }
 
 /*
- * NAME:	jump->make()
- * DESCRIPTION:	fill in all jumps in a code block
+ * fill in all jumps in a code block
  */
-static void jump_make(char *code)
+void JmpList::make(char *code)
 {
-    jmplist *j;
+    JmpList *j;
 
-    for (j = goto_list; j != (jmplist *) NULL; j = j->next) {
+    for (j = goto_list; j != (JmpList *) NULL; j = j->next) {
 	j->to = j->label->mod;
     }
 
-    for (j = jchunk.mkjumps(code); j != (jmplist *) NULL; j = j->next) {
+    for (j = jchunk.make(code); j != (JmpList *) NULL; j = j->next) {
 	Uint where, to;
 
 	/*
@@ -435,28 +442,22 @@ static void jump_make(char *code)
 }
 
 /*
- * NAME:	jump->clear()
- * DESCRIPTION:	clean up the jump chunks
+ * clean up the jump chunks
  */
-static void jump_clear()
+void JmpList::clear()
 {
-    goto_list = (jmplist *) NULL;
+    goto_list = (JmpList *) NULL;
     jchunk.clean();
 }
 
-
-static void cg_expr (Node*, int);
-static void cg_cond (Node*, int);
-static void cg_stmt (Node*);
 
 static Int kd_allocate, kd_allocate_int, kd_allocate_float;
 static int nparams;		/* number of parameters */
 
 /*
- * NAME:	codegen->type()
- * DESCRIPTION:	return the type of a node
+ * return the type of a node
  */
-static int cg_type(Node *n, long *l)
+int Codegen::type(Node *n, long *l)
 {
     int type;
 
@@ -471,30 +472,28 @@ static int cg_type(Node *n, long *l)
 }
 
 /*
- * NAME:	codegen->cast()
- * DESCRIPTION:	generate code for a cast
+ * generate code for a cast
  */
-static void cg_cast(Node *n)
+void Codegen::cast(Node *n)
 {
-    int type;
+    int t;
     long l;
 
-    type = cg_type(n, &l);
-    if (type != 0) {
-	code_instr(I_CAST, 0);
-	code_byte(type);
-	if (type == T_CLASS) {
-	    code_byte(l >> 16);
-	    code_word(l);
+    t = type(n, &l);
+    if (t != 0) {
+	CodeChunk::instr(I_CAST, 0);
+	CodeChunk::byte(t);
+	if (t == T_CLASS) {
+	    CodeChunk::byte(l >> 16);
+	    CodeChunk::word(l);
 	}
     }
 }
 
 /*
- * NAME:	codegen->lvalue()
- * DESCRIPTION:	generate code for an lvalue
+ * generate code for an lvalue
  */
-static int cg_lvalue(Node *n, int fetch)
+int Codegen::lvalue(Node *n, int fetch)
 {
     int stack;
     Node *m, *l;
@@ -510,55 +509,54 @@ static int cg_lvalue(Node *n, int fetch)
 	    l = l->l.left;
 	}
 	if (l->type == N_INDEX) {
-	    cg_expr(l->l.left, FALSE);
-	    cg_expr(l->r.right, FALSE);
-	    code_instr(I_INDEX2, l->line);
+	    expr(l->l.left, FALSE);
+	    expr(l->r.right, FALSE);
+	    CodeChunk::instr(I_INDEX2, l->line);
 	    stack += 2;
 	} else {
-	    cg_expr(l, FALSE);
+	    expr(l, FALSE);
 	}
 	if (m->l.left->type == N_CAST) {
-	    cg_cast(m->l.left);
+	    cast(m->l.left);
 	}
 	stack += 2;
-	cg_expr(m->r.right, FALSE);
+	expr(m->r.right, FALSE);
 	if (fetch) {
-	    code_instr(I_INDEX2, n->line);
+	    CodeChunk::instr(I_INDEX2, n->line);
 	    if (n->type == N_CAST) {
-		cg_cast(n);
+		cast(n);
 	    }
 	    stack++;
 	}
     } else if (fetch) {
-	cg_expr(n, FALSE);
+	expr(n, FALSE);
 	stack++;
     }
     return stack;
 }
 
 /*
- * NAME:	codegen->store()
- * DESCRIPTION:	generate code for a store
+ * generate code for a store
  */
-static void cg_store(Node *n)
+void Codegen::store(Node *n)
 {
     if (n->type == N_CAST) {
 	n = n->l.left;
     }
     switch (n->type) {
     case N_LOCAL:
-	code_instr(I_STORE_LOCAL, n->line);
-	code_byte(nparams - (int) n->r.number - 1);
+	CodeChunk::instr(I_STORE_LOCAL, n->line);
+	CodeChunk::byte(nparams - (int) n->r.number - 1);
 	break;
 
     case N_GLOBAL:
 	if ((n->r.number >> 8) == Control::nInherits()) {
-	    code_instr(I_STORE_GLOBAL, n->line);
+	    CodeChunk::instr(I_STORE_GLOBAL, n->line);
 	} else {
-	    code_instr(I_STORE_FAR_GLOBAL, n->line);
-	    code_byte(n->r.number >> 8);
+	    CodeChunk::instr(I_STORE_FAR_GLOBAL, n->line);
+	    CodeChunk::byte(n->r.number >> 8);
 	}
-	code_byte(n->r.number);
+	CodeChunk::byte(n->r.number);
 	break;
 
     case N_INDEX:
@@ -568,26 +566,26 @@ static void cg_store(Node *n)
 	}
 	switch (n->type) {
 	case N_LOCAL:
-	    code_instr(I_STORE_LOCAL_INDEX, n->line);
-	    code_byte(nparams - (int) n->r.number - 1);
+	    CodeChunk::instr(I_STORE_LOCAL_INDEX, n->line);
+	    CodeChunk::byte(nparams - (int) n->r.number - 1);
 	    break;
 
 	case N_GLOBAL:
 	    if ((n->r.number >> 8) == Control::nInherits()) {
-		code_instr(I_STORE_GLOBAL_INDEX, n->line);
+		CodeChunk::instr(I_STORE_GLOBAL_INDEX, n->line);
 	    } else {
-		code_instr(I_STORE_FAR_GLOBAL_INDEX, n->line);
-		code_byte(n->r.number >> 8);
+		CodeChunk::instr(I_STORE_FAR_GLOBAL_INDEX, n->line);
+		CodeChunk::byte(n->r.number >> 8);
 	    }
-	    code_byte(n->r.number);
+	    CodeChunk::byte(n->r.number);
 	    break;
 
 	case N_INDEX:
-	    code_instr(I_STORE_INDEX_INDEX, n->line);
+	    CodeChunk::instr(I_STORE_INDEX_INDEX, n->line);
 	    break;
 
 	default:
-	    code_instr(I_STORE_INDEX, n->line);
+	    CodeChunk::instr(I_STORE_INDEX, n->line);
 	    break;
 	}
 	break;
@@ -595,22 +593,20 @@ static void cg_store(Node *n)
 }
 
 /*
- * NAME:	codegen->asgnop()
- * DESCRIPTION:	generate code for an assignment operator
+ * generate code for an assignment operator
  */
-static void cg_asgnop(Node *n, int op)
+void Codegen::assign(Node *n, int op)
 {
-    cg_lvalue(n->l.left, TRUE);
-    cg_expr(n->r.right, FALSE);
-    code_kfun(op, n->line);
-    cg_store(n->l.left);
+    lvalue(n->l.left, TRUE);
+    expr(n->r.right, FALSE);
+    CodeChunk::kfun(op, n->line);
+    store(n->l.left);
 }
 
 /*
- * NAME:	codegen->aggr()
- * DESCRIPTION:	generate code for an aggregate
+ * generate code for an aggregate
  */
-static int cg_aggr(Node *n)
+int Codegen::aggr(Node *n)
 {
     int i;
 
@@ -618,18 +614,17 @@ static int cg_aggr(Node *n)
 	return 0;
     }
     for (i = 1; n->type == N_PAIR; i++) {
-	cg_expr(n->l.left, FALSE);
+	expr(n->l.left, FALSE);
 	n = n->r.right;
     }
-    cg_expr(n, FALSE);
+    expr(n, FALSE);
     return i;
 }
 
 /*
- * NAME:	codegen->map_aggr()
- * DESCRIPTION:	generate code for a mapping aggregate
+ * generate code for a mapping aggregate
  */
-static int cg_map_aggr(Node *n)
+int Codegen::mapAggr(Node *n)
 {
     int i;
 
@@ -637,20 +632,19 @@ static int cg_map_aggr(Node *n)
 	return 0;
     }
     for (i = 2; n->type == N_PAIR; i += 2) {
-	cg_expr(n->l.left->l.left, FALSE);
-	cg_expr(n->l.left->r.right, FALSE);
+	expr(n->l.left->l.left, FALSE);
+	expr(n->l.left->r.right, FALSE);
 	n = n->r.right;
     }
-    cg_expr(n->l.left, FALSE);
-    cg_expr(n->r.right, FALSE);
+    expr(n->l.left, FALSE);
+    expr(n->r.right, FALSE);
     return i;
 }
 
 /*
- * NAME:	codegen->lval_aggr()
- * DESCRIPTION:	generate code for an lvalue aggregate
+ * generate code for an lvalue aggregate
  */
-static int cg_lval_aggr(Node **l)
+int Codegen::lvalAggr(Node **l)
 {
     int i;
     Node *n, *m;
@@ -659,7 +653,7 @@ static int cg_lval_aggr(Node **l)
     n = *l;
     if (n->type == N_PAIR) {
 	for (m = n->l.left; ; m = n->l.left->r.right) {
-	    cg_lvalue(m, FALSE);
+	    lvalue(m, FALSE);
 	    i++;
 	    m = n->r.right;
 	    if (m->type != N_PAIR) {
@@ -673,37 +667,35 @@ static int cg_lval_aggr(Node **l)
 	*l = n;
 	n = m;
     }
-    cg_lvalue(n, FALSE);
+    lvalue(n, FALSE);
 
     return i;
 }
 
 /*
- * NAME:	CodeGen->store_aggr()
- * DESCRIPTION:	generate stores for an lvalue aggregate
+ * generate stores for an lvalue aggregate
  */
-static void cg_store_aggr(Node *n)
+void Codegen::storeAggr(Node *n)
 {
     while (n->type == N_PAIR) {
-	cg_cast(n->r.right);
-	cg_store(n->r.right);
+	cast(n->r.right);
+	store(n->r.right);
 	n = n->l.left;
     }
-    cg_cast(n);
-    cg_store(n);
+    cast(n);
+    store(n);
 }
 
 /*
- * NAME:	codegen->sumargs()
- * DESCRIPTION:	generate code for summand arguments
+ * generate code for summand arguments
  */
-static int cg_sumargs(Node *n)
+int Codegen::sumargs(Node *n)
 {
     int i;
     Node *m;
 
     if (n->type == N_SUM) {
-	i = cg_sumargs(n->l.left);
+	i = sumargs(n->l.left);
 	n = n->r.right;
     } else {
 	i = 0;
@@ -712,28 +704,28 @@ static int cg_sumargs(Node *n)
     switch (n->type) {
     case N_AGGR:
 	n->type = N_INT;
-	n->l.number = SUM_AGGREGATE - cg_aggr(n->l.left);
-	cg_expr(n, FALSE);
+	n->l.number = SUM_AGGREGATE - aggr(n->l.left);
+	expr(n, FALSE);
 	break;
 
     case N_RANGE:
-	cg_expr(n->l.left, FALSE);
+	expr(n->l.left, FALSE);
 	n = n->r.right;
 	if (n->l.left != (Node *) NULL) {
-	    cg_expr(n->l.left, FALSE);
+	    expr(n->l.left, FALSE);
 	    if (n->r.right != (Node *) NULL) {
-		cg_expr(n->r.right, FALSE);
-		code_kfun(KF_CKRANGEFT, n->line);
+		expr(n->r.right, FALSE);
+		CodeChunk::kfun(KF_CKRANGEFT, n->line);
 	    } else {
-		code_kfun(KF_CKRANGEF, n->line);
+		CodeChunk::kfun(KF_CKRANGEF, n->line);
 	    }
 	} else if (n->r.right != (Node *) NULL) {
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_CKRANGET, n->line);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_CKRANGET, n->line);
 	} else {
-	    code_kfun(KF_RANGE, n->line);
-	    code_instr(I_PUSH_INT1, 0);
-	    code_byte(SUM_SIMPLE);
+	    CodeChunk::kfun(KF_RANGE, n->line);
+	    CodeChunk::instr(I_PUSH_INT1, 0);
+	    CodeChunk::byte(SUM_SIMPLE);
 	}
 	break;
 
@@ -742,27 +734,27 @@ static int cg_sumargs(Node *n)
 	if (m != (Node *) NULL && m->type != N_PAIR && m->type != N_SPREAD &&
 	    m->mod == T_INT) {
 	    if (n->r.number == kd_allocate) {
-		cg_expr(m, FALSE);
-		code_instr(I_PUSH_INT1, 0);
-		code_byte(SUM_ALLOCATE_NIL);
+		expr(m, FALSE);
+		CodeChunk::instr(I_PUSH_INT1, 0);
+		CodeChunk::byte(SUM_ALLOCATE_NIL);
 		break;
 	    } else if (n->r.number == kd_allocate_int) {
-		cg_expr(m, FALSE);
-		code_instr(I_PUSH_INT1, 0);
-		code_byte(SUM_ALLOCATE_INT);
+		expr(m, FALSE);
+		CodeChunk::instr(I_PUSH_INT1, 0);
+		CodeChunk::byte(SUM_ALLOCATE_INT);
 		break;
 	    } else if (n->r.number == kd_allocate_float) {
-		cg_expr(m, FALSE);
-		code_instr(I_PUSH_INT1, 0);
-		code_byte(SUM_ALLOCATE_FLT);
+		expr(m, FALSE);
+		CodeChunk::instr(I_PUSH_INT1, 0);
+		CodeChunk::byte(SUM_ALLOCATE_FLT);
 		break;
 	    }
 	}
 	/* fall through */
     default:
-	cg_expr(n, FALSE);
-	code_instr(I_PUSH_INT1, 0);
-	code_byte(SUM_SIMPLE);		/* no range */
+	expr(n, FALSE);
+	CodeChunk::instr(I_PUSH_INT1, 0);
+	CodeChunk::byte(SUM_SIMPLE);		/* no range */
 	break;
     }
 
@@ -770,10 +762,9 @@ static int cg_sumargs(Node *n)
 }
 
 /*
- * NAME:	codegen->funargs()
- * DESCRIPTION:	generate code for function arguments
+ * generate code for function arguments
  */
-static int cg_funargs(Node **l, int *nargs, bool *spread)
+int Codegen::funargs(Node **l, int *nargs, bool *spread)
 {
     Node *n, *m;
     int stack;
@@ -791,7 +782,7 @@ static int cg_funargs(Node **l, int *nargs, bool *spread)
 	m = n;
 	n = n->r.right;
 	if (m->l.left->type == N_LVALUE) {
-	    stack += cg_lvalue(m->l.left->l.left, FALSE);
+	    stack += lvalue(m->l.left->l.left, FALSE);
 	    if (*l != (Node *) NULL) {
 		(*l)->r.right = m->l.left;
 		m->l.left = *l;
@@ -799,15 +790,15 @@ static int cg_funargs(Node **l, int *nargs, bool *spread)
 	    *l = m;
 	    (*nargs)++;
 	} else {
-	    cg_expr(m->l.left, FALSE);
+	    expr(m->l.left, FALSE);
 	    stack++;
 	}
     }
     if (n->type == N_SPREAD) {
-	cg_expr(n->l.left, FALSE);
+	expr(n->l.left, FALSE);
 	stack++;
-	code_instr(I_SPREAD, n->line);
-	code_byte(-(short) n->mod - 2);
+	CodeChunk::instr(I_SPREAD, n->line);
+	CodeChunk::byte(-(short) n->mod - 2);
 	if ((short) n->mod >= 0) {
 	    if (*l == (Node *) NULL) {
 		*l = n;
@@ -816,67 +807,64 @@ static int cg_funargs(Node **l, int *nargs, bool *spread)
 	}
 	*spread = TRUE;
     } else if (n->type == N_LVALUE) {
-	stack += cg_lvalue(n->l.left, FALSE);
+	stack += lvalue(n->l.left, FALSE);
 	if (*l == (Node *) NULL) {
 	    *l = n;
 	}
 	(*nargs)++;
     } else {
-	cg_expr(n, FALSE);
+	expr(n, FALSE);
 	stack++;
     }
     return stack;
 }
 
 /*
- * NAME:	codegen->storearg()
- * DESCRIPTION:	generate storage code for one lvalue argument
+ * generate storage code for one lvalue argument
  */
-static void cg_storearg(Node *n)
+void Codegen::storearg(Node *n)
 {
     if (n->type == N_SPREAD) {
-	int type;
+	int t;
 	long l;
 
-	code_instr(I_SPREAD, n->line);
-	code_byte(n->mod);
+	CodeChunk::instr(I_SPREAD, n->line);
+	CodeChunk::byte(n->mod);
 	n = n->l.left;
 	if (n->mod & T_REF) {
 	    n->mod -= (1 << REFSHIFT);
 	}
-	type = cg_type(n, &l);
-	code_byte(type);
-	if (type == T_CLASS) {
-	    code_byte(l >> 16);
-	    code_word(l);
+	t = type(n, &l);
+	CodeChunk::byte(t);
+	if (t == T_CLASS) {
+	    CodeChunk::byte(l >> 16);
+	    CodeChunk::word(l);
 	}
     } else {
 	/* N_LVALUE */
-	cg_cast(n->l.left);
-	cg_store(n->l.left);
+	cast(n->l.left);
+	store(n->l.left);
     }
 }
 
 /*
- * NAME:	codegen->storeargs()
- * DESCRIPTION:	generate storage code for lvalue arguments
+ * generate storage code for lvalue arguments
  */
-static void cg_storeargs(Node *n)
+void Codegen::storeargs(Node *n)
 {
     while (n->type == N_PAIR) {
-	cg_storearg(n->r.right);
+	storearg(n->r.right);
 	n = n->l.left;
     }
-    cg_storearg(n);
+    storearg(n);
 }
 
 /*
- * NAME:	codegen->expr()
- * DESCRIPTION:	generate code for an expression
+ * generate code for an expression
  */
-static void cg_expr(Node *n, int pop)
+void Codegen::expr(Node *n, int pop)
 {
-    jmplist *jlist, *j2list;
+    JmpList *jlist, *j2list;
     unsigned short i;
     long l;
     Node *args;
@@ -885,228 +873,229 @@ static void cg_expr(Node *n, int pop)
 
     switch (n->type) {
     case N_ADD:
-	cg_expr(n->l.left, FALSE);
+	expr(n->l.left, FALSE);
 	if (n->r.right->type == N_FLOAT) {
 	    if (NFLT_ISONE(n->r.right)) {
-		code_kfun(KF_ADD1, n->line);
+		CodeChunk::kfun(KF_ADD1, n->line);
 		break;
 	    }
 	    if (NFLT_ISMONE(n->r.right)) {
-		code_kfun(KF_SUB1, n->line);
+		CodeChunk::kfun(KF_SUB1, n->line);
 		break;
 	    }
 	}
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_ADD, n->line);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_ADD, n->line);
 	break;
 
     case N_ADD_INT:
-	cg_expr(n->l.left, FALSE);
+	expr(n->l.left, FALSE);
 	if (n->r.right->type == N_INT) {
 	    if (n->r.right->l.number == 1) {
-		code_kfun(KF_ADD1_INT, n->line);
+		CodeChunk::kfun(KF_ADD1_INT, n->line);
 		break;
 	    }
 	    if (n->r.right->l.number == -1) {
-		code_kfun(KF_SUB1_INT, n->line);
+		CodeChunk::kfun(KF_SUB1_INT, n->line);
 		break;
 	    }
 	}
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_ADD_INT, n->line);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_ADD_INT, n->line);
 	break;
 
     case N_ADD_FLOAT:
-	cg_expr(n->l.left, FALSE);
+	expr(n->l.left, FALSE);
 	if (n->r.right->type == N_FLOAT) {
 	    if (NFLT_ISONE(n->r.right)) {
-		code_kfun(KF_ADD1_FLT, n->line);
+		CodeChunk::kfun(KF_ADD1_FLT, n->line);
 		break;
 	    }
 	    if (NFLT_ISMONE(n->r.right)) {
-		code_kfun(KF_SUB1_FLT, n->line);
+		CodeChunk::kfun(KF_SUB1_FLT, n->line);
 		break;
 	    }
 	}
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_ADD_FLT, n->line);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_ADD_FLT, n->line);
 	break;
 
 
     case N_ADD_EQ:
-	cg_asgnop(n, KF_ADD);
+	assign(n, KF_ADD);
 	break;
 
     case N_ADD_EQ_INT:
-	cg_asgnop(n, KF_ADD_INT);
+	assign(n, KF_ADD_INT);
 	break;
 
     case N_ADD_EQ_FLOAT:
-	cg_asgnop(n, KF_ADD_FLT);
+	assign(n, KF_ADD_FLT);
 	break;
 
     case N_ADD_EQ_1:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_ADD1, 0);
-	cg_store(n->l.left);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_ADD1, 0);
+	store(n->l.left);
 	break;
 
     case N_ADD_EQ_1_INT:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_ADD1_INT, 0);
-	cg_store(n->l.left);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_ADD1_INT, 0);
+	store(n->l.left);
 	break;
 
     case N_ADD_EQ_1_FLOAT:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_ADD1_FLT, 0);
-	cg_store(n->l.left);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_ADD1_FLT, 0);
+	store(n->l.left);
 	break;
 
     case N_AGGR:
 	if (n->mod == T_MAPPING) {
-	    i = cg_map_aggr(n->l.left);
-	    code_instr(I_AGGREGATE, n->line);
-	    code_byte(1);
+	    i = mapAggr(n->l.left);
+	    CodeChunk::instr(I_AGGREGATE, n->line);
+	    CodeChunk::byte(1);
 	} else {
-	    i = cg_aggr(n->l.left);
-	    code_instr(I_AGGREGATE, n->line);
-	    code_byte(0);
+	    i = aggr(n->l.left);
+	    CodeChunk::instr(I_AGGREGATE, n->line);
+	    CodeChunk::byte(0);
 	}
-	code_word(i);
+	CodeChunk::word(i);
 	break;
 
     case N_AND:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_AND, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_AND, n->line);
 	break;
 
     case N_AND_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_AND_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_AND_INT, n->line);
 	break;
 
     case N_AND_EQ:
-	cg_asgnop(n, KF_AND);
+	assign(n, KF_AND);
 	break;
 
     case N_AND_EQ_INT:
-	cg_asgnop(n, KF_AND_INT);
+	assign(n, KF_AND_INT);
 	break;
 
     case N_ASSIGN:
 	if (n->l.left->type == N_AGGR) {
-	    l = cg_lval_aggr(&n->l.left->l.left);
-	    cg_expr(n->r.right, FALSE);
-	    code_instr(I_STORES, n->line);
-	    code_byte(l);
-	    cg_store_aggr(n->l.left->l.left);
+	    l = lvalAggr(&n->l.left->l.left);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::instr(I_STORES, n->line);
+	    CodeChunk::byte(l);
+	    storeAggr(n->l.left->l.left);
 	    return;
 	}
 
-	cg_lvalue(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	cg_store(n->l.left);
+	lvalue(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	store(n->l.left);
 	break;
 
     case N_CAST:
-	cg_expr(n->l.left, FALSE);
-	cg_cast(n);
+	expr(n->l.left, FALSE);
+	cast(n);
 	break;
 
     case N_CATCH:
-	jlist = jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH, (jmplist *) NULL);
-	cg_expr(n->l.left, TRUE);
-	code_instr(I_RETURN, 0);
-	jump_resolve(jlist, here);
+	jlist = JmpList::jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH,
+			      (JmpList *) NULL);
+	expr(n->l.left, TRUE);
+	CodeChunk::instr(I_RETURN, 0);
+	JmpList::resolve(jlist, here);
 	return;
 
     case N_COMMA:
-	cg_expr(n->l.left, TRUE);
-	cg_expr(n->r.right, pop);
+	expr(n->l.left, TRUE);
+	expr(n->r.right, pop);
 	return;
 
     case N_DIV:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_DIV, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_DIV, n->line);
 	break;
 
     case N_DIV_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_DIV_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_DIV_INT, n->line);
 	break;
 
     case N_DIV_FLOAT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_DIV_FLT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_DIV_FLT, n->line);
 	break;
 
     case N_DIV_EQ:
-	cg_asgnop(n, KF_DIV);
+	assign(n, KF_DIV);
 	break;
 
     case N_DIV_EQ_INT:
-	cg_asgnop(n, KF_DIV_INT);
+	assign(n, KF_DIV_INT);
 	break;
 
     case N_DIV_EQ_FLOAT:
-	cg_asgnop(n, KF_DIV_FLT);
+	assign(n, KF_DIV_FLT);
 	break;
 
     case N_EQ:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_EQ, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_EQ, n->line);
 	break;
 
     case N_EQ_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_EQ_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_EQ_INT, n->line);
 	break;
 
     case N_EQ_FLOAT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_EQ_FLT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_EQ_FLT, n->line);
 	break;
 
     case N_FLOAT:
-	code_instr(I_PUSH_FLOAT6, n->line);
-	code_word(n->l.fhigh);
-	code_word((int) (n->r.flow >> 16));
-	code_word((int) n->r.flow);
+	CodeChunk::instr(I_PUSH_FLOAT6, n->line);
+	CodeChunk::word(n->l.fhigh);
+	CodeChunk::word((int) (n->r.flow >> 16));
+	CodeChunk::word((int) n->r.flow);
 	break;
 
     case N_FUNC:
 	args = n->l.left->r.right;
-	i = cg_funargs(&args, &nargs, &spread);
+	i = funargs(&args, &nargs, &spread);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:
 	    if (PROTO_VARGS(KFUN((short) n->r.number).proto) != 0) {
-		code_kfun((short) n->r.number, n->line);
-		code_byte(i);
+		CodeChunk::kfun((short) n->r.number, n->line);
+		CodeChunk::byte(i);
 	    } else if (spread) {
-		code_ckfun((short) n->r.number, n->line);
-		code_byte(i);
+		CodeChunk::ckfun((short) n->r.number, n->line);
+		CodeChunk::byte(i);
 	    } else {
-		code_kfun((short) n->r.number, n->line);
+		CodeChunk::kfun((short) n->r.number, n->line);
 	    }
 	    if ((n->r.number >> 24) == KFCALL_LVAL) {
 		/* generate stores */
-		code_instr(I_STORES, n->line);
-		code_byte(nargs);
+		CodeChunk::instr(I_STORES, n->line);
+		CodeChunk::byte(nargs);
 		if (args != (Node *) NULL) {
 		    char *instr;
 
 		    instr = last_instruction;
-		    cg_storeargs(args);
+		    storeargs(args);
 		    last_instruction = instr;
 		}
 	    }
@@ -1115,622 +1104,623 @@ static void cg_expr(Node *n, int pop)
 	case DFCALL:
 	    if ((n->r.number & 0xff00) == 0) {
 		/* auto object */
-		code_instr(I_CALL_AFUNC, n->line);
-		code_byte((int) n->r.number);
+		CodeChunk::instr(I_CALL_AFUNC, n->line);
+		CodeChunk::byte((int) n->r.number);
 	    } else {
-		code_instr(I_CALL_DFUNC, n->line);
-		code_word((int) n->r.number);
+		CodeChunk::instr(I_CALL_DFUNC, n->line);
+		CodeChunk::word((int) n->r.number);
 	    }
-	    code_byte(i);
+	    CodeChunk::byte(i);
 	    break;
 
 	case FCALL:
-	    code_instr(I_CALL_FUNC, n->line);
-	    code_word(Control::genCall((long) n->r.number));
-	    code_byte(i);
+	    CodeChunk::instr(I_CALL_FUNC, n->line);
+	    CodeChunk::word(Control::genCall((long) n->r.number));
+	    CodeChunk::byte(i);
 	    break;
 	}
 	break;
 
     case N_GE:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_GE, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_GE, n->line);
 	break;
 
     case N_GE_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_GE_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_GE_INT, n->line);
 	break;
 
     case N_GE_FLOAT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_GE_FLT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_GE_FLT, n->line);
 	break;
 
     case N_GLOBAL:
 	if ((n->r.number >> 8) == Control::nInherits()) {
-	    code_instr(I_PUSH_GLOBAL, n->line);
-	    code_byte((int) n->r.number);
+	    CodeChunk::instr(I_PUSH_GLOBAL, n->line);
+	    CodeChunk::byte((int) n->r.number);
 	} else {
-	    code_instr(I_PUSH_FAR_GLOBAL, n->line);
-	    code_word((int) n->r.number);
+	    CodeChunk::instr(I_PUSH_FAR_GLOBAL, n->line);
+	    CodeChunk::word((int) n->r.number);
 	}
 	break;
 
     case N_GT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_GT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_GT, n->line);
 	break;
 
     case N_GT_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_GT_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_GT_INT, n->line);
 	break;
 
     case N_GT_FLOAT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_GT_FLT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_GT_FLT, n->line);
 	break;
 
     case N_INDEX:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_instr(I_INDEX, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::instr(I_INDEX, n->line);
 	break;
 
     case N_INSTANCEOF:
-	cg_expr(n->l.left, FALSE);
-	code_instr(I_INSTANCEOF, n->line);
+	expr(n->l.left, FALSE);
+	CodeChunk::instr(I_INSTANCEOF, n->line);
 	l = Control::defString(n->r.right->l.string) & 0xffffffL;
-	code_byte(l >> 16);
-	code_word(l);
+	CodeChunk::byte(l >> 16);
+	CodeChunk::word(l);
 	break;
 
     case N_INT:
 	if (n->l.number >= -128 && n->l.number <= 127) {
-	    code_instr(I_PUSH_INT1, n->line);
-	    code_byte((int) n->l.number);
+	    CodeChunk::instr(I_PUSH_INT1, n->line);
+	    CodeChunk::byte((int) n->l.number);
 	} else {
-	    code_instr(I_PUSH_INT4, n->line);
-	    code_word((int) (n->l.number >> 16));
-	    code_word((int) n->l.number);
+	    CodeChunk::instr(I_PUSH_INT4, n->line);
+	    CodeChunk::word((int) (n->l.number >> 16));
+	    CodeChunk::word((int) n->l.number);
 	}
 	break;
 
     case N_LAND:
 	if (!pop) {
 	    jlist = true_list;
-	    true_list = (jmplist *) NULL;
-	    cg_cond(n, TRUE);
-	    code_instr(I_PUSH_INT1, 0);
-	    code_byte(0);
-	    j2list = jump(I_JUMP, (jmplist *) NULL);
-	    jump_resolve(true_list, here);
+	    true_list = (JmpList *) NULL;
+	    cond(n, TRUE);
+	    CodeChunk::instr(I_PUSH_INT1, 0);
+	    CodeChunk::byte(0);
+	    j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+	    JmpList::resolve(true_list, here);
 	    true_list = jlist;
-	    code_instr(I_PUSH_INT1, 0);
-	    code_byte(1);
-	    jump_resolve(j2list, here);
+	    CodeChunk::instr(I_PUSH_INT1, 0);
+	    CodeChunk::byte(1);
+	    JmpList::resolve(j2list, here);
 	} else {
 	    jlist = false_list;
-	    false_list = (jmplist *) NULL;
-	    cg_cond(n->l.left, FALSE);
-	    cg_expr(n->r.right, TRUE);
-	    jump_resolve(false_list, here);
+	    false_list = (JmpList *) NULL;
+	    cond(n->l.left, FALSE);
+	    expr(n->r.right, TRUE);
+	    JmpList::resolve(false_list, here);
 	    false_list = jlist;
 	}
 	return;
 
     case N_LE:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LE, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_LE, n->line);
 	break;
 
     case N_LE_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LE_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_LE_INT, n->line);
 	break;
 
     case N_LE_FLOAT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LE_FLT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_LE_FLT, n->line);
 	break;
 
     case N_LOCAL:
-	code_instr(I_PUSH_LOCAL, n->line);
-	code_byte(nparams - (int) n->r.number - 1);
+	CodeChunk::instr(I_PUSH_LOCAL, n->line);
+	CodeChunk::byte(nparams - (int) n->r.number - 1);
 	break;
 
     case N_LOR:
 	if (!pop) {
 	    jlist = false_list;
-	    false_list = (jmplist *) NULL;
-	    cg_cond(n, FALSE);
-	    code_instr(I_PUSH_INT1, 0);
-	    code_byte(1);
-	    j2list = jump(I_JUMP, (jmplist *) NULL);
-	    jump_resolve(false_list, here);
+	    false_list = (JmpList *) NULL;
+	    cond(n, FALSE);
+	    CodeChunk::instr(I_PUSH_INT1, 0);
+	    CodeChunk::byte(1);
+	    j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+	    JmpList::resolve(false_list, here);
 	    false_list = jlist;
-	    code_instr(I_PUSH_INT1, 0);
-	    code_byte(0);
-	    jump_resolve(j2list, here);
+	    CodeChunk::instr(I_PUSH_INT1, 0);
+	    CodeChunk::byte(0);
+	    JmpList::resolve(j2list, here);
 	} else {
 	    jlist = true_list;
-	    true_list = (jmplist *) NULL;
-	    cg_cond(n->l.left, TRUE);
-	    cg_expr(n->r.right, TRUE);
-	    jump_resolve(true_list, here);
+	    true_list = (JmpList *) NULL;
+	    cond(n->l.left, TRUE);
+	    expr(n->r.right, TRUE);
+	    JmpList::resolve(true_list, here);
 	    true_list = jlist;
 	}
 	return;
 
     case N_LSHIFT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LSHIFT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_LSHIFT, n->line);
 	break;
 
     case N_LSHIFT_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LSHIFT_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_LSHIFT_INT, n->line);
 	break;
 
     case N_LSHIFT_EQ:
-	cg_asgnop(n, KF_LSHIFT);
+	assign(n, KF_LSHIFT);
 	break;
 
     case N_LSHIFT_EQ_INT:
-	cg_asgnop(n, KF_LSHIFT_INT);
+	assign(n, KF_LSHIFT_INT);
 	break;
 
     case N_LT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_LT, n->line);
 	break;
 
     case N_LT_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LT_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_LT_INT, n->line);
 	break;
 
     case N_LT_FLOAT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LT_FLT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_LT_FLT, n->line);
 	break;
 
     case N_MOD:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_MOD, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_MOD, n->line);
 	break;
 
     case N_MOD_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_MOD_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_MOD_INT, n->line);
 	break;
 
     case N_MOD_EQ:
-	cg_asgnop(n, KF_MOD);
+	assign(n, KF_MOD);
 	break;
 
     case N_MOD_EQ_INT:
-	cg_asgnop(n, KF_MOD_INT);
+	assign(n, KF_MOD_INT);
 	break;
 
     case N_MULT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_MULT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_MULT, n->line);
 	break;
 
     case N_MULT_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_MULT_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_MULT_INT, n->line);
 	break;
 
     case N_MULT_FLOAT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_MULT_FLT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_MULT_FLT, n->line);
 	break;
 
     case N_MULT_EQ:
-	cg_asgnop(n, KF_MULT);
+	assign(n, KF_MULT);
 	break;
 
     case N_MULT_EQ_INT:
-	cg_asgnop(n, KF_MULT_INT);
+	assign(n, KF_MULT_INT);
 	break;
 
     case N_MULT_EQ_FLOAT:
-	cg_asgnop(n, KF_MULT_FLT);
+	assign(n, KF_MULT_FLT);
 	break;
 
     case N_NE:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_NE, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_NE, n->line);
 	break;
 
     case N_NE_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_NE_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_NE_INT, n->line);
 	break;
 
     case N_NE_FLOAT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_NE_FLT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_NE_FLT, n->line);
 	break;
 
     case N_NEG:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_NEG, n->line);
+	expr(n->l.left, FALSE);
+	CodeChunk::kfun(KF_NEG, n->line);
 	break;
 
     case N_NIL:
-	code_kfun(KF_NIL, n->line);
+	CodeChunk::kfun(KF_NIL, n->line);
 	break;
 
     case N_NOT:
-	cg_expr(n->l.left, FALSE);
-	code_kfun((n->l.left->mod == T_INT) ? KF_NOT_INT : KF_NOT, n->line);
+	expr(n->l.left, FALSE);
+	CodeChunk::kfun((n->l.left->mod == T_INT) ? KF_NOT_INT : KF_NOT,
+			n->line);
 	break;
 
     case N_OR:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_OR, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_OR, n->line);
 	break;
 
     case N_OR_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_OR_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_OR_INT, n->line);
 	break;
 
     case N_OR_EQ:
-	cg_asgnop(n, KF_OR);
+	assign(n, KF_OR);
 	break;
 
     case N_OR_EQ_INT:
-	cg_asgnop(n, KF_OR_INT);
+	assign(n, KF_OR_INT);
 	break;
 
     case N_QUEST:
 	if (n->r.right->l.left != (Node *) NULL) {
 	    jlist = false_list;
-	    false_list = (jmplist *) NULL;
-	    cg_cond(n->l.left, FALSE);
-	    cg_expr(n->r.right->l.left, pop);
+	    false_list = (JmpList *) NULL;
+	    cond(n->l.left, FALSE);
+	    expr(n->r.right->l.left, pop);
 	    if (n->r.right->r.right != (Node *) NULL) {
-		j2list = jump(I_JUMP, (jmplist *) NULL);
-		jump_resolve(false_list, here);
+		j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+		JmpList::resolve(false_list, here);
 		false_list = jlist;
-		cg_expr(n->r.right->r.right, pop);
-		jump_resolve(j2list, here);
+		expr(n->r.right->r.right, pop);
+		JmpList::resolve(j2list, here);
 	    } else {
-		jump_resolve(false_list, here);
+		JmpList::resolve(false_list, here);
 		false_list = jlist;
 	    }
 	} else {
 	    jlist = true_list;
-	    true_list = (jmplist *) NULL;
-	    cg_cond(n->l.left, TRUE);
+	    true_list = (JmpList *) NULL;
+	    cond(n->l.left, TRUE);
 	    if (n->r.right->r.right != (Node *) NULL) {
-		cg_expr(n->r.right->r.right, pop);
+		expr(n->r.right->r.right, pop);
 	    }
-	    jump_resolve(true_list, here);
+	    JmpList::resolve(true_list, here);
 	    true_list = jlist;
 	}
 	return;
 
     case N_RANGE:
-	cg_expr(n->l.left, FALSE);
+	expr(n->l.left, FALSE);
 	n = n->r.right;
 	if (n->l.left != (Node *) NULL) {
-	    cg_expr(n->l.left, FALSE);
+	    expr(n->l.left, FALSE);
 	    if (n->r.right != (Node *) NULL) {
-		cg_expr(n->r.right, FALSE);
-		code_kfun(KF_RANGEFT, n->line);
+		expr(n->r.right, FALSE);
+		CodeChunk::kfun(KF_RANGEFT, n->line);
 	    } else {
-		code_kfun(KF_RANGEF, n->line);
+		CodeChunk::kfun(KF_RANGEF, n->line);
 	    }
 	} else if (n->r.right != (Node *) NULL) {
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_RANGET, n->line);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_RANGET, n->line);
 	} else {
-	    code_kfun(KF_RANGE, n->line);
+	    CodeChunk::kfun(KF_RANGE, n->line);
 	}
 	break;
 
     case N_RSHIFT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_RSHIFT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_RSHIFT, n->line);
 	break;
 
     case N_RSHIFT_INT:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_RSHIFT_INT, n->line);
+	expr(n->l.left, FALSE);
+	expr(n->r.right, FALSE);
+	CodeChunk::kfun(KF_RSHIFT_INT, n->line);
 	break;
 
     case N_RSHIFT_EQ:
-	cg_asgnop(n, KF_RSHIFT);
+	assign(n, KF_RSHIFT);
 	break;
 
     case N_RSHIFT_EQ_INT:
-	cg_asgnop(n, KF_RSHIFT_INT);
+	assign(n, KF_RSHIFT_INT);
 	break;
 
     case N_STR:
 	l = Control::defString(n->l.string);
 	if ((l & 0x01000000L) && (unsigned short) l < 256) {
-	    code_instr(I_PUSH_STRING, n->line);
-	    code_byte((int) l);
+	    CodeChunk::instr(I_PUSH_STRING, n->line);
+	    CodeChunk::byte((int) l);
 	} else if ((unsigned short) l < 256) {
-	    code_instr(I_PUSH_NEAR_STRING, n->line);
-	    code_byte((int) (l >> 16));
-	    code_byte((int) l);
+	    CodeChunk::instr(I_PUSH_NEAR_STRING, n->line);
+	    CodeChunk::byte((int) (l >> 16));
+	    CodeChunk::byte((int) l);
 	} else {
-	    code_instr(I_PUSH_FAR_STRING, n->line);
-	    code_byte((int) (l >> 16));
-	    code_word((int) l);
+	    CodeChunk::instr(I_PUSH_FAR_STRING, n->line);
+	    CodeChunk::byte((int) (l >> 16));
+	    CodeChunk::word((int) l);
 	}
 	break;
 
     case N_SUB:
 	if ((n->l.left->type == N_INT && n->l.left->l.number == 0) ||
 	    (n->l.left->type == N_FLOAT && NFLT_ISZERO(n->l.left))) {
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_UMIN, n->line);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_UMIN, n->line);
 	} else {
-	    cg_expr(n->l.left, FALSE);
+	    expr(n->l.left, FALSE);
 	    if (n->r.right->type == N_FLOAT) {
 		if (NFLT_ISONE(n->r.right)) {
-		    code_kfun(KF_SUB1, n->line);
+		    CodeChunk::kfun(KF_SUB1, n->line);
 		    break;
 		}
 		if (NFLT_ISMONE(n->r.right)) {
-		    code_kfun(KF_ADD1, n->line);
+		    CodeChunk::kfun(KF_ADD1, n->line);
 		    break;
 		}
 	    }
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_SUB, n->line);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_SUB, n->line);
 	}
 	break;
 
     case N_SUB_INT:
 	if (n->l.left->type == N_INT && n->l.left->l.number == 0) {
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_UMIN_INT, n->line);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_UMIN_INT, n->line);
 	} else {
-	    cg_expr(n->l.left, FALSE);
+	    expr(n->l.left, FALSE);
 	    if (n->r.right->type == N_INT) {
 		if (n->r.right->l.number == 1) {
-		    code_kfun(KF_SUB1_INT, n->line);
+		    CodeChunk::kfun(KF_SUB1_INT, n->line);
 		    break;
 		}
 		if (n->r.right->l.number == -1) {
-		    code_kfun(KF_ADD1_INT, n->line);
+		    CodeChunk::kfun(KF_ADD1_INT, n->line);
 		    break;
 		}
 	    }
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_SUB_INT, n->line);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_SUB_INT, n->line);
 	}
 	break;
 
     case N_SUB_FLOAT:
 	if (n->l.left->type == N_FLOAT && n->l.left->l.number == 0) {
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_UMIN_FLT, n->line);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_UMIN_FLT, n->line);
 	} else {
-	    cg_expr(n->l.left, FALSE);
+	    expr(n->l.left, FALSE);
 	    if (n->r.right->type == N_FLOAT) {
 		if (NFLT_ISONE(n->r.right)) {
-		    code_kfun(KF_SUB1_FLT, n->line);
+		    CodeChunk::kfun(KF_SUB1_FLT, n->line);
 		    break;
 		}
 		if (NFLT_ISMONE(n->r.right)) {
-		    code_kfun(KF_ADD1_FLT, n->line);
+		    CodeChunk::kfun(KF_ADD1_FLT, n->line);
 		    break;
 		}
 	    }
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_SUB_FLT, n->line);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_SUB_FLT, n->line);
 	}
 	break;
 
     case N_SUB_EQ:
-	cg_asgnop(n, KF_SUB);
+	assign(n, KF_SUB);
 	break;
 
     case N_SUB_EQ_INT:
-	cg_asgnop(n, KF_SUB_INT);
+	assign(n, KF_SUB_INT);
 	break;
 
     case N_SUB_EQ_FLOAT:
-	cg_asgnop(n, KF_SUB);
+	assign(n, KF_SUB);
 	break;
 
     case N_SUB_EQ_1:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_SUB1, 0);
-	cg_store(n->l.left);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_SUB1, 0);
+	store(n->l.left);
 	break;
 
     case N_SUB_EQ_1_INT:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_SUB1_INT, 0);
-	cg_store(n->l.left);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_SUB1_INT, 0);
+	store(n->l.left);
 	break;
 
     case N_SUB_EQ_1_FLOAT:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_SUB1_FLT, 0);
-	cg_store(n->l.left);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_SUB1_FLT, 0);
+	store(n->l.left);
 	break;
 
 
     case N_SUM:
-	i = cg_sumargs(n);
-	code_kfun(KF_SUM, 0);
-	code_byte(i);
+	i = sumargs(n);
+	CodeChunk::kfun(KF_SUM, 0);
+	CodeChunk::byte(i);
 	break;
 
     case N_SUM_EQ:
-	cg_lvalue(n->l.left, TRUE);
-	code_instr(I_PUSH_INT1, 0);
-	code_byte(SUM_SIMPLE);
-	i = cg_sumargs(n->r.right) + 1;
-	code_kfun(KF_SUM, 0);
-	code_byte(i);
-	cg_store(n->l.left);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::instr(I_PUSH_INT1, 0);
+	CodeChunk::byte(SUM_SIMPLE);
+	i = sumargs(n->r.right) + 1;
+	CodeChunk::kfun(KF_SUM, 0);
+	CodeChunk::byte(i);
+	store(n->l.left);
 	break;
 
     case N_TOFLOAT:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_TOFLOAT, n->line);
+	expr(n->l.left, FALSE);
+	CodeChunk::kfun(KF_TOFLOAT, n->line);
 	break;
 
     case N_TOINT:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_TOINT, n->line);
+	expr(n->l.left, FALSE);
+	CodeChunk::kfun(KF_TOINT, n->line);
 	break;
 
     case N_TOSTRING:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_TOSTRING, n->line);
+	expr(n->l.left, FALSE);
+	CodeChunk::kfun(KF_TOSTRING, n->line);
 	break;
 
     case N_TST:
-	cg_expr(n->l.left, FALSE);
+	expr(n->l.left, FALSE);
 	if( n->l.left->mod == T_INT ) {
-	    code_kfun(KF_TST_INT, n->line);
+	    CodeChunk::kfun(KF_TST_INT, n->line);
 	} else if( n->l.left->mod == T_FLOAT ){
-	    code_kfun(KF_TST_FLT, n->line);
+	    CodeChunk::kfun(KF_TST_FLT, n->line);
 	} else {
-	    code_kfun(KF_TST, n->line);
+	    CodeChunk::kfun(KF_TST, n->line);
 	}
 	break;
 
     case N_UMIN:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_UMIN, n->line);
+	expr(n->l.left, FALSE);
+	CodeChunk::kfun(KF_UMIN, n->line);
 	break;
 
     case N_XOR:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_expr(n->l.left, FALSE);
-	    code_kfun(KF_NEG, n->line);
+	    expr(n->l.left, FALSE);
+	    CodeChunk::kfun(KF_NEG, n->line);
 	} else {
-	    cg_expr(n->l.left, FALSE);
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_XOR, n->line);
+	    expr(n->l.left, FALSE);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_XOR, n->line);
 	}
 	break;
 
     case N_XOR_INT:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_expr(n->l.left, FALSE);
-	    code_kfun(KF_NEG_INT, n->line);
+	    expr(n->l.left, FALSE);
+	    CodeChunk::kfun(KF_NEG_INT, n->line);
 	} else {
-	    cg_expr(n->l.left, FALSE);
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_XOR_INT, n->line);
+	    expr(n->l.left, FALSE);
+	    expr(n->r.right, FALSE);
+	    CodeChunk::kfun(KF_XOR_INT, n->line);
 	}
 	break;
 
     case N_XOR_EQ:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_lvalue(n->l.left, TRUE);
-	    code_kfun(KF_NEG, 0);
-	    cg_store(n->l.left);
+	    lvalue(n->l.left, TRUE);
+	    CodeChunk::kfun(KF_NEG, 0);
+	    store(n->l.left);
 	} else {
-	    cg_asgnop(n, KF_XOR);
+	    assign(n, KF_XOR);
 	}
 	break;
 
     case N_XOR_EQ_INT:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_lvalue(n->l.left, TRUE);
-	    code_kfun(KF_NEG_INT, 0);
-	    cg_store(n->l.left);
+	    lvalue(n->l.left, TRUE);
+	    CodeChunk::kfun(KF_NEG_INT, 0);
+	    store(n->l.left);
 	} else {
-	    cg_asgnop(n, KF_XOR_INT);
+	    assign(n, KF_XOR_INT);
 	}
 	break;
 
     case N_MIN_MIN:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_SUB1, 0);
-	cg_store(n->l.left);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_SUB1, 0);
+	store(n->l.left);
 	if( n->mod == T_INT ) {
-	    code_kfun(KF_ADD1_INT, 0);
+	    CodeChunk::kfun(KF_ADD1_INT, 0);
 	} else if( n->mod == T_FLOAT ) {
-	    code_kfun(KF_ADD1_FLT, 0);
+	    CodeChunk::kfun(KF_ADD1_FLT, 0);
 	} else {
-	    code_kfun(KF_ADD1, 0);
+	    CodeChunk::kfun(KF_ADD1, 0);
 	}
 	break;
 
     case N_MIN_MIN_INT:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_SUB1_INT, 0);
-	cg_store(n->l.left);
-	code_kfun(KF_ADD1_INT, 0);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_SUB1_INT, 0);
+	store(n->l.left);
+	CodeChunk::kfun(KF_ADD1_INT, 0);
 	break;
 
     case N_MIN_MIN_FLOAT:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_SUB1_FLT, 0);
-	cg_store(n->l.left);
-	code_kfun(KF_ADD1_FLT, 0);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_SUB1_FLT, 0);
+	store(n->l.left);
+	CodeChunk::kfun(KF_ADD1_FLT, 0);
 	break;
 
     case N_PLUS_PLUS:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_ADD1, 0);
-	cg_store(n->l.left);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_ADD1, 0);
+	store(n->l.left);
 	if( n->mod == T_INT ) {
-	    code_kfun(KF_SUB1_INT, 0);
+	    CodeChunk::kfun(KF_SUB1_INT, 0);
 	} else if( n->mod == T_FLOAT ) {
-	    code_kfun(KF_SUB1_FLT, 0);
+	    CodeChunk::kfun(KF_SUB1_FLT, 0);
 	} else {
-	    code_kfun(KF_SUB1, 0);
+	    CodeChunk::kfun(KF_SUB1, 0);
 	}
 	break;
 
     case N_PLUS_PLUS_INT:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_ADD1_INT, 0);
-	cg_store(n->l.left);
-	code_kfun(KF_SUB1_INT, 0);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_ADD1_INT, 0);
+	store(n->l.left);
+	CodeChunk::kfun(KF_SUB1_INT, 0);
 	break;
 
     case N_PLUS_PLUS_FLOAT:
-	cg_lvalue(n->l.left, TRUE);
-	code_kfun(KF_ADD1_FLT, 0);
-	cg_store(n->l.left);
-	code_kfun(KF_SUB1_FLT, 0);
+	lvalue(n->l.left, TRUE);
+	CodeChunk::kfun(KF_ADD1_FLT, 0);
+	store(n->l.left);
+	CodeChunk::kfun(KF_SUB1_FLT, 0);
 	break;
 
 # ifdef DEBUG
@@ -1745,50 +1735,49 @@ static void cg_expr(Node *n, int pop)
 }
 
 /*
- * NAME:	codegen->cond()
- * DESCRIPTION:	generate code for a condition
+ * generate code for a condition
  */
-static void cg_cond(Node *n, int jmptrue)
+void Codegen::cond(Node *n, int jmptrue)
 {
-    jmplist *jlist;
+    JmpList *jlist;
 
     for (;;) {
 	switch (n->type) {
 	case N_INT:
 	    if (jmptrue) {
 		if (n->l.number != 0) {
-		    true_list = jump(I_JUMP, true_list);
+		    true_list = JmpList::jump(I_JUMP, true_list);
 		}
 	    } else if (n->l.number == 0) {
-		false_list = jump(I_JUMP, false_list);
+		false_list = JmpList::jump(I_JUMP, false_list);
 	    }
 	    break;
 
 	case N_LAND:
 	    if (jmptrue) {
 		jlist = false_list;
-		false_list = (jmplist *) NULL;
-		cg_cond(n->l.left, FALSE);
-		cg_cond(n->r.right, TRUE);
-		jump_resolve(false_list, here);
+		false_list = (JmpList *) NULL;
+		cond(n->l.left, FALSE);
+		cond(n->r.right, TRUE);
+		JmpList::resolve(false_list, here);
 		false_list = jlist;
 	    } else {
-		cg_cond(n->l.left, FALSE);
-		cg_cond(n->r.right, FALSE);
+		cond(n->l.left, FALSE);
+		cond(n->r.right, FALSE);
 	    }
 	    break;
 
 	case N_LOR:
 	    if (!jmptrue) {
 		jlist = true_list;
-		true_list = (jmplist *) NULL;
-		cg_cond(n->l.left, TRUE);
-		cg_cond(n->r.right, FALSE);
-		jump_resolve(true_list, here);
+		true_list = (JmpList *) NULL;
+		cond(n->l.left, TRUE);
+		cond(n->r.right, FALSE);
+		JmpList::resolve(true_list, here);
 		true_list = jlist;
 	    } else {
-		cg_cond(n->l.left, TRUE);
-		cg_cond(n->r.right, TRUE);
+		cond(n->l.left, TRUE);
+		cond(n->r.right, TRUE);
 	    }
 	    break;
 
@@ -1796,23 +1785,23 @@ static void cg_cond(Node *n, int jmptrue)
 	    jlist = true_list;
 	    true_list = false_list;
 	    false_list = jlist;
-	    cg_cond(n->l.left, !jmptrue);
+	    cond(n->l.left, !jmptrue);
 	    jlist = true_list;
 	    true_list = false_list;
 	    false_list = jlist;
 	    break;
 
 	case N_COMMA:
-	    cg_expr(n->l.left, TRUE);
+	    expr(n->l.left, TRUE);
 	    n = n->r.right;
 	    continue;
 
 	default:
-	    cg_expr(n, FALSE);
+	    expr(n, FALSE);
 	    if (jmptrue) {
-		true_list = jump(I_JUMP_NONZERO, true_list);
+		true_list = JmpList::jump(I_JUMP_NONZERO, true_list);
 	    } else {
-		false_list = jump(I_JUMP_ZERO, false_list);
+		false_list = JmpList::jump(I_JUMP_ZERO, false_list);
 	    }
 	    break;
 	}
@@ -1822,16 +1811,15 @@ static void cg_cond(Node *n, int jmptrue)
 
 struct case_label {
     Uint where;				/* where to jump to */
-    jmplist *jump;			/* list of unresolved jumps */
+    JmpList *jump;			/* list of unresolved jumps */
 };
 
 static case_label *switch_table;	/* label table for current switch */
 
 /*
- * NAME:	codegen->switch_start()
- * DESCRIPTION:	generate code for the start of a switch statement
+ * generate code for the start of a switch statement
  */
-static void cg_switch_start(Node *n)
+void Codegen::switchStart(Node *n)
 {
     Node *m;
 
@@ -1847,28 +1835,27 @@ static void cg_switch_start(Node *n)
 	fatal("N_COMPOUND expected");
     }
 # endif
-    cg_stmt(m->r.right);
+    stmt(m->r.right);
     m->r.right = NULL;
 
     /*
      * switch expression
      */
-    cg_expr(n->r.right->l.left, FALSE);
-    code_instr(I_SWITCH, 0);
+    expr(n->r.right->l.left, FALSE);
+    CodeChunk::instr(I_SWITCH, 0);
 }
 
 /*
- * NAME:	codegen->switch_int()
- * DESCRIPTION:	generate single label code for a switch statement
+ * generate single label code for a switch statement
  */
-static void cg_switch_int(Node *n)
+void Codegen::switchInt(Node *n)
 {
     Node *m;
     int i, size, sz;
     case_label *table;
 
-    cg_switch_start(n);
-    code_byte(SWITCH_INT);
+    switchStart(n);
+    CodeChunk::byte(SWITCH_INT);
     m = n->l.left;
     size = n->mod;
     sz = n->r.right->mod;
@@ -1879,12 +1866,12 @@ static void cg_switch_int(Node *n)
 	/* implicit default */
 	size++;
     }
-    code_word(size);
-    code_byte(sz);
+    CodeChunk::word(size);
+    CodeChunk::byte(sz);
 
     table = switch_table;
     switch_table = ALLOCA(case_label, size);
-    switch_table[0].jump = jump_addr((jmplist *) NULL);
+    switch_table[0].jump = JmpList::addr((JmpList *) NULL);
     i = 1;
     do {
 	Int l;
@@ -1892,29 +1879,29 @@ static void cg_switch_int(Node *n)
 	l = m->l.left->l.number;
 	switch (sz) {
 	case 4:
-	    code_word((int) (l >> 16));
+	    CodeChunk::word((int) (l >> 16));
 	    /* fall through */
 	case 2:
-	    code_word((int) l);
+	    CodeChunk::word((int) l);
 	    break;
 
 	case 3:
-	    code_byte((int) (l >> 16));
-	    code_word((int) l);
+	    CodeChunk::byte((int) (l >> 16));
+	    CodeChunk::word((int) l);
 	    break;
 
 	case 1:
-	    code_byte((int) l);
+	    CodeChunk::byte((int) l);
 	    break;
 	}
-	switch_table[i++].jump = jump_addr((jmplist *) NULL);
+	switch_table[i++].jump = JmpList::addr((JmpList *) NULL);
 	m = m->r.right;
     } while (i < size);
 
     /*
      * generate code for body
      */
-    cg_stmt(n->r.right->r.right);
+    stmt(n->r.right->r.right);
 
     /*
      * resolve jumps
@@ -1924,24 +1911,23 @@ static void cg_switch_int(Node *n)
 	switch_table[0].where = here;
     }
     for (i = 0; i < size; i++) {
-	jump_resolve(switch_table[i].jump, switch_table[i].where);
+	JmpList::resolve(switch_table[i].jump, switch_table[i].where);
     }
     AFREE(switch_table);
     switch_table = table;
 }
 
 /*
- * NAME:	codegen->switch_range()
- * DESCRIPTION:	generate range label code for a switch statement
+ * generate range label code for a switch statement
  */
-static void cg_switch_range(Node *n)
+void Codegen::switchRange(Node *n)
 {
     Node *m;
     int i, size, sz;
     case_label *table;
 
-    cg_switch_start(n);
-    code_byte(SWITCH_RANGE);
+    switchStart(n);
+    CodeChunk::byte(SWITCH_RANGE);
     m = n->l.left;
     size = n->mod;
     sz = n->r.right->mod;
@@ -1952,12 +1938,12 @@ static void cg_switch_range(Node *n)
 	/* implicit default */
 	size++;
     }
-    code_word(size);
-    code_byte(sz);
+    CodeChunk::word(size);
+    CodeChunk::byte(sz);
 
     table = switch_table;
     switch_table = ALLOCA(case_label, size);
-    switch_table[0].jump = jump_addr((jmplist *) NULL);
+    switch_table[0].jump = JmpList::addr((JmpList *) NULL);
     i = 1;
     do {
 	Int l;
@@ -1965,47 +1951,47 @@ static void cg_switch_range(Node *n)
 	l = m->l.left->l.number;
 	switch (sz) {
 	case 4:
-	    code_word((int) (l >> 16));
+	    CodeChunk::word((int) (l >> 16));
 	    /* fall through */
 	case 2:
-	    code_word((int) l);
+	    CodeChunk::word((int) l);
 	    break;
 
 	case 3:
-	    code_byte((int) (l >> 16));
-	    code_word((int) l);
+	    CodeChunk::byte((int) (l >> 16));
+	    CodeChunk::word((int) l);
 	    break;
 
 	case 1:
-	    code_byte((int) l);
+	    CodeChunk::byte((int) l);
 	    break;
 	}
 	l = m->l.left->r.number;
 	switch (sz) {
 	case 4:
-	    code_word((int) (l >> 16));
+	    CodeChunk::word((int) (l >> 16));
 	    /* fall through */
 	case 2:
-	    code_word((int) l);
+	    CodeChunk::word((int) l);
 	    break;
 
 	case 3:
-	    code_byte((int) (l >> 16));
-	    code_word((int) l);
+	    CodeChunk::byte((int) (l >> 16));
+	    CodeChunk::word((int) l);
 	    break;
 
 	case 1:
-	    code_byte((int) l);
+	    CodeChunk::byte((int) l);
 	    break;
 	}
-	switch_table[i++].jump = jump_addr((jmplist *) NULL);
+	switch_table[i++].jump = JmpList::addr((JmpList *) NULL);
 	m = m->r.right;
     } while (i < size);
 
     /*
      * generate code for body
      */
-    cg_stmt(n->r.right->r.right);
+    stmt(n->r.right->r.right);
 
     /*
      * resolve jumps
@@ -2015,24 +2001,23 @@ static void cg_switch_range(Node *n)
 	switch_table[0].where = here;
     }
     for (i = 0; i < size; i++) {
-	jump_resolve(switch_table[i].jump, switch_table[i].where);
+	JmpList::resolve(switch_table[i].jump, switch_table[i].where);
     }
     AFREE(switch_table);
     switch_table = table;
 }
 
 /*
- * NAME:	codegen->switch_str()
- * DESCRIPTION:	generate code for a string switch statement
+ * generate code for a string switch statement
  */
-static void cg_switch_str(Node *n)
+void Codegen::switchStr(Node *n)
 {
     Node *m;
     int i, size;
     case_label *table;
 
-    cg_switch_start(n);
-    code_byte(SWITCH_STRING);
+    switchStart(n);
+    CodeChunk::byte(SWITCH_STRING);
     m = n->l.left;
     size = n->mod;
     if (m->l.left == (Node *) NULL) {
@@ -2042,37 +2027,37 @@ static void cg_switch_str(Node *n)
 	/* implicit default */
 	size++;
     }
-    code_word(size);
+    CodeChunk::word(size);
 
     table = switch_table;
     switch_table = ALLOCA(case_label, size);
-    switch_table[0].jump = jump_addr((jmplist *) NULL);
+    switch_table[0].jump = JmpList::addr((JmpList *) NULL);
     i = 1;
     if (m->l.left->type == nil_node) {
 	/*
 	 * nil
 	 */
-	code_byte(0);
-	switch_table[i++].jump = jump_addr((jmplist *) NULL);
+	CodeChunk::byte(0);
+	switch_table[i++].jump = JmpList::addr((JmpList *) NULL);
 	m = m->r.right;
     } else {
 	/* no 0 case */
-	code_byte(1);
+	CodeChunk::byte(1);
     }
     while (i < size) {
 	Int l;
 
 	l = Control::defString(m->l.left->l.string);
-	code_byte((int) (l >> 16));
-	code_word((int) l);
-	switch_table[i++].jump = jump_addr((jmplist *) NULL);
+	CodeChunk::byte((int) (l >> 16));
+	CodeChunk::word((int) l);
+	switch_table[i++].jump = JmpList::addr((JmpList *) NULL);
 	m = m->r.right;
     }
 
     /*
      * generate code for body
      */
-    cg_stmt(n->r.right->r.right);
+    stmt(n->r.right->r.right);
 
     /*
      * resolve jumps
@@ -2082,20 +2067,19 @@ static void cg_switch_str(Node *n)
 	switch_table[0].where = here;
     }
     for (i = 0; i < size; i++) {
-	jump_resolve(switch_table[i].jump, switch_table[i].where);
+	JmpList::resolve(switch_table[i].jump, switch_table[i].where);
     }
     AFREE(switch_table);
     switch_table = table;
 }
 
 /*
- * NAME:	codegen->stmt()
- * DESCRIPTION:	generate code for a statement
+ * generate code for a statement
  */
-static void cg_stmt(Node *n)
+void Codegen::stmt(Node *n)
 {
     Node *m;
-    jmplist *jlist, *j2list;
+    JmpList *jlist, *j2list;
     Uint where;
 
     while (n != (Node *) NULL) {
@@ -2110,18 +2094,18 @@ static void cg_stmt(Node *n)
 	case N_BLOCK:
 	    if (m->mod == N_BREAK) {
 		jlist = break_list;
-		break_list = (jmplist *) NULL;
-		cg_stmt(m->l.left);
-		if (break_list != (jmplist *) NULL) {
-		    jump_resolve(break_list, here);
+		break_list = (JmpList *) NULL;
+		stmt(m->l.left);
+		if (break_list != (JmpList *) NULL) {
+		    JmpList::resolve(break_list, here);
 		}
 		break_list = jlist;
 	    } else {
 		jlist = continue_list;
-		continue_list = (jmplist *) NULL;
-		cg_stmt(m->l.left);
-		if (continue_list != (jmplist *) NULL) {
-		    jump_resolve(continue_list, here);
+		continue_list = (JmpList *) NULL;
+		stmt(m->l.left);
+		if (continue_list != (JmpList *) NULL) {
+		    JmpList::resolve(continue_list, here);
 		}
 		continue_list = jlist;
 	    }
@@ -2129,74 +2113,74 @@ static void cg_stmt(Node *n)
 
 	case N_BREAK:
 	    while (m->mod > 0) {
-		code_instr(I_RETURN, 0);
+		CodeChunk::instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    break_list = jump(I_JUMP, break_list);
+	    break_list = JmpList::jump(I_JUMP, break_list);
 	    break;
 
 	case N_CASE:
 	    switch_table[m->mod].where = here;
-	    cg_stmt(m->l.left);
+	    stmt(m->l.left);
 	    break;
 
 	case N_COMPOUND:
 	    if (m->r.right != (Node *) NULL) {
-		cg_stmt(m->r.right);
+		stmt(m->r.right);
 	    }
-	    cg_stmt(m->l.left);
+	    stmt(m->l.left);
 	    break;
 
 	case N_CONTINUE:
 	    while (m->mod > 0) {
-		code_instr(I_RETURN, 0);
+		CodeChunk::instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    continue_list = jump(I_JUMP, continue_list);
+	    continue_list = JmpList::jump(I_JUMP, continue_list);
 	    break;
 
 	case N_DO:
 	    where = here;
-	    cg_stmt(m->r.right);
+	    stmt(m->r.right);
 	    jlist = true_list;
-	    true_list = (jmplist *) NULL;
-	    cg_cond(m->l.left, TRUE);
-	    jump_resolve(true_list, where);
+	    true_list = (JmpList *) NULL;
+	    cond(m->l.left, TRUE);
+	    JmpList::resolve(true_list, where);
 	    true_list = jlist;
 	    break;
 
 	case N_FOR:
 	    if (m->r.right != (Node *) NULL) {
-		jlist = jump(I_JUMP, (jmplist *) NULL);
+		jlist = JmpList::jump(I_JUMP, (JmpList *) NULL);
 		where = here;
-		cg_stmt(m->r.right);
-		jump_resolve(jlist, here);
+		stmt(m->r.right);
+		JmpList::resolve(jlist, here);
 	    } else {
 		/* empty loop body */
 		where = here;
 	    }
 	    jlist = true_list;
-	    true_list = (jmplist *) NULL;
-	    cg_cond(m->l.left, TRUE);
-	    jump_resolve(true_list, where);
+	    true_list = (JmpList *) NULL;
+	    cond(m->l.left, TRUE);
+	    JmpList::resolve(true_list, where);
 	    true_list = jlist;
 	    break;
 
 	case N_FOREVER:
 	    where = here;
 	    if (m->l.left != (Node *) NULL) {
-		cg_expr(m->l.left, TRUE);
+		expr(m->l.left, TRUE);
 	    }
-	    cg_stmt(m->r.right);
-	    jump_resolve(jump(I_JUMP, (jmplist *) NULL), where);
+	    stmt(m->r.right);
+	    JmpList::resolve(JmpList::jump(I_JUMP, (JmpList *) NULL), where);
 	    break;
 
 	case N_GOTO:
 	    while (m->mod > 0) {
-		code_instr(I_RETURN, 0);
+		CodeChunk::instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    goto_list = jump(I_JUMP, goto_list);
+	    goto_list = JmpList::jump(I_JUMP, goto_list);
 	    goto_list->label = m->r.right;
 	    break;
 
@@ -2205,33 +2189,33 @@ static void cg_stmt(Node *n)
 	    break;
 
 	case N_RLIMITS:
-	    cg_expr(m->l.left->l.left, FALSE);
-	    cg_expr(m->l.left->r.right, FALSE);
-	    code_instr(I_RLIMITS, 0);
-	    code_byte(m->mod);
-	    cg_stmt(m->r.right);
+	    expr(m->l.left->l.left, FALSE);
+	    expr(m->l.left->r.right, FALSE);
+	    CodeChunk::instr(I_RLIMITS, 0);
+	    CodeChunk::byte(m->mod);
+	    stmt(m->r.right);
 	    if (!(m->flags & F_END)) {
-		code_instr(I_RETURN, 0);
+		CodeChunk::instr(I_RETURN, 0);
 	    }
 	    break;
 
 	case N_CATCH:
-	    jlist = jump(I_CATCH | I_POP_BIT, (jmplist *) NULL);
-	    cg_stmt(m->l.left);
+	    jlist = JmpList::jump(I_CATCH | I_POP_BIT, (JmpList *) NULL);
+	    stmt(m->l.left);
 	    if (m->l.left->flags & F_END) {
-		jump_resolve(jlist, here);
+		JmpList::resolve(jlist, here);
 		if (m->r.right != (Node *) NULL) {
-		    cg_stmt(m->r.right);
+		    stmt(m->r.right);
 		}
 	    } else {
-		code_instr(I_RETURN, 0);
+		CodeChunk::instr(I_RETURN, 0);
 		if (m->r.right != (Node *) NULL) {
-		    j2list = jump(I_JUMP, (jmplist *) NULL);
-		    jump_resolve(jlist, here);
-		    cg_stmt(m->r.right);
-		    jump_resolve(j2list, here);
+		    j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+		    JmpList::resolve(jlist, here);
+		    stmt(m->r.right);
+		    JmpList::resolve(j2list, here);
 		} else {
-		    jump_resolve(jlist, here);
+		    JmpList::resolve(jlist, here);
 		}
 	    }
 	    break;
@@ -2242,79 +2226,79 @@ static void cg_stmt(Node *n)
 		if (m->r.right->l.left->type == N_BREAK) {
 		    jlist = true_list;
 		    true_list = break_list;
-		    cg_cond(m->l.left, TRUE);
+		    cond(m->l.left, TRUE);
 		    break_list = true_list;
 		    true_list = jlist;
 		    if (m->r.right->r.right != (Node *) NULL) {
 			/* else */
-			cg_stmt(m->r.right->r.right);
+			stmt(m->r.right->r.right);
 		    }
 		    break;
 		} else if (m->r.right->l.left->type == N_CONTINUE) {
 		    jlist = true_list;
 		    true_list = continue_list;
-		    cg_cond(m->l.left, TRUE);
+		    cond(m->l.left, TRUE);
 		    continue_list = true_list;
 		    true_list = jlist;
 		    if (m->r.right->r.right != (Node *) NULL) {
 			/* else */
-			cg_stmt(m->r.right->r.right);
+			stmt(m->r.right->r.right);
 		    }
 		    break;
 		}
 	    }
 	    jlist = false_list;
-	    false_list = (jmplist *) NULL;
-	    cg_cond(m->l.left, FALSE);
-	    cg_stmt(m->r.right->l.left);
+	    false_list = (JmpList *) NULL;
+	    cond(m->l.left, FALSE);
+	    stmt(m->r.right->l.left);
 	    if (m->r.right->r.right != (Node *) NULL) {
 		/* else */
 		if (m->r.right->l.left != (Node *) NULL &&
 		    (m->r.right->l.left->flags & F_END)) {
-		    jump_resolve(false_list, here);
+		    JmpList::resolve(false_list, here);
 		    false_list = jlist;
-		    cg_stmt(m->r.right->r.right);
+		    stmt(m->r.right->r.right);
 		} else {
-		    j2list = jump(I_JUMP, (jmplist *) NULL);
-		    jump_resolve(false_list, here);
+		    j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+		    JmpList::resolve(false_list, here);
 		    false_list = jlist;
-		    cg_stmt(m->r.right->r.right);
-		    jump_resolve(j2list, here);
+		    stmt(m->r.right->r.right);
+		    JmpList::resolve(j2list, here);
 		}
 	    } else {
 		/* no else */
-		jump_resolve(false_list, here);
+		JmpList::resolve(false_list, here);
 		false_list = jlist;
 	    }
 	    break;
 
 	case N_PAIR:
-	    cg_stmt(m);
+	    stmt(m);
 	    break;
 
 	case N_POP:
-	    cg_expr(m->l.left, TRUE);
+	    expr(m->l.left, TRUE);
 	    break;
 
 	case N_RETURN:
-	    cg_expr(m->l.left, FALSE);
+	    expr(m->l.left, FALSE);
 	    while (m->mod > 0) {
-		code_instr(I_RETURN, 0);
+		CodeChunk::instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    code_instr(I_RETURN, m->line);
+	    CodeChunk::instr(I_RETURN, m->line);
 	    break;
 
 	case N_SWITCH_INT:
-	    cg_switch_int(m);
+	    switchInt(m);
 	    break;
 
 	case N_SWITCH_RANGE:
-	    cg_switch_range(m);
+	    switchRange(m);
 	    break;
 
 	case N_SWITCH_STR:
-	    cg_switch_str(m);
+	    switchStr(m);
 	    break;
 	}
     }
@@ -2324,53 +2308,49 @@ static void cg_stmt(Node *n)
 static int nfuncs;		/* # functions generated */
 
 /*
- * NAME:	codegen->init()
- * DESCRIPTION:	initialize the code generator
+ * initialize the code generator
  */
-void cg_init(int inherited)
+void Codegen::init(int inherited)
 {
     UNREFERENCED_PARAMETER(inherited);
     kd_allocate = ((Int) KFCALL << 24) | kf_func("allocate");
     kd_allocate_int = ((Int) KFCALL << 24) | kf_func("allocate_int");
     kd_allocate_float = ((Int) KFCALL << 24) | kf_func("allocate_float");
-    nfuncs = 0;
+    ::nfuncs = 0;
 }
 
 /*
- * NAME:	codegen->function()
- * DESCRIPTION:	generate code for a function
+ * generate code for a function
  */
-char *cg_function(String *fname, Node *n, int nvar, int npar,
-	unsigned int depth, unsigned short *size)
+char *Codegen::function(String *fname, Node *n, int nvar, int npar,
+			unsigned int depth, unsigned short *size)
 {
     char *prog;
 
     UNREFERENCED_PARAMETER(fname);
 
     nparams = npar;
-    cg_stmt(n);
-    prog = code_make(depth + nvar - npar, nvar - npar, size);
-    jump_make(prog + 5);
-    nfuncs++;
+    stmt(n);
+    prog = CodeChunk::make(depth + nvar - npar, nvar - npar, size);
+    JmpList::make(prog + 5);
+    ::nfuncs++;
 
     return prog;
 }
 
 /*
- * NAME:	codegen->nfuncs()
- * DESCRIPTION:	return the number of functions generated
+ * return the number of functions generated
  */
-int cg_nfuncs()
+int Codegen::nfuncs()
 {
-    return nfuncs;
+    return ::nfuncs;
 }
 
 /*
- * NAME:	codegen->clear()
- * DESCRIPTION:	clean up code generator
+ * clean up code generator
  */
-void cg_clear()
+void Codegen::clear()
 {
-    jump_clear();
-    code_clear();
+    JmpList::clear();
+    CodeChunk::clear();
 }

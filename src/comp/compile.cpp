@@ -448,7 +448,7 @@ void Compile::init(char *a, char *d, char *i, char **p, int tc)
  */
 void Compile::clear()
 {
-    cg_clear();
+    Codegen::clear();
     Loop::clear();
     thisloop = (Loop *) NULL;
     Switch::clear();
@@ -641,7 +641,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 		::error("Could not include \"/%s\"", include);
 	    }
 
-	    cg_init(c.prev != (Context *) NULL);
+	    Codegen::init(c.prev != (Context *) NULL);
 	    if (yyparse() == 0 && Control::checkFuncs()) {
 		if (obj != (Object *) NULL) {
 		    if (obj->count == 0) {
@@ -1002,8 +1002,8 @@ void Compile::funcbody(Node *n)
     if (depth > 0x7fff) {
 	error("function uses too much stack space");
     } else {
-	prog = cg_function(fname, n, nvars, nparams, (unsigned short) depth,
-			   &size);
+	prog = Codegen::function(fname, n, nvars, nparams,
+				 (unsigned short) depth, &size);
 	Control::defProgram(prog, size);
     }
     Node::clear();
