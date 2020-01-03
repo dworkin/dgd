@@ -1615,7 +1615,7 @@ int kf_new_function(Frame *f, int nargs, kfunc *kf)
     do {
 	*--elts = *v++;
     } while (--nargs != 0);
-    d_ref_imports(a);
+    Dataspace::refImports(a);
     f->sp = v;
 
     PUSH_LWOVAL(f, a);
@@ -1655,7 +1655,7 @@ int kf_extend_function(Frame *f, int nargs, kfunc *kf)
 	 */
 	n = a->size;
 	a = Array::create(f->data, n + nargs);
-	i_copy(a->elts, elts, n);
+	Value::copy(a->elts, elts, n);
 
 	v = f->sp;
 	elts = a->elts + a->size;
