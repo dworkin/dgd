@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -268,6 +268,27 @@ void Node::tostr(String *str)
     type = N_STR;
     flags = F_CONST;
     l.string = str;
+}
+
+/*
+ * revert a "linked list" of nodes
+ */
+Node *Node::revert()
+{
+    Node *n, *m;
+
+    n = this;
+    if (n != (Node *) NULL && n->type == N_PAIR) {
+	while ((m=n->l.left)->type == N_PAIR) {
+	    /*
+	     * ((a, b), c) -> (a, (b, c))
+	     */
+	    n->l.left = m->r.right;
+	    m->r.right = n;
+	    n = m;
+	}
+    }
+    return n;
 }
 
 /*

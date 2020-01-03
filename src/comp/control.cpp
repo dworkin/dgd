@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -494,8 +494,8 @@ void Control::inheritVars(ObjHash *ohash)
 		VFH::create(str, ohash, v->type, cvstr, n, h);
 	    } else {
 	       /* duplicate variable */
-	       c_error("multiple inheritance of variable %s (/%s, /%s)",
-		       str->text, (*h)->ohash->name, ohash->name);
+	       Compile::error("multiple inheritance of variable %s (/%s, /%s)",
+			      str->text, (*h)->ohash->name, ohash->name);
 	    }
 	}
 	v++;
@@ -599,8 +599,8 @@ void Control::inheritFunc(int idx, ObjHash *ohash)
 	/*
 	 * privately inherited nomask function is not allowed
 	 */
-	c_error("private inherit of nomask function %s (/%s)", str->text,
-		ohash->name);
+	Compile::error("private inherit of nomask function %s (/%s)", str->text,
+		       ohash->name);
 	return;
     }
 
@@ -729,8 +729,9 @@ void Control::inheritFunc(int idx, ObjHash *ohash)
 			/*
 			 * a nomask function is inherited more than once
 			 */
-			c_error("multiple inheritance of nomask function %s (/%s, /%s)",
-				str->text, (*l)->ohash->name, ohash->name);
+			Compile::error("multiple inheritance of nomask function %s (/%s, /%s)",
+				       str->text, (*l)->ohash->name,
+				       ohash->name);
 			return;
 		    }
 		    if (((f->sclass | PROTO_CLASS(prot2)) & C_UNDEFINED) &&
@@ -738,8 +739,9 @@ void Control::inheritFunc(int idx, ObjHash *ohash)
 			/*
 			 * prototype conflict
 			 */
-			c_error("unequal prototypes for function %s (/%s, /%s)",
-				str->text, (*l)->ohash->name, ohash->name);
+			Compile::error("unequal prototypes for function %s (/%s, /%s)",
+				       str->text, (*l)->ohash->name,
+				       ohash->name);
 			return;
 		    }
 
@@ -849,11 +851,11 @@ bool Control::inherit(Frame *f, char *from, Object *obj, String *label,
     Object *o;
 
     if (!(obj->flags & O_MASTER)) {
-	c_error("cannot inherit cloned object");
+	Compile::error("cannot inherit cloned object");
 	return TRUE;
     }
     if (O_UPGRADING(obj)) {
-	c_error("cannot inherit object being upgraded");
+	Compile::error("cannot inherit object being upgraded");
 	return TRUE;
     }
 
@@ -863,7 +865,7 @@ bool Control::inherit(Frame *f, char *from, Object *obj, String *label,
 	 * use a label
 	 */
 	if (Label::find(label->text) != (ObjHash *) NULL) {
-	    c_error("redeclaration of label %s", label->text);
+	    Compile::error("redeclaration of label %s", label->text);
 	}
 	new Label(label, ohash);
     }
@@ -876,7 +878,7 @@ bool Control::inherit(Frame *f, char *from, Object *obj, String *label,
 	inh = ctrl->inherits;
 	if (::ninherits != 0 && strcmp(OBJR(inh->oindex)->name,
 				       ::inherits[0]->obj->name) != 0) {
-	    c_error("inherited different auto objects");
+	    Compile::error("inherited different auto objects");
 	}
 
 	for (i = ctrl->ninherits - 1, inh += i; i > 0; --i) {
@@ -892,7 +894,7 @@ bool Control::inherit(Frame *f, char *from, Object *obj, String *label,
 		    /*
 		     * inheriting old instance of the same object
 		     */
-		    c_error("cycle in inheritance");
+		    Compile::error("cycle in inheritance");
 		    return TRUE;
 		}
 
@@ -939,7 +941,7 @@ bool Control::inherit(Frame *f, char *from, Object *obj, String *label,
 		/*
 		 * inherited two different objects with same name
 		 */
-		c_error("inherited different instances of /%s", o->name);
+		Compile::error("inherited different instances of /%s", o->name);
 		return TRUE;
 	    } else if (!inh->priv && ohash->priv > priv) {
 		/*
@@ -973,7 +975,7 @@ bool Control::inherit(Frame *f, char *from, Object *obj, String *label,
 	/*
 	 * inherited two objects with same name
 	 */
-	c_error("inherited different instances of /%s", obj->name);
+	Compile::error("inherited different instances of /%s", obj->name);
     } else if (ohash->priv > priv) {
 	/*
 	 * previously inherited with greater privateness; process all
@@ -998,7 +1000,7 @@ bool Control::inherit(Frame *f, char *from, Object *obj, String *label,
     }
 
     if (::ninherits >= MAX_INHERITS) {
-	c_error("too many objects inherited");
+	Compile::error("too many objects inherited");
     }
 
     return TRUE;
@@ -1173,12 +1175,12 @@ void Control::create()
 	inh->funcoffset = nifcalls;
 	n = ctrl->nfuncalls - ctrl->inherits[i].funcoffset;
 	if (nifcalls > UINDEX_MAX - n) {
-	    c_error("inherited too many function calls");
+	    Compile::error("inherited too many function calls");
 	}
 	nifcalls += n;
 	inh->varoffset = nvars;
 	if (nvars > MAX_VARIABLES - ctrl->nvardefs) {
-	    c_error("inherited too many variables");
+	    Compile::error("inherited too many variables");
 	}
 	nvars += ctrl->nvardefs;
 
@@ -1227,7 +1229,7 @@ long Control::defString(String *str)
 	(chunknew (schunk) StrPtr)->str = str;
 	str->ref();
 	if (nstrs == USHRT_MAX) {
-	    c_error("too many string constants");
+	    Compile::error("too many string constants");
 	}
 	nstrs++;
     }
@@ -1264,19 +1266,21 @@ void Control::defProto(String *str, char *proto, String *sclass)
 		/*
 		 * both prototypes are from functions
 		 */
-		c_error("multiple declaration of function %s", str->text);
+		Compile::error("multiple declaration of function %s",
+			       str->text);
 	    } else if (!newctrl->compareProto(proto, newctrl, proto2)) {
 		if ((PROTO_CLASS(proto) ^ PROTO_CLASS(proto2)) & C_UNDEFINED) {
 		    /*
 		     * declaration does not match prototype
 		     */
-		    c_error("declaration does not match prototype of %s",
-			    str->text);
+		    Compile::error("declaration does not match prototype of %s",
+				   str->text);
 		} else {
 		    /*
 		     * unequal prototypes
 		     */
-		    c_error("unequal prototypes for function %s", str->text);
+		    Compile::error("unequal prototypes for function %s",
+				   str->text);
 		}
 	    } else if (!(PROTO_CLASS(proto) & C_UNDEFINED) ||
 		       PROTO_FTYPE(proto2) == T_IMPLICIT) {
@@ -1321,8 +1325,8 @@ void Control::defProto(String *str, char *proto, String *sclass)
 		/*
 		 * declaration does not match inherited prototype
 		 */
-		c_error("inherited different prototype for %s (/%s)",
-			str->text, (*h)->ohash->name);
+		Compile::error("inherited different prototype for %s (/%s)",
+			       str->text, (*h)->ohash->name);
 	    } else if ((PROTO_CLASS(proto) & C_UNDEFINED) &&
 		       (*h)->ohash->priv == 0 &&
 		       (ctrl->ninherits != 1 ||
@@ -1340,8 +1344,8 @@ void Control::defProto(String *str, char *proto, String *sclass)
 		/*
 		 * attempt to redefine nomask function
 		 */
-		c_error("redeclaration of nomask function %s (/%s)",
-			str->text, (*h)->ohash->name);
+		Compile::error("redeclaration of nomask function %s (/%s)",
+			       str->text, (*h)->ohash->name);
 	    }
 
 	    if ((*l)->ohash->priv != 0) {
@@ -1375,7 +1379,7 @@ void Control::defProto(String *str, char *proto, String *sclass)
     }
 
     if (nfdefs == 255) {
-	c_error("too many functions declared");
+	Compile::error("too many functions declared");
     }
 
     /*
@@ -1431,19 +1435,19 @@ void Control::defVar(String *str, unsigned int sclass, unsigned int type,
     h = (VFH **) vtab->lookup(str->text, FALSE);
     if (*h != (VFH *) NULL) {
 	if ((*h)->ohash == newohash) {
-	    c_error("redeclaration of variable %s", str->text);
+	    Compile::error("redeclaration of variable %s", str->text);
 	    return;
 	} else if (!(sclass & C_PRIVATE)) {
 	    /*
 	     * non-private redeclaration of a variable
 	     */
-	    c_error("redeclaration of variable %s (/%s)", str->text,
-		    (*h)->ohash->name);
+	    Compile::error("redeclaration of variable %s (/%s)", str->text,
+			   (*h)->ohash->name);
 	    return;
 	}
     }
     if (nvars == 255 || newctrl->nvariables + nvars == MAX_VARIABLES) {
-	c_error("too many variables declared");
+	Compile::error("too many variables declared");
     }
 
     /* actually define the variable */
@@ -1484,7 +1488,7 @@ char *Control::iFunCall(String *str, const char *label, String **cfstr,
 	/* first check if the label exists */
 	ohash = Label::find(label);
 	if (ohash == (ObjHash *) NULL) {
-	    c_error("undefined label %s", label);
+	    Compile::error("undefined label %s", label);
 	    return (char *) NULL;
 	}
 	symb = (ctrl = ohash->obj->ctrl)->symb(str->text, str->len);
@@ -1504,7 +1508,7 @@ char *Control::iFunCall(String *str, const char *label, String **cfstr,
 		    *call = ((long) KFCALL << 24) | index;
 		    return KFUN(index).proto;
 		}
-		c_error("undefined function %s::%s", label, str->text);
+		Compile::error("undefined function %s::%s", label, str->text);
 		return (char *) NULL;
 	    }
 	}
@@ -1525,7 +1529,7 @@ char *Control::iFunCall(String *str, const char *label, String **cfstr,
 		*call = ((long) KFCALL << 24) | index;
 		return KFUN(index).proto;
 	    }
-	    c_error("undefined function ::%s", str->text);
+	    Compile::error("undefined function ::%s", str->text);
 	    return (char *) NULL;
 	}
 	ohash = h->ohash;
@@ -1533,7 +1537,7 @@ char *Control::iFunCall(String *str, const char *label, String **cfstr,
 	    /*
 	     * call to multiple inherited function
 	     */
-	    c_error("ambiguous call to function ::%s", str->text);
+	    Compile::error("ambiguous call to function ::%s", str->text);
 	    return (char *) NULL;
 	}
 	index = h->index;
@@ -1542,7 +1546,7 @@ char *Control::iFunCall(String *str, const char *label, String **cfstr,
 
     ctrl = ohash->obj->ctrl;
     if (ctrl->funcdefs[index].sclass & C_UNDEFINED) {
-	c_error("undefined function %s::%s", label, str->text);
+	Compile::error("undefined function %s::%s", label, str->text);
 	return (char *) NULL;
     }
     *call = ((long) DFCALL << 24) | ((long) ohash->index << 8) | index;
@@ -1587,7 +1591,7 @@ char *Control::funCall(String *str, String **cfstr, long *call,
 
 	/* create an undefined prototype for the function */
 	if (nfdefs == 255) {
-	    c_error("too many undefined functions");
+	    Compile::error("too many undefined functions");
 	    return (char *) NULL;
 	}
 	defProto(str, proto = uproto, (String *) NULL);
@@ -1602,7 +1606,7 @@ char *Control::funCall(String *str, String **cfstr, long *call,
 	/*
 	 * call to multiple inherited function
 	 */
-	c_error("ambiguous call to function %s", str->text);
+	Compile::error("ambiguous call to function %s", str->text);
 	return (char *) NULL;
     } else {
 	Control *ctrl;
@@ -1623,7 +1627,7 @@ char *Control::funCall(String *str, String **cfstr, long *call,
 
     if (typechecking && PROTO_FTYPE(proto) == T_IMPLICIT) {
 	/* don't allow calls to implicit prototypes when typechecking */
-	c_error("undefined function %s", str->text);
+	Compile::error("undefined function %s", str->text);
 	return (char *) NULL;
     }
 
@@ -1672,7 +1676,7 @@ unsigned short Control::genCall(long call)
 	 */
 	(chunknew (fchunk) CharPtr)->name = name;
 	if (nifcalls + nfcalls == UINDEX_MAX) {
-	    c_error("too many function calls");
+	    Compile::error("too many function calls");
 	}
 	h->ct = nfcalls++;
     }
@@ -1689,7 +1693,7 @@ unsigned short Control::var(String *str, long *ref, String **cvstr)
     /* check if the variable exists */
     h = *(VFH **) vtab->lookup(str->text, TRUE);
     if (h == (VFH *) NULL) {
-	c_error("undeclared variable %s", str->text);
+	Compile::error("undeclared variable %s", str->text);
 	if (nvars < 255) {
 	    /* don't repeat this error */
 	    defVar(str, 0, T_MIXED, (String *) NULL);
@@ -1729,11 +1733,11 @@ bool Control::checkFuncs()
 	/*
 	 * private undefined prototypes
 	 */
-	c_error("undefined private functions:");
+	Compile::error("undefined private functions:");
 	for (f = functions, i = nundefs; i != 0; f++) {
 	    if ((f->func.sclass & (C_PRIVATE | C_UNDEFINED)) ==
 						    (C_PRIVATE | C_UNDEFINED)) {
-		c_error("  %s", f->name);
+		Compile::error("  %s", f->name);
 		--i;
 	    }
 	}
@@ -1765,7 +1769,7 @@ bool Control::checkFuncs()
 			 */
 			if (!clash) {
 			    clash = TRUE;
-			    c_error("inherited multiple instances of:");
+			    Compile::error("inherited multiple instances of:");
 			}
 			f = (VFH **) &(*f)->next;
 			while ((*f)->ohash->priv != 0) {
@@ -1775,8 +1779,8 @@ bool Control::checkFuncs()
 			while ((*n)->ohash->priv != 0) {
 			    n = (VFH **) &(*n)->next;
 			}
-			c_error("  %s (/%s, /%s)", (*f)->name,
-				(*f)->ohash->name, (*n)->ohash->name);
+			Compile::error("  %s (/%s, /%s)", (*f)->name,
+				       (*f)->ohash->name, (*n)->ohash->name);
 			f = (VFH **) &(*n)->next;
 		    }
 		} else if ((*f)->ohash->priv != 0) {

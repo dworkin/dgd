@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,7 +40,7 @@
 # include "compile.h"
 
 # define yylex		PP::gettok
-# define yyerror	c_error
+# define yyerror	Compile::error
 
 int nerrors;			/* number of errors encountered so far */
 static int ndeclarations;	/* number of declarations */
@@ -157,9 +157,10 @@ top_level_declaration
 	: opt_private INHERIT opt_inherit_label opt_object composite_string ';'
 		{
 		  if (ndeclarations > 0) {
-		      c_error("inherit must precede all declarations");
+		      Compile::error("inherit must precede all declarations");
 		  } else if (nerrors > 0 ||
-			     !c_inherit($5->l.string->text, $3, $1 != 0)) {
+			     !Compile::inherit($5->l.string->text, $3, $1 != 0))
+		  {
 		      /*
 		       * The object to be inherited may have been compiled;
 		       * abort this compilation and possibly restart later.
@@ -203,40 +204,40 @@ string
 
 data_declaration
 	: class_specifier_list type_specifier list_dcltr ';'
-		{ c_global($1, $2, $3); }
+		{ Compile::global($1, $2, $3); }
 	;
 
 function_declaration
 	: class_specifier_list type_specifier function_dcltr
 		{
 		  typechecking = TRUE;
-		  c_function($1, $2, $3);
+		  Compile::function($1, $2, $3);
 		}
 	  compound_stmt
 		{
 		  if (nerrors == 0) {
-		      c_funcbody($5);
+		      Compile::funcbody($5);
 		  }
 		}
 	| class_specifier_list ident '(' formals_declaration ')'
 		{
-		  typechecking = c_typechecking();
-		  c_function($1, Node::createType((typechecking) ?
-						   T_VOID : T_NIL,
-						  (String *) NULL),
+		  typechecking = Compile::typechecking();
+		  Compile::function($1, Node::createType((typechecking) ?
+							  T_VOID : T_NIL,
+							 (String *) NULL),
 			     Node::createBin(N_FUNC, 0, $2, $4));
 		}
 	  compound_stmt
 		{
 		  if (nerrors == 0) {
-		      c_funcbody($7);
+		      Compile::funcbody($7);
 		  }
 		}
 	;
 
 local_data_declaration
 	: class_specifier_list type_specifier list_dcltr ';'
-		{ c_local($1, $2, $3); }
+		{ Compile::local($1, $2, $3); }
 	;
 
 formals_declaration
@@ -327,14 +328,14 @@ type_specifier
 	| OBJECT
 		{ $$ = Node::createType(T_OBJECT, (String *) NULL); }
 	| OBJECT composite_string
-		{ $$ = Node::createType(T_CLASS, c_objecttype($2)); }
+		{ $$ = Node::createType(T_CLASS, Compile::objecttype($2)); }
 	| MAPPING
 		{ $$ = Node::createType(T_MAPPING, (String *) NULL); }
 	| FUNCTION
 		{
 		  $$ = Node::createStr(String::create("/" BIPREFIX "function",
 						      BIPREFIXLEN + 9));
-		  $$ = Node::createType(T_CLASS, c_objecttype($$));
+		  $$ = Node::createType(T_CLASS, Compile::objecttype($$));
 		}
 	| MIXED	{ $$ = Node::createType(T_MIXED, (String *) NULL); }
 	| VOID	{ $$ = Node::createType(T_VOID, (String *) NULL); }
@@ -352,7 +353,7 @@ star_list
 		{
 		  $$ = $1 + 1;
 		  if ($$ == 1 << (8 - REFSHIFT)) {
-		      c_error("too deep indirection");
+		      Compile::error("too deep indirection");
 		  }
 		}
 	;
@@ -436,14 +437,14 @@ dcltr_or_stmt_list
 	: /* empty */
 		{ $$ = (Node *) NULL; }
 	| dcltr_or_stmt_list dcltr_or_stmt
-		{ $$ = c_concat($1, $2); }
+		{ $$ = Compile::concat($1, $2); }
 	;
 
 dcltr_or_stmt
 	: local_data_declaration
 		{
 		  if (nstatements > 0) {
-		      c_error("declaration after statement");
+		      Compile::error("declaration after statement");
 		  }
 		  $$ = (Node *) NULL;
 		}
@@ -462,8 +463,8 @@ dcltr_or_stmt
 
 if_stmt
 	: IF '(' f_list_exp ')'
-		{ c_startcond(); }
-	  stmt	{ $$ = c_if($3, $6); }
+		{ Compile::startCond(); }
+	  stmt	{ $$ = Compile::ifStmt($3, $6); }
 	;
 
 stmt
@@ -481,41 +482,42 @@ stmt
 
 nocase_stmt
 	: list_exp ';'
-		{ $$ = c_exp_stmt($1); }
+		{ $$ = Compile::exprStmt($1); }
 	| compound_stmt
 	| if_stmt
 		{
-		  c_endcond();
-		  $$ = c_endif($1, (Node *) NULL);
+		  Compile::endCond();
+		  $$ = Compile::endIfStmt($1, (Node *) NULL);
 		}
 /* will cause shift/reduce conflict */
 	| if_stmt ELSE
-		{ c_startcond2(); }
+		{ Compile::startCond2(); }
 	  stmt
 		{
-		  c_matchcond();
-		  $$ = c_endif($1, $4);
+		  Compile::matchCond();
+		  $$ = Compile::endIfStmt($1, $4);
 		}
-	| DO	{ c_loop(); }
+	| DO	{ Compile::loop(); }
 	  stmt WHILE '(' f_list_exp ')' ';'
-		{ $$ = c_do($6, $3); }
+		{ $$ = Compile::doStmt($6, $3); }
 	| WHILE '(' f_list_exp ')'
 		{
-		  c_loop();
-		  c_startcond();
+		  Compile::loop();
+		  Compile::startCond();
 		}
 	  stmt	{
-		  c_endcond();
-		  $$ = c_while($3, $6);
+		  Compile::endCond();
+		  $$ = Compile::whileStmt($3, $6);
 		}
 	| FOR '(' opt_list_exp ';' f_opt_list_exp ';' opt_list_exp ')'
 		{
-		  c_loop();
-		  c_startcond();
+		  Compile::loop();
+		  Compile::startCond();
 		}
 	  stmt	{
-		  c_endcond();
-		  $$ = c_for(c_exp_stmt($3), $5, c_exp_stmt($7), $10);
+		  Compile::endCond();
+		  $$ = Compile::forStmt(Compile::exprStmt($3), $5,
+					Compile::exprStmt($7), $10);
 		}
 	| RLIMITS '(' f_list_exp ';' f_list_exp ')'
 		{
@@ -523,72 +525,72 @@ nocase_stmt
 		      char tnbuf[TNBUFSIZE];
 
 		      if ($3->mod != T_INT && $3->mod != T_MIXED) {
-			  c_error("bad type for stack rlimit (%s)",
-				  Value::typeName(tnbuf, $3->mod));
+			  Compile::error("bad type for stack rlimit (%s)",
+					 Value::typeName(tnbuf, $3->mod));
 		      }
 		      if ($5->mod != T_INT && $5->mod != T_MIXED) {
-			  c_error("bad type for ticks rlimit (%s)",
-				  Value::typeName(tnbuf, $5->mod));
+			  Compile::error("bad type for ticks rlimit (%s)",
+				         Value::typeName(tnbuf, $5->mod));
 		      }
 		  }
-		  c_startrlimits();
+		  Compile::startRlimits();
 		}
 	  compound_stmt
-		{ $$ = c_endrlimits($3, $5, $8); }
+		{ $$ = Compile::endRlimits($3, $5, $8); }
 	| CATCH	{
-		  c_startcatch();
-		  c_startcond();
+		  Compile::startCatch();
+		  Compile::startCond();
 		}
 	  compound_stmt
 		{
-		  c_endcond();
-		  c_endcatch();
-		  c_startcond();
+		  Compile::endCond();
+		  Compile::endCatch();
+		  Compile::startCond();
 		}
 	  opt_caught_stmt
 		{
-		  c_endcond();
-		  $$ = c_donecatch($3, $5);
+		  Compile::endCond();
+		  $$ = Compile::doneCatch($3, $5);
 		}
 	| SWITCH '(' f_list_exp ')'
 		{
-		  c_startswitch($3, typechecking);
-		  c_startcond();
+		  Compile::startSwitch($3, typechecking);
+		  Compile::startCond();
 		}
 	  compound_stmt
 		{
-		  c_endcond();
-		  $$ = c_endswitch($3, $6);
+		  Compile::endCond();
+		  $$ = Compile::endSwitch($3, $6);
 		}
 	| ident ':'
-		{ $<node>2 = c_label($1); }
-	  stmt	{ $$ = c_concat($<node>2, $4); }
+		{ $<node>2 = Compile::label($1); }
+	  stmt	{ $$ = Compile::concat($<node>2, $4); }
 	| GOTO ident ';'
 		{
-		  $$ = c_goto($2);
+		  $$ = Compile::gotoStmt($2);
 		}
 	| BREAK ';'
 		{
-		  $$ = c_break();
+		  $$ = Compile::breakStmt();
 		}
 	| CONTINUE ';'
 		{
-		  $$ = c_continue();
+		  $$ = Compile::continueStmt();
 		}
 	| RETURN f_opt_list_exp ';'
-		{ $$ = c_return($2, typechecking); }
+		{ $$ = Compile::returnStmt($2, typechecking); }
 	| ';'	{ $$ = (Node *) NULL; }
 	;
 
 compound_stmt
 	: '{'	{
 		  nstatements = 0;
-		  c_startcompound();
+		  Compile::startCompound();
 		}
 	  dcltr_or_stmt_list '}'
 		{
 		  nstatements++;
-		  $$ = c_endcompound($3);
+		  $$ = Compile::endCompound($3);
 		}
 	;
 
@@ -620,20 +622,20 @@ case_list
 
 case
 	: CASE exp ':'
-		{ $$ = c_case($2, (Node *) NULL); }
+		{ $$ = Compile::caseLabel($2, (Node *) NULL); }
 	| CASE exp DOT_DOT exp ':'
-		{ $$ = c_case($2, $4); }
+		{ $$ = Compile::caseLabel($2, $4); }
 	| DEFAULT ':'
-		{ $$ = c_default(); }
+		{ $$ = Compile::defaultLabel(); }
 	;
 
 function_call
 	: function_name
-		{ $$ = c_flookup($1, typechecking); }
+		{ $$ = Compile::flookup($1, typechecking); }
 	| COLON_COLON function_name
-		{ $$ = c_iflookup($2, (Node *) NULL); }
+		{ $$ = Compile::iflookup($2, (Node *) NULL); }
 	| function_name COLON_COLON function_name
-		{ $$ = c_iflookup($3, $1); }
+		{ $$ = Compile::iflookup($3, $1); }
 	;
 
 primary_p1_exp
@@ -644,13 +646,13 @@ primary_p1_exp
 	| NIL	{ $$ = Node::createNil(); }
 	| string
 	| '(' '{' opt_arg_list_comma '}' ')'
-		{ $$ = c_aggregate($3, T_MIXED | (1 << REFSHIFT)); }
+		{ $$ = Compile::aggregate($3, T_MIXED | (1 << REFSHIFT)); }
 	| '(' '[' opt_assoc_arg_list_comma ']' ')'
-		{ $$ = c_aggregate($3, T_MAPPING); }
+		{ $$ = Compile::aggregate($3, T_MAPPING); }
 	| ident	{
-		  $$ = c_local_var($1);
+		  $$ = Compile::localVar($1);
 		  if ($$ == (Node *) NULL) {
-		      $$ = c_global_var($1);
+		      $$ = Compile::globalVar($1);
 		      if (typechecking) {
 			  if ($$->mod != T_MIXED && !Config::typechecking()) {
 			      /*
@@ -671,7 +673,7 @@ primary_p1_exp
 		  }
 		}
 	| COLON_COLON ident {
-		  $$ = c_global_var($2);
+		  $$ = Compile::globalVar($2);
 		  if (typechecking) {
 		      if ($$->mod != T_MIXED && !Config::typechecking()) {
 			  /*
@@ -692,31 +694,33 @@ primary_p1_exp
 	| '(' list_exp ')'
 		{ $$ = $2; }
 	| function_call '(' opt_arg_list ')'
-		{ $$ = c_checkcall(c_funcall($1, $3), typechecking); }
+		{ $$ = Compile::checkcall(Compile::funcall($1, $3),
+					  typechecking); }
 	| '&' ident '(' opt_arg_list ')'
-		{ $$ = c_address($2, $4, typechecking); }
+		{ $$ = Compile::address($2, $4, typechecking); }
 	| '&' '(' '*' cast_exp ')' '(' opt_arg_list ')'
-		{ $$ = c_extend($4, $7, typechecking); }
+		{ $$ = Compile::extend($4, $7, typechecking); }
 	| '(' '*' cast_exp ')' '(' opt_arg_list ')'
-		{ $$ = c_call($3, $6, typechecking); }
+		{ $$ = Compile::call($3, $6, typechecking); }
 	| CATCH '('
-		{ c_startcond(); }
+		{ Compile::startCond(); }
 	  list_exp ')'
 		{
-		  c_endcond();
+		  Compile::endCond();
 		  $$ = Node::createMon(N_CATCH, T_STRING, $4);
 		}
 	| NEW opt_object string_exp
-		{ $$ = c_new_object($3, (Node *) NULL); }
+		{ $$ = Compile::newObject($3, (Node *) NULL); }
 	| NEW opt_object string_exp '(' opt_arg_list ')'
-		{ $$ = c_new_object($3, $5); }
+		{ $$ = Compile::newObject($3, $5); }
 	| primary_p2_exp RARROW ident '(' opt_arg_list ')'
 		{
 		  t_void($1);
-		  $$ = c_checkcall(c_arrow($1, $3, $5), typechecking);
+		  $$ = Compile::checkcall(Compile::arrow($1, $3, $5),
+					  typechecking);
 		}
 	| primary_p2_exp LARROW opt_object string_exp
-		{ $$ = c_instanceof($1, $4); }
+		{ $$ = Compile::instanceOf($1, $4); }
 	;
 
 primary_p2_exp
@@ -748,7 +752,7 @@ prefix_exp
 	| '!' cast_exp
 		{
 		  t_void($2);
-		  $$ = c_not($2);
+		  $$ = Compile::_not($2);
 		}
 	| '~' cast_exp
 		{
@@ -762,8 +766,8 @@ prefix_exp
 		      if (typechecking && $$->mod != T_MIXED) {
 			  char tnbuf[TNBUFSIZE];
 
-			  c_error("bad argument type for ~ (%s)",
-				  Value::typeName(tnbuf, $$->mod));
+			  Compile::error("bad argument type for ~ (%s)",
+					 Value::typeName(tnbuf, $$->mod));
 		      }
 		      $$ = Node::createMon(N_NEG, T_MIXED, $$);
 		  }
@@ -822,7 +826,7 @@ equ_oper_exp
 	| equ_oper_exp EQ rel_oper_exp
 		{ $$ = eq($1, $3); }
 	| equ_oper_exp NE rel_oper_exp
-		{ $$ = c_not(eq($1, $3)); }
+		{ $$ = Compile::_not(eq($1, $3)); }
 	;
 
 bitand_oper_exp
@@ -858,12 +862,12 @@ or_oper_exp
 cond_exp
 	: or_oper_exp
 	| or_oper_exp '?'
-		{ c_startcond(); }
+		{ Compile::startCond(); }
 	  list_exp ':'
-		{ c_startcond2(); }
+		{ Compile::startCond2(); }
 	  cond_exp
 		{
-		  c_matchcond();
+		  Compile::matchCond();
 		  $$ = quest($1, $4, $7);
 		}
 	;
@@ -871,27 +875,33 @@ cond_exp
 exp
 	: cond_exp
 	| cond_exp '=' exp
-		{ $$ = assign(c_assign($1), $3); }
+		{ $$ = assign(Compile::assign($1), $3); }
 	| cond_exp PLUS_EQ exp
-		{ $$ = add(N_ADD_EQ, c_lvalue($1, "+="), $3, "+="); }
+		{ $$ = add(N_ADD_EQ, Compile::lvalue($1, "+="), $3, "+="); }
 	| cond_exp MIN_EQ exp
-		{ $$ = sub(N_SUB_EQ, c_lvalue($1, "-="), $3, "-="); }
+		{ $$ = sub(N_SUB_EQ, Compile::lvalue($1, "-="), $3, "-="); }
 	| cond_exp MULT_EQ exp
-		{ $$ = mult(N_MULT_EQ, c_lvalue($1, "*="), $3, "*="); }
+		{ $$ = mult(N_MULT_EQ, Compile::lvalue($1, "*="), $3, "*="); }
 	| cond_exp DIV_EQ exp
-		{ $$ = mdiv(N_DIV_EQ, c_lvalue($1, "/="), $3, "/="); }
+		{ $$ = mdiv(N_DIV_EQ, Compile::lvalue($1, "/="), $3, "/="); }
 	| cond_exp MOD_EQ exp
-		{ $$ = mod(N_MOD_EQ, c_lvalue($1, "%="), $3, "%="); }
+		{ $$ = mod(N_MOD_EQ, Compile::lvalue($1, "%="), $3, "%="); }
 	| cond_exp LSHIFT_EQ exp
-		{ $$ = lshift(N_LSHIFT_EQ, c_lvalue($1, "<<="), $3, "<<="); }
+		{
+		  $$ = lshift(N_LSHIFT_EQ, Compile::lvalue($1, "<<="), $3,
+			      "<<=");
+		}
 	| cond_exp RSHIFT_EQ exp
-		{ $$ = rshift(N_RSHIFT_EQ, c_lvalue($1, ">>="), $3, ">>="); }
+		{
+		  $$ = rshift(N_RSHIFT_EQ, Compile::lvalue($1, ">>="), $3,
+			      ">>=");
+		}
 	| cond_exp AND_EQ exp
-		{ $$ = _and(N_AND_EQ, c_lvalue($1, "&="), $3, "&="); }
+		{ $$ = _and(N_AND_EQ, Compile::lvalue($1, "&="), $3, "&="); }
 	| cond_exp XOR_EQ exp
-		{ $$ = _xor(N_XOR_EQ, c_lvalue($1, "^="), $3, "^="); }
+		{ $$ = _xor(N_XOR_EQ, Compile::lvalue($1, "^="), $3, "^="); }
 	| cond_exp OR_EQ exp
-		{ $$ = _or(N_OR_EQ, c_lvalue($1, "|="), $3, "|="); }
+		{ $$ = _or(N_OR_EQ, Compile::lvalue($1, "|="), $3, "|="); }
 	;
 
 list_exp
@@ -980,7 +990,7 @@ opt_assoc_arg_list_comma
 static void t_void(Node *n)
 {
     if (n != (Node *) NULL && n->mod == T_VOID) {
-	c_error("void value not ignored");
+	Compile::error("void value not ignored");
 	n->mod = T_MIXED;
     }
 }
@@ -995,8 +1005,8 @@ static bool t_unary(Node *n, const char *name)
 
     t_void(n);
     if (typechecking && !T_ARITHMETIC(n->mod) && n->mod != T_MIXED) {
-	c_error("bad argument type for %s (%s)", name,
-		Value::typeName(tnbuf, n->mod));
+	Compile::error("bad argument type for %s (%s)", name,
+		       Value::typeName(tnbuf, n->mod));
 	n->mod = T_MIXED;
 	return FALSE;
     }
@@ -1011,7 +1021,7 @@ static Node *postfix(int op, Node *n, const char *name)
 {
     t_unary(n, name);
     return Node::createMon((n->mod == T_INT) ? op + 1 : op, n->mod,
-			   c_lvalue(n, name));
+			   Compile::lvalue(n, name));
 }
 
 /*
@@ -1029,7 +1039,7 @@ static Node *prefix(int op, Node *n, const char *name)
 	type = n->mod;
     }
     return Node::createMon((type == T_INT) ? op + 1 : op, type,
-			   c_lvalue(n, name));
+			   Compile::lvalue(n, name));
 }
 
 /*
@@ -1058,7 +1068,7 @@ static Node *cast(Node *n, Node *type)
 		if (p == n->l.string->text + n->l.string->len) {
 		    return Node::createInt(i);
 		} else {
-		    c_error("cast of invalid string constant");
+		    Compile::error("cast of invalid string constant");
 		    n->mod = T_MIXED;
 		}
 		break;
@@ -1136,20 +1146,21 @@ static Node *cast(Node *n, Node *type)
 
 	if (type->mod == T_MIXED || (type->mod & T_TYPE) == T_VOID) {
 	    /* (mixed), (void), (void *) */
-	    c_error("cannot cast to %s", Value::typeName(buffer, type->mod));
+	    Compile::error("cannot cast to %s",
+			   Value::typeName(buffer, type->mod));
 	    n->mod = T_MIXED;
 	} else if ((type->mod & T_REF) < (n->mod & T_REF)) {
 	    /* (mixed *) of (mixed **) */
-	    c_error("illegal cast of array type (%s)",
-		    Value::typeName(buffer, n->mod));
+	    Compile::error("illegal cast of array type (%s)",
+			   Value::typeName(buffer, n->mod));
 	} else if ((n->mod & T_TYPE) != T_MIXED &&
 		   ((type->mod & T_TYPE) != T_CLASS ||
 		    ((n->mod & T_TYPE) != T_OBJECT &&
 		     (n->mod & T_TYPE) != T_CLASS) ||
 		    (type->mod & T_REF) != (n->mod & T_REF))) {
 	    /* can only cast from mixed, or object/class to class */
-	    c_error("cast of invalid type (%s)",
-		    Value::typeName(buffer, n->mod));
+	    Compile::error("cast of invalid type (%s)",
+			   Value::typeName(buffer, n->mod));
 	} else {
 	    if ((type->mod & T_REF) == 0 || (n->mod & T_REF) == 0) {
 		/* runtime cast */
@@ -1187,7 +1198,7 @@ static Node *idx(Node *n1, Node *n2)
     if (n1->type == N_STR && n2->type == N_INT) {
 	/* str [ int ] */
 	if (n2->l.number < 0 || n2->l.number >= (Int) n1->l.string->len) {
-	    c_error("string index out of range");
+	    Compile::error("string index out of range");
 	} else {
 	    n2->l.number =
 		    UCHAR(n1->l.string->text[n1->l.string->index(n2->l.number)]);
@@ -1202,7 +1213,8 @@ static Node *idx(Node *n1, Node *n2)
 	if (typechecking) {
 	    type = n1->mod - (1 << REFSHIFT);
 	    if (n2->mod != T_INT && n2->mod != T_MIXED) {
-		c_error("bad index type (%s)", Value::typeName(tnbuf, n2->mod));
+		Compile::error("bad index type (%s)",
+			       Value::typeName(tnbuf, n2->mod));
 	    }
 	    if (type != T_MIXED) {
 		/* you can't trust these arrays */
@@ -1221,13 +1233,15 @@ static Node *idx(Node *n1, Node *n2)
 	 * string
 	 */
 	if (typechecking && n2->mod != T_INT && n2->mod != T_MIXED) {
-	    c_error("bad index type (%s)", Value::typeName(tnbuf, n2->mod));
+	    Compile::error("bad index type (%s)",
+			   Value::typeName(tnbuf, n2->mod));
 	}
 	type = T_INT;
     } else {
 	if (typechecking && n1->mod != T_OBJECT && n1->mod != T_CLASS &&
 	    n1->mod != T_MAPPING && n1->mod != T_MIXED) {
-	    c_error("bad indexed type (%s)", Value::typeName(tnbuf, n1->mod));
+	    Compile::error("bad indexed type (%s)",
+			   Value::typeName(tnbuf, n1->mod));
 	}
 	type = T_MIXED;
     }
@@ -1250,7 +1264,7 @@ static Node *range(Node *n1, Node *n2, Node *n3)
 	from = (n2 == (Node *) NULL) ? 0 : n2->l.number;
 	to = (n3 == (Node *) NULL) ? n1->l.string->len - 1 : n3->l.number;
 	if (from < 0 || from > to + 1 || to >= n1->l.string->len) {
-	    c_error("invalid string range");
+	    Compile::error("invalid string range");
 	} else {
 	    return Node::createStr(n1->l.string->range(from, to));
 	}
@@ -1266,15 +1280,18 @@ static Node *range(Node *n1, Node *n2, Node *n3)
 
 	/* indices */
 	if (n2 != (Node *) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
-	    c_error("bad index type (%s)", Value::typeName(tnbuf, n2->mod));
+	    Compile::error("bad index type (%s)",
+			   Value::typeName(tnbuf, n2->mod));
 	}
 	if (n3 != (Node *) NULL && n3->mod != T_INT && n3->mod != T_MIXED) {
-	    c_error("bad index type (%s)", Value::typeName(tnbuf, n3->mod));
+	    Compile::error("bad index type (%s)",
+			   Value::typeName(tnbuf, n3->mod));
 	}
 	/* range */
 	if ((n1->mod & T_REF) == 0 && n1->mod != T_STRING && n1->mod != T_MIXED)
 	{
-	    c_error("bad indexed type (%s)", Value::typeName(tnbuf, n1->mod));
+	    Compile::error("bad indexed type (%s)",
+			   Value::typeName(tnbuf, n1->mod));
 	}
 	type = n1->mod;
     }
@@ -1301,9 +1318,9 @@ static Node *bini(int op, Node *n1, Node *n2, const char *name)
     } else if (n1->mod == T_INT && (n2->mod == T_INT || n2->mod == T_MIXED)) {
 	type = T_INT;
     } else if (typechecking && n1->mod != T_MIXED) {
-	c_error("bad argument types for %s (%s, %s)", name,
-		Value::typeName(tnbuf1, n1->mod),
-		Value::typeName(tnbuf2, n2->mod));
+	Compile::error("bad argument types for %s (%s, %s)", name,
+		       Value::typeName(tnbuf1, n1->mod),
+		       Value::typeName(tnbuf2, n2->mod));
     }
     if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
@@ -1359,9 +1376,9 @@ static Node *bina(int op, Node *n1, Node *n2, const char *name)
 		break;
 	}
     } else if (typechecking && n1->mod != T_MIXED) {
-	c_error("bad argument types for %s (%s, %s)", name,
-		Value::typeName(tnbuf1, n1->mod),
-		Value::typeName(tnbuf2, n2->mod));
+	Compile::error("bad argument types for %s (%s, %s)", name,
+		       Value::typeName(tnbuf1, n1->mod),
+		       Value::typeName(tnbuf2, n2->mod));
     }
 
     return Node::createBin(op, type, n1, n2);
@@ -1406,7 +1423,7 @@ static Node *mdiv(int op, Node *n1, Node *n2, const char *name)
 	d = n2->l.number;
 	if (d == 0) {
 	    /* i / 0 */
-	    c_error("division by zero");
+	    Compile::error("division by zero");
 	    return n1;
 	}
 	n1->l.number = i / d;
@@ -1415,7 +1432,7 @@ static Node *mdiv(int op, Node *n1, Node *n2, const char *name)
 	/* f / f */
 	if (NFLT_ISZERO(n2)) {
 	    /* f / 0.0 */
-	    c_error("division by zero");
+	    Compile::error("division by zero");
 	    return n1;
 	}
 	NFLT_GET(n1, f1);
@@ -1442,7 +1459,7 @@ static Node *mod(int op, Node *n1, Node *n2, const char *name)
 	d = n2->l.number;
 	if (d == 0) {
 	    /* i % 0 */
-	    c_error("modulus by zero");
+	    Compile::error("modulus by zero");
 	    return n1;
 	}
 	n1->l.number = i % d;
@@ -1497,12 +1514,12 @@ static Node *add(int op, Node *n1, Node *n2, const char *name)
 
     if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
 	type = T_OBJECT;
-    } else if ((type=c_tmatch(n1->mod, n2->mod)) == T_NIL) {
+    } else if ((type=Compile::matchType(n1->mod, n2->mod)) == T_NIL) {
 	type = T_MIXED;
 	if (typechecking) {
-	    c_error("bad argument types for %s (%s, %s)", name,
-		    Value::typeName(tnbuf1, n1->mod),
-		    Value::typeName(tnbuf2, n2->mod));
+	    Compile::error("bad argument types for %s (%s, %s)", name,
+			   Value::typeName(tnbuf1, n1->mod),
+			   Value::typeName(tnbuf2, n2->mod));
 	}
     } else if (type == T_INT) {
 	op++;
@@ -1549,15 +1566,15 @@ static Node *sub(int op, Node *n1, Node *n2, const char *name)
 
     if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
 	type = T_OBJECT;
-    } else if ((type=c_tmatch(n1->mod, n2->mod)) == T_NIL || type == T_STRING ||
-	       type == T_MAPPING) {
+    } else if ((type=Compile::matchType(n1->mod, n2->mod)) == T_NIL ||
+	       type == T_STRING || type == T_MAPPING) {
 	if ((type=n1->mod) != T_MAPPING ||
 	    (n2->mod != T_MIXED && (n2->mod & T_REF) == 0)) {
 	    type = T_MIXED;
 	    if (typechecking) {
-		c_error("bad argument types for %s (%s, %s)", name,
-			Value::typeName(tnbuf1, n1->mod),
-			Value::typeName(tnbuf2, n2->mod));
+		Compile::error("bad argument types for %s (%s, %s)", name,
+			       Value::typeName(tnbuf1, n1->mod),
+			       Value::typeName(tnbuf2, n2->mod));
 	    }
 	}
     } else if (type == T_INT) {
@@ -1601,7 +1618,7 @@ static Node *lshift(int op, Node *n1, Node *n2, const char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
-	    c_error("negative left shift");
+	    Compile::error("negative left shift");
 	    n2->l.number = 0;
 	}
 	if (n1->type == N_INT) {
@@ -1623,7 +1640,7 @@ static Node *rshift(int op, Node *n1, Node *n2, const char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
-	    c_error("negative right shift");
+	    Compile::error("negative right shift");
 	    n2->l.number = 0;
 	}
 	if (n1->type == N_INT) {
@@ -1712,9 +1729,9 @@ static Node *rel(int op, Node *n1, Node *n2, const char *name)
 	typechecking &&
 	((n1->mod != n2->mod && n2->mod != T_MIXED) || !T_ARITHSTR(n1->mod) ||
 	 (!T_ARITHSTR(n2->mod) && n2->mod != T_MIXED))) {
-	c_error("bad argument types for %s (%s, %s)", name,
-		Value::typeName(tnbuf1, n1->mod),
-		Value::typeName(tnbuf2, n2->mod));
+	Compile::error("bad argument types for %s (%s, %s)", name,
+		       Value::typeName(tnbuf1, n1->mod),
+		       Value::typeName(tnbuf2, n2->mod));
     } else if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
     }
@@ -1780,13 +1797,13 @@ static Node *eq(Node *n1, Node *n2)
     }
 
     op = N_EQ;
-    if (c_tmatch(n1->mod, n2->mod) == T_NIL &&
-	(!c_nil(n1) || !T_POINTER(n2->mod)) &&
-	(!c_nil(n2) || !T_POINTER(n1->mod))) {
+    if (Compile::matchType(n1->mod, n2->mod) == T_NIL &&
+	(!Compile::nil(n1) || !T_POINTER(n2->mod)) &&
+	(!Compile::nil(n2) || !T_POINTER(n1->mod))) {
 	if (typechecking) {
-	    c_error("incompatible types for equality (%s, %s)",
-		    Value::typeName(tnbuf1, n1->mod),
-		    Value::typeName(tnbuf2, n2->mod));
+	    Compile::error("incompatible types for equality (%s, %s)",
+			   Value::typeName(tnbuf1, n1->mod),
+			   Value::typeName(tnbuf2, n2->mod));
 	}
     } else if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
@@ -1809,7 +1826,7 @@ static Node *_and(int op, Node *n1, Node *n2, const char *name)
     }
     if ((((type=n1->mod) == T_MIXED || type == T_MAPPING) &&
 	 ((n2->mod & T_REF) != 0 || n2->mod == T_MIXED)) ||
-	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_NIL) {
+	((type=Compile::matchType(n1->mod, n2->mod)) & T_REF) != T_NIL) {
 	/*
 	 * possibly array & array or mapping & array
 	 */
@@ -1832,7 +1849,7 @@ static Node *_xor(int op, Node *n1, Node *n2, const char *name)
 	return n1;
     }
     if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
-	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_NIL) {
+	((type=Compile::matchType(n1->mod, n2->mod)) & T_REF) != T_NIL) {
 	/*
 	 * possibly array ^ array
 	 */
@@ -1855,7 +1872,7 @@ static Node *_or(int op, Node *n1, Node *n2, const char *name)
 	return n1;
     }
     if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
-	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_NIL) {
+	((type=Compile::matchType(n1->mod, n2->mod)) & T_REF) != T_NIL) {
 	/*
 	 * possibly array | array
 	 */
@@ -1874,8 +1891,8 @@ static Node *land(Node *n1, Node *n2)
     t_void(n2);
 
     if ((n1->flags & F_CONST) && (n2->flags & F_CONST)) {
-	n1 = c_tst(n1);
-	n2 = c_tst(n2);
+	n1 = Compile::tst(n1);
+	n2 = Compile::tst(n2);
 	n1->l.number &= n2->l.number;
 	return n1;
     }
@@ -1893,8 +1910,8 @@ static Node *lor(Node *n1, Node *n2)
     t_void(n2);
 
     if ((n1->flags & F_CONST) && (n2->flags & F_CONST)) {
-	n1 = c_tst(n1);
-	n2 = c_tst(n2);
+	n1 = Compile::tst(n1);
+	n2 = Compile::tst(n2);
 	n1->l.number |= n2->l.number;
 	return n1;
     }
@@ -1929,12 +1946,12 @@ static Node *quest(Node *n1, Node *n2, Node *n3)
     }
 
     type = T_MIXED;
-    if (c_nil(n2) && T_POINTER(n3->mod)) {
+    if (Compile::nil(n2) && T_POINTER(n3->mod)) {
 	/*
 	 * expr ? nil : expr
 	 */
 	type = n3->mod;
-    } else if (c_nil(n3) && T_POINTER(n2->mod)) {
+    } else if (Compile::nil(n3) && T_POINTER(n2->mod)) {
 	/*
 	 * expr ? expr : nil;
 	 */
@@ -1947,7 +1964,7 @@ static Node *quest(Node *n1, Node *n2, Node *n3)
 	    /* result can never be used */
 	    type = T_VOID;
 	} else {
-	    type = c_tmatch(n2->mod, n3->mod);
+	    type = Compile::matchType(n2->mod, n3->mod);
 	    if (type == T_NIL) {
 		/* no typechecking here, just let the result be mixed */
 		type = T_MIXED;
@@ -2003,9 +2020,9 @@ static Node *assign(Node *n1, Node *n2)
 		    n1->r.right = n;
 		}
 	    } else if (type != T_MIXED) {
-		c_error("incompatible types for = (%s, %s)",
-			Value::typeName(tnbuf1, n1->mod),
-			Value::typeName(tnbuf2, type));
+		Compile::error("incompatible types for = (%s, %s)",
+			       Value::typeName(tnbuf1, n1->mod),
+			       Value::typeName(tnbuf2, type));
 		type = T_MIXED;
 	    }
 
@@ -2018,10 +2035,10 @@ static Node *assign(Node *n1, Node *n2)
 		    m = n;
 		    n = (Node *) NULL;
 		}
-		if (c_tmatch(m->mod, type) == T_NIL) {
-		    c_error("incompatible types for = (%s, %s)",
-			    Value::typeName(tnbuf1, m->mod),
-			    Value::typeName(tnbuf2, type));
+		if (Compile::matchType(m->mod, type) == T_NIL) {
+		    Compile::error("incompatible types for = (%s, %s)",
+				   Value::typeName(tnbuf1, m->mod),
+				   Value::typeName(tnbuf2, type));
 		}
 	    }
 	}
@@ -2032,14 +2049,14 @@ static Node *assign(Node *n1, Node *n2)
 	}
 	return n1;
     } else {
-	if (typechecking && (!c_nil(n2) || !T_POINTER(n1->mod))) {
+	if (typechecking && (!Compile::nil(n2) || !T_POINTER(n1->mod))) {
 	    /*
 	     * typechecked
 	     */
-	    if (c_tmatch(n1->mod, n2->mod) == T_NIL) {
-		c_error("incompatible types for = (%s, %s)",
-			Value::typeName(tnbuf1, n1->mod),
-			Value::typeName(tnbuf2, n2->mod));
+	    if (Compile::matchType(n1->mod, n2->mod) == T_NIL) {
+		Compile::error("incompatible types for = (%s, %s)",
+			       Value::typeName(tnbuf1, n1->mod),
+			       Value::typeName(tnbuf2, n2->mod));
 	    } else if ((n1->mod != T_MIXED && n2->mod == T_MIXED) ||
 		       (n1->mod == T_CLASS &&
 			(n2->mod != T_CLASS ||

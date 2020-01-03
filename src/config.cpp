@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1522,11 +1522,11 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     Frame::init(conf[CREATE].str, conf[TYPECHECKING].num == 2);
 
     /* initialize compiler */
-    c_init(conf[AUTO_OBJECT].str,
-	   conf[DRIVER_OBJECT].str,
-	   conf[INCLUDE_FILE].str,
-	   dirs,
-	   (int) conf[TYPECHECKING].num);
+    Compile::init(conf[AUTO_OBJECT].str,
+		  conf[DRIVER_OBJECT].str,
+		  conf[INCLUDE_FILE].str,
+		  dirs,
+		  (int) conf[TYPECHECKING].num);
 
     Alloc::dynamicMode();
 

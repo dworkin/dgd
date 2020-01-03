@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -256,7 +256,7 @@ static char *code_make(unsigned short depth, int nlocals, unsigned short *size)
     *size = sz = 5 + here + line_info_size;
 
     if (sz > USHRT_MAX) {
-	c_error("function too large");
+	Compile::error("function too large");
     }
     code = ALLOC(char, sz);
     *code++ = depth >> 8;
