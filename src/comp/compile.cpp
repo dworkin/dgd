@@ -811,7 +811,7 @@ void Compile::declFunc(unsigned short sclass, Node *type, String *str,
     if (formals != (Node *) NULL && (formals->flags & F_ELLIPSIS)) {
 	sclass |= C_ELLIPSIS;
     }
-    formals = formals->revert();
+    formals = Node::revert(formals);
     for (;;) {
 	*p++ = t;
 	if ((t & T_TYPE) == T_CLASS) {
@@ -927,7 +927,7 @@ void Compile::declList(unsigned short sclass, Node *type, Node *list,
 {
     Node *n;
 
-    list = list->revert();	/* for proper order of err mesgs */
+    list = Node::revert(list);	/* for proper order of err mesgs */
     while (list != (Node *) NULL) {
 	if (list->type == N_PAIR) {
 	    n = list->l.left;
@@ -1786,7 +1786,7 @@ Node *Compile::endCompound(Node *n)
     if (n != (Node *) NULL) {
       flags = n->flags & (F_REACH | F_END);
       if (n->type == N_PAIR) {
-	  n = n->revert();
+	  n = Node::revert(n);
 	  n->flags = (n->flags & ~F_END) | flags;
       }
       n = Node::createMon(N_COMPOUND, 0, n);
@@ -1913,7 +1913,7 @@ Node *Compile::iflookup(Node *n, Node *label)
  */
 Node *Compile::aggregate(Node *n, unsigned int type)
 {
-    return Node::createMon(N_AGGR, type, n->revert());
+    return Node::createMon(N_AGGR, type, Node::revert(n));
 }
 
 /*
@@ -2117,7 +2117,7 @@ Node *Compile::funcall(Node *call, Node *args, int funcptr)
  */
 Node *Compile::funcall(Node *func, Node *args)
 {
-    return funcall(func, args->revert(), FALSE);
+    return funcall(func, Node::revert(args), FALSE);
 }
 
 /*
@@ -2128,7 +2128,7 @@ Node *Compile::arrow(Node *other, Node *func, Node *args)
     if (args == (Node *) NULL) {
 	args = func;
     } else {
-	args = Node::createBin(N_PAIR, 0, func, args->revert());
+	args = Node::createBin(N_PAIR, 0, func, Node::revert(args));
     }
     return funcall(flookup(Node::createStr(String::create("call_other", 10)),
 			   FALSE),
@@ -2141,7 +2141,7 @@ Node *Compile::arrow(Node *other, Node *func, Node *args)
 Node *Compile::address(Node *func, Node *args, int typechecked)
 {
 # ifdef CLOSURES
-    args = args->revert();
+    args = Node::revert(args);
     funcall(flookup(func, typechecked), args, TRUE);	/* check only */
 
     if (args == (Node *) NULL) {
@@ -2181,7 +2181,7 @@ Node *Compile::extend(Node *func, Node *args, int typechecked)
     if (args == (Node *) NULL) {
 	args = func;
     } else {
-	args = Node::createBin(N_PAIR, 0, func, args->revert());
+	args = Node::createBin(N_PAIR, 0, func, Node::revert(args));
     }
     func = funcall(flookup(Node::createStr(String::create("extend.function",
 							  15)),
@@ -2216,7 +2216,7 @@ Node *Compile::call(Node *func, Node *args, int typechecked)
     if (args == (Node *) NULL) {
 	args = func;
     } else {
-	args = Node::createBin(N_PAIR, 0, func, args->revert());
+	args = Node::createBin(N_PAIR, 0, func, Node::revert(args));
     }
     return funcall(flookup(Node::createStr(String::create("call.function", 13)),
 			   FALSE),
@@ -2236,7 +2236,7 @@ Node *Compile::call(Node *func, Node *args, int typechecked)
 Node *Compile::newObject(Node *o, Node *args)
 {
     if (args != (Node *) NULL) {
-	args = Node::createBin(N_PAIR, 0, o, args->revert());
+	args = Node::createBin(N_PAIR, 0, o, Node::revert(args));
     } else {
 	args = o;
     }

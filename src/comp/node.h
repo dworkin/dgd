@@ -37,6 +37,7 @@ public:
     static Node *createOp(const char *op);
     static Node *createMon(int type, int mod, Node *left);
     static Node *createBin(int type, int mod, Node *left, Node *right);
+    static Node *revert(Node *n);
 
     unsigned char type;		/* type of node */
     char flags;			/* bitflags */

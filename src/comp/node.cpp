@@ -273,11 +273,10 @@ void Node::tostr(String *str)
 /*
  * revert a "linked list" of nodes
  */
-Node *Node::revert()
+Node *Node::revert(Node *n)
 {
-    Node *n, *m;
+    Node *m;
 
-    n = this;
     if (n != (Node *) NULL && n->type == N_PAIR) {
 	while ((m=n->l.left)->type == N_PAIR) {
 	    /*
