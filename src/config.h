@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -143,24 +143,7 @@ public:
     char zero4;			/* reserved (0) */
     char dflags;		/* flags */
     char zero5;			/* reserved (0) */
-    char vstr0;
-    char vstr1;
-    char vstr2;
-    char vstr3;
-    char vstr4;
-    char vstr5;
-    char vstr6;
-    char vstr7;
-    char vstr8;
-    char vstr9;
-    char vstr10;
-    char vstr11;
-    char vstr12;
-    char vstr13;
-    char vstr14;
-    char vstr15;
-    char vstr16;
-    char vstr17;
+    char vstr[18];
     char offset0;
     char offset1;
     char offset2;

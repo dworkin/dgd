@@ -194,7 +194,7 @@ void Config::dumpinit()
     header.typecheck = conf[TYPECHECKING].num;
     header.secsize0 = conf[SECTOR_SIZE].num >> 8;
     header.secsize1 = conf[SECTOR_SIZE].num;
-    strcpy(&header.vstr0, VERSION);
+    strcpy(header.vstr, VERSION);
 
     starttime = boottime = P_time();
 
