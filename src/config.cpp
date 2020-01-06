@@ -154,25 +154,25 @@ static Uint boottime;		/* boot time */
  */
 unsigned int SnapshotInfo::restore(int fd)
 {
-    unsigned int secsize;
-    off_t offset;
+    unsigned int size;
+    off_t posn;
 
     for (;;) {
 	if (P_read(fd, this, sizeof(SnapshotInfo)) != sizeof(SnapshotInfo) ||
 		   valid != 1 || version < 2 || version > FORMAT_VERSION) {
 	    error("Bad or incompatible restore file header");
 	}
-	secsize = (UCHAR(secsize0) << 8) | UCHAR(secsize1);
-	offset = (UCHAR(offset0) << 24) |
-		 (UCHAR(offset1) << 16) |
-		 (UCHAR(offset2) << 8) |
-		  UCHAR(offset3);
-	if (offset == 0) {
-	    P_lseek(fd, secsize - sizeof(SnapshotInfo), SEEK_CUR);
-	    return secsize;
+	size = (UCHAR(secsize[0]) << 8) | UCHAR(secsize[1]);
+	posn = (UCHAR(offset[0]) << 24) |
+	       (UCHAR(offset[1]) << 16) |
+	       (UCHAR(offset[2]) << 8) |
+		UCHAR(offset[3]);
+	if (posn == 0) {
+	    P_lseek(fd, size - sizeof(SnapshotInfo), SEEK_CUR);
+	    return size;
 	}
 
-	P_lseek(fd, offset * secsize, SEEK_SET);
+	P_lseek(fd, posn * size, SEEK_SET);
     }
 }
 
@@ -192,20 +192,20 @@ void Config::dumpinit()
     header.version = FORMAT_VERSION;	/* snapshot version number */
     header.model = 0;			/* vanilla DGD */
     header.typecheck = conf[TYPECHECKING].num;
-    header.secsize0 = conf[SECTOR_SIZE].num >> 8;
-    header.secsize1 = conf[SECTOR_SIZE].num;
+    header.secsize[0] = conf[SECTOR_SIZE].num >> 8;
+    header.secsize[1] = conf[SECTOR_SIZE].num;
     strcpy(header.vstr, VERSION);
 
     starttime = boottime = P_time();
 
     s = 0x1234;
     i = 0x12345678L;
-    header.s0 = strchr((char *) &s, 0x12) - (char *) &s;
-    header.s1 = strchr((char *) &s, 0x34) - (char *) &s;
-    header.i0 = strchr((char *) &i, 0x12) - (char *) &i;
-    header.i1 = strchr((char *) &i, 0x34) - (char *) &i;
-    header.i2 = strchr((char *) &i, 0x56) - (char *) &i;
-    header.i3 = strchr((char *) &i, 0x78) - (char *) &i;
+    header.s[0] = strchr((char *) &s, 0x12) - (char *) &s;
+    header.s[1] = strchr((char *) &s, 0x34) - (char *) &s;
+    header.i[0] = strchr((char *) &i, 0x12) - (char *) &i;
+    header.i[1] = strchr((char *) &i, 0x34) - (char *) &i;
+    header.i[2] = strchr((char *) &i, 0x56) - (char *) &i;
+    header.i[3] = strchr((char *) &i, 0x78) - (char *) &i;
     header.utsize = sizeof(uindex) | (sizeof(ssizet) << 4);
     header.desize = sizeof(Sector) | (sizeof(eindex) << 4);
     header.psize = sizeof(char*) | (sizeof(char) << 4);
@@ -236,19 +236,19 @@ void Config::dump(bool incr, bool boot)
 
     header.version = FORMAT_VERSION;
     header.typecheck = conf[TYPECHECKING].num;
-    header.start0 = starttime >> 24;
-    header.start1 = starttime >> 16;
-    header.start2 = starttime >> 8;
-    header.start3 = starttime;
+    header.start[0] = starttime >> 24;
+    header.start[1] = starttime >> 16;
+    header.start[2] = starttime >> 8;
+    header.start[3] = starttime;
     etime = P_time();
     if (etime < boottime) {
 	etime = boottime;
     }
     etime += elapsed - boottime;
-    header.elapsed0 = etime >> 24;
-    header.elapsed1 = etime >> 16;
-    header.elapsed2 = etime >> 8;
-    header.elapsed3 = etime;
+    header.elapsed[0] = etime >> 24;
+    header.elapsed[1] = etime >> 16;
+    header.elapsed[2] = etime >> 8;
+    header.elapsed[3] = etime;
 
     if (!incr) {
 	Object::copy(0);
@@ -320,14 +320,14 @@ bool Config::restore(int fd, int fd2)
 	Swap::restore2(fd2);
     }
 
-    starttime = (UCHAR(rheader.start0) << 24) |
-		(UCHAR(rheader.start1) << 16) |
-		(UCHAR(rheader.start2) << 8) |
-		 UCHAR(rheader.start3);
-    elapsed =  (UCHAR(rheader.elapsed0) << 24) |
-	       (UCHAR(rheader.elapsed1) << 16) |
-	       (UCHAR(rheader.elapsed2) << 8) |
-		UCHAR(rheader.elapsed3);
+    starttime = (UCHAR(rheader.start[0]) << 24) |
+		(UCHAR(rheader.start[1]) << 16) |
+		(UCHAR(rheader.start[2]) << 8) |
+		 UCHAR(rheader.start[3]);
+    elapsed =  (UCHAR(rheader.elapsed[0]) << 24) |
+	       (UCHAR(rheader.elapsed[1]) << 16) |
+	       (UCHAR(rheader.elapsed[2]) << 8) |
+		UCHAR(rheader.elapsed[3]);
     rusize = rheader.utsize & 0xf;
     rtsize = rheader.utsize >> 4;
     if (rtsize == 0) {
@@ -539,8 +539,8 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 	    case 's':
 		i = ALGN(i, header.salign);
 		ri = ALGN(ri, rheader.salign);
-		buf[i + header.s0] = rbuf[ri + rheader.s0];
-		buf[i + header.s1] = rbuf[ri + rheader.s1];
+		buf[i + header.s[0]] = rbuf[ri + rheader.s[0]];
+		buf[i + header.s[1]] = rbuf[ri + rheader.s[1]];
 		i += sizeof(short);
 		ri += sizeof(short);
 		break;
@@ -550,21 +550,21 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		ri = ALGN(ri, rualign);
 		if (sizeof(uindex) == rusize) {
 		    if (sizeof(uindex) == sizeof(short)) {
-			buf[i + header.s0] = rbuf[ri + rheader.s0];
-			buf[i + header.s1] = rbuf[ri + rheader.s1];
+			buf[i + header.s[0]] = rbuf[ri + rheader.s[0]];
+			buf[i + header.s[1]] = rbuf[ri + rheader.s[1]];
 		    } else {
-			buf[i + header.i0] = rbuf[ri + rheader.i0];
-			buf[i + header.i1] = rbuf[ri + rheader.i1];
-			buf[i + header.i2] = rbuf[ri + rheader.i2];
-			buf[i + header.i3] = rbuf[ri + rheader.i3];
+			buf[i + header.i[0]] = rbuf[ri + rheader.i[0]];
+			buf[i + header.i[1]] = rbuf[ri + rheader.i[1]];
+			buf[i + header.i[2]] = rbuf[ri + rheader.i[2]];
+			buf[i + header.i[3]] = rbuf[ri + rheader.i[3]];
 		    }
 		} else {
-		    j = (UCHAR(rbuf[ri + rheader.s0] & rbuf[ri + rheader.s1]) == 0xff) ?
+		    j = (UCHAR(rbuf[ri + rheader.s[0]] & rbuf[ri + rheader.s[1]]) == 0xff) ?
 			 -1 : 0;
-		    buf[i + header.i0] = j;
-		    buf[i + header.i1] = j;
-		    buf[i + header.i2] = rbuf[ri + rheader.s0];
-		    buf[i + header.i3] = rbuf[ri + rheader.s1];
+		    buf[i + header.i[0]] = j;
+		    buf[i + header.i[1]] = j;
+		    buf[i + header.i[2]] = rbuf[ri + rheader.s[0]];
+		    buf[i + header.i[3]] = rbuf[ri + rheader.s[1]];
 		}
 		i += sizeof(uindex);
 		ri += rusize;
@@ -573,10 +573,10 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 	    case 'i':
 		i = ALGN(i, header.ialign);
 		ri = ALGN(ri, rheader.ialign);
-		buf[i + header.i0] = rbuf[ri + rheader.i0];
-		buf[i + header.i1] = rbuf[ri + rheader.i1];
-		buf[i + header.i2] = rbuf[ri + rheader.i2];
-		buf[i + header.i3] = rbuf[ri + rheader.i3];
+		buf[i + header.i[0]] = rbuf[ri + rheader.i[0]];
+		buf[i + header.i[1]] = rbuf[ri + rheader.i[1]];
+		buf[i + header.i[2]] = rbuf[ri + rheader.i[2]];
+		buf[i + header.i[3]] = rbuf[ri + rheader.i[3]];
 		i += sizeof(Int);
 		ri += sizeof(Int);
 		break;
@@ -586,19 +586,19 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		ri = ALGN(ri, rtalign);
 		if (sizeof(ssizet) == rtsize) {
 		    if (sizeof(ssizet) == sizeof(short)) {
-			buf[i + header.s0] = rbuf[ri + rheader.s0];
-			buf[i + header.s1] = rbuf[ri + rheader.s1];
+			buf[i + header.s[0]] = rbuf[ri + rheader.s[0]];
+			buf[i + header.s[1]] = rbuf[ri + rheader.s[1]];
 		    } else {
-			buf[i + header.i0] = rbuf[ri + rheader.i0];
-			buf[i + header.i1] = rbuf[ri + rheader.i1];
-			buf[i + header.i2] = rbuf[ri + rheader.i2];
-			buf[i + header.i3] = rbuf[ri + rheader.i3];
+			buf[i + header.i[0]] = rbuf[ri + rheader.i[0]];
+			buf[i + header.i[1]] = rbuf[ri + rheader.i[1]];
+			buf[i + header.i[2]] = rbuf[ri + rheader.i[2]];
+			buf[i + header.i[3]] = rbuf[ri + rheader.i[3]];
 		    }
 		} else {
-		    buf[i + header.i0] = 0;
-		    buf[i + header.i1] = 0;
-		    buf[i + header.i2] = rbuf[ri + rheader.s0];
-		    buf[i + header.i3] = rbuf[ri + rheader.s1];
+		    buf[i + header.i[0]] = 0;
+		    buf[i + header.i[1]] = 0;
+		    buf[i + header.i[2]] = rbuf[ri + rheader.s[0]];
+		    buf[i + header.i[3]] = rbuf[ri + rheader.s[1]];
 		}
 		i += sizeof(ssizet);
 		ri += rtsize;
@@ -609,21 +609,21 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		ri = ALGN(ri, rdalign);
 		if (sizeof(Sector) == rdsize) {
 		    if (sizeof(Sector) == sizeof(short)) {
-			buf[i + header.s0] = rbuf[ri + rheader.s0];
-			buf[i + header.s1] = rbuf[ri + rheader.s1];
+			buf[i + header.s[0]] = rbuf[ri + rheader.s[0]];
+			buf[i + header.s[1]] = rbuf[ri + rheader.s[1]];
 		    } else {
-			buf[i + header.i0] = rbuf[ri + rheader.i0];
-			buf[i + header.i1] = rbuf[ri + rheader.i1];
-			buf[i + header.i2] = rbuf[ri + rheader.i2];
-			buf[i + header.i3] = rbuf[ri + rheader.i3];
+			buf[i + header.i[0]] = rbuf[ri + rheader.i[0]];
+			buf[i + header.i[1]] = rbuf[ri + rheader.i[1]];
+			buf[i + header.i[2]] = rbuf[ri + rheader.i[2]];
+			buf[i + header.i[3]] = rbuf[ri + rheader.i[3]];
 		    }
 		} else {
-		    j = (UCHAR(rbuf[ri + rheader.s0] & rbuf[ri + rheader.s1]) == 0xff) ?
+		    j = (UCHAR(rbuf[ri + rheader.s[0]] & rbuf[ri + rheader.s[1]]) == 0xff) ?
 			 -1 : 0;
-		    buf[i + header.i0] = j;
-		    buf[i + header.i1] = j;
-		    buf[i + header.i2] = rbuf[ri + rheader.s0];
-		    buf[i + header.i3] = rbuf[ri + rheader.s1];
+		    buf[i + header.i[0]] = j;
+		    buf[i + header.i[1]] = j;
+		    buf[i + header.i[2]] = rbuf[ri + rheader.s[0]];
+		    buf[i + header.i[3]] = rbuf[ri + rheader.s[1]];
 		}
 		i += sizeof(Sector);
 		ri += rdsize;

@@ -105,22 +105,10 @@ public:
     char version;
     char model;
     char typecheck;
-    char secsize0;
-    char secsize1;
-    char s0;			/* short, msb */
-    char s1;			/* short, lsb */
-    char i0;			/* Int, msb */
-    char i1;
-    char i2;
-    char i3;			/* Int, lsb */
-    char l0;
-    char l1;
-    char l2;
-    char l3;
-    char l4;
-    char l5;
-    char l6;
-    char l7;
+    char secsize[2];
+    char s[2];			/* short */
+    char i[4];			/* Int */
+    char l[8];
     char utsize;		/* sizeof(uindex) + sizeof(ssizet) */
     char desize;		/* sizeof(sector) + sizeof(eindex) */
     char psize;			/* sizeof(char*), upper nibble reserved */
@@ -129,14 +117,8 @@ public:
     char ialign;		/* align(Int) */
     char palign;		/* align(char*) */
     char zalign;		/* align(struct) */
-    char start0;
-    char start1;
-    char start2;
-    char start3;
-    char elapsed0;
-    char elapsed1;
-    char elapsed2;
-    char elapsed3;
+    char start[4];
+    char elapsed[4];
     char zero1;			/* reserved (0) */
     char zero2;			/* reserved (0) */
     char zero3;			/* reserved (0) */
@@ -144,10 +126,7 @@ public:
     char dflags;		/* flags */
     char zero5;			/* reserved (0) */
     char vstr[18];
-    char offset0;
-    char offset1;
-    char offset2;
-    char offset3;
+    char offset[4];
 
     unsigned int restore(int fd);
 };
