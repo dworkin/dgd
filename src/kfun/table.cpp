@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,7 @@
 /*
  * prototypes
  */
-# define FUNCDEF(name, func, proto, v) extern int func(Frame*, int, struct kfunc*); extern char proto[];
+# define FUNCDEF(name, func, proto, v) extern int func(Frame*, int, struct KFun*); extern char proto[];
 # include "builtin.cpp"
 # include "std.cpp"
 # include "file.cpp"
@@ -34,8 +34,8 @@
 /*
  * kernel function table
  */
-static kfunc kforig[] = {
-# define FUNCDEF(name, func, proto, v) { name, proto, func, (extfunc) NULL, v },
+static KFun kforig[] = {
+# define FUNCDEF(name, func, proto, v) { name, proto, func, (ExtFunc) NULL, v },
 # include "builtin.cpp"
 # include "std.cpp"
 # include "file.cpp"
@@ -44,10 +44,10 @@ static kfunc kforig[] = {
 # undef FUNCDEF
 };
 
-kfunc kftab[KFTAB_SIZE];	/* kfun tab */
-kfunc kfenc[KFCRYPT_SIZE];	/* encryption */
-kfunc kfdec[KFCRYPT_SIZE];	/* decryption */
-kfunc kfhsh[KFCRYPT_SIZE];	/* hashing */
+KFun kftab[KFTAB_SIZE];		/* kfun tab */
+KFun kfenc[KFCRYPT_SIZE];	/* encryption */
+KFun kfdec[KFCRYPT_SIZE];	/* decryption */
+KFun kfhsh[KFCRYPT_SIZE];	/* hashing */
 kfindex kfind[KFTAB_SIZE];	/* n -> index */
 static kfindex kfx[KFTAB_SIZE];	/* index -> n */
 int nkfun, ne, nd, nh;		/* # kfuns */
@@ -64,13 +64,99 @@ extern Value *ext_value_temp(Dataspace*);
 extern void ext_kfuns(char*, int, int);
 
 /*
- * NAME:	kfun->clear()
- * DESCRIPTION:	clear previously added kfuns from the table
+ * handle an argument error in a builtin kfun
  */
-void kf_clear()
+void KFun::argError(int n)
+{
+    error("Bad argument %d for kfun %s", n, name);
+}
+
+/*
+ * handle unary operator
+ */
+void KFun::unary(Frame *f)
+{
+    if (!f->call((Object *) NULL, f->sp->array, name, strlen(name), TRUE, 0)) {
+	argError(1);
+    }
+    if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
+	error("operator %s did not return a light-weight object", name);
+    }
+
+    f->sp[1].array->del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+}
+
+/*
+ * handle binary operator
+ */
+void KFun::binary(Frame *f)
+{
+    if (VAL_NIL(f->sp)) {
+	argError(2);
+    }
+
+    if (!f->call((Object *) NULL, f->sp[1].array, name, strlen(name), TRUE, 1))
+    {
+	argError(1);
+    }
+    if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
+	error("operator %s did not return a light-weight object", name);
+    }
+
+    f->sp[1].array->del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+}
+
+/*
+ * handle compare operator
+ */
+void KFun::compare(Frame *f)
+{
+    if (VAL_NIL(f->sp)) {
+	argError(2);
+    }
+
+    if (!f->call((Object *) NULL, f->sp[1].array, name, strlen(name), TRUE, 1))
+    {
+	argError(1);
+    }
+    if (f->sp->type != T_INT || (f->sp->number & ~1)) {
+	error("operator %s did not return a truth value", name);
+    }
+
+    f->sp[1].array->del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+}
+
+/*
+ * handle ternary operator
+ */
+void KFun::ternary(Frame *f)
+{
+    if (!f->call((Object *) NULL, f->sp[2].array, name, strlen(name), TRUE, 2))
+    {
+	argError(1);
+    }
+    if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
+	error("operator %s did not return a light-weight object", name);
+    }
+
+    f->sp[1].array->del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+}
+
+/*
+ * clear previously added kfuns from the table
+ */
+void KFun::clear()
 {
     static char proto[] = { T_VOID, 0 };
-    static extkfunc builtin[] = {
+    static ExtKFun builtin[] = {
 	{ "encrypt DES", proto, kf_enc },
 	{ "encrypt DES key", proto, kf_enc_key },
 	{ "decrypt DES", proto, kf_dec },
@@ -80,16 +166,15 @@ void kf_clear()
 	{ "hash crypt", proto, kf_xcrypt }
     };
 
-    nkfun = sizeof(kforig) / sizeof(kfunc);
+    nkfun = sizeof(kforig) / sizeof(KFun);
     ne = nd = nh = 0;
-    kf_ext_kfun(builtin, 7);
+    add(builtin, 7);
 }
 
 /*
- * NAME:	kfun->callgate()
- * DESCRIPTION:	extra kfun call gate
+ * extra kfun call gate
  */
-static int kf_callgate(Frame *f, int nargs, kfunc *kf)
+int KFun::callgate(Frame *f, int nargs, KFun *kf)
 {
     if (!setjmp(*ErrorContext::push())) {
 	Value val;
@@ -112,10 +197,9 @@ static int kf_callgate(Frame *f, int nargs, kfunc *kf)
 }
 
 /*
- * NAME:	prototype()
- * DESCRIPTION:	construct proper prototype for new kfun
+ * construct proper prototype for new kfun
  */
-static char *prototype(char *proto, bool *lval)
+char *KFun::prototype(char *proto, bool *lval)
 {
     char *p, *q;
     int nargs, vargs;
@@ -187,12 +271,11 @@ static char *prototype(char *proto, bool *lval)
 }
 
 /*
- * NAME:	kfun->ext_kfun()
- * DESCRIPTION:	add new kfuns
+ * add new kfuns
  */
-void kf_ext_kfun(const extkfunc *kfadd, int n)
+void KFun::add(const ExtKFun *kfadd, int n)
 {
-    kfunc *kf;
+    KFun *kf;
 
     for (; n != 0; kfadd++, --n) {
 	if (strncmp(kfadd->name, "encrypt ", 8) == 0) {
@@ -210,41 +293,24 @@ void kf_ext_kfun(const extkfunc *kfadd, int n)
 	}
 	kf->lval = FALSE;
 	kf->proto = prototype(kfadd->proto, &kf->lval);
-	kf->func = &kf_callgate;
+	kf->func = &callgate;
 	kf->ext = kfadd->func;
 	kf->version = 0;
     }
 }
 
-char pt_unused[] = { C_STATIC, 0, 0, 0, 6, T_MIXED };
-
 /*
- * NAME:	kfun->unused()
- * DESCRIPTION:	unused kfun
+ * compare two kftable entries
  */
-int kf_unused(Frame *f, int nargs, kfunc *kf)
+int KFun::cmp(cvoid *cv1, cvoid *cv2)
 {
-    UNREFERENCED_PARAMETER(f);
-    UNREFERENCED_PARAMETER(nargs);
-    UNREFERENCED_PARAMETER(kf);
-
-    return 1;
+    return strcmp(((KFun *) cv1)->name, ((KFun *) cv2)->name);
 }
 
 /*
- * NAME:	kfun->cmp()
- * DESCRIPTION:	compare two kftable entries
+ * initialize the kfun table
  */
-static int kf_cmp(cvoid *cv1, cvoid *cv2)
-{
-    return strcmp(((kfunc *) cv1)->name, ((kfunc *) cv2)->name);
-}
-
-/*
- * NAME:	kfun->init()
- * DESCRIPTION:	initialize the kfun table
- */
-void kf_init()
+void KFun::init()
 {
     int i, n;
     kfindex *k1, *k2;
@@ -255,10 +321,10 @@ void kf_init()
 	*k2++ = i;
     }
     qsort((void *) (kftab + KF_BUILTINS), nkfun - KF_BUILTINS,
-	  sizeof(kfunc), kf_cmp);
-    qsort(kfenc, ne, sizeof(kfunc), kf_cmp);
-    qsort(kfdec, nd, sizeof(kfunc), kf_cmp);
-    qsort(kfhsh, nh, sizeof(kfunc), kf_cmp);
+	  sizeof(KFun), cmp);
+    qsort(kfenc, ne, sizeof(KFun), cmp);
+    qsort(kfdec, nd, sizeof(KFun), cmp);
+    qsort(kfhsh, nh, sizeof(KFun), cmp);
     for (n = 0; kftab[i].name[1] == '.'; n++) {
 	*k2++ = '\0';
 	i++;
@@ -270,10 +336,9 @@ void kf_init()
 }
 
 /*
- * NAME:	kfun->jit()
- * DESCRIPTION:	prepare JIT compiler
+ * prepare JIT compiler
  */
-void kf_jit()
+void KFun::jit()
 {
     int size, i, n, nkf;
     char *protos, *proto;
@@ -311,10 +376,9 @@ void kf_jit()
 }
 
 /*
- * NAME:	kfun->index()
- * DESCRIPTION:	search for kfun in the kfun table, return raw index or -1
+ * search for kfun in the kfun table, return raw index or -1
  */
-static int kf_index(kfunc *kf, unsigned int l, unsigned int h, const char *name)
+int KFun::find(KFun *kf, unsigned int l, unsigned int h, const char *name)
 {
     unsigned int m;
     int c;
@@ -336,14 +400,13 @@ static int kf_index(kfunc *kf, unsigned int l, unsigned int h, const char *name)
 }
 
 /*
- * NAME:	kfun->func()
- * DESCRIPTION:	search for kfun in the kfun table, return index or -1
+ * search for kfun in the kfun table, return index or -1
  */
-int kf_func(const char *name)
+int KFun::kfunc(const char *name)
 {
     int n;
 
-    n = kf_index(kftab, KF_BUILTINS, nkfun, name);
+    n = find(kftab, KF_BUILTINS, nkfun, name);
     if (n >= 0) {
 	n = kfx[n];
     }
@@ -351,76 +414,9 @@ int kf_func(const char *name)
 }
 
 /*
- * NAME:	kfun->encrypt()
- * DESCRIPTION:	encrypt a string
+ * reclaim kfun space
  */
-int kf_encrypt(Frame *f, int nargs, kfunc *func)
-{
-    int n;
-
-    UNREFERENCED_PARAMETER(func);
-
-    n = kf_index(kfenc, 0, ne, f->sp[nargs - 1].string->text);
-    if (n < 0) {
-	error("Unknown cipher");
-    }
-    (kfenc[n].func)(f, nargs - 1, &kfenc[n]);
-    f->sp[1].del();
-    f->sp[1] = f->sp[0];
-    f->sp++;
-
-    return 0;
-}
-
-/*
- * NAME:	kfun->decrypt()
- * DESCRIPTION:	decrypt a string
- */
-int kf_decrypt(Frame *f, int nargs, kfunc *func)
-{
-    int n;
-
-    UNREFERENCED_PARAMETER(func);
-
-    n = kf_index(kfdec, 0, nd, f->sp[nargs - 1].string->text);
-    if (n < 0) {
-	error("Unknown cipher");
-    }
-    (kfdec[n].func)(f, nargs - 1, &kfdec[n]);
-    f->sp[1].del();
-    f->sp[1] = f->sp[0];
-    f->sp++;
-
-    return 0;
-}
-
-/*
- * NAME:	kfun->hash_string()
- * DESCRIPTION:	hash a string
- */
-int kf_hash_string(Frame *f, int nargs, kfunc *func)
-{
-    int n;
-
-    UNREFERENCED_PARAMETER(func);
-
-    n = kf_index(kfhsh, 0, nh, f->sp[nargs - 1].string->text);
-    if (n < 0) {
-	error("Unknown hash algorithm");
-    }
-    (kfhsh[n].func)(f, nargs - 1, &kfhsh[n]);
-    f->sp[1].del();
-    f->sp[1] = f->sp[0];
-    f->sp++;
-
-    return 0;
-}
-
-/*
- * NAME:	kfun->reclaim()
- * DESCRIPTION:	reclaim kfun space
- */
-void kf_reclaim()
+void KFun::reclaim()
 {
     int i, n, last;
 
@@ -454,7 +450,7 @@ void kf_reclaim()
 }
 
 
-struct dump_header {
+struct KfunHeader {
     short nbuiltin;	/* # builtin kfuns */
     short nkfun;	/* # other kfuns */
     short kfnamelen;	/* length of all kfun names */
@@ -463,15 +459,14 @@ struct dump_header {
 static char dh_layout[] = "sss";
 
 /*
- * NAME:	kfun->dump()
- * DESCRIPTION:	dump the kfun table
+ * dump the kfun table
  */
-bool kf_dump(int fd)
+bool KFun::dump(int fd)
 {
     int i, n;
     unsigned int len, buflen;
-    kfunc *kf;
-    dump_header dh;
+    KFun *kf;
+    KfunHeader dh;
     char *buffer;
     bool flag;
 
@@ -492,7 +487,7 @@ bool kf_dump(int fd)
     }
 
     /* write header */
-    if (!Swap::write(fd, &dh, sizeof(dump_header))) {
+    if (!Swap::write(fd, &dh, sizeof(KfunHeader))) {
 	return FALSE;
     }
 
@@ -519,13 +514,12 @@ bool kf_dump(int fd)
 }
 
 /*
- * NAME:	kfun->restore()
- * DESCRIPTION:	restore the kfun table
+ * restore the kfun table
  */
-void kf_restore(int fd)
+void KFun::restore(int fd)
 {
     int i, n, buflen;
-    dump_header dh;
+    KfunHeader dh;
     char *buffer;
 
     /* read header */
@@ -540,15 +534,15 @@ void kf_restore(int fd)
     buflen = 0;
     for (i = 0; i < dh.nkfun; i++) {
 	if (buffer[buflen + 1] == '.') {
-	    n = kf_index(kftab, KF_BUILTINS, nkfun, buffer + buflen + 2);
+	    n = KFun::find(kftab, KF_BUILTINS, nkfun, buffer + buflen + 2);
 	    if (n < 0 || kftab[n].version != buffer[buflen] - '0') {
-		n = kf_index(kftab, KF_BUILTINS, nkfun, buffer + buflen);
+		n = KFun::find(kftab, KF_BUILTINS, nkfun, buffer + buflen);
 		if (n < 0) {
 		    error("Restored unknown kfun: %s", buffer + buflen);
 		}
 	    }
 	} else {
-	    n = kf_index(kftab, KF_BUILTINS, nkfun, buffer + buflen);
+	    n = KFun::find(kftab, KF_BUILTINS, nkfun, buffer + buflen);
 	    if (n < 0) {
 		error("Restored unknown kfun: %s", buffer + buflen);
 	    }

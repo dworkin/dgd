@@ -36,10 +36,9 @@ char pt_compile_object[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 			     T_OBJECT, T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->compile_object()
- * DESCRIPTION:	compile an object
+ * compile an object
  */
-int kf_compile_object(Frame *f, int nargs, kfunc *kf)
+int kf_compile_object(Frame *f, int nargs, KFun *kf)
 {
     char file[STRINGSZ];
     Value *v;
@@ -113,10 +112,9 @@ char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
 			 T_MIXED, T_MIXED, T_STRING, T_MIXED };
 
 /*
- * NAME:	kfun->call_other()
- * DESCRIPTION:	call a function in another object
+ * call a function in another object
  */
-int kf_call_other(Frame *f, int nargs, kfunc *kf)
+int kf_call_other(Frame *f, int nargs, KFun *kf)
 {
     Value *val;
     Object *obj;
@@ -177,10 +175,9 @@ char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 			 T_OBJECT };
 
 /*
- * NAME:	kfun->call_touch()
- * DESCRIPTION:	prepare to call a function when this object is next touched
+ * prepare to call a function when this object is next touched
  */
-int kf_call_touch(Frame *f, int n, kfunc *kf)
+int kf_call_touch(Frame *f, int n, KFun *kf)
 {
     Object *obj;
     Float flt;
@@ -213,10 +210,9 @@ FUNCDEF("this_object", kf_this_object, pt_this_object, 0)
 char pt_this_object[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT };
 
 /*
- * NAME:	kfun->this_object()
- * DESCRIPTION:	return the current object
+ * return the current object
  */
-int kf_this_object(Frame *f, int n, kfunc *kf)
+int kf_this_object(Frame *f, int n, KFun *kf)
 {
     Object *obj;
 
@@ -246,10 +242,9 @@ char pt_previous_object[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_OBJECT,
 			      T_INT };
 
 /*
- * NAME:	kfun->previous_object()
- * DESCRIPTION:	return the previous object in the call_other chain
+ * return the previous object in the call_other chain
  */
-int kf_previous_object(Frame *f, int nargs, kfunc *kf)
+int kf_previous_object(Frame *f, int nargs, KFun *kf)
 {
     Frame *prev;
     Object *obj;
@@ -288,10 +283,9 @@ char pt_previous_program[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_STRING,
 			       T_INT };
 
 /*
- * NAME:	kfun->previous_program()
- * DESCRIPTION:	return the previous program in the function call chain
+ * return the previous program in the function call chain
  */
-int kf_previous_program(Frame *f, int nargs, kfunc *kf)
+int kf_previous_program(Frame *f, int nargs, KFun *kf)
 {
     const char *prog;
     String *str;
@@ -324,10 +318,9 @@ FUNCDEF("call_trace", kf_call_trace, pt_call_trace, 0)
 char pt_call_trace[] = { C_STATIC, 0, 0, 0, 6, T_MIXED | (2 << REFSHIFT) };
 
 /*
- * NAME:	kfun->call_trace()
- * DESCRIPTION:	return the entire call_other chain
+ * return the entire call_other chain
  */
-int kf_call_trace(Frame *f, int n, kfunc *kf)
+int kf_call_trace(Frame *f, int n, KFun *kf)
 {
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -345,10 +338,9 @@ char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
 			   T_OBJECT };
 
 /*
- * NAME:	kfun->clone_object()
- * DESCRIPTION:	clone a new object
+ * clone a new object
  */
-int kf_clone_object(Frame *f, int n, kfunc *kf)
+int kf_clone_object(Frame *f, int n, KFun *kf)
 {
     Object *obj;
 
@@ -379,10 +371,9 @@ char pt_destruct_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
 			      T_OBJECT };
 
 /*
- * NAME:	kfun->destruct_object()
- * DESCRIPTION:	destruct an object
+ * destruct an object
  */
-int kf_destruct_object(Frame *f, int n, kfunc *kf)
+int kf_destruct_object(Frame *f, int n, KFun *kf)
 {
     Object *obj;
 
@@ -418,10 +409,9 @@ char pt_new_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
 			 T_OBJECT };
 
 /*
- * NAME:	kfun->new_object()
- * DESCRIPTION:	create a new non-persistent object
+ * create a new non-persistent object
  */
-int kf_new_object(Frame *f, int n, kfunc *kf)
+int kf_new_object(Frame *f, int n, KFun *kf)
 {
     Object *obj;
     Array *a;
@@ -455,10 +445,9 @@ char pt_instanceof[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT,
 			 T_STRING };
 
 /*
- * NAME:	kfun->instanceof()
- * DESCRIPTION:	check whether an object is an instance of a type
+ * check whether an object is an instance of a type
  */
-int kf_instanceof(Frame *f, int nargs, kfunc *kf)
+int kf_instanceof(Frame *f, int nargs, KFun *kf)
 {
     char buffer[STRINGSZ + 12];
     uindex oindex;
@@ -515,10 +504,9 @@ char pt_object_name[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
 			  T_OBJECT };
 
 /*
- * NAME:	kfun->object_name()
- * DESCRIPTION:	return the name of an object
+ * return the name of an object
  */
-int kf_object_name(Frame *f, int nargs, kfunc *kf)
+int kf_object_name(Frame *f, int nargs, KFun *kf)
 {
     char buffer[STRINGSZ + 12];
     const char *name;
@@ -562,10 +550,9 @@ char pt_find_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
 			  T_STRING };
 
 /*
- * NAME:	kfun->find_object()
- * DESCRIPTION:	find the loaded object for a given object name
+ * find the loaded object for a given object name
  */
-int kf_find_object(Frame *f, int n, kfunc *kf)
+int kf_find_object(Frame *f, int n, KFun *kf)
 {
     char path[STRINGSZ];
     Object *obj;
@@ -599,10 +586,9 @@ char pt_function_object[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
 			      T_STRING, T_OBJECT };
 
 /*
- * NAME:	kfun->function_object()
- * DESCRIPTION:	return the name of the program a function is in
+ * return the name of the program a function is in
  */
-int kf_function_object(Frame *f, int nargs, kfunc *kf)
+int kf_function_object(Frame *f, int nargs, KFun *kf)
 {
     Object *obj;
     bool callable;
@@ -662,10 +648,9 @@ FUNCDEF("this_user", kf_this_user, pt_this_user, 0)
 char pt_this_user[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT };
 
 /*
- * NAME:	kfun->this_user()
- * DESCRIPTION:	return the current user object (if any)
+ * return the current user object (if any)
  */
-int kf_this_user(Frame *f, int n, kfunc *kf)
+int kf_this_user(Frame *f, int n, KFun *kf)
 {
     Object *obj;
 
@@ -690,10 +675,9 @@ char pt_query_ip_number[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
 			      T_OBJECT };
 
 /*
- * NAME:	kfun->query_ip_number()
- * DESCRIPTION:	return the ip number of a user
+ * return the ip number of a user
  */
-int kf_query_ip_number(Frame *f, int n, kfunc *kf)
+int kf_query_ip_number(Frame *f, int n, KFun *kf)
 {
     Object *obj;
 
@@ -723,10 +707,9 @@ char pt_query_ip_name[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
 			    T_OBJECT };
 
 /*
- * NAME:	kfun->query_ip_name()
- * DESCRIPTION:	return the ip name of a user
+ * return the ip name of a user
  */
-int kf_query_ip_name(Frame *f, int n, kfunc *kf)
+int kf_query_ip_name(Frame *f, int n, KFun *kf)
 {
     Object *obj;
 
@@ -755,10 +738,9 @@ FUNCDEF("users", kf_users, pt_users, 0)
 char pt_users[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT) };
 
 /*
- * NAME:	kfun->users()
- * DESCRIPTION:	return the array of users
+ * return the array of users
  */
-int kf_users(Frame *f, int n, kfunc *kf)
+int kf_users(Frame *f, int n, KFun *kf)
 {
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -776,10 +758,9 @@ FUNCDEF("strlen", kf_strlen, pt_strlen, 0)
 char pt_strlen[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
 
 /*
- * NAME:	kfun->strlen()
- * DESCRIPTION:	return the length of a string
+ * return the length of a string
  */
-int kf_strlen(Frame *f, int n, kfunc *kf)
+int kf_strlen(Frame *f, int n, KFun *kf)
 {
     ssizet len;
 
@@ -801,10 +782,9 @@ char pt_allocate[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 		       T_MIXED | (1 << REFSHIFT), T_INT };
 
 /*
- * NAME:	kfun->allocate()
- * DESCRIPTION:	allocate an array
+ * allocate an array
  */
-int kf_allocate(Frame *f, int n, kfunc *kf)
+int kf_allocate(Frame *f, int n, KFun *kf)
 {
     int i;
     Value *v;
@@ -832,10 +812,9 @@ char pt_allocate_int[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 			   T_INT | (1 << REFSHIFT), T_INT };
 
 /*
- * NAME:	kfun->allocate_int()
- * DESCRIPTION:	allocate an array of integers
+ * allocate an array of integers
  */
-int kf_allocate_int(Frame *f, int n, kfunc *kf)
+int kf_allocate_int(Frame *f, int n, KFun *kf)
 {
     int i;
     Value *v;
@@ -863,10 +842,9 @@ char pt_allocate_float[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 			     T_FLOAT | (1 << REFSHIFT), T_INT };
 
 /*
- * NAME:	kfun->allocate_float()
- * DESCRIPTION:	allocate an array
+ * allocate an array
  */
-int kf_allocate_float(Frame *f, int n, kfunc *kf)
+int kf_allocate_float(Frame *f, int n, KFun *kf)
 {
     int i;
     Value *v;
@@ -894,10 +872,9 @@ char pt_sizeof[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 		     T_MIXED | (1 << REFSHIFT) };
 
 /*
- * NAME:	kfun->sizeof()
- * DESCRIPTION:	return the size of an array
+ * return the size of an array
  */
-int kf_sizeof(Frame *f, int n, kfunc *kf)
+int kf_sizeof(Frame *f, int n, KFun *kf)
 {
     unsigned short size;
 
@@ -919,10 +896,9 @@ char pt_map_indices[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 			  T_MIXED | (1 << REFSHIFT), T_MAPPING };
 
 /*
- * NAME:	kfun->map_indices()
- * DESCRIPTION:	return the array of mapping indices
+ * return the array of mapping indices
  */
-int kf_map_indices(Frame *f, int n, kfunc *kf)
+int kf_map_indices(Frame *f, int n, KFun *kf)
 {
     Array *a;
 
@@ -945,10 +921,9 @@ char pt_map_values[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 			 T_MIXED | (1 << REFSHIFT), T_MAPPING };
 
 /*
- * NAME:	kfun->map_values()
- * DESCRIPTION:	return the array of mapping values
+ * return the array of mapping values
  */
-int kf_map_values(Frame *f, int n, kfunc *kf)
+int kf_map_values(Frame *f, int n, KFun *kf)
 {
     Array *a;
 
@@ -971,10 +946,9 @@ char pt_map_sizeof[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 			 T_MAPPING };
 
 /*
- * NAME:	kfun->map_sizeof()
- * DESCRIPTION:	return the number of index/value pairs in a mapping
+ * return the number of index/value pairs in a mapping
  */
-int kf_map_sizeof(Frame *f, int n, kfunc *kf)
+int kf_map_sizeof(Frame *f, int n, KFun *kf)
 {
     unsigned short size;
 
@@ -996,10 +970,9 @@ FUNCDEF("typeof", kf_typeof, pt_typeof, 0)
 char pt_typeof[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
 
 /*
- * NAME:	kfun->typeof()
- * DESCRIPTION:	return the type of a value
+ * return the type of a value
  */
-int kf_typeof(Frame *f, int n, kfunc *kf)
+int kf_typeof(Frame *f, int n, KFun *kf)
 {
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1017,10 +990,9 @@ FUNCDEF("error", kf_error, pt_error, 0)
 char pt_error[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID, T_STRING };
 
 /*
- * NAME:	kfun->error()
- * DESCRIPTION:	cause an error
+ * cause an error
  */
-int kf_error(Frame *f, int n, kfunc *kf)
+int kf_error(Frame *f, int n, KFun *kf)
 {
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1037,10 +1009,9 @@ FUNCDEF("send_message", kf_send_message, pt_send_message, 0)
 char pt_send_message[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
 
 /*
- * NAME:	kfun->send_message()
- * DESCRIPTION:	send a message to a user
+ * send a message to a user
  */
-int kf_send_message(Frame *f, int n, kfunc *kf)
+int kf_send_message(Frame *f, int n, KFun *kf)
 {
     Object *obj;
     int num;
@@ -1083,10 +1054,9 @@ char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 			    T_STRING };
 
 /*
- * NAME:	kfun->send_datagram()
- * DESCRIPTION:	send a datagram to a user (non networkpackage function)
+ * send a datagram to a user (non networkpackage function)
  */
-int kf_send_datagram(Frame *f, int n, kfunc *kf)
+int kf_send_datagram(Frame *f, int n, KFun *kf)
 {
     Object *obj;
     int num;
@@ -1115,10 +1085,9 @@ char pt_datagram_challenge[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
 				 T_STRING };
 
 /*
- * NAME:	kfun->datagram_challenge()
- * DESCRIPTION:	set the challenge for a datagram connection to attach
+ * set the challenge for a datagram connection to attach
  */
-int kf_datagram_challenge(Frame *f, int n, kfunc *kf)
+int kf_datagram_challenge(Frame *f, int n, KFun *kf)
 {
     Object *obj;
 
@@ -1144,10 +1113,9 @@ FUNCDEF("block_input", kf_block_input, pt_block_input, 0)
 char pt_block_input[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID, T_INT };
 
 /*
- * NAME:	kfun->block_input()
- * DESCRIPTION:	block input for the current object
+ * block input for the current object
  */
-int kf_block_input(Frame *f, int n, kfunc *kf)
+int kf_block_input(Frame *f, int n, KFun *kf)
 {
     Object *obj;
 
@@ -1172,10 +1140,9 @@ FUNCDEF("time", kf_time, pt_time, 0)
 char pt_time[] = { C_STATIC, 0, 0, 0, 6, T_INT };
 
 /*
- * NAME:	kfun->time()
- * DESCRIPTION:	return the current time
+ * return the current time
  */
-int kf_time(Frame *f, int n, kfunc *kf)
+int kf_time(Frame *f, int n, KFun *kf)
 {
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1192,10 +1159,9 @@ FUNCDEF("millitime", kf_millitime, pt_millitime, 0)
 char pt_millitime[] = { C_STATIC, 0, 0, 0, 6, T_MIXED | (1 << REFSHIFT) };
 
 /*
- * NAME:	kfun->millitime()
- * DESCRIPTION:	return the current time in milliseconds
+ * return the current time in milliseconds
  */
-int kf_millitime(Frame *f, int n, kfunc *kf)
+int kf_millitime(Frame *f, int n, KFun *kf)
 {
     Array *a;
     unsigned short milli;
@@ -1223,10 +1189,9 @@ char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT,
 		       T_STRING, T_MIXED, T_MIXED };
 
 /*
- * NAME:	kfun->call_out()
- * DESCRIPTION:	start a call_out
+ * start a call_out
  */
-int kf_call_out(Frame *f, int nargs, kfunc *kf)
+int kf_call_out(Frame *f, int nargs, KFun *kf)
 {
     Int delay;
     Uint mdelay;
@@ -1285,10 +1250,9 @@ char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_MIXED,
 			      T_INT };
 
 /*
- * NAME:	kfun->remove_call_out()
- * DESCRIPTION:	remove a call_out
+ * remove a call_out
  */
-int kf_remove_call_out(Frame *f, int n, kfunc *kf)
+int kf_remove_call_out(Frame *f, int n, KFun *kf)
 {
     Int delay;
     unsigned short mdelay;
@@ -1322,10 +1286,9 @@ FUNCDEF("swapout", kf_swapout, pt_swapout, 0)
 char pt_swapout[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
 
 /*
- * NAME:	kfun->swapout()
- * DESCRIPTION:	swap out all objects
+ * swap out all objects
  */
-int kf_swapout(Frame *f, int n, kfunc *kf)
+int kf_swapout(Frame *f, int n, KFun *kf)
 {
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1345,10 +1308,9 @@ FUNCDEF("dump_state", kf_dump_state, pt_dump_state, 1)
 char pt_dump_state[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
 
 /*
- * NAME:	kfun->dump_state()
- * DESCRIPTION:	dump state
+ * dump state
  */
-int kf_dump_state(Frame *f, int nargs, kfunc *kf)
+int kf_dump_state(Frame *f, int nargs, KFun *kf)
 {
     bool incr;
 
@@ -1376,10 +1338,9 @@ char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 1, 0, 9,
 		      T_VOID, T_STRING, T_INT, T_STRING };
 
 /*
- * NAME:	kfun->connect
- * DESCRIPTION: connect to a server
+ * connect to a server
  */
-int kf_connect(Frame *f, int nargs, kfunc *kf)
+int kf_connect(Frame *f, int nargs, KFun *kf)
 {
     unsigned short port;
     Object *obj;
@@ -1424,10 +1385,9 @@ char pt_old_connect[] = { C_TYPECHECKED | C_STATIC , 2, 0, 0, 8,
 			  T_VOID, T_STRING, T_INT };
 
 /*
- * NAME:	kfun->old_connect
- * DESCRIPTION: connect to a server
+ * connect to a server
  */
-int kf_old_connect(Frame *f, int nargs, kfunc *kf)
+int kf_old_connect(Frame *f, int nargs, KFun *kf)
 {
     return kf_connect(f, nargs, kf);
 }
@@ -1441,10 +1401,9 @@ char pt_connect_datagram[] = { C_TYPECHECKED | C_STATIC , 3, 1, 0, 10,
 			       T_VOID, T_INT, T_STRING, T_INT, T_STRING };
 
 /*
- * NAME:	kfun->connect_datagram
- * DESCRIPTION: connect by datagrams to a server
+ * connect by datagrams to a server
  */
-int kf_connect_datagram(Frame *f, int nargs, kfunc *kf)
+int kf_connect_datagram(Frame *f, int nargs, KFun *kf)
 {
     unsigned short port;
     Object *obj;
@@ -1488,10 +1447,9 @@ FUNCDEF("shutdown", kf_shutdown, pt_shutdown, 1)
 char pt_shutdown[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
 
 /*
- * NAME:	kfun->shutdown()
- * DESCRIPTION:	shut down the mud
+ * shut down the mud
  */
-int kf_shutdown(Frame *f, int nargs, kfunc *kf)
+int kf_shutdown(Frame *f, int nargs, KFun *kf)
 {
     bool boot;
 
@@ -1521,11 +1479,10 @@ char pt_status[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7,
 		     T_MIXED | (1 << REFSHIFT), T_MIXED };
 
 /*
- * NAME:	kfun->status()
- * DESCRIPTION:	return an array with status information about the gamedriver
+ * return an array with status information about the gamedriver
  *		or an object
  */
-int kf_status(Frame *f, int nargs, kfunc *kf)
+int kf_status(Frame *f, int nargs, KFun *kf)
 {
     Array *a;
     uindex n;
@@ -1575,10 +1532,9 @@ char pt_new_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_OBJECT,
 			   T_STRING, T_MIXED };
 
 /*
- * NAME:	kfun->new_function()
- * DESCRIPTION: create a new function
+ * create a new function
  */
-int kf_new_function(Frame *f, int nargs, kfunc *kf)
+int kf_new_function(Frame *f, int nargs, KFun *kf)
 {
     Array *a;
     Float flt;
@@ -1631,10 +1587,9 @@ char pt_extend_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_OBJECT,
 			      T_OBJECT, T_MIXED };
 
 /*
- * NAME:	kfun->extend_function()
- * DESCRIPTION: extend a function
+ * extend a function
  */
-int kf_extend_function(Frame *f, int nargs, kfunc *kf)
+int kf_extend_function(Frame *f, int nargs, KFun *kf)
 {
     Array *a;
     Value *v, *elts;
@@ -1680,10 +1635,9 @@ char pt_call_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_MIXED,
 			    T_OBJECT, T_MIXED };
 
 /*
- * NAME:	kfun->call_function()
- * DESCRIPTION: call a function
+ * call a function
  */
-int kf_call_function(Frame *f, int nargs, kfunc *kf)
+int kf_call_function(Frame *f, int nargs, KFun *kf)
 {
     Array *a, *lwobj;
     Value *elts, *v, *w;

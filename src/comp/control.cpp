@@ -1502,7 +1502,7 @@ char *Control::iFunCall(String *str, const char *label, String **cfstr,
 		 * It may seem strange to allow label::kfun, but remember that
 		 * they are supposed to be inherited by the auto object.
 		 */
-		index = kf_func(str->text);
+		index = KFun::kfunc(str->text);
 		if (index >= 0) {
 		    /* kfun call */
 		    *call = ((long) KFCALL << 24) | index;
@@ -1523,7 +1523,7 @@ char *Control::iFunCall(String *str, const char *label, String **cfstr,
 	    ((h=(VFH *) h->next) == (VFH *) NULL ||
 	     strcmp(h->name, str->text) != 0))) {
 
-	    index = kf_func(str->text);
+	    index = KFun::kfunc(str->text);
 	    if (index >= 0) {
 		/* kfun call */
 		*call = ((long) KFCALL << 24) | index;
@@ -1582,7 +1582,7 @@ char *Control::funCall(String *str, String **cfstr, long *call,
 	/*
 	 * undefined function
 	 */
-	kf = kf_func(str->text);
+	kf = KFun::kfunc(str->text);
 	if (kf >= 0) {
 	    /* kfun call */
 	    *call = ((long) KFCALL << 24) | kf;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -35,8 +35,7 @@ char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->enc_key()
- * DESCRIPTION:	prepare a key for encryption
+ * prepare a key for encryption
  */
 void kf_enc_key(Frame *f, int nargs, Value *val)
 {
@@ -50,8 +49,7 @@ void kf_enc_key(Frame *f, int nargs, Value *val)
 }
 
 /*
- * NAME:	kfun->enc()
- * DESCRIPTION:	encrypt
+ * encrypt
  */
 void kf_enc(Frame *f, int nargs, Value *val)
 {
@@ -62,6 +60,27 @@ void kf_enc(Frame *f, int nargs, Value *val)
     }
     str = P_encrypt_des(f, f->sp[1].string, f->sp->string);
     PUT_STRVAL_NOREF(val, str);
+}
+
+/*
+ * encrypt a string
+ */
+int kf_encrypt(Frame *f, int nargs, KFun *func)
+{
+    int n;
+
+    UNREFERENCED_PARAMETER(func);
+
+    n = KFun::find(kfenc, 0, ne, f->sp[nargs - 1].string->text);
+    if (n < 0) {
+	error("Unknown cipher");
+    }
+    (kfenc[n].func)(f, nargs - 1, &kfenc[n]);
+    f->sp[1].del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+
+    return 0;
 }
 # endif
 
@@ -75,8 +94,7 @@ char pt_decrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->dec_key()
- * DESCRIPTION:	prepare a key for decryption
+ * prepare a key for decryption
  */
 void kf_dec_key(Frame *f, int nargs, Value *val)
 {
@@ -90,8 +108,7 @@ void kf_dec_key(Frame *f, int nargs, Value *val)
 }
 
 /*
- * NAME:	kfun->dec()
- * DESCRIPTION:	decrypt
+ * decrypt
  */
 void kf_dec(Frame *f, int nargs, Value *val)
 {
@@ -104,6 +121,27 @@ void kf_dec(Frame *f, int nargs, Value *val)
     str = P_encrypt_des(f, f->sp[1].string, f->sp->string);
     PUT_STRVAL_NOREF(val, str);
 }
+
+/*
+ * decrypt a string
+ */
+int kf_decrypt(Frame *f, int nargs, KFun *func)
+{
+    int n;
+
+    UNREFERENCED_PARAMETER(func);
+
+    n = KFun::find(kfdec, 0, nd, f->sp[nargs - 1].string->text);
+    if (n < 0) {
+	error("Unknown cipher");
+    }
+    (kfdec[n].func)(f, nargs - 1, &kfdec[n]);
+    f->sp[1].del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+
+    return 0;
+}
 # endif
 
 
@@ -113,10 +151,9 @@ FUNCDEF("ctime", kf_ctime, pt_ctime, 0)
 char pt_ctime[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING, T_INT };
 
 /*
- * NAME:	kfun->ctime()
- * DESCRIPTION:	convert a time value to a string
+ * convert a time value to a string
  */
-int kf_ctime(Frame *f, int n, kfunc *kf)
+int kf_ctime(Frame *f, int n, KFun *kf)
 {
     char buf[26];
 
@@ -139,10 +176,9 @@ char pt_explode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8,
 		      T_STRING | (1 << REFSHIFT), T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->explode()
- * DESCRIPTION:	explode a string
+ * explode a string
  */
-int kf_explode(Frame *f, int n, kfunc *kf)
+int kf_explode(Frame *f, int n, KFun *kf)
 {
     unsigned int len, slen, size;
     char *p, *s;
@@ -246,10 +282,9 @@ char pt_implode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
 		      T_STRING | (1 << REFSHIFT), T_STRING };
 
 /*
- * NAME:	kfun->implode()
- * DESCRIPTION:	implode an array
+ * implode an array
  */
-int kf_implode(Frame *f, int n, kfunc *kf)
+int kf_implode(Frame *f, int n, KFun *kf)
 {
     long len;
     unsigned int i, slen;
@@ -308,10 +343,9 @@ FUNCDEF("random", kf_random, pt_random, 0)
 char pt_random[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
 
 /*
- * NAME:	kfun->random()
- * DESCRIPTION:	return a random number
+ * return a random number
  */
-int kf_random(Frame *f, int n, kfunc *kf)
+int kf_random(Frame *f, int n, KFun *kf)
 {
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -335,9 +369,8 @@ char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
 		     T_STRING, T_LVALUE };
 
 /*
- * NAME:	match
- * DESCRIPTION:	match a string possibly including %%, up to the next %[sdfc] or
- *		the end of the string
+ * match a string possibly including %%, up to the next %[sdfc] or
+ * the end of the string
  */
 static bool match(char *f, char *s, unsigned int *flenp, unsigned int *slenp)
 {
@@ -387,10 +420,9 @@ static bool match(char *f, char *s, unsigned int *flenp, unsigned int *slenp)
 }
 
 /*
- * NAME:	kfun->sscanf()
- * DESCRIPTION:	scan a string
+ * scan a string
  */
-int kf_sscanf(Frame *f, int nargs, kfunc *kf)
+int kf_sscanf(Frame *f, int nargs, KFun *kf)
 {
     struct {
 	char type;			/* int, float or string */
@@ -678,10 +710,9 @@ char pt_old_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
 			 T_STRING, T_LVALUE };
 
 /*
- * NAME:	kfun->old_sscanf()
- * DESCRIPTION:	scan a string
+ * scan a string
  */
-int kf_old_sscanf(Frame *f, int nargs, kfunc *kf)
+int kf_old_sscanf(Frame *f, int nargs, KFun *kf)
 {
     int n;
     char *pc;
@@ -717,10 +748,9 @@ char pt_parse_string[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9,
 			   T_INT };
 
 /*
- * NAME:	kfun->parse_string()
- * DESCRIPTION:	parse a string
+ * parse a string
  */
-int kf_parse_string(Frame *f, int nargs, kfunc *kf)
+int kf_parse_string(Frame *f, int nargs, KFun *kf)
 {
     Int maxalt;
     Array *a;
@@ -763,21 +793,20 @@ char pt_hash_crc16[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 			 T_INT, T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->hash_crc16()
- * DESCRIPTION:	Compute a 16 bit cyclic redundancy code for a string.
- *		Based on "A PAINLESS GUIDE TO CRC ERROR DETECTION ALGORITHMS",
- *		by Ross N. Williams.
+ * Compute a 16 bit cyclic redundancy code for a string.
+ * Based on "A PAINLESS GUIDE TO CRC ERROR DETECTION ALGORITHMS",
+ * by Ross N. Williams.
  *
- *		    Name:	"CRC-16/CCITT"	(supposedly)
- *		    Width:	16
- *		    Poly:	1021		(X^16 + X^12 + X^5 + 1)
- *		    Init:	FFFF
- *		    RefIn:	False
- *		    RefOut:	False
- *		    XorOut:	0000
- *		    Check:	29B1
+ *     Name:	"CRC-16/CCITT"	(supposedly)
+ *     Width:	16
+ *     Poly:	1021		(X^16 + X^12 + X^5 + 1)
+ *     Init:	FFFF
+ *     RefIn:	False
+ *     RefOut:	False
+ *     XorOut:	0000
+ *     Check:	29B1
  */
-int kf_hash_crc16(Frame *f, int nargs, kfunc *kf)
+int kf_hash_crc16(Frame *f, int nargs, KFun *kf)
 {
     static unsigned short crctab[] = {
 	0x0000, 0x2110, 0x4220, 0x6330, 0x8440, 0xa550, 0xc660, 0xe770,
@@ -856,21 +885,20 @@ char pt_hash_crc32[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 			 T_INT, T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->hash_crc32()
- * DESCRIPTION:	Compute a 32 bit cyclic redundancy code for a string.
- *		Based on "A PAINLESS GUIDE TO CRC ERROR DETECTION ALGORITHMS",
- *		by Ross N. Williams.
+ * Compute a 32 bit cyclic redundancy code for a string.
+ * Based on "A PAINLESS GUIDE TO CRC ERROR DETECTION ALGORITHMS",
+ * by Ross N. Williams.
  *
- *		    Name:	"CRC-32"	(as in libz)
- *		    Width:	16
- *		    Poly:	04C11DB7
- *		    Init:	FFFFFFFF
- *		    RefIn:	True
- *		    RefOut:	True
- *		    XorOut:	FFFFFFFF
- *		    Check:	CBF43926
+ *     Name:	"CRC-32"	(as in libz)
+ *     Width:	16
+ *     Poly:	04C11DB7
+ *     Init:	FFFFFFFF
+ *     RefIn:	True
+ *     RefOut:	True
+ *     XorOut:	FFFFFFFF
+ *     Check:	CBF43926
  */
-int kf_hash_crc32(Frame *f, int nargs, kfunc *kf)
+int kf_hash_crc32(Frame *f, int nargs, KFun *kf)
 {
     static Uint crctab[] = {
 	0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
@@ -973,8 +1001,7 @@ char pt_hash_string[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
 			  T_STRING, T_STRING, T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->xcrypt()
- * DESCRIPTION:	hash a string with Unix password crypt
+ * hash a string with Unix password crypt
  */
 void kf_xcrypt(Frame *f, int nargs, Value *val)
 {
@@ -1016,9 +1043,8 @@ void kf_xcrypt(Frame *f, int nargs, Value *val)
 					 a = b + ROTL(a, s))
 
 /*
- * NAME:	hash->md5_start()
- * DESCRIPTION:	MD5 message digest.  See "Applied Cryptography" by Bruce
- *		Schneier, Second Edition, p. 436-441.
+ * MD5 message digest.  See "Applied Cryptography" by Bruce
+ * Schneier, Second Edition, p. 436-441.
  */
 void hash_md5_start(Uint *digest)
 {
@@ -1033,8 +1059,7 @@ void hash_md5_start(Uint *digest)
 }
 
 /*
- * NAME:	hash->md5_block()
- * DESCRIPTION:	add another 512 bit block to the message digest
+ * add another 512 bit block to the message digest
  */
 void hash_md5_block(Uint *ABCD, char *block)
 {
@@ -1128,8 +1153,7 @@ void hash_md5_block(Uint *ABCD, char *block)
 }
 
 /*
- * NAME:	hash->md5_end()
- * DESCRIPTION:	finish up MD5 hash
+ * finish up MD5 hash
  */
 void hash_md5_end(char *hash, Uint *digest, char *buffer, unsigned int bufsz,
 		  Uint length)
@@ -1160,8 +1184,7 @@ void hash_md5_end(char *hash, Uint *digest, char *buffer, unsigned int bufsz,
 }
 
 /*
- * NAME:	hash->sha1_start()
- * DESCRIPTION:	SHA-1 message digest.  See FIPS 180-2.
+ * SHA-1 message digest.  See FIPS 180-2.
  */
 static Int hash_sha1_start(Frame *f, int nargs, Uint *digest)
 {
@@ -1181,8 +1204,7 @@ static Int hash_sha1_start(Frame *f, int nargs, Uint *digest)
 }
 
 /*
- * NAME:	hash->sha1_block()
- * DESCRIPTION:	add another 512 bit block to the message digest
+ * add another 512 bit block to the message digest
  */
 static void hash_sha1_block(Uint *ABCDE, char *block)
 {
@@ -1251,8 +1273,7 @@ static void hash_sha1_block(Uint *ABCDE, char *block)
 
 
 /*
- * NAME:	hash->sha1_end()
- * DESCRIPTION:	finish up SHA-1 hash
+ * finish up SHA-1 hash
  */
 static String *hash_sha1_end(Uint *digest, char *buffer, unsigned int bufsz, Uint length)
 {
@@ -1283,8 +1304,7 @@ static String *hash_sha1_end(Uint *digest, char *buffer, unsigned int bufsz, Uin
 }
 
 /*
- * NAME:	hash->blocks()
- * DESCRIPTION:	hash string blocks with a given function
+ * hash string blocks with a given function
  */
 static Uint hash_blocks(Frame *f, int nargs, Uint *digest, char *buffer,
 	unsigned short *bufsize, unsigned int blocksz,
@@ -1340,8 +1360,7 @@ static Uint hash_blocks(Frame *f, int nargs, Uint *digest, char *buffer,
 }
 
 /*
- * NAME:	kfun->md5()
- * DESCRIPTION:	compute MD5 hash
+ * compute MD5 hash
  */
 void kf_md5(Frame *f, int nargs, Value *val)
 {
@@ -1370,8 +1389,7 @@ void kf_md5(Frame *f, int nargs, Value *val)
 }
 
 /*
- * NAME:	kfun->sha1()
- * DESCRIPTION:	compute SHA1 hash
+ * compute SHA1 hash
  */
 void kf_sha1(Frame *f, int nargs, Value *val)
 {
@@ -1394,6 +1412,27 @@ void kf_sha1(Frame *f, int nargs, Value *val)
     str = hash_sha1_end(digest, buffer, bufsz, length);
     PUT_STRVAL_NOREF(val, str);
 }
+
+/*
+ * hash a string
+ */
+int kf_hash_string(Frame *f, int nargs, KFun *func)
+{
+    int n;
+
+    UNREFERENCED_PARAMETER(func);
+
+    n = KFun::find(kfhsh, 0, nh, f->sp[nargs - 1].string->text);
+    if (n < 0) {
+	error("Unknown hash algorithm");
+    }
+    (kfhsh[n].func)(f, nargs - 1, &kfhsh[n]);
+    f->sp[1].del();
+    f->sp[1] = f->sp[0];
+    f->sp++;
+
+    return 0;
+}
 # endif
 
 
@@ -1404,10 +1443,9 @@ char pt_crypt[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8, T_STRING, T_STRING,
 		    T_STRING };
 
 /*
- * NAME:	kfun->crypt()
- * DESCRIPTION:	hash_string("crypt", ...)
+ * hash_string("crypt", ...)
  */
-int kf_crypt(Frame *f, int nargs, kfunc *kf)
+int kf_crypt(Frame *f, int nargs, KFun *kf)
 {
     Value val;
 
@@ -1432,10 +1470,9 @@ char pt_asn_add[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->asn_add()
- * DESCRIPTION:	add two arbitrary precision numbers
+ * add two arbitrary precision numbers
  */
-int kf_asn_add(Frame *f, int n, kfunc *kf)
+int kf_asn_add(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1460,10 +1497,9 @@ char pt_asn_sub[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->asn_sub()
- * DESCRIPTION:	subtract arbitrary precision numbers
+ * subtract arbitrary precision numbers
  */
-int kf_asn_sub(Frame *f, int n, kfunc *kf)
+int kf_asn_sub(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1488,10 +1524,9 @@ char pt_asn_cmp[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
 		      T_STRING };
 
 /*
- * NAME:	kfun->asn_cmp()
- * DESCRIPTION:	subtract arbitrary precision numbers
+ * subtract arbitrary precision numbers
  */
-int kf_asn_cmp(Frame *f, int n, kfunc *kf)
+int kf_asn_cmp(Frame *f, int n, KFun *kf)
 {
     int cmp;
 
@@ -1515,10 +1550,9 @@ char pt_asn_mult[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		       T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->asn_mult()
- * DESCRIPTION:	multiply arbitrary precision numbers
+ * multiply arbitrary precision numbers
  */
-int kf_asn_mult(Frame *f, int n, kfunc *kf)
+int kf_asn_mult(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1543,10 +1577,9 @@ char pt_asn_div[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->asn_div()
- * DESCRIPTION:	divide arbitrary precision numbers
+ * divide arbitrary precision numbers
  */
-int kf_asn_div(Frame *f, int n, kfunc *kf)
+int kf_asn_div(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1571,10 +1604,9 @@ char pt_asn_mod[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 		      T_STRING };
 
 /*
- * NAME:	kfun->asn_mod()
- * DESCRIPTION:	modulus of arbitrary precision number
+ * modulus of arbitrary precision number
  */
-int kf_asn_mod(Frame *f, int n, kfunc *kf)
+int kf_asn_mod(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1598,10 +1630,9 @@ char pt_asn_pow[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->asn_pow()
- * DESCRIPTION:	power of an arbitrary precision number
+ * power of an arbitrary precision number
  */
-int kf_asn_pow(Frame *f, int n, kfunc *kf)
+int kf_asn_pow(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1626,10 +1657,9 @@ char pt_asn_lshift[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING,
 			 T_STRING, T_INT, T_STRING };
 
 /*
- * NAME:	kfun->asn_lshift()
- * DESCRIPTION:	left shift an arbitrary precision number
+ * left shift an arbitrary precision number
  */
-int kf_asn_lshift(Frame *f, int n, kfunc *kf)
+int kf_asn_lshift(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1654,10 +1684,9 @@ char pt_asn_rshift[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
 			 T_STRING, T_INT };
 
 /*
- * NAME:	kfun->asn_rshift()
- * DESCRIPTION:	right shift of arbitrary precision number
+ * right shift of arbitrary precision number
  */
-int kf_asn_rshift(Frame *f, int n, kfunc *kf)
+int kf_asn_rshift(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1681,10 +1710,9 @@ char pt_asn_and[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 		      T_STRING };
 
 /*
- * NAME:	kfun->asn_and()
- * DESCRIPTION:	logical and of arbitrary precision numbers
+ * logical and of arbitrary precision numbers
  */
-int kf_asn_and(Frame *f, int n, kfunc *kf)
+int kf_asn_and(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1708,10 +1736,9 @@ char pt_asn_or[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 		     T_STRING };
 
 /*
- * NAME:	kfun->asn_or()
- * DESCRIPTION:	logical or of arbitrary precision numbers
+ * logical or of arbitrary precision numbers
  */
-int kf_asn_or(Frame *f, int n, kfunc *kf)
+int kf_asn_or(Frame *f, int n, KFun *kf)
 {
     String *str;
 
@@ -1735,10 +1762,9 @@ char pt_asn_xor[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 		      T_STRING };
 
 /*
- * NAME:	kfun->asn_xor()
- * DESCRIPTION:	logical xor of arbitrary precision numbers
+ * logical xor of arbitrary precision numbers
  */
-int kf_asn_xor(Frame *f, int n, kfunc *kf)
+int kf_asn_xor(Frame *f, int n, KFun *kf)
 {
     String *str;
 

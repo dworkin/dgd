@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,41 +17,55 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef void (*extfunc)(Frame *, int, Value *);
-struct kfunc {
-    const char *name;					/* function name */
-    char *proto;					/* prototype */
-    int (*func)(Frame*, int, struct kfunc*);		/* function address */
-    extfunc ext;					/* extension */
-    short version;					/* version number */
-    bool lval;						/* has lvalue params */
+typedef void (*ExtFunc)(Frame *, int, Value *);
+struct ExtKFun {
+    const char *name;	/* added kfun name */
+    char *proto;	/* simplified prototype */
+    ExtFunc func;	/* function address */
 };
 
-extern kfunc kftab[], kfenc[], kfdec[], kfhsh[];	/* kfun tables */
+class KFun {
+public:
+    void argError(int n);
+    void unary(Frame *f);
+    void binary(Frame *f);
+    void ternary(Frame *f);
+    void compare(Frame *f);
+
+    static void init();
+    static void clear();
+    static void add(const ExtKFun *kfadd, int n);
+    static void jit();
+    static int find(KFun *kf, unsigned int l, unsigned int h, const char *name);
+    static int kfunc(const char *name);
+    static void reclaim();
+    static bool dump(int fd);
+    static void restore(int fd);
+
+    const char *name;					/* function name */
+    char *proto;					/* prototype */
+    int (*func)(Frame*, int, KFun*);			/* function address */
+    ExtFunc ext;					/* extension */
+    short version;					/* version number */
+    bool lval;						/* has lvalue params */
+
+private:
+    static int callgate(Frame *f, int nargs, KFun *kf);
+    static char *prototype(char *proto, bool *lval);
+    static int cmp(cvoid *cv1, cvoid *cv2);
+};
+
+extern KFun kftab[], kfenc[], kfdec[], kfhsh[];		/* kfun tables */
 extern kfindex kfind[];					/* indirection table */
-extern int   nkfun, ne, nd, nh;				/* # kfuns */
+extern int nkfun, ne, nd, nh;				/* # kfuns */
 
 # define KFUN(kf)	(kftab[kfind[kf]])
 
-struct extkfunc {
-    const char *name;	/* added kfun name */
-    char *proto;	/* simplified prototype */
-    extfunc func;	/* function address */
-};
-
-extern void kf_clear	();
-extern void kf_ext_kfun	(const extkfunc*, int);
-extern int  kf_ckrangeft(Frame*, int, kfunc*);
-extern int  kf_ckrangef	(Frame*, int, kfunc*);
-extern int  kf_ckranget	(Frame*, int, kfunc*);
-extern int  kf_nil	(Frame*, int, kfunc*);
-extern int  kf_unused	(Frame*, int, kfunc*);
-extern void kf_init	();
-extern void kf_jit	();
-extern int  kf_func	(const char*);
-extern void kf_reclaim	();
-extern bool kf_dump	(int);
-extern void kf_restore	(int);
+extern int  kf_ckrangeft(Frame*, int, KFun*);
+extern int  kf_ckrangef	(Frame*, int, KFun*);
+extern int  kf_ckranget	(Frame*, int, KFun*);
+extern int  kf_nil	(Frame*, int, KFun*);
+extern int  kf_unused	(Frame*, int, KFun*);
 
 # define KF_ADD		 0
 # define KF_ADD_INT	 1

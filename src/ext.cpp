@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1946,7 +1946,7 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     mod_fdlist = NULL;
     mod_finish = NULL;
 
-    ext_ext[0] = (voidf *) &kf_ext_kfun;
+    ext_ext[0] = (voidf *) &KFun::add;
     ext_ext[1] = (voidf *) NULL;
     ext_ext[2] = (voidf *) &ext_spawn;
     ext_ext[3] = (voidf *) &Connection::fdclose;

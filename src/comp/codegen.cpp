@@ -2313,9 +2313,9 @@ static int nfuncs;		/* # functions generated */
 void Codegen::init(int inherited)
 {
     UNREFERENCED_PARAMETER(inherited);
-    kd_allocate = ((Int) KFCALL << 24) | kf_func("allocate");
-    kd_allocate_int = ((Int) KFCALL << 24) | kf_func("allocate_int");
-    kd_allocate_float = ((Int) KFCALL << 24) | kf_func("allocate_float");
+    kd_allocate = ((Int) KFCALL << 24) | KFun::kfunc("allocate");
+    kd_allocate_int = ((Int) KFCALL << 24) | KFun::kfunc("allocate_int");
+    kd_allocate_float = ((Int) KFCALL << 24) | KFun::kfunc("allocate_float");
     ::nfuncs = 0;
 }
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1640,7 +1640,7 @@ unsigned short Frame::switchStr(char *pc)
  */
 void Frame::kfunc(int n, int nargs)
 {
-    struct kfunc *kf;
+    KFun *kf;
 
     kf = &KFUN(n);
     if (PROTO_VARGS(kf->proto) == 0 && nargs != PROTO_NARGS(kf->proto)) {
@@ -1684,7 +1684,7 @@ void Frame::interpret(char *pc)
     unsigned short instr, u, u2;
     Uint l;
     char *p;
-    struct kfunc *kf;
+    KFun *kf;
     int size, instance;
     bool atomic;
     Value val;

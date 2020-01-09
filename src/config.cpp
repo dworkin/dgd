@@ -259,7 +259,7 @@ void Config::dump(bool incr, bool boot)
 	header.dflags |= FLAGS_PARTIAL;
     }
     fd = Swap::save(conf[DUMP_FILE].str, header.dflags & FLAGS_PARTIAL);
-    if (!kf_dump(fd)) {
+    if (!KFun::dump(fd)) {
 	fatal("failed to dump kfun table");
     }
     if (!Object::save(fd, incr)) {
@@ -363,7 +363,7 @@ bool Config::restore(int fd, int fd2)
     rheader.psize &= 0xf;
 
     Swap::restore(fd, secsize);
-    kf_restore(fd);
+    KFun::restore(fd);
     Object::restore(fd, rheader.dflags & FLAGS_PARTIAL);
     Dataspace::initConv(conv_14);
     Control::initConv(conv_14, conv_15);
@@ -1405,7 +1405,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     Alloc::staticMode();
 
     /* remove previously added kfuns */
-    kf_clear();
+    KFun::clear();
 
     memset(mfdlist, '\0', MAX_STRINGS * sizeof(void (*)(int*, int)));
     memset(mfinish, '\0', MAX_STRINGS * sizeof(void (*)()));
@@ -1442,7 +1442,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     }
 
     /* initialize kfuns */
-    kf_init();
+    KFun::init();
 
     /* change directory */
     if (P_chdir(path_native(buf, conf[DIRECTORY].str)) < 0) {
@@ -1624,7 +1624,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     fdlist();
 
     /* prepare JIT compiler */
-    kf_jit();
+    KFun::jit();
 
     /* start accepting connections */
     Comm::listen();

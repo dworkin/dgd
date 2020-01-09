@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,10 +31,9 @@ FUNCDEF("editor", kf_editor, pt_editor, 0)
 char pt_editor[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->editor()
- * DESCRIPTION:	handle an editor command
+ * handle an editor command
  */
-int kf_editor(Frame *f, int nargs, kfunc *kf)
+int kf_editor(Frame *f, int nargs, KFun *kf)
 {
     Object *obj;
     String *str;
@@ -80,10 +79,9 @@ char pt_query_editor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
 			   T_OBJECT };
 
 /*
- * NAME:	kfun->query_editor()
- * DESCRIPTION:	query the editing status of an object
+ * query the editing status of an object
  */
-int kf_query_editor(Frame *f, int n, kfunc *kf)
+int kf_query_editor(Frame *f, int n, KFun *kf)
 {
     Object *obj;
     const char *status;
@@ -119,8 +117,7 @@ struct savecontext {
 };
 
 /*
- * NAME:	put()
- * DESCRIPTION:	output a number of characters
+ * output a number of characters
  */
 static void put(savecontext *x, const char *buf, unsigned int len)
 {
@@ -141,8 +138,7 @@ static void put(savecontext *x, const char *buf, unsigned int len)
 }
 
 /*
- * NAME:	save_string()
- * DESCRIPTION:	save a string
+ * save a string
  */
 static void save_string(savecontext *x, String *str)
 {
@@ -189,8 +185,7 @@ static void save_string(savecontext *x, String *str)
 static void save_mapping (savecontext*, Array*);
 
 /*
- * NAME:	save_array()
- * DESCRIPTION:	save an array
+ * save an array
  */
 static void save_array(savecontext *x, Array *a)
 {
@@ -256,8 +251,7 @@ static void save_array(savecontext *x, Array *a)
 }
 
 /*
- * NAME:	save_mapping()
- * DESCRIPTION:	save a mapping
+ * save a mapping
  */
 static void save_mapping(savecontext *x, Array *a)
 {
@@ -371,10 +365,9 @@ char pt_save_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
 			  T_STRING };
 
 /*
- * NAME:	kfun->save_object()
- * DESCRIPTION:	save the variables of the current object
+ * save the variables of the current object
  */
-int kf_save_object(Frame *f, int n, kfunc *kf)
+int kf_save_object(Frame *f, int n, KFun *kf)
 {
     static unsigned short count;
     unsigned short i, j, nvars;
@@ -514,8 +507,7 @@ struct saveval : public ChunkAllocated {
 class vchunk : public Chunk<saveval, ACHUNKSZ> {
 public:
     /*
-     * NAME:		item()
-     * DESCRIPTION:	iterate through items until the right one is found
+     * iterate through items until the right one is found
      */
     virtual bool item(saveval *v) {
 	if (--count == 0) {
@@ -526,8 +518,7 @@ public:
     }
 
     /*
-     * NAME:		get()
-     * DESCRIPTION:	get an item by index
+     * get an item by index
      */
     Value *get(Uint n) {
 	count = n;
@@ -549,8 +540,7 @@ struct restcontext {
 };
 
 /*
- * NAME:	vchunk->put()
- * DESCRIPTION:	put an array into the array chunks
+ * put an array into the array chunks
  */
 static void ac_put(restcontext *x, short type, Array *a)
 {
@@ -563,8 +553,7 @@ static void ac_put(restcontext *x, short type, Array *a)
 }
 
 /*
- * NAME:	vchunk->get()
- * DESCRIPTION:	get an array from the array chunks
+ * get an array from the array chunks
  */
 static Value *ac_get(restcontext *x, Uint n)
 {
@@ -573,8 +562,7 @@ static Value *ac_get(restcontext *x, Uint n)
 
 
 /*
- * NAME:	restore_error()
- * DESCRIPTION:	handle an error while restoring
+ * handle an error while restoring
  */
 static void restore_error(restcontext *x, const char *err)
 {
@@ -582,8 +570,7 @@ static void restore_error(restcontext *x, const char *err)
 }
 
 /*
- * NAME:	restore_int()
- * DESCRIPTION:	restore an integer
+ * restore an integer
  */
 static char *restore_int(restcontext *x, char *buf, Value *val)
 {
@@ -599,8 +586,7 @@ static char *restore_int(restcontext *x, char *buf, Value *val)
 }
 
 /*
- * NAME:	restore_number()
- * DESCRIPTION:	restore a number
+ * restore a number
  */
 static char *restore_number(restcontext *x, char *buf, Value *val)
 {
@@ -676,8 +662,7 @@ static char *restore_number(restcontext *x, char *buf, Value *val)
 }
 
 /*
- * NAME:	restore_string()
- * DESCRIPTION:	restore a string
+ * restore a string
  */
 static char *restore_string(restcontext *x, char *buf, Value *val)
 {
@@ -713,8 +698,7 @@ static char *restore_value	(restcontext*, char*, Value*);
 static char *restore_mapping	(restcontext*, char*, Value*);
 
 /*
- * NAME:	restore_array()
- * DESCRIPTION:	restore an array
+ * restore an array
  */
 static char *restore_array(restcontext *x, char *buf, Value *val)
 {
@@ -765,8 +749,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 }
 
 /*
- * NAME:	restore_mapping()
- * DESCRIPTION:	restore a mapping
+ * restore a mapping
  */
 static char *restore_mapping(restcontext *x, char *buf, Value *val)
 {
@@ -823,8 +806,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 }
 
 /*
- * NAME:	restore_value()
- * DESCRIPTION:	restore a value
+ * restore a value
  */
 static char *restore_value(restcontext *x, char *buf, Value *val)
 {
@@ -878,10 +860,9 @@ char pt_restore_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 			     T_STRING };
 
 /*
- * NAME:	kfun->restore_object()
- * DESCRIPTION:	restore the variables of the current object from file
+ * restore the variables of the current object from file
  */
-int kf_restore_object(Frame *f, int n, kfunc *kf)
+int kf_restore_object(Frame *f, int n, KFun *kf)
 {
     struct stat sbuf;
     int i, j;
@@ -1125,10 +1106,9 @@ char pt_write_file[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_INT, T_STRING,
 			 T_STRING, T_INT };
 
 /*
- * NAME:	kfun->write_file()
- * DESCRIPTION:	write a string to a file
+ * write a string to a file
  */
-int kf_write_file(Frame *f, int nargs, kfunc *kf)
+int kf_write_file(Frame *f, int nargs, KFun *kf)
 {
     char file[STRINGSZ];
     struct stat sbuf;
@@ -1190,10 +1170,9 @@ char pt_read_file[] = { C_TYPECHECKED | C_STATIC, 1, 2, 0, 9, T_STRING,
 			T_STRING, T_INT, T_INT };
 
 /*
- * NAME:	kfun->read_file()
- * DESCRIPTION:	read a string from file
+ * read a string from file
  */
-int kf_read_file(Frame *f, int nargs, kfunc *kf)
+int kf_read_file(Frame *f, int nargs, KFun *kf)
 {
     char file[STRINGSZ], *buf;
     struct stat sbuf;
@@ -1290,10 +1269,9 @@ char pt_rename_file[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT,
 			  T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->rename_file()
- * DESCRIPTION:	rename a file
+ * rename a file
  */
-int kf_rename_file(Frame *f, int n, kfunc *kf)
+int kf_rename_file(Frame *f, int n, KFun *kf)
 {
     char from[STRINGSZ], to[STRINGSZ];
 
@@ -1326,10 +1304,9 @@ char pt_remove_file[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 			  T_STRING };
 
 /*
- * NAME:	kfun->remove_file()
- * DESCRIPTION:	remove a file
+ * remove a file
  */
-int kf_remove_file(Frame *f, int n, kfunc *kf)
+int kf_remove_file(Frame *f, int n, KFun *kf)
 {
     char file[STRINGSZ];
 
@@ -1358,10 +1335,9 @@ FUNCDEF("make_dir", kf_make_dir, pt_make_dir, 0)
 char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
 
 /*
- * NAME:	kfun->make_dir()
- * DESCRIPTION:	create a directory
+ * create a directory
  */
-int kf_make_dir(Frame *f, int n, kfunc *kf)
+int kf_make_dir(Frame *f, int n, KFun *kf)
 {
     char file[STRINGSZ];
 
@@ -1391,10 +1367,9 @@ char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 			 T_STRING };
 
 /*
- * NAME:	kfun->remove_dir()
- * DESCRIPTION:	remove an empty directory
+ * remove an empty directory
  */
-int kf_remove_dir(Frame *f, int n, kfunc *kf)
+int kf_remove_dir(Frame *f, int n, KFun *kf)
 {
     char file[STRINGSZ];
 
@@ -1421,8 +1396,7 @@ int kf_remove_dir(Frame *f, int n, kfunc *kf)
 FUNCDEF("get_dir", kf_get_dir, pt_get_dir, 0)
 # else
 /*
- * NAME:	match()
- * DESCRIPTION:	match a regular expression
+ * match a regular expression
  */
 static int match(char *pat, char *text)
 {
@@ -1529,8 +1503,7 @@ struct fileinfo {
 };
 
 /*
- * NAME:	getinfo()
- * DESCRIPTION:	get info about a file
+ * get info about a file
  */
 static bool getinfo(char *path, char *file, fileinfo *finf)
 {
@@ -1558,8 +1531,7 @@ static bool getinfo(char *path, char *file, fileinfo *finf)
 static int cmp (cvoid*, cvoid*);
 
 /*
- * NAME:	cmp()
- * DESCRIPTION:	compare two file info structs
+ * compare two file info structs
  */
 static int cmp(cvoid *cv1, cvoid *cv2)
 {
@@ -1573,10 +1545,9 @@ char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 # define FILEINFO_CHUNK	1024
 
 /*
- * NAME:	kfun->get_dir()
- * DESCRIPTION:	get directory filelist + info
+ * get directory filelist + info
  */
-int kf_get_dir(Frame *f, int nargs, kfunc *kf)
+int kf_get_dir(Frame *f, int nargs, KFun *kf)
 {
     unsigned int i, nfiles, ftabsz;
     fileinfo *ftable;
