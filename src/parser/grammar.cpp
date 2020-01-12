@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -41,7 +41,14 @@
 # define TOK_TOOBIGSTR 12	/* string constant too long */
 # define TOK_TOOBIGSYM 13	/* symbol too long */
 
-struct rgxnode {
+class RgxNode {
+public:
+    static int create(char *buffer, int len, char *str, RgxNode *node,
+		      int thisnode, int *lastp);
+    static int token(String *str, ssizet *strlen, char *buffer,
+		     unsigned int *buflen);
+
+private:
     unsigned short type;	/* node type */
     unsigned short left;	/* left child node or other info */
     unsigned short right;	/* right child node or other info */
@@ -56,10 +63,10 @@ struct rgxnode {
 # define RGX_PAREN	4	/* (rgx) */
 
 /*
- * NAME:	rgxtok()
- * DESCRIPTION:	construct pre-parsed regular expression
+ * construct pre-parsed regular expression
  */
-static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode, int *lastp)
+int RgxNode::create(char *buffer, int len, char *str, RgxNode *node,
+		    int thisnode, int *lastp)
 {
     int last, n;
 
@@ -90,8 +97,7 @@ static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode,
 
 	case RGX_CONCAT:
 	    /* concatenated nodes */
-	    len = rgxtok(buffer, len, str, node, node[thisnode].left,
-			 &last);
+	    len = create(buffer, len, str, node, node[thisnode].left, &last);
 	    thisnode = (short) node[thisnode].right;
 	    break;
 
@@ -104,8 +110,7 @@ static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode,
 	     */
 	    buffer[n = len] = (node[thisnode].right == '+') ? '+' : '|';
 	    len += 2;
-	    len = rgxtok(buffer, len, str, node, node[thisnode].left,
-			 &last);
+	    len = create(buffer, len, str, node, node[thisnode].left, &last);
 	    if (node[thisnode].right != '?') {
 		while (last >= 0) {
 		    buffer[UCHAR(node[last].len)] = n;
@@ -125,11 +130,10 @@ static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode,
 	     */
 	    buffer[len++] = '|';
 	    n = len++;
-	    len = rgxtok(buffer, len, str, node, node[thisnode].left,
-			 &last);
+	    len = create(buffer, len, str, node, node[thisnode].left, &last);
 	    buffer[n] = len;
 	    n = -1;
-	    len = rgxtok(buffer, len, str, node, node[thisnode].right, &n);
+	    len = create(buffer, len, str, node, node[thisnode].right, &n);
 	    while (n >= 0) {
 		thisnode = (short) node[n].left;
 		node[n].left = last;
@@ -151,12 +155,12 @@ static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode,
 }
 
 /*
- * NAME:	gramtok()
- * DESCRIPTION:	get a token from the grammar string
+ * get a token from the grammar string
  */
-static int gramtok(String *str, ssizet *strlen, char *buffer, unsigned int *buflen)
+int RgxNode::token(String *str, ssizet *strlen, char *buffer,
+		   unsigned int *buflen)
 {
-    rgxnode node[2 * STRINGSZ];
+    RgxNode node[2 * STRINGSZ];
     short nstack[STRINGSZ];
     int paren, thisnode, topnode, lastnode, strtok;
     ssizet offset;
@@ -355,7 +359,7 @@ static int gramtok(String *str, ssizet *strlen, char *buffer, unsigned int *bufl
 		return TOK_BADREGEXP;
 	    }
 	    thisnode = -1;
-	    len = rgxtok(buffer, 0, str->text, node, topnode, &thisnode);
+	    len = create(buffer, 0, str->text, node, topnode, &thisnode);
 	    while (thisnode >= 0) {
 		buffer[UCHAR(node[thisnode].len)] = len - 1;
 		thisnode = (short) node[thisnode].left;
@@ -453,50 +457,43 @@ static int gramtok(String *str, ssizet *strlen, char *buffer, unsigned int *bufl
 }
 
 
-struct rulesym : public ChunkAllocated {
-    struct rule *rule;		/* symbol */
-    rulesym *next;		/* next in rule */
-};
+class Rule : public Hashtab::Entry, public ChunkAllocated {
+public:
+    static Rule *create(class RlChunk **c, int type);
 
-struct rule : public Hashtab::Entry, public ChunkAllocated {
     String *symb;		/* rule symbol */
     short type;			/* unknown, token or production rule */
     unsigned short num;		/* number of alternatives, or symbol number */
     Uint len;			/* length of rule, or offset in grammar */
     union {
 	String *rgx;		/* regular expression */
-	rulesym *syms;		/* linked list of rule elements */
+	class RuleSym *syms;	/* linked list of rule elements */
     };
     String *func;		/* optional LPC function */
-    rule *alt, **last;		/* first and last in alternatives list */
-    rule *list;			/* next in linked list */
+    Rule *alt, **last;		/* first and last in alternatives list */
+    Rule *list;			/* next in linked list */
 };
-
-# define RSCHUNKSZ	64
-# define RLCHUNKSZ	32
 
 # define RULE_UNKNOWN	0	/* unknown rule symbol */
 # define RULE_REGEXP	1	/* regular expression rule */
 # define RULE_STRING	2	/* string rule */
 # define RULE_PROD	3	/* production rule */
 
-typedef Chunk<rulesym, RSCHUNKSZ> rschunk;
+# define RLCHUNKSZ	32
 
-class rlchunk : public Chunk<rule, RLCHUNKSZ> {
+class RlChunk : public Chunk<Rule, RLCHUNKSZ> {
 public:
     /*
-     * NAME:		~rlchunk()
-     * DESCRIPTION:	iterate through items from destructor
+     * iterate through items from destructor
      */
-    virtual ~rlchunk() {
+    virtual ~RlChunk() {
 	items();
     }
 
     /*
-     * NAME:		item()
-     * DESCRIPTION:	dereference strings when iterating through items
+     * dereference strings when iterating through items
      */
-    virtual bool item(rule *rl) {
+    virtual bool item(Rule *rl) {
 	if (rl->symb != (String *) NULL) {
 	    rl->symb->del();
 	}
@@ -511,45 +508,56 @@ public:
 };
 
 /*
- * NAME:	rulesym->new()
- * DESCRIPTION:	allocate a new rulesym
+ * allocate a new rule
  */
-static rulesym *rs_new(rschunk **c, rule *rl)
+Rule *Rule::create(RlChunk **c, int type)
 {
-    rulesym *rs;
+    Rule *rl;
 
-    if (*c == (rschunk *) NULL) {
-	*c = new rschunk;
+    if (*c == (RlChunk *) NULL) {
+	*c = new RlChunk;
     }
-
-    rs = chunknew (**c) rulesym;
-    rs->rule = rl;
-    rs->next = (rulesym *) NULL;
-    return rs;
-}
-
-/*
- * NAME:	rule->new()
- * DESCRIPTION:	allocate a new rule
- */
-static rule *rl_new(rlchunk **c, int type)
-{
-    rule *rl;
-
-    if (*c == (rlchunk *) NULL) {
-	*c = new rlchunk;
-    }
-    rl = chunknew (**c) rule;
+    rl = chunknew (**c) Rule;
     rl->symb = (String *) NULL;
     rl->type = type;
     rl->num = 0;
     rl->len = 0;
-    rl->syms = (rulesym *) NULL;
+    rl->syms = (RuleSym *) NULL;
     rl->func = (String *) NULL;
-    rl->alt = rl->list = (rule *) NULL;
+    rl->alt = rl->list = (Rule *) NULL;
     rl->last = &rl->alt;
 
     return rl;
+}
+
+class RuleSym : public ChunkAllocated {
+public:
+    static RuleSym *create(class RsChunk **c, Rule *rl);
+
+    Rule *rule;			/* symbol */
+    RuleSym *next;		/* next in rule */
+};
+
+# define RSCHUNKSZ	64
+
+class RsChunk : public Chunk<RuleSym, RSCHUNKSZ> {
+};
+
+/*
+ * allocate a new rulesym
+ */
+RuleSym *RuleSym::create(RsChunk **c, Rule *rl)
+{
+    RuleSym *rs;
+
+    if (*c == (RsChunk *) NULL) {
+	*c = new RsChunk;
+    }
+
+    rs = chunknew (**c) RuleSym;
+    rs->rule = rl;
+    rs->next = (RuleSym *) NULL;
+    return rs;
 }
 
 /*
@@ -595,17 +603,17 @@ static rule *rl_new(rlchunk **c, int type)
  */
 
 /*
- * NAME:	make_grammar()
- * DESCRIPTION:	create a pre-processed grammar string
+ * create a pre-processed grammar string
  */
-static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *prodlist,
-			    int nrgx, int nstr, int nestr, int nprod, long size)
+String *Grammar::create(Rule *rgxlist, Rule *strlist, Rule *estrlist,
+			Rule *prodlist, int nrgx, int nstr, int nestr,
+			int nprod, long size)
 {
     int start, prod1;
     String *gram;
     char *p, *q;
-    rule *rl, *r;
-    rulesym *rs;
+    Rule *rl, *r;
+    RuleSym *rs;
     int n;
 
     gram = String::create((char *) NULL, size);
@@ -626,7 +634,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
     p = gram->text + size;
 
     /* determine production rule offsets */
-    for (rl = prodlist; rl != (rule *) NULL; rl = rl->list) {
+    for (rl = prodlist; rl != (Rule *) NULL; rl = rl->list) {
 	size -= (rl->num << 1) + rl->len + 2;
 	p -= (rl->num << 1) + rl->len + 2;
 	q -= 2; STORE2(q, size);
@@ -643,7 +651,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
     start = size;
 
     /* deal with strings */
-    for (rl = estrlist; rl != (rule *) NULL; rl = rl->list) {
+    for (rl = estrlist; rl != (Rule *) NULL; rl = rl->list) {
 	size -= rl->symb->len + 1;
 	p -= rl->symb->len + 1;
 	q -= 2; STORE2(q, size);
@@ -651,7 +659,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 	*p = rl->symb->len;
 	memcpy(p + 1, rl->symb->text, rl->symb->len);
     }
-    for (rl = strlist; rl != (rule *) NULL; rl = rl->list) {
+    for (rl = strlist; rl != (Rule *) NULL; rl = rl->list) {
 	*--q = rl->symb->len;
 	q -= 3; STORE3(q, rl->len);
 	rl->num = --n;
@@ -659,14 +667,14 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 
     /* deal with regexps */
     nrgx = 0;
-    for (rl = rgxlist; rl != (rule *) NULL; rl = rl->list) {
+    for (rl = rgxlist; rl != (Rule *) NULL; rl = rl->list) {
 	size -= rl->num + rl->len + 2;
 	q -= 2; STORE2(q, size);
 	p = gram->text + size;
 	STORE2(p, rl->num);
 	rl->num = --n;
 	p += 2;
-	for (r = rl; r != (rule *) NULL; r = r->alt) {
+	for (r = rl; r != (Rule *) NULL; r = r->alt) {
 	    if (r->rgx != (String *) NULL) {
 		*p++ = r->rgx->len;
 		memcpy(p, r->rgx->text, r->rgx->len);
@@ -687,12 +695,12 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 
     /* fill in production rules */
     nprod = 1;
-    for (rl = prodlist; rl != (rule *) NULL; rl = rl->list) {
+    for (rl = prodlist; rl != (Rule *) NULL; rl = rl->list) {
 	q = gram->text + rl->len + 2;
-	for (r = rl; r != (rule *) NULL; r = r->alt) {
+	for (r = rl; r != (Rule *) NULL; r = r->alt) {
 	    p = q + 2;
 	    n = 0;
-	    for (rs = r->syms; rs != (rulesym *) NULL; rs = rs->next) {
+	    for (rs = r->syms; rs != (RuleSym *) NULL; rs = rs->next) {
 		STORE2(p, rs->rule->num); p += 2;
 		n++;
 	    }
@@ -723,22 +731,21 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 }
 
 /*
- * NAME:	parse_grammar()
- * DESCRIPTION:	check the grammar, return a pre-processed version
+ * check the grammar, return a pre-processed version
  */
-String *parse_grammar(String *gram)
+String *Grammar::parse(String *gram)
 {
     char buffer[STRINGSZ];
     Hashtab *ruletab, *strtab;
-    rschunk *rschunks;
-    rlchunk *rlchunks;
-    rule *rgxlist, *strlist, *estrlist, *prodlist, *tmplist, *rr, *rrl;
+    RsChunk *rschunks;
+    RlChunk *rlchunks;
+    Rule *rgxlist, *strlist, *estrlist, *prodlist, *tmplist, *rr, *rrl;
     int token, ruleno, nrgx, nstr, nestr, nprod;
     ssizet glen;
     unsigned int buflen;
     bool nomatch;
-    rulesym **rs;
-    rule *rl, **r;
+    RuleSym **rs;
+    Rule *rl, **r;
     long size;
     unsigned int len;
 
@@ -751,23 +758,23 @@ String *parse_grammar(String *gram)
     /* initialize */
     ruletab = Hashtab::create(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
     strtab = Hashtab::create(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
-    rschunks = (rschunk *) NULL;
-    rlchunks = (rlchunk *) NULL;
-    rgxlist = strlist = estrlist = prodlist = tmplist = (rule *) NULL;
+    rschunks = (RsChunk *) NULL;
+    rlchunks = (RlChunk *) NULL;
+    rgxlist = strlist = estrlist = prodlist = tmplist = (Rule *) NULL;
     nrgx = nstr = nestr = nprod = 0;
     size = 17 + 8;	/* size of header + start rule */
     glen = gram->len;
     nomatch = FALSE;
 
-    token = gramtok(gram, &glen, buffer, &buflen);
+    token = RgxNode::token(gram, &glen, buffer, &buflen);
     for (ruleno = 1; ; ruleno++) {
 	switch (token) {
 	case TOK_TOKSYM:
 	    /*
 	     * token rule definition
 	     */
-	    r = (rule **) ruletab->lookup(buffer, TRUE);
-	    if (*r != (rule *) NULL) {
+	    r = (Rule **) ruletab->lookup(buffer, TRUE);
+	    if (*r != (Rule *) NULL) {
 		if ((*r)->type == RULE_UNKNOWN) {
 		    /* replace unknown rule */
 		    rl = *r;
@@ -775,20 +782,20 @@ String *parse_grammar(String *gram)
 		    size += 4;
 		    nrgx++;
 
-		    if (rl->alt != (rule *) NULL) {
+		    if (rl->alt != (Rule *) NULL) {
 			rl->alt->list = rl->list;
 		    } else {
 			tmplist = rl->list;
 		    }
-		    if (rl->list != (rule *) NULL) {
+		    if (rl->list != (Rule *) NULL) {
 			rl->list->alt = rl->alt;
 		    }
-		    rl->alt = (rule *) NULL;
+		    rl->alt = (Rule *) NULL;
 		    rl->list = rgxlist;
 		    rgxlist = rl;
 		} else if ((*r)->type == RULE_REGEXP) {
 		    /* new alternative regexp */
-		    rl = rl_new(&rlchunks, RULE_REGEXP);
+		    rl = Rule::create(&rlchunks, RULE_REGEXP);
 
 		    *((*r)->last) = rl;
 		    (*r)->last = &rl->alt;
@@ -800,7 +807,7 @@ String *parse_grammar(String *gram)
 		}
 	    } else {
 		/* new rule */
-		rl = rl_new(&rlchunks, RULE_REGEXP);
+		rl = Rule::create(&rlchunks, RULE_REGEXP);
 		rl->symb = String::create(buffer, buflen);
 		rl->symb->ref();
 		rl->name = rl->symb->text;
@@ -813,7 +820,7 @@ String *parse_grammar(String *gram)
 		rgxlist = rl;
 	    }
 
-	    switch (gramtok(gram, &glen, buffer, &buflen)) {
+	    switch (RgxNode::token(gram, &glen, buffer, &buflen)) {
 	    case TOK_REGEXP:
 		rl->rgx = String::create(buffer, buflen);
 		rl->rgx->ref();
@@ -849,15 +856,15 @@ String *parse_grammar(String *gram)
 	    }
 
 	    /* next token */
-	    token = gramtok(gram, &glen, buffer, &buflen);
+	    token = RgxNode::token(gram, &glen, buffer, &buflen);
 	    break;
 
 	case TOK_PRODSYM:
 	    /*
 	     * production rule definition
 	     */
-	    r = (rule **) ruletab->lookup(buffer, TRUE);
-	    if (*r != (rule *) NULL) {
+	    r = (Rule **) ruletab->lookup(buffer, TRUE);
+	    if (*r != (Rule *) NULL) {
 		if ((*r)->type == RULE_UNKNOWN) {
 		    /* replace unknown rule */
 		    rl = *r;
@@ -865,20 +872,20 @@ String *parse_grammar(String *gram)
 		    size += 4;
 		    nprod++;
 
-		    if (rl->alt != (rule *) NULL) {
+		    if (rl->alt != (Rule *) NULL) {
 			rl->alt->list = rl->list;
 		    } else {
 			tmplist = rl->list;
 		    }
-		    if (rl->list != (rule *) NULL) {
+		    if (rl->list != (Rule *) NULL) {
 			rl->list->alt = rl->alt;
 		    }
-		    rl->alt = (rule *) NULL;
+		    rl->alt = (Rule *) NULL;
 		    rl->list = prodlist;
 		    prodlist = rl;
 		} else if ((*r)->type == RULE_PROD) {
 		    /* new alternative production */
-		    rl = rl_new(&rlchunks, RULE_PROD);
+		    rl = Rule::create(&rlchunks, RULE_PROD);
 
 		    *((*r)->last) = rl;
 		    (*r)->last = &rl->alt;
@@ -889,7 +896,7 @@ String *parse_grammar(String *gram)
 		}
 	    } else {
 		/* new rule */
-		rl = rl_new(&rlchunks, RULE_PROD);
+		rl = Rule::create(&rlchunks, RULE_PROD);
 		rl->symb = String::create(buffer, buflen);
 		rl->symb->ref();
 		rl->name = rl->symb->text;
@@ -907,15 +914,15 @@ String *parse_grammar(String *gram)
 	    rs = &rl->syms;
 	    len = 0;
 	    for (;;) {
-		switch (token = gramtok(gram, &glen, buffer, &buflen)) {
+		switch (token = RgxNode::token(gram, &glen, buffer, &buflen)) {
 		case TOK_SYMBOL:
 		    /*
 		     * symbol
 		     */
-		    r = (rule **) ruletab->lookup(buffer, TRUE);
-		    if (*r == (rule *) NULL) {
+		    r = (Rule **) ruletab->lookup(buffer, TRUE);
+		    if (*r == (Rule *) NULL) {
 			/* new unknown rule */
-			rl = rl_new(&rlchunks, RULE_UNKNOWN);
+			rl = Rule::create(&rlchunks, RULE_UNKNOWN);
 			rl->symb = String::create(buffer, buflen);
 			rl->symb->ref();
 			rl->name = rl->symb->text;
@@ -923,7 +930,7 @@ String *parse_grammar(String *gram)
 			*r = rl;
 
 			rl->list = tmplist;
-			if (tmplist != (rule *) NULL) {
+			if (tmplist != (Rule *) NULL) {
 			    tmplist->alt = rl;
 			}
 			tmplist = rl;
@@ -931,7 +938,7 @@ String *parse_grammar(String *gram)
 			/* previously known rule */
 			rl = *r;
 		    }
-		    *rs = rs_new(&rschunks, rl);
+		    *rs = RuleSym::create(&rschunks, rl);
 		    rs = &(*rs)->next;
 		    len += 2;
 		    continue;
@@ -941,17 +948,17 @@ String *parse_grammar(String *gram)
 		    /*
 		     * string
 		     */
-		    r = (rule **) strtab->lookup(buffer, FALSE);
-		    while (*r != (rule *) NULL) {
+		    r = (Rule **) strtab->lookup(buffer, FALSE);
+		    while (*r != (Rule *) NULL) {
 			if ((*r)->symb->len == buflen &&
 			    memcmp((*r)->symb->text, buffer, buflen) == 0) {
 			    break;
 			}
-			r = (rule **) &(*r)->list;
+			r = (Rule **) &(*r)->list;
 		    }
-		    if (*r == (rule *) NULL) {
+		    if (*r == (Rule *) NULL) {
 			/* new string rule */
-			rl = rl_new(&rlchunks, RULE_STRING);
+			rl = Rule::create(&rlchunks, RULE_STRING);
 			rl->symb = String::create(buffer, buflen);
 			rl->symb->ref();
 			rl->name = rl->symb->text;
@@ -974,7 +981,7 @@ String *parse_grammar(String *gram)
 			/* existing string rule */
 			rl = *r;
 		    }
-		    *rs = rs_new(&rschunks, rl);
+		    *rs = RuleSym::create(&rschunks, rl);
 		    rs = &(*rs)->next;
 		    len += 2;
 		    continue;
@@ -983,7 +990,7 @@ String *parse_grammar(String *gram)
 		    /*
 		     * ? function
 		     */
-		    if (gramtok(gram, &glen, buffer, &buflen) != TOK_SYMBOL) {
+		    if (RgxNode::token(gram, &glen, buffer, &buflen) != TOK_SYMBOL) {
 			sprintf(buffer, "Rule %d: function name expected",
 				ruleno);
 			goto err;
@@ -992,7 +999,7 @@ String *parse_grammar(String *gram)
 		    rrl->func->ref();
 		    len += buflen + 1;
 
-		    token = gramtok(gram, &glen, buffer, &buflen);
+		    token = RgxNode::token(gram, &glen, buffer, &buflen);
 		    /* fall through */
 		default:
 		    break;
@@ -1013,15 +1020,15 @@ String *parse_grammar(String *gram)
 	    /*
 	     * end of grammar
 	     */
-	    if (tmplist != (rule *) NULL) {
+	    if (tmplist != (Rule *) NULL) {
 		sprintf(buffer, "Undefined symbol %s", tmplist->symb->text);
 		goto err;
 	    }
-	    if (rgxlist == (rule *) NULL) {
+	    if (rgxlist == (Rule *) NULL) {
 		strcpy(buffer, "No tokens");
 		goto err;
 	    }
-	    if (prodlist == (rule *) NULL) {
+	    if (prodlist == (Rule *) NULL) {
 		strcpy(buffer, "No starting rule");
 		goto err;
 	    }
@@ -1029,8 +1036,8 @@ String *parse_grammar(String *gram)
 		strcpy(buffer, "Grammar too large");
 		goto err;
 	    }
-	    gram = make_grammar(rgxlist, strlist, estrlist, prodlist, nrgx,
-				nstr, nestr, nprod, size);
+	    gram = create(rgxlist, strlist, estrlist, prodlist, nrgx, nstr,
+			  nestr, nprod, size);
 	    delete rschunks;
 	    delete rlchunks;
 	    delete strtab;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,105 +22,121 @@
 # include "str.h"
 # include "dfa.h"
 
+class Charset {
+public:
+    void neg();
+    void merge(Charset *cs);
+    void sub(Charset *cs);
+    bool intersect(Charset *cs);
+    bool overlap(Charset *cs1, Charset *cs2, Charset *cs3);
+    int firstc(int c);
+    int eclass(char *eclass, int sclass);
+
+    Uint chars[8];
+};
+
 /*
- * NAME:	charset->neg()
- * DESCRIPTION:	negate a charset
+ * negate a charset
  */
-static void cs_neg(Uint *cs)
+void Charset::neg()
 {
-    *cs++ ^= 0xffffffffL;
-    *cs++ ^= 0xffffffffL;
-    *cs++ ^= 0xffffffffL;
-    *cs++ ^= 0xffffffffL;
-    *cs++ ^= 0xffffffffL;
-    *cs++ ^= 0xffffffffL;
-    *cs++ ^= 0xffffffffL;
-    *cs   ^= 0xffffffffL;
+    chars[0] ^= 0xffffffffL;
+    chars[1] ^= 0xffffffffL;
+    chars[2] ^= 0xffffffffL;
+    chars[3] ^= 0xffffffffL;
+    chars[4] ^= 0xffffffffL;
+    chars[5] ^= 0xffffffffL;
+    chars[6] ^= 0xffffffffL;
+    chars[7] ^= 0xffffffffL;
 }
 
 /*
- * NAME:	charset->or()
- * DESCRIPTION:	or two charsets
+ * merge two charsets
  */
-static void cs_or(Uint *cs1, Uint *cs2)
+void Charset::merge(Charset *cs)
 {
-    *cs1++ |= *cs2++;
-    *cs1++ |= *cs2++;
-    *cs1++ |= *cs2++;
-    *cs1++ |= *cs2++;
-    *cs1++ |= *cs2++;
-    *cs1++ |= *cs2++;
-    *cs1++ |= *cs2++;
-    *cs1   |= *cs2;
+    chars[0] |= cs->chars[0];
+    chars[1] |= cs->chars[1];
+    chars[2] |= cs->chars[2];
+    chars[3] |= cs->chars[3];
+    chars[4] |= cs->chars[4];
+    chars[5] |= cs->chars[5];
+    chars[6] |= cs->chars[6];
+    chars[7] |= cs->chars[7];
 }
 
 /*
- * NAME:	charset->sub()
- * DESCRIPTION:	subtract a charset from another one
+ * subtract a charset from another one
  */
-static void cs_sub(Uint *cs1, Uint *cs2)
+void Charset::sub(Charset *cs)
 {
-    *cs1++ &= ~*cs2++;
-    *cs1++ &= ~*cs2++;
-    *cs1++ &= ~*cs2++;
-    *cs1++ &= ~*cs2++;
-    *cs1++ &= ~*cs2++;
-    *cs1++ &= ~*cs2++;
-    *cs1++ &= ~*cs2++;
-    *cs1   &= ~*cs2;
+    chars[0] &= ~cs->chars[0];
+    chars[1] &= ~cs->chars[1];
+    chars[2] &= ~cs->chars[2];
+    chars[3] &= ~cs->chars[3];
+    chars[4] &= ~cs->chars[4];
+    chars[5] &= ~cs->chars[5];
+    chars[6] &= ~cs->chars[6];
+    chars[7] &= ~cs->chars[7];
 }
 
 /*
- * NAME:	charset->intersect()
- * DESCRIPTION:	return TRUE if two character sets intersect, FALSE otherwise
+ * return TRUE if two character sets intersect, FALSE otherwise
  */
-static bool cs_intersect(Uint *cs1, Uint *cs2)
+bool Charset::intersect(Charset *cs)
 {
     Uint i;
 
-    i  = *cs1++ & *cs2++;
-    i |= *cs1++ & *cs2++;
-    i |= *cs1++ & *cs2++;
-    i |= *cs1++ & *cs2++;
-    i |= *cs1++ & *cs2++;
-    i |= *cs1++ & *cs2++;
-    i |= *cs1++ & *cs2++;
-    i |= *cs1   & *cs2;
+    i  = chars[0] & cs->chars[0];
+    i |= chars[1] & cs->chars[1];
+    i |= chars[2] & cs->chars[2];
+    i |= chars[3] & cs->chars[3];
+    i |= chars[4] & cs->chars[4];
+    i |= chars[5] & cs->chars[5];
+    i |= chars[6] & cs->chars[6];
+    i |= chars[7] & cs->chars[7];
 
     return (i != 0);
 }
 
 /*
- * NAME:	charset->overlap()
- * DESCRIPTION:	Check if two character sets overlap.  Return TRUE if they do,
- *		or if the first set contains the second one.
+ * Check if two character sets overlap.  Return TRUE if they do,
+ * or if the first set contains the second one.
  */
-static bool cs_overlap(Uint *cs1, Uint *cs2, Uint *cs3, Uint *cs4)
+bool Charset::overlap(Charset *cs1, Charset *cs2, Charset *cs3)
 {
-    Uint s3, s4;
+    Uint s2, s3;
 
-    s3  = *cs3 = *cs1 & *cs2++;  s4  = *cs4++ = *cs1++ & ~*cs3++;
-    s3 |= *cs3 = *cs1 & *cs2++;  s4 |= *cs4++ = *cs1++ & ~*cs3++;
-    s3 |= *cs3 = *cs1 & *cs2++;  s4 |= *cs4++ = *cs1++ & ~*cs3++;
-    s3 |= *cs3 = *cs1 & *cs2++;  s4 |= *cs4++ = *cs1++ & ~*cs3++;
-    s3 |= *cs3 = *cs1 & *cs2++;  s4 |= *cs4++ = *cs1++ & ~*cs3++;
-    s3 |= *cs3 = *cs1 & *cs2++;  s4 |= *cs4++ = *cs1++ & ~*cs3++;
-    s3 |= *cs3 = *cs1 & *cs2++;  s4 |= *cs4++ = *cs1++ & ~*cs3++;
-    s3 |= *cs3 = *cs1 & *cs2;    s4 |= *cs4   = *cs1   & ~*cs3;
+    s2  = cs2->chars[0] = chars[0] & cs1->chars[0];
+    s2 |= cs2->chars[1] = chars[1] & cs1->chars[1];
+    s2 |= cs2->chars[2] = chars[2] & cs1->chars[2];
+    s2 |= cs2->chars[3] = chars[3] & cs1->chars[3];
+    s2 |= cs2->chars[4] = chars[4] & cs1->chars[4];
+    s2 |= cs2->chars[5] = chars[5] & cs1->chars[5];
+    s2 |= cs2->chars[6] = chars[6] & cs1->chars[6];
+    s2 |= cs2->chars[7] = chars[7] & cs1->chars[7];
 
-    return (s3 != 0 && s4 != 0);
+    s3  = cs3->chars[0] = chars[0] & ~cs2->chars[0];
+    s3 |= cs3->chars[1] = chars[1] & ~cs2->chars[1];
+    s3 |= cs3->chars[2] = chars[2] & ~cs2->chars[2];
+    s3 |= cs3->chars[3] = chars[3] & ~cs2->chars[3];
+    s3 |= cs3->chars[4] = chars[4] & ~cs2->chars[4];
+    s3 |= cs3->chars[5] = chars[5] & ~cs2->chars[5];
+    s3 |= cs3->chars[6] = chars[6] & ~cs2->chars[6];
+    s3 |= cs3->chars[7] = chars[7] & ~cs2->chars[7];
+
+    return (s2 != 0 && s3 != 0);
 }
 
 /*
- * NAME:	charset->firstc()
- * DESCRIPTION:	find the first char in a charset
+ * find the first char in a charset
  */
-static int cs_firstc(Uint *cset, int c)
+int Charset::firstc(int c)
 {
     Uint x;
 
     while (c < 256) {
-	if ((x=cset[c >> 5] >> (c & 31)) != 0) {
+	if ((x=chars[c >> 5] >> (c & 31)) != 0) {
 	    while ((x & 0xff) == 0) {
 		x >>= 8;
 		c += 8;
@@ -140,17 +156,16 @@ static int cs_firstc(Uint *cset, int c)
 }
 
 /*
- * NAME:	charset->eclass()
- * DESCRIPTION:	convert a charset into an equivalence class
+ * convert a charset into an equivalence class
  */
-static int cs_eclass(Uint *cset, char *eclass, int sclass)
+int Charset::eclass(char *eclass, int sclass)
 {
     int n, c;
     Uint x;
 
     n = 0;
-    for (c = cs_firstc(cset, 0); c < 256; c += 31, c &= ~31) {
-	x = cset[c >> 5] >> (c & 31);
+    for (c = firstc(0); c < 256; c += 31, c &= ~31) {
+	x = chars[c >> 5] >> (c & 31);
 	if (x != 0) {
 	    do {
 		while ((x & 0xff) == 0) {
@@ -173,33 +188,49 @@ static int cs_eclass(Uint *cset, char *eclass, int sclass)
 }
 
 
-struct rgxposn : public Hashtab::Entry, public ChunkAllocated {
+class RgxPosn : public Hashtab::Entry, public ChunkAllocated {
+public:
+    void cset(Charset *cset);
+    bool trans(Charset *cset, char *posn, unsigned short *size);
+    char *save(char *buf, char *grammar);
+
+    static RgxPosn *alloc(Hashtab *htab, char *posn, unsigned short size,
+			  class RpChunk **c, char *rgx, Uint nposn,
+			  unsigned short ruleno, bool final);
+    static RgxPosn *create(Hashtab *htab, char *posn, unsigned short size,
+			   RpChunk **c, char *rgx, Uint nposn,
+			   unsigned short ruleno, bool final);
+    static bool transposn(char *rgx, char *trans, char *buf,
+			  unsigned short *buflen);
+    static RgxPosn *load(Hashtab *htab, RpChunk **c, Uint nposn, char *buf,
+			 char *grammar);
+
     char *rgx;			/* regular expression this position is in */
     unsigned short size;	/* size of position (length of string - 2) */
     unsigned short ruleno;	/* the rule this position is in */
     Uint nposn;			/* position number */
+    bool allocated;		/* position allocated separately? */
+
+private:
     bool final;			/* final position? */
-    bool alloc;			/* position allocated separately? */
 };
 
 # define RPCHUNKSZ	32
 
-class rpchunk : public Chunk<rgxposn, RPCHUNKSZ> {
+class RpChunk : public Chunk<RgxPosn, RPCHUNKSZ> {
 public:
     /*
-     * NAME:		~rpchunk()
-     * DESCRIPTION:	iterate through items from destructor
+     * iterate through items from destructor
      */
-    virtual ~rpchunk() {
+    virtual ~RpChunk() {
 	items();
     }
 
     /*
-     * NAME:		item()
-     * DESCRIPTION:	free strings when iterating through items
+     * free strings when iterating through items
      */
-    virtual bool item(rgxposn *rp) {
-	if (rp->alloc) {
+    virtual bool item(RgxPosn *rp) {
+	if (rp->allocated) {
 	    FREE(rp->name);
 	}
 	return TRUE;
@@ -207,22 +238,23 @@ public:
 };
 
 /*
- * NAME:	rgxposn->alloc()
- * DESCRIPTION:	allocate a new rgxposn (or return an old one)
+ * allocate a new rgxposn (or return an old one)
  */
-static rgxposn *rp_alloc(Hashtab *htab, char *posn, unsigned short size, rpchunk **c, char *rgx, Uint nposn, unsigned short ruleno, bool final)
+RgxPosn *RgxPosn::alloc(Hashtab *htab, char *posn, unsigned short size,
+			RpChunk **c, char *rgx, Uint nposn,
+			unsigned short ruleno, bool final)
 {
-    rgxposn **rrp, *rp;
+    RgxPosn **rrp, *rp;
 
-    rrp = (rgxposn **) htab->lookup(posn, TRUE);
-    if (*rrp != (rgxposn *) NULL) {
+    rrp = (RgxPosn **) htab->lookup(posn, TRUE);
+    if (*rrp != (RgxPosn *) NULL) {
 	return *rrp;	/* already exists */
     }
 
-    if (*c == (rpchunk *) NULL) {
-	*c = new rpchunk;
+    if (*c == (RpChunk *) NULL) {
+	*c = new RpChunk;
     }
-    rp = chunknew (**c) rgxposn;
+    rp = chunknew (**c) RgxPosn;
     rp->next = *rrp;
     *rrp = rp;
     rp->name = posn;
@@ -231,32 +263,33 @@ static rgxposn *rp_alloc(Hashtab *htab, char *posn, unsigned short size, rpchunk
     rp->nposn = nposn;
     rp->ruleno = ruleno;
     rp->final = final;
-    rp->alloc = FALSE;
+    rp->allocated = FALSE;
 
     return rp;
 }
 
 /*
- * NAME:	rgxposn->new()
- * DESCRIPTION:	create a new rgxposn
+ * create a new rgxposn
  */
-static rgxposn *rp_new(Hashtab *htab, char *posn, unsigned short size, rpchunk **c, char *rgx, Uint nposn, unsigned short ruleno, bool final)
+RgxPosn *RgxPosn::create(Hashtab *htab, char *posn, unsigned short size,
+			 RpChunk **c, char *rgx, Uint nposn,
+			 unsigned short ruleno, bool final)
 {
-    rgxposn *rp;
+    RgxPosn *rp;
 
-    rp = rp_alloc(htab, posn, size, c, rgx, nposn, ruleno, final);
+    rp = alloc(htab, posn, size, c, rgx, nposn, ruleno, final);
     if (rp->nposn == nposn) {
 	rp->name = strcpy(ALLOC(char, size + 3), posn);
-	rp->alloc = TRUE;
+	rp->allocated = TRUE;
     }
     return rp;
 }
 
 /*
- * NAME:	rgxposn->transposn()
- * DESCRIPTION:	convert a transition into a position
+ * convert a transition into a position
  */
-static bool rp_transposn(char *rgx, char *trans, char *buf, unsigned short *buflen)
+bool RgxPosn::transposn(char *rgx, char *trans, char *buf,
+			unsigned short *buflen)
 {
     char a[256], b[256], c[256], heap[256];
     char *p, *q;
@@ -378,19 +411,18 @@ static Uint bits[] = {
 };
 
 /*
- * NAME:	rgxposn->cset()
- * DESCRIPTION:	create input sets for a position
+ * create input sets for a position
  */
-static void rp_cset(rgxposn *rp, Uint *cset)
+void RgxPosn::cset(Charset *cset)
 {
     char *p;
     const char *q;
     int c, n, x;
     bool negate;
 
-    for (q = rp->name + 2; *q != '\0'; q++) {
-	memset(cset, '\0', 32);
-	p = rp->rgx + UCHAR(*q);
+    for (q = name + 2; *q != '\0'; q++) {
+	memset(cset->chars, '\0', 32);
+	p = rgx + UCHAR(*q);
 	switch (*p) {
 	case '[':
 	    /* character class */
@@ -406,7 +438,7 @@ static void rp_cset(rgxposn *rp, Uint *cset)
 		    p++;
 		}
 		c = UCHAR(*p++);
-		cset[c >> 5] |= 1 << (c & 31);
+		cset->chars[c >> 5] |= 1 << (c & 31);
 		if (p[0] == '-' && p[1] != ']') {
 		    n = UCHAR(p[1]) - c;
 		    if (n != 0) {
@@ -414,29 +446,29 @@ static void rp_cset(rgxposn *rp, Uint *cset)
 			if (x > n) {
 			    x = n;
 			}
-			cset[c >> 5] |= bits[x - 1] << (c & 31);
+			cset->chars[c >> 5] |= bits[x - 1] << (c & 31);
 			c += x;
 			n -= x;
 			while (n >= 32) {
-			    cset[c >> 5] |= 0xffffffffL;
+			    cset->chars[c >> 5] |= 0xffffffffL;
 			    c += 32;
 			    n -= 32;
 			}
 			if (n != 0) {
-			    cset[c >> 5] |= bits[n - 1];
+			    cset->chars[c >> 5] |= bits[n - 1];
 			}
 		    }
 		    p += 2;
 		}
 	    } while (*p != ']');
 	    if (negate) {
-		cs_neg(cset);
+		cset->neg();
 	    }
 	    break;
 
 	case '.':
 	    /* anything */
-	    memset(cset, -1, 32);
+	    memset(cset->chars, -1, 32);
 	    break;
 
 	case '\\':
@@ -446,19 +478,18 @@ static void rp_cset(rgxposn *rp, Uint *cset)
 	default:
 	    /* normal char */
 	    c = UCHAR(*p);
-	    cset[c >> 5] |= 1 << (c & 31);
+	    cset->chars[c >> 5] |= 1 << (c & 31);
 	    break;
 	}
 
-	cset += 8;
+	cset++;
     }
 }
 
 /*
- * NAME:	rgxposn->trans()
- * DESCRIPTION:	perform a transition on a position, given an input set
+ * perform a transition on a position, given an input set
  */
-static bool rp_trans(rgxposn *rp, Uint *cset, char *posn, unsigned short *size)
+bool RgxPosn::trans(Charset *cset, char *posn, unsigned short *size)
 {
     char trans[256];
     char *p;
@@ -469,8 +500,8 @@ static bool rp_trans(rgxposn *rp, Uint *cset, char *posn, unsigned short *size)
     bool negate;
 
     t = trans;
-    for (q = rp->name + 2; *q != '\0'; q++) {
-	p = rp->rgx + UCHAR(*q);
+    for (q = name + 2; *q != '\0'; q++) {
+	p = rgx + UCHAR(*q);
 	found = 0;
 	switch (*p) {
 	case '[':
@@ -487,7 +518,7 @@ static bool rp_trans(rgxposn *rp, Uint *cset, char *posn, unsigned short *size)
 		    p++;
 		}
 		c = UCHAR(*p++);
-		found |= cset[c >> 5] & 1 << (c & 31);
+		found |= cset->chars[c >> 5] & 1 << (c & 31);
 		if (p[0] == '-' && p[1] != ']') {
 		    n = UCHAR(p[1]) - c;
 		    if (n != 0) {
@@ -495,16 +526,16 @@ static bool rp_trans(rgxposn *rp, Uint *cset, char *posn, unsigned short *size)
 			if (x > n) {
 			    x = n;
 			}
-			found |= cset[c >> 5] & (bits[x - 1] << (c & 31));
+			found |= cset->chars[c >> 5] & (bits[x - 1] << (c & 31));
 			c += x;
 			n -= x;
 			while (n >= 32) {
-			    found |= cset[c >> 5] & 0xffffffffL;
+			    found |= cset->chars[c >> 5] & 0xffffffffL;
 			    c += 32;
 			    n -= 32;
 			}
 			if (n != 0) {
-			    found |= cset[c >> 5] & bits[n - 1];
+			    found |= cset->chars[c >> 5] & bits[n - 1];
 			}
 		    }
 		    p += 2;
@@ -527,23 +558,23 @@ static bool rp_trans(rgxposn *rp, Uint *cset, char *posn, unsigned short *size)
 	default:
 	    /* normal char */
 	    c = UCHAR(*p);
-	    found = cset[c >> 5] & (1 << (c & 31));
+	    found = cset->chars[c >> 5] & (1 << (c & 31));
 	    break;
 	}
 	if (found != 0) {
-	    *t++ = p - rp->rgx + 1;
+	    *t++ = p - rgx + 1;
 	}
     }
     *t = '\0';
 
-    return rp_transposn(rp->rgx, trans, posn, size);
+    return transposn(rgx, trans, posn, size);
 }
 
 /*
- * NAME:	rgxposn->load()
- * DESCRIPTION:	load a rgxposn from a buffer
+ * load a rgxposn from a buffer
  */
-static rgxposn *rp_load(Hashtab *htab, rpchunk **c, Uint nposn, char *buf, char *grammar)
+RgxPosn *RgxPosn::load(Hashtab *htab, RpChunk **c, Uint nposn, char *buf,
+		       char *grammar)
 {
     char *rgx;
     unsigned short ruleno, size;
@@ -560,35 +591,45 @@ static rgxposn *rp_load(Hashtab *htab, rpchunk **c, Uint nposn, char *buf, char 
     }
     size = UCHAR(*buf++);
 
-    return rp_alloc(htab, buf, size, c, rgx, nposn, ruleno, final);
+    return alloc(htab, buf, size, c, rgx, nposn, ruleno, final);
 }
 
 /*
- * NAME:	rgxposn->save()
- * DESCRIPTION:	save a rgxposn to a buffer
+ * save a rgxposn to a buffer
  */
-static char *rp_save(rgxposn *rp, char *buf, char *grammar)
+char *RgxPosn::save(char *buf, char *grammar)
 {
     unsigned short rgx;
 
-    rgx = rp->rgx - grammar;
+    rgx = this->rgx - grammar;
     *buf++ = rgx >> 8;
     *buf++ = rgx;
-    *buf++ = rp->ruleno >> 8;
-    *buf++ = rp->ruleno;
-    if (rp->final) {
+    *buf++ = ruleno >> 8;
+    *buf++ = ruleno;
+    if (final) {
 	*buf++ = '\0';
     }
-    *buf++ = rp->size;
-    memcpy(buf, rp->name, rp->size + 3);
-    return buf + rp->size + 3;
+    *buf++ = size;
+    memcpy(buf, name, size + 3);
+    return buf + size + 3;
 }
 
 
-struct dfastate {
+class DfaState {
+public:
+    char *load(char *buf, unsigned short ntrans, char *zerotrans);
+    char *loadtmp(char *sbuf, char *pbuf, Hashtab *htab, RpChunk **c,
+		  Uint *nposn, char *grammar);
+    char *save(char *buf);
+    char *savetmp(char *sbuf, char **pbuf, char *pbase, Uint *ptab, Uint *nposn,
+		  char *grammar);
+
+    static unsigned short hash(unsigned short *htab, Uint htabsize,
+			       DfaState *states, unsigned short idx);
+
     union {			/* regexp positions */
-	rgxposn *e;		/* 1 */
-	rgxposn **a;		/* > 1 */
+	RgxPosn *e;		/* 1 */
+	RgxPosn **a;		/* > 1 */
     } posn;
     union {			/* strings */
 	unsigned short e[2];	/* 1, 2 */
@@ -600,8 +641,10 @@ struct dfastate {
     unsigned short len;		/* string length */
     unsigned short ntrans;	/* number of transitions */
     short final;		/* rule number, -1: not final */
-    unsigned short next;	/* next in hash chain */
     bool alloc;			/* transitions allocated? */
+
+private:
+    unsigned short next;	/* next in hash chain */
 };
 
 # define POSNA(state)	(((state)->nposn == 1) ? \
@@ -610,15 +653,15 @@ struct dfastate {
 			  (state)->str.e : (state)->str.a)
 
 /*
- * NAME:	dfastate->hash()
- * DESCRIPTION:	put a new state in the hash table, or return an old one
+ * put a new state in the hash table, or return an old one
  */
-static unsigned short ds_hash(unsigned short *htab, Uint htabsize, dfastate *states, unsigned short idx)
+unsigned short DfaState::hash(unsigned short *htab, Uint htabsize,
+			      DfaState *states, unsigned short idx)
 {
     Uint x;
-    rgxposn **posn;
+    RgxPosn **posn;
     unsigned short n, *str;
-    dfastate *newstate, *ds;
+    DfaState *newstate, *ds;
     unsigned short *dds;
 
     /* hash on position and string pointers */
@@ -639,7 +682,7 @@ static unsigned short ds_hash(unsigned short *htab, Uint htabsize, dfastate *sta
     while (ds != states) {
 	if (newstate->len == ds->len && newstate->final == ds->final &&
 	    newstate->nposn == ds->nposn && newstate->nstr == ds->nstr &&
-	    memcmp(posn, POSNA(ds), newstate->nposn * sizeof(rgxposn*)) == 0 &&
+	    memcmp(posn, POSNA(ds), newstate->nposn * sizeof(RgxPosn*)) == 0 &&
 	    memcmp(str, STRA(ds), newstate->nstr * sizeof(unsigned short)) == 0)
 	{
 	    /* state already exists */
@@ -658,30 +701,29 @@ static unsigned short ds_hash(unsigned short *htab, Uint htabsize, dfastate *sta
 # define TRANS_STATES	2	/* normal transitions */
 
 /*
- * NAME:	dfastate->load()
- * DESCRIPTION:	load a dfastate from a buffer
+ * load a dfastate from a buffer
  */
-static char *ds_load(dfastate *state, char *buf, unsigned short ntrans, char *zerotrans)
+char *DfaState::load(char *buf, unsigned short ntrans, char *zerotrans)
 {
-    state->posn.a = (rgxposn **) NULL;
-    state->str.a = (unsigned short *) NULL;
-    state->nposn = state->nstr = state->len = 0;
-    state->alloc = FALSE;
-    state->final = (UCHAR(buf[0]) << 8) + UCHAR(buf[1]);
+    posn.a = (RgxPosn **) NULL;
+    str.a = (unsigned short *) NULL;
+    nposn = nstr = len = 0;
+    alloc = FALSE;
+    final = (UCHAR(buf[0]) << 8) + UCHAR(buf[1]);
     buf += 2;
     switch (*buf++) {
     case TRANS_NONE:
-	state->ntrans = 0;
+	this->ntrans = 0;
 	break;
 
     case TRANS_ZERO:
-	state->ntrans = 256;
-	state->trans = zerotrans;
+	this->ntrans = 256;
+	trans = zerotrans;
 	break;
 
     case TRANS_STATES:
-	state->ntrans = ntrans;
-	state->trans = buf;
+	this->ntrans = ntrans;
+	trans = buf;
 	buf += ntrans << 1;
 	break;
     }
@@ -690,43 +732,43 @@ static char *ds_load(dfastate *state, char *buf, unsigned short ntrans, char *ze
 }
 
 /*
- * NAME:	dfastate->loadtmp()
- * DESCRIPTION:	load dfastate temporary data from a buffer
+ * load dfastate temporary data from a buffer
  */
-static char *ds_loadtmp(dfastate *state, char *sbuf, char *pbuf, Hashtab *htab, rpchunk **c, Uint *nposn, char *grammar)
+char *DfaState::loadtmp(char *sbuf, char *pbuf, Hashtab *htab, RpChunk **c,
+			Uint *nposn, char *grammar)
 {
-    rgxposn *rp, **rrp;
+    RgxPosn *rp, **rrp;
     unsigned short i, *s;
     char *posn;
 
-    state->nposn = (UCHAR(sbuf[0]) << 8) + UCHAR(sbuf[1]);
-    state->nstr = (UCHAR(sbuf[2]) << 8) + UCHAR(sbuf[3]);
+    this->nposn = (UCHAR(sbuf[0]) << 8) + UCHAR(sbuf[1]);
+    nstr = (UCHAR(sbuf[2]) << 8) + UCHAR(sbuf[3]);
     sbuf += 4;
-    state->len = UCHAR(*sbuf++);
+    len = UCHAR(*sbuf++);
 
-    if (state->nposn != 0) {
-	if (state->nposn != 1) {
-	    rrp = state->posn.a = ALLOC(rgxposn*, state->nposn);
+    if (this->nposn != 0) {
+	if (this->nposn != 1) {
+	    rrp = this->posn.a = ALLOC(RgxPosn*, this->nposn);
 	} else {
-	    rrp = &state->posn.e;
+	    rrp = &this->posn.e;
 	}
-	for (i = state->nposn; i > 0; --i) {
+	for (i = this->nposn; i > 0; --i) {
 	    posn = pbuf + ((Uint) UCHAR(sbuf[0]) << 16) +
 		   (UCHAR(sbuf[1]) << 8) + UCHAR(sbuf[2]);
 	    sbuf += 3;
-	    rp = *rrp++ = rp_load(htab, c, *nposn, posn, grammar);
+	    rp = *rrp++ = RgxPosn::load(htab, c, *nposn, posn, grammar);
 	    if (rp->nposn == *nposn) {
 		(*nposn)++;
 	    }
 	}
     }
-    if (state->nstr != 0) {
-	if (state->nstr > 2) {
-	    s = state->str.a = ALLOC(unsigned short, state->nstr);
+    if (nstr != 0) {
+	if (nstr > 2) {
+	    s = str.a = ALLOC(unsigned short, nstr);
 	} else {
-	    s = state->str.e;
+	    s = str.e;
 	}
-	for (i = state->nstr; i > 0; --i) {
+	for (i = nstr; i > 0; --i) {
 	    *s++ = (UCHAR(sbuf[0]) << 8) + UCHAR(sbuf[1]);
 	    sbuf += 2;
 	}
@@ -736,49 +778,48 @@ static char *ds_loadtmp(dfastate *state, char *sbuf, char *pbuf, Hashtab *htab, 
 }
 
 /*
- * NAME:	dfastate->save()
- * DESCRIPTION:	save a dfastate to a buffer
+ * save a dfastate to a buffer
  */
-static char *ds_save(dfastate *state, char *buf)
+char *DfaState::save(char *buf)
 {
-    buf[0] = state->final >> 8;
-    buf[1] = state->final;
+    buf[0] = final >> 8;
+    buf[1] = final;
     buf += 2;
-    if (state->ntrans == 0) {
+    if (ntrans == 0) {
 	*buf++ = TRANS_NONE;
-    } else if (state->nposn == 0 && state->nstr == 0) {
+    } else if (nposn == 0 && nstr == 0) {
 	*buf++ = TRANS_ZERO;
     } else {
 	*buf++ = TRANS_STATES;
-	memcpy(buf, state->trans, state->ntrans << 1);
-	buf += state->ntrans << 1;
+	memcpy(buf, trans, ntrans << 1);
+	buf += ntrans << 1;
     }
 
     return buf;
 }
 
 /*
- * NAME:	dfastate->savetmp()
- * DESCRIPTION:	save dfastate temporary data to a buffer
+ * save dfastate temporary data to a buffer
  */
-static char *ds_savetmp(dfastate *state, char *sbuf, char **pbuf, char *pbase, Uint *ptab, Uint *nposn, char *grammar)
+char *DfaState::savetmp(char *sbuf, char **pbuf, char *pbase, Uint *ptab,
+			Uint *nposn, char *grammar)
 {
-    rgxposn *rp, **rrp;
+    RgxPosn *rp, **rrp;
     unsigned short i, *s;
     Uint n;
 
-    *sbuf++ = state->nposn >> 8;
-    *sbuf++ = state->nposn;
-    *sbuf++ = state->nstr >> 8;
-    *sbuf++ = state->nstr;
-    *sbuf++ = state->len;
+    *sbuf++ = this->nposn >> 8;
+    *sbuf++ = this->nposn;
+    *sbuf++ = nstr >> 8;
+    *sbuf++ = nstr;
+    *sbuf++ = len;
 
-    rrp = POSNA(state);
-    for (i = state->nposn; i > 0; --i) {
+    rrp = POSNA(this);
+    for (i = this->nposn; i > 0; --i) {
 	rp = *rrp++;
 	if (rp->nposn == *nposn) {
 	    ptab[(*nposn)++] = (intptr_t) *pbuf - (intptr_t) pbase;
-	    *pbuf = rp_save(rp, *pbuf, grammar);
+	    *pbuf = rp->save(*pbuf, grammar);
 	}
 	n = ptab[rp->nposn];
 	*sbuf++ = n >> 16;
@@ -786,8 +827,8 @@ static char *ds_savetmp(dfastate *state, char *sbuf, char **pbuf, char *pbase, U
 	*sbuf++ = n;
     }
 
-    s = STRA(state);
-    for (i = state->nstr; i > 0; --i) {
+    s = STRA(this);
+    for (i = nstr; i > 0; --i) {
 	*sbuf++ = *s >> 8;
 	*sbuf++ = *s++;
     }
@@ -796,69 +837,73 @@ static char *ds_savetmp(dfastate *state, char *sbuf, char **pbuf, char *pbase, U
 }
 
 
-struct dfa {
-    char *source;		/* source grammar */
-    char *grammar;		/* reference grammar */
-    char *strings;		/* offset of strings in grammar */
-    unsigned short nsstrings;	/* # strings in source grammar */
-    short whitespace;		/* whitespace rule or -1 */
-    short nomatch;		/* nomatch rule or -1 */
-
-    bool modified;		/* dfa modified */
-    bool allocated;		/* dfa strings allocated locally */
-    Uint dfasize;		/* size of state machine */
-    Uint tmpssize;		/* size of temporary state data */
-    Uint tmppsize;		/* size of temporary posn data */
-    char *dfastr;		/* saved dfa */
-    char *tmpstr;		/* saved temporary data */
-
-    unsigned short nregexp;	/* # regexps */
-    Uint nposn;			/* number of unique positions */
-    rpchunk *rpc;		/* current rgxposn chunk */
-    Hashtab *posnhtab;		/* position hash table */
-
-    unsigned short nstates;	/* # states */
-    unsigned short nexpanded;	/* # expanded states */
-    unsigned short endstates;	/* # states with no valid transitions */
-    Uint sttsize;		/* state table size */
-    Uint sthsize;		/* size of state hash table */
-    dfastate *states;		/* dfa states */
-    unsigned short *sthtab;	/* state hash table */
-
-    unsigned short ecnum;	/* number of equivalence classes */
-    char *ecsplit;		/* equivalence class split history */
-    char *ecmembers;		/* members per equivalence class */
-    Uint *ecset;		/* equivalence class sets */
-    char eclass[256];		/* equivalence classes */
-
-    char zerotrans[2 * 256];	/* shared zero transitions */
-};
-
 # define DFA_VERSION	1
 
 /*
- * NAME:	dfa->new()
- * DESCRIPTION:	create new dfa instance
+ * construct a dfa instance
  */
-dfa *dfa_new(char *source, char *grammar)
+Dfa::Dfa(char *source, char *grammar)
+{
+    this->source = source;
+    this->grammar = grammar;
+    whitespace = (UCHAR(grammar[1]) << 8) + UCHAR(grammar[2]);
+    nomatch = (UCHAR(grammar[3]) << 8) + UCHAR(grammar[4]);
+    nregexp = (UCHAR(grammar[5]) << 8) + UCHAR(grammar[6]);
+    nsstrings = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
+    strings = grammar + 17 + (nregexp << 1);
+    nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
+}
+
+/*
+ * delete a dfa instance
+ */
+Dfa::~Dfa()
+{
+    DfaState *state;
+    unsigned short i;
+
+    if (allocated) {
+	FREE(dfastr);
+    }
+    if (ecsplit != (char *) NULL) {
+	FREE(ecsplit);
+    }
+    delete rpc;
+    if (posnhtab != (Hashtab *) NULL) {
+	delete posnhtab;
+    }
+    for (i = nstates, state = &states[1]; --i > 0; state++) {
+	if (state->nposn > 1) {
+	    FREE(state->posn.a);
+	}
+	if (state->nstr > 2) {
+	    FREE(state->str.a);
+	}
+	if (state->alloc) {
+	    FREE(state->trans);
+	}
+    }
+    FREE(states);
+    if (sthtab != (unsigned short *) NULL) {
+	FREE(sthtab);
+    }
+}
+
+/*
+ * create new dfa instance
+ */
+Dfa *Dfa::create(char *source, char *grammar)
 {
     char posn[258];
     unsigned short nstrings;
-    dfa *fa;
-    dfastate *state;
+    Dfa *fa;
+    DfaState *state;
     bool final;
 
-    fa = ALLOC(dfa, 1);
+    fa = new Dfa(source, grammar);
 
     /* grammar info */
-    fa->source = source;
-    fa->grammar = grammar;
-    fa->whitespace = (UCHAR(grammar[1]) << 8) + UCHAR(grammar[2]);
-    fa->nomatch = (UCHAR(grammar[3]) << 8) + UCHAR(grammar[4]);
-    fa->nregexp = (UCHAR(grammar[5]) << 8) + UCHAR(grammar[6]);
-    fa->nsstrings = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
     nstrings = fa->nsstrings + (UCHAR(grammar[11]) << 8) + UCHAR(grammar[12]);
-    fa->strings = grammar + 17 + (fa->nregexp << 1);
 
     /* size info */
     fa->modified = TRUE;
@@ -873,15 +918,14 @@ dfa *dfa_new(char *source, char *grammar)
     fa->ecnum = 1;
     fa->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
     fa->ecmembers = fa->ecsplit + 256;
-    fa->ecset = (Uint *) (fa->ecmembers + 256);
+    fa->ecset = (Charset *) (fa->ecmembers + 256);
     memset(fa->eclass, '\0', 256);
     memset(fa->ecmembers, '\0', 256);
     memset(fa->ecset, -1, 32);
-    memset(fa->ecset + 8, '\0', 32 * 255);
+    memset(fa->ecset + 1, '\0', 32 * 255);
 
     /* positions */
-    fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
-    fa->rpc = (rpchunk *) NULL;
+    fa->rpc = (RpChunk *) NULL;
     fa->posnhtab = Hashtab::create((fa->nposn + 1) << 2, 257, FALSE);
 
     /* states */
@@ -890,20 +934,20 @@ dfa *dfa_new(char *source, char *grammar)
     fa->sthsize = (Uint) fa->sttsize << 1;
     fa->nexpanded = 0;
     fa->endstates = 1;
-    fa->states = ALLOC(dfastate, fa->sttsize);
+    fa->states = ALLOC(DfaState, fa->sttsize);
     fa->sthtab = ALLOC(unsigned short, fa->sthsize);
     memset(fa->sthtab, '\0', sizeof(unsigned short) * fa->sthsize);
 
     /* initial states */
     state = &fa->states[0];
-    state->posn.a = (rgxposn **) NULL;
+    state->posn.a = (RgxPosn **) NULL;
     state->str.a = (unsigned short *) NULL;
     state->trans = (char *) NULL;
     state->nposn = state->nstr = 0;
     state->ntrans = state->len = 0;
     (state++)->final = -1;
     state->posn.a = (fa->nposn > 1) ?
-		     ALLOC(rgxposn*, fa->nposn) : (rgxposn **) NULL;
+		     ALLOC(RgxPosn*, fa->nposn) : (RgxPosn **) NULL;
     state->str.a = (nstrings > 2) ?
 		    ALLOC(unsigned short, nstrings) : (unsigned short *) NULL;
     state->trans = (char *) NULL;
@@ -920,7 +964,7 @@ dfa *dfa_new(char *source, char *grammar)
 	state->trans = fa->zerotrans;
 	fa->endstates++;
     } else {
-	rgxposn **rrp;
+	RgxPosn **rrp;
 	unsigned short i, j, n, *s;
 	char *rgx;
 	unsigned short size;
@@ -932,14 +976,14 @@ dfa *dfa_new(char *source, char *grammar)
 	    n = j + (UCHAR(rgx[0]) << 8) + UCHAR(rgx[1]);
 	    rgx += 2;
 	    while (j < n) {
-		final = rp_transposn(rgx, (char *) NULL, posn + 2, &size);
+		final = RgxPosn::transposn(rgx, (char *) NULL, posn + 2, &size);
 		if (final && state->final < 0) {
 		    state->final = i;
 		}
 		posn[0] = 1 + j / 255;
 		posn[1] = 1 + j % 255;
-		*rrp++ = rp_new(fa->posnhtab, posn, size, &fa->rpc, rgx,
-				(Uint) j++, i, final);
+		*rrp++ = RgxPosn::create(fa->posnhtab, posn, size, &fa->rpc,
+					 rgx, (Uint) j++, i, final);
 		fa->tmpssize += 3;
 		fa->tmppsize += 8 + size + final;
 		rgx += UCHAR(rgx[0]) + 1;
@@ -952,7 +996,7 @@ dfa *dfa_new(char *source, char *grammar)
 	fa->tmpssize += nstrings << 1;
     }
     /* add to hashtable */
-    ds_hash(fa->sthtab, fa->sthsize, fa->states, 1);
+    DfaState::hash(fa->sthtab, fa->sthsize, fa->states, 1);
 
     /* zero transitions */
     memset(fa->zerotrans, '\0', 2 * 256);
@@ -961,47 +1005,9 @@ dfa *dfa_new(char *source, char *grammar)
 }
 
 /*
- * NAME:	dfa->del()
- * DESCRIPTION:	delete a dfa instance
+ * extend transition table
  */
-void dfa_del(dfa *fa)
-{
-    dfastate *state;
-    unsigned short i;
-
-    if (fa->allocated) {
-	FREE(fa->dfastr);
-    }
-    if (fa->ecsplit != (char *) NULL) {
-	FREE(fa->ecsplit);
-    }
-    delete fa->rpc;
-    if (fa->posnhtab != (Hashtab *) NULL) {
-	delete fa->posnhtab;
-    }
-    for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
-	if (state->nposn > 1) {
-	    FREE(state->posn.a);
-	}
-	if (state->nstr > 2) {
-	    FREE(state->str.a);
-	}
-	if (state->alloc) {
-	    FREE(state->trans);
-	}
-    }
-    FREE(fa->states);
-    if (fa->sthtab != (unsigned short *) NULL) {
-	FREE(fa->sthtab);
-    }
-    FREE(fa);
-}
-
-/*
- * NAME:	dfa->extend()
- * DESCRIPTION:	extend transition table
- */
-static void dfa_extend(dfa *fa, dfastate *state, unsigned short limit)
+void Dfa::extend(DfaState *state, unsigned short limit)
 {
     char *p, *q;
     unsigned short i;
@@ -1015,7 +1021,7 @@ static void dfa_extend(dfa *fa, dfastate *state, unsigned short limit)
     }
     p = state->trans + (state->ntrans << 1);
     for (i = state->ntrans; i <= limit; i++) {
-	q = &state->trans[UCHAR(fa->ecsplit[i]) << 1];
+	q = &state->trans[UCHAR(ecsplit[i]) << 1];
 	*p++ = *q++;
 	*p++ = *q;
     }
@@ -1056,37 +1062,28 @@ static void dfa_extend(dfa *fa, dfastate *state, unsigned short limit)
  */
 
 /*
- * NAME:	dfa->load()
- * DESCRIPTION:	load dfa from string
+ * load dfa from string
  */
-dfa *dfa_load(char *source, char *grammar, char *str, Uint len)
+Dfa *Dfa::load(char *source, char *grammar, char *str, Uint len)
 {
-    dfa *fa;
-    dfastate *state;
+    Dfa *fa;
+    DfaState *state;
     unsigned short i;
     char *buf;
     unsigned short nstrings;
 
     if (str[0] != DFA_VERSION) {
-	return dfa_new(source, grammar);
+	return create(source, grammar);
     }
 
-    fa = ALLOC(dfa, 1);
+    fa = new Dfa(source, grammar);
     fa->dfastr = buf = str;
 
     /* grammar info */
-    fa->source = source;
-    fa->grammar = grammar;
-    fa->whitespace = (UCHAR(grammar[1]) << 8) + UCHAR(grammar[2]);
-    fa->nomatch = (UCHAR(grammar[3]) << 8) + UCHAR(grammar[4]);
-    fa->nregexp = (UCHAR(grammar[5]) << 8) + UCHAR(grammar[6]);
-    fa->nsstrings = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
     nstrings = fa->nsstrings + (UCHAR(grammar[11]) << 8) + UCHAR(grammar[12]);
-    fa->strings = grammar + 17 + (fa->nregexp << 1);
 
     /* positions */
-    fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
-    fa->rpc = (rpchunk *) NULL;
+    fa->rpc = (RpChunk *) NULL;
     fa->posnhtab = (Hashtab *) NULL;
 
     /* states 1 */
@@ -1095,7 +1092,7 @@ dfa *dfa_load(char *source, char *grammar, char *str, Uint len)
     fa->endstates = (UCHAR(buf[5]) << 8) + UCHAR(buf[6]);
     fa->sttsize = fa->nstates + 1;
     fa->sthsize = (Uint) (fa->nposn + nstrings + 1) << 2;
-    fa->states = ALLOC(dfastate, fa->sttsize);
+    fa->states = ALLOC(DfaState, fa->sttsize);
     fa->sthtab = (unsigned short *) NULL;
 
     /* equivalence classes */
@@ -1105,17 +1102,17 @@ dfa *dfa_load(char *source, char *grammar, char *str, Uint len)
     buf += 256;
     fa->ecsplit = (char *) NULL;
     fa->ecmembers = (char *) NULL;
-    fa->ecset = (Uint *) NULL;
+    fa->ecset = (Charset *) NULL;
 
     /* states 2 */
-    fa->states[0].posn.a = (rgxposn **) NULL;
+    fa->states[0].posn.a = (RgxPosn **) NULL;
     fa->states[0].str.a = (unsigned short *) NULL;
     fa->states[0].trans = (char *) NULL;
     fa->states[0].nposn = fa->states[0].nstr = 0;
     fa->states[0].ntrans = fa->states[0].len = 0;
     fa->states[0].final = -1;
     for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
-	buf = ds_load(state, buf, fa->ecnum, fa->zerotrans);
+	buf = state->load(buf, fa->ecnum, fa->zerotrans);
     }
 
     /* temporary data */
@@ -1134,120 +1131,114 @@ dfa *dfa_load(char *source, char *grammar, char *str, Uint len)
 }
 
 /*
- * NAME:	dfa->loadtmp()
- * DESCRIPTION:	load dfa tmp info
+ * load dfa tmp info
  */
-static void dfa_loadtmp(dfa *fa)
+void Dfa::loadtmp()
 {
-    dfastate *state;
+    DfaState *state;
     unsigned short i;
     int c;
     char *buf;
 
-    buf = fa->tmpstr;
-    fa->nposn = ((Uint) UCHAR(buf[1]) << 16) + (UCHAR(buf[2]) << 8) +
-		UCHAR(buf[3]);
+    buf = tmpstr;
+    nposn = ((Uint) UCHAR(buf[1]) << 16) + (UCHAR(buf[2]) << 8) + UCHAR(buf[3]);
     buf += 4;
 
     /* equivalence classes */
-    fa->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
-    fa->ecmembers = fa->ecsplit + 256;
-    fa->ecset = (Uint *) (fa->ecmembers + 256);
-    memcpy(fa->ecsplit, buf, fa->ecnum);
-    buf += fa->ecnum;
-    memset(fa->ecmembers, '\0', 256);
-    memset(fa->ecset, '\0', 32 * 256);
+    ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
+    ecmembers = ecsplit + 256;
+    ecset = (Charset *) (ecmembers + 256);
+    memcpy(ecsplit, buf, ecnum);
+    buf += ecnum;
+    memset(ecmembers, '\0', 256);
+    memset(ecset, '\0', 32 * 256);
     for (i = 256; i > 0; ) {
 	--i;
-	c = UCHAR(fa->eclass[i]);
-	fa->ecmembers[c]++;
-	fa->ecset[(c << 3) + (i >> 5)] |= 1 << (i & 31);
+	c = UCHAR(eclass[i]);
+	ecmembers[c]++;
+	ecset[c].chars[i >> 5] |= 1 << (i & 31);
     }
 
     /* positions */
-    fa->posnhtab = Hashtab::create((fa->nposn + 1) << 2, 257, FALSE);
+    posnhtab = Hashtab::create((nposn + 1) << 2, 257, FALSE);
 
     /* states */
-    fa->sthtab = ALLOC(unsigned short, fa->sthsize);
-    memset(fa->sthtab, '\0', sizeof(unsigned short) * fa->sthsize);
+    sthtab = ALLOC(unsigned short, sthsize);
+    memset(sthtab, '\0', sizeof(unsigned short) * sthsize);
 
-    fa->nposn = 0;
-    for (i = 1, state = &fa->states[1]; i < fa->nstates; i++, state++) {
-	buf = ds_loadtmp(state, buf, fa->tmpstr, fa->posnhtab, &fa->rpc,
-			 &fa->nposn, fa->grammar);
-	ds_hash(fa->sthtab, fa->sthsize, fa->states, i);
+    nposn = 0;
+    for (i = 1, state = &states[1]; i < nstates; i++, state++) {
+	buf = state->loadtmp(buf, tmpstr, posnhtab, &rpc, &nposn, grammar);
+	DfaState::hash(sthtab, sthsize, states, i);
     }
 
     /* size info */
-    fa->tmpssize = (intptr_t) buf - (intptr_t) fa->tmpstr;
-    fa->tmppsize -= fa->tmpssize;
+    tmpssize = (intptr_t) buf - (intptr_t) tmpstr;
+    tmppsize -= tmpssize;
 }
 
 /*
- * NAME:	dfa->save()
- * DESCRIPTION:	save dfa to string
+ * save dfa to string
  */
-bool dfa_save(dfa *fa, char **str, Uint *len)
+bool Dfa::save(char **str, Uint *len)
 {
     unsigned short i;
     char *buf;
-    dfastate *state;
+    DfaState *state;
     char *pbuf;
     Uint *ptab, nposn;
 
-    if (!fa->modified) {
-	*str = fa->dfastr;
-	*len = fa->dfasize + fa->tmpssize + fa->tmppsize;
+    if (!modified) {
+	*str = dfastr;
+	*len = dfasize + tmpssize + tmppsize;
 	return FALSE;
     }
 
-    if (fa->nstates == fa->nexpanded + fa->endstates) {
-	fa->tmpssize = fa->tmppsize = 0;
+    if (nstates == nexpanded + endstates) {
+	tmpssize = tmppsize = 0;
     }
-    if (fa->allocated) {
-	FREE(fa->dfastr);
+    if (allocated) {
+	FREE(dfastr);
     }
-    fa->dfastr = buf = *str =
-		 ALLOC(char, *len = fa->dfasize + fa->tmpssize + fa->tmppsize);
+    dfastr = buf = *str = ALLOC(char, *len = dfasize + tmpssize + tmppsize);
     *buf++ = DFA_VERSION;
-    *buf++ = fa->nstates >> 8;
-    *buf++ = fa->nstates;
-    *buf++ = fa->nexpanded >> 8;
-    *buf++ = fa->nexpanded;
-    *buf++ = fa->endstates >> 8;
-    *buf++ = fa->endstates;
-    *buf++ = fa->ecnum - 1;
-    memcpy(buf, fa->eclass, 256);
+    *buf++ = nstates >> 8;
+    *buf++ = nstates;
+    *buf++ = nexpanded >> 8;
+    *buf++ = nexpanded;
+    *buf++ = endstates >> 8;
+    *buf++ = endstates;
+    *buf++ = ecnum - 1;
+    memcpy(buf, eclass, 256);
     buf += 256;
 
-    for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
-	if (state->ntrans != 0 && state->ntrans < fa->ecnum) {
-	    dfa_extend(fa, state, fa->ecnum - 1);
+    for (i = nstates, state = &states[1]; --i > 0; state++) {
+	if (state->ntrans != 0 && state->ntrans < ecnum) {
+	    extend(state, ecnum - 1);
 	}
-	buf = ds_save(state, buf);
+	buf = state->save(buf);
     }
 
-    fa->modified = FALSE;
-    fa->allocated = TRUE;
-    if (fa->tmpssize + fa->tmppsize == 0) {
+    modified = FALSE;
+    allocated = TRUE;
+    if (tmpssize + tmppsize == 0) {
 	/* no tmp data */
 	return TRUE;
     }
 
-    fa->tmpstr = buf;
-    pbuf = buf + fa->tmpssize;
+    tmpstr = buf;
+    pbuf = buf + tmpssize;
     *buf++ = 0;
-    *buf++ = fa->nposn >> 16;
-    *buf++ = fa->nposn >> 8;
-    *buf++ = fa->nposn;
-    memcpy(buf, fa->ecsplit, fa->ecnum);
-    buf += fa->ecnum;
+    *buf++ = this->nposn >> 16;
+    *buf++ = this->nposn >> 8;
+    *buf++ = this->nposn;
+    memcpy(buf, ecsplit, ecnum);
+    buf += ecnum;
 
-    ptab = ALLOCA(Uint, fa->nposn);
+    ptab = ALLOCA(Uint, this->nposn);
     nposn = 0;
-    for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
-	buf = ds_savetmp(state, buf, &pbuf, fa->tmpstr, ptab, &nposn,
-			 fa->grammar);
+    for (i = nstates, state = &states[1]; --i > 0; state++) {
+	buf = state->savetmp(buf, &pbuf, tmpstr, ptab, &nposn, grammar);
     }
     AFREE(ptab);
 
@@ -1255,56 +1246,53 @@ bool dfa_save(dfa *fa, char **str, Uint *len)
 }
 
 /*
- * NAME:	dfa->ecsplit()
- * DESCRIPTION:	split up equivalence classes along the borders of character
- *		sets
+ * split up equivalence classes along the borders of character sets
  */
-static void dfa_ecsplit(dfa *fa, Uint *iset, Uint *cset, Uint ncset)
+void Dfa::split(Charset *iset, Charset *cset, Uint ncset)
 {
-    Uint ec1[8], ec2[8];
+    Charset ec1, ec2;
     Uint i;
     int n, c;
 
-    for (c = cs_firstc(iset, 0); c >= 0; c = cs_firstc(iset, c + 1)) {
+    for (c = iset->firstc(0); c >= 0; c = iset->firstc(c + 1)) {
 	for (i = 0; i < ncset; i++) {
 	    /*
 	     * get the equivalence class of the first char in the input set
 	     */
-	    n = UCHAR(fa->eclass[c]);
-	    if (fa->ecmembers[n] == 1) {
+	    n = UCHAR(eclass[c]);
+	    if (ecmembers[n] == 1) {
 		break;	/* only one character left */
 	    }
-	    if (cs_overlap(fa->ecset + (n << 3), cset, ec1, ec2)) {
+	    if (ecset[n].overlap(cset, &ec1, &ec2)) {
 		/*
 		 * create new equivalence class
 		 */
-		memcpy(fa->ecset + (n << 3), ec1, sizeof(ec1));
-		memcpy(fa->ecset + (fa->ecnum << 3), ec2, sizeof(ec2));
-		fa->ecsplit[fa->ecnum] = n;
-		fa->ecmembers[n] -= fa->ecmembers[fa->ecnum] =
-				    cs_eclass(ec2, fa->eclass, fa->ecnum);
-		fa->ecnum++;
-		fa->dfasize += fa->nexpanded << 1;
-		fa->tmpssize++;
+		memcpy(ecset + n, &ec1, sizeof(ec1));
+		memcpy(ecset + ecnum, &ec2, sizeof(ec2));
+		ecsplit[ecnum] = n;
+		ecmembers[n] -= ecmembers[ecnum] = ec2.eclass(eclass, ecnum);
+		ecnum++;
+		dfasize += nexpanded << 1;
+		tmpssize++;
 	    }
-	    cset += 8;
+	    cset++;
 	}
-	cset -= i << 3;
+	cset -= i;
 
 	/* remove from input set */
-	cs_sub(iset, fa->ecset + (UCHAR(fa->eclass[c]) << 3));
+	iset->sub(ecset + UCHAR(eclass[c]));
     }
 }
 
 /*
- * NAME:	dfa->newstate()
- * DESCRIPTION:	get the positions and strings for a new state
+ * get the positions and strings for a new state
  */
-static unsigned short dfa_newstate(dfa *fa, dfastate *state, dfastate *newstate, Uint *ecset, Uint *cset)
+unsigned short Dfa::newstate(DfaState *state, DfaState *newstate,
+			     Charset *ecset, Charset *cset)
 {
     char posn[130];
     unsigned short i, n, *s;
-    rgxposn *rp, **rrp;
+    RgxPosn *rp, **rrp;
     char *p;
     unsigned short size;
     Uint posnsize;
@@ -1321,16 +1309,16 @@ static unsigned short dfa_newstate(dfa *fa, dfastate *state, dfastate *newstate,
     for (i = state->nposn, rrp = POSNA(state); i > 0; --i, rrp++) {
 	rp = *rrp;
 	for (n = rp->size; n > 0; --n) {
-	    if (cs_intersect(ecset, cset)) {
-		final = rp_trans(rp, ecset, posn + 2, &size);
+	    if (ecset->intersect(cset)) {
+		final = rp->trans(ecset, posn + 2, &size);
 		if (size != 0) {
 		    posn[0] = rp->name[0];
 		    posn[1] = rp->name[1];
-		    rp = rp_new(fa->posnhtab, posn, size, &fa->rpc, rp->rgx,
-				fa->nposn, rp->ruleno, final);
-		    if (rp->nposn == fa->nposn) {
+		    rp = RgxPosn::create(posnhtab, posn, size, &rpc, rp->rgx,
+					 nposn, rp->ruleno, final);
+		    if (rp->nposn == nposn) {
 			/* new position */
-			fa->nposn++;
+			nposn++;
 			posnsize += 8 + rp->size + final;
 		    }
 		    newstate->posn.a[newstate->nposn++] = rp;
@@ -1338,30 +1326,29 @@ static unsigned short dfa_newstate(dfa *fa, dfastate *state, dfastate *newstate,
 		if (final && newstate->final < 0) {
 		    newstate->final = rp->ruleno;
 		}
-		cset += n << 3;
+		cset += n;
 		break;
 	    }
-	    cset += 8;
+	    cset++;
 	}
     }
 
     /* strings */
     for (i = state->nstr, s = STRA(state); i > 0; --i, s++) {
-	if (*s < fa->nsstrings) {
-	    p = fa->strings + (*s << 2);
-	    n = UCHAR(fa->source[(UCHAR(p[0]) << 16) + (UCHAR(p[1]) << 8) +
-				 UCHAR(p[2]) + state->len]);
+	if (*s < nsstrings) {
+	    p = strings + (*s << 2);
+	    n = UCHAR(source[(UCHAR(p[0]) << 16) + (UCHAR(p[1]) << 8) +
+			     UCHAR(p[2]) + state->len]);
 	    p += 3;
 	} else {
-	    p = fa->strings + (fa->nsstrings << 2) +
-		((*s - fa->nsstrings) << 1);
-	    p = fa->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
+	    p = strings + (nsstrings << 2) + ((*s - nsstrings) << 1);
+	    p = grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 	    n = UCHAR(p[newstate->len]);
 	}
-	if (ecset[n >> 5] & (1 << (n & 31))) {
+	if (ecset->chars[n >> 5] & (1 << (n & 31))) {
 	    if (newstate->len == UCHAR(p[0])) {
 		/* end of string */
-		newstate->final = fa->nregexp + *s;
+		newstate->final = nregexp + *s;
 	    } else {
 		/* add string */
 		newstate->str.a[newstate->nstr++] = *s;
@@ -1373,91 +1360,87 @@ static unsigned short dfa_newstate(dfa *fa, dfastate *state, dfastate *newstate,
 }
 
 /*
- * NAME:	dfa->expand()
- * DESCRIPTION:	expand a state
+ * expand a state
  */
-static dfastate *dfa_expand(dfa *fa, dfastate *state)
+DfaState *Dfa::expand(DfaState *state)
 {
-    Uint iset[8];
-    Uint *cset, *ecset, ncset;
-    rgxposn **rrp;
+    Charset iset, *cset, *ecset;
+    Uint ncset;
+    RgxPosn **rrp;
     unsigned short i, n, *s;
     char *p;
-    dfastate *newstate;
-    rgxposn **newposn;
+    DfaState *newstate;
+    RgxPosn **newposn;
     unsigned short *newstr;
     Uint size;
 
     newposn = NULL;
     newstr = 0;
 
-    if (fa->posnhtab == (Hashtab *) NULL) {
-	dfa_loadtmp(fa);	/* load tmp info */
+    if (posnhtab == (Hashtab *) NULL) {
+	loadtmp();	/* load tmp info */
     }
 
-    memset(iset, '\0', sizeof(iset));
+    memset(iset.chars, '\0', sizeof(iset));
 
     /* allocate character sets for strings and positions */
     ncset = state->nstr;
     for (i = state->nposn, rrp = POSNA(state); i > 0; --i, rrp++) {
 	ncset += (*rrp)->size;
     }
-    cset = ALLOCA(Uint, ncset << 3);
+    cset = ALLOCA(Charset, ncset);
 
     /* construct character sets for all string chars */
     for (i = state->nstr, s = STRA(state); i > 0; --i, s++) {
-	if (*s < fa->nsstrings) {
-	    p = fa->strings + (*s << 2);
-	    p = fa->source + (UCHAR(p[0]) << 16) + (UCHAR(p[1]) << 8) +
-		UCHAR(p[2]);
+	if (*s < nsstrings) {
+	    p = strings + (*s << 2);
+	    p = source + (UCHAR(p[0]) << 16) + (UCHAR(p[1]) << 8) + UCHAR(p[2]);
 	} else {
-	    p = fa->strings + (fa->nsstrings << 2) +
-		((*s - fa->nsstrings) << 1);
-	    p = fa->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]) + 1;
+	    p = strings + (nsstrings << 2) + ((*s - nsstrings) << 1);
+	    p = grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]) + 1;
 	}
 	n = UCHAR(p[state->len]);
-	memset(cset, '\0', 32);
-	cset[n >> 5] |= 1 << (n & 31);
-	iset[n >> 5] |= 1 << (n & 31);	/* also add to input set */
-	cset += 8;
+	memset(cset->chars, '\0', 32);
+	cset->chars[n >> 5] |= 1 << (n & 31);
+	iset.chars[n >> 5] |= 1 << (n & 31);	/* also add to input set */
+	cset++;
     }
 
     /* construct character sets for all positions */
     for (i = state->nposn, rrp = POSNA(state); i > 0; --i, rrp++) {
-	rp_cset(*rrp, cset);
+	(*rrp)->cset(cset);
 	for (n = (*rrp)->size; n > 0; --n) {
-	    cs_or(iset, cset);		/* add to input set */
-	    cset += 8;
+	    iset.merge(cset++);		/* add to input set */
 	}
     }
-    cset -= ncset << 3;
+    cset -= ncset;
 
     /*
      * adjust equivalence classes
      */
-    dfa_ecsplit(fa, iset, cset, ncset);
+    split(&iset, cset, ncset);
 
     /*
      * for all equivalence classes, compute transition states
      */
     if (state->nposn != 0) {
-	newposn = ALLOCA(rgxposn*, state->nposn);
+	newposn = ALLOCA(RgxPosn*, state->nposn);
     }
     if (state->nstr != 0) {
 	newstr = ALLOCA(unsigned short, state->nstr);
     }
     p = state->trans = ALLOC(char, 2 * 256);
-    state->ntrans = fa->ecnum;
+    state->ntrans = ecnum;
     state->alloc = TRUE;
-    cset += (Uint) state->nstr << 3;
-    for (i = fa->ecnum, ecset = fa->ecset; i > 0; --i, ecset += 8) {
+    cset += (Uint) state->nstr;
+    for (i = ecnum, ecset = this->ecset; i > 0; --i, ecset++) {
 	/* prepare new state */
-	newstate = &fa->states[fa->nstates];
+	newstate = &states[nstates];
 
 	/* flesh out new state */
 	newstate->posn.a = newposn;
 	newstate->str.a = newstr;
-	size = dfa_newstate(fa, state, newstate, ecset, cset);
+	size = this->newstate(state, newstate, ecset, cset);
 
 	if (newstate->nposn == 0 && newstate->nstr == 0 && newstate->final < 0)
 	{
@@ -1466,7 +1449,7 @@ static dfastate *dfa_expand(dfa *fa, dfastate *state)
 	} else {
 	    if (newstate->nposn <= 1) {
 		if (newstate->nposn == 0) {
-		    newstate->posn.a = (rgxposn **) NULL;
+		    newstate->posn.a = (RgxPosn **) NULL;
 		} else {
 		    newstate->posn.e = newposn[0];
 		}
@@ -1480,16 +1463,16 @@ static dfastate *dfa_expand(dfa *fa, dfastate *state)
 		}
 	    }
 
-	    n = ds_hash(fa->sthtab, fa->sthsize, fa->states,
-			(unsigned short) fa->nstates);
-	    if (n == fa->nstates) {
+	    n = DfaState::hash(sthtab, sthsize, states,
+			       (unsigned short) nstates);
+	    if (n == nstates) {
 		/*
 		 * genuinely new state
 		 */
 		if (newstate->nposn > 1) {
-		    newstate->posn.a = ALLOC(rgxposn*, newstate->nposn);
+		    newstate->posn.a = ALLOC(RgxPosn*, newstate->nposn);
 		    memcpy(newstate->posn.a, newposn,
-			   newstate->nposn * sizeof(rgxposn*));
+			   newstate->nposn * sizeof(RgxPosn*));
 		}
 		if (newstate->nstr > 2) {
 		    newstate->str.a = ALLOC(unsigned short, newstate->nstr);
@@ -1498,19 +1481,18 @@ static dfastate *dfa_expand(dfa *fa, dfastate *state)
 		}
 		if (newstate->nposn == 0 && newstate->nstr == 0) {
 		    newstate->ntrans = 256;
-		    newstate->trans = fa->zerotrans;
-		    fa->endstates++;
+		    newstate->trans = zerotrans;
+		    endstates++;
 		}
-		fa->dfasize += 3;
-		fa->tmpssize += 5 + newstate->nposn * 3 + newstate->nstr * 2;
-		fa->tmppsize += size;
+		dfasize += 3;
+		tmpssize += 5 + newstate->nposn * 3 + newstate->nstr * 2;
+		tmppsize += size;
 
-		if (++fa->nstates == fa->sttsize) {
+		if (++nstates == sttsize) {
 		    /* grow table */
-		    size = state - fa->states;
-		    fa->states = REALLOC(fa->states, dfastate, fa->nstates,
-					 fa->sttsize <<= 1);
-		    state = fa->states + size;
+		    size = state - states;
+		    states = REALLOC(states, DfaState, nstates, sttsize <<= 1);
+		    state = states + size;
 		}
 	    }
 	}
@@ -1525,11 +1507,11 @@ static dfastate *dfa_expand(dfa *fa, dfastate *state)
     if (state->nposn != 0) {
 	AFREE(newposn);
     }
-    AFREE(cset - ((Uint) state->nstr << 3));
+    AFREE(cset - (Uint) state->nstr);
 
-    fa->modified = TRUE;
-    fa->nexpanded++;
-    fa->dfasize += fa->ecnum << 1;
+    modified = TRUE;
+    nexpanded++;
+    dfasize += ecnum << 1;
     return state;
 }
 
@@ -1541,12 +1523,12 @@ static dfastate *dfa_expand(dfa *fa, dfastate *state)
  *				-2	Invalid token
  *				-3	DFA too large (deallocate)
  */
-short dfa_scan(dfa *fa, String *str, ssizet *strlen, char **token, ssizet *len)
+short Dfa::scan(String *str, ssizet *strlen, char **token, ssizet *len)
 {
     ssizet size;
     unsigned short eclass;
     char *p, *q;
-    dfastate *state;
+    DfaState *state;
     short final;
     ssizet fsize, nomatch;
 
@@ -1556,20 +1538,20 @@ short dfa_scan(dfa *fa, String *str, ssizet *strlen, char **token, ssizet *len)
     *token = str->text + str->len - size;
 
     while (size != 0) {
-	state = &fa->states[1];
+	state = &states[1];
 	final = -1;
 	p = str->text + str->len - size;
 
 	while (size != 0) {
-	    eclass = UCHAR(fa->eclass[UCHAR(*p)]);
+	    eclass = UCHAR(this->eclass[UCHAR(*p)]);
 	    if (state->ntrans <= eclass) {
 		if (state->ntrans == 0) {
 		    /* expand state */
-		    if (state == fa->states) {
+		    if (state == states) {
 			break;	/* stuck in state 0 */
 		    }
-		    state = dfa_expand(fa, state);
-		    if (fa->dfasize + fa->tmpssize + fa->tmppsize >
+		    state = expand(state);
+		    if (dfasize + tmpssize + tmppsize >
 					    (Uint) MAX_AUTOMSZ * USHRT_MAX) {
 			unsigned short save;
 
@@ -1577,28 +1559,28 @@ short dfa_scan(dfa *fa, String *str, ssizet *strlen, char **token, ssizet *len)
 			 * too much temporary data: attempt to expand
 			 * all states
 			 */
-			save = state - fa->states;
-			for (state = &fa->states[1];
-			     fa->nstates != fa->nexpanded + fa->endstates;
+			save = state - states;
+			for (state = &states[1];
+			     nstates != nexpanded + endstates;
 			     state++) {
-			    if (fa->nstates > USHRT_MAX - 256 ||
-				fa->dfasize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {
+			    if (nstates > USHRT_MAX - 256 ||
+				    dfasize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {
 				return DFA_TOOBIG;
 			    }
 			    if (state->ntrans == 0) {
-				state = dfa_expand(fa, state);
+				state = expand(state);
 			    }
 			}
-			state = &fa->states[save];
+			state = &states[save];
 		    }
-		    if (fa->nstates > USHRT_MAX - 256 ||
-			fa->dfasize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {
+		    if (nstates > USHRT_MAX - 256 ||
+				    dfasize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {
 			return DFA_TOOBIG;
 		    }
-		    eclass = UCHAR(fa->eclass[UCHAR(*p)]);
+		    eclass = UCHAR(this->eclass[UCHAR(*p)]);
 		} else {
 		    /* extend transition table */
-		    dfa_extend(fa, state, eclass);
+		    extend(state, eclass);
 		}
 	    }
 
@@ -1606,7 +1588,7 @@ short dfa_scan(dfa *fa, String *str, ssizet *strlen, char **token, ssizet *len)
 	    --size;
 	    p++;
 	    q = &state->trans[eclass << 1];
-	    state = &fa->states[(UCHAR(q[0]) << 8) + UCHAR(q[1])];
+	    state = &states[(UCHAR(q[0]) << 8) + UCHAR(q[1])];
 
 	    /* check if final state */
 	    if (state->final >= 0) {
@@ -1617,9 +1599,9 @@ short dfa_scan(dfa *fa, String *str, ssizet *strlen, char **token, ssizet *len)
 
 	if (final >= 0) {
 	    if (nomatch != 0) {
-		if (fa->nomatch != fa->whitespace) {
+		if (this->nomatch != whitespace) {
 		    *len = nomatch;
-		    return fa->nomatch;
+		    return this->nomatch;
 		}
 		*token += nomatch;
 		nomatch = 0;
@@ -1627,7 +1609,7 @@ short dfa_scan(dfa *fa, String *str, ssizet *strlen, char **token, ssizet *len)
 
 	    /* in a final state */
 	    size = fsize;
-	    if (final != fa->whitespace) {
+	    if (final != whitespace) {
 		*len = *strlen - size;
 		*strlen = size;
 		return final;
@@ -1635,7 +1617,7 @@ short dfa_scan(dfa *fa, String *str, ssizet *strlen, char **token, ssizet *len)
 	    /* else whitespace: continue */
 	    *token = p - 1;
 	    *strlen = size;
-	} else if (fa->nomatch >= 0) {
+	} else if (this->nomatch >= 0) {
 	    nomatch++;
 	    size = --*strlen;
 	} else {
@@ -1643,9 +1625,9 @@ short dfa_scan(dfa *fa, String *str, ssizet *strlen, char **token, ssizet *len)
 	}
     }
 
-    if (nomatch != 0 && fa->nomatch != fa->whitespace) {
+    if (nomatch != 0 && this->nomatch != whitespace) {
 	*len = nomatch;
-	return fa->nomatch;
+	return this->nomatch;
     }
 
     return DFA_EOS;

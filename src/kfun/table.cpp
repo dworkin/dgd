@@ -534,15 +534,15 @@ void KFun::restore(int fd)
     buflen = 0;
     for (i = 0; i < dh.nkfun; i++) {
 	if (buffer[buflen + 1] == '.') {
-	    n = KFun::find(kftab, KF_BUILTINS, nkfun, buffer + buflen + 2);
+	    n = find(kftab, KF_BUILTINS, nkfun, buffer + buflen + 2);
 	    if (n < 0 || kftab[n].version != buffer[buflen] - '0') {
-		n = KFun::find(kftab, KF_BUILTINS, nkfun, buffer + buflen);
+		n = find(kftab, KF_BUILTINS, nkfun, buffer + buflen);
 		if (n < 0) {
 		    error("Restored unknown kfun: %s", buffer + buflen);
 		}
 	    }
 	} else {
-	    n = KFun::find(kftab, KF_BUILTINS, nkfun, buffer + buflen);
+	    n = find(kftab, KF_BUILTINS, nkfun, buffer + buflen);
 	    if (n < 0) {
 		error("Restored unknown kfun: %s", buffer + buflen);
 	    }

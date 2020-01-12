@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -891,7 +891,7 @@ Dataspace::Dataspace(Object *obj) : base(this)
     plane = &base;
 
     /* parse_string data */
-    parser = (struct parser *) NULL;
+    parser = (Parser *) NULL;
 }
 
 /*
@@ -959,9 +959,9 @@ void Dataspace::freeValues()
     Uint i;
 
     /* free parse_string data */
-    if (parser != (struct parser *) NULL) {
-	ps_del(parser);
-	parser = (struct parser *) NULL;
+    if (parser != (Parser *) NULL) {
+	delete parser;
+	parser = (Parser *) NULL;
     }
 
     /* free variables */
@@ -1968,8 +1968,8 @@ bool Dataspace::save(bool swap)
     SDataspace header;
     Uint n;
 
-    if (parser != (struct parser *) NULL && !(OBJ(oindex)->flags & O_SPECIAL)) {
-	ps_save(parser);
+    if (parser != (Parser *) NULL && !(OBJ(oindex)->flags & O_SPECIAL)) {
+	parser->save();
     }
     if (swap && (base.flags & MOD_SAVE)) {
 	base.flags |= MOD_ALL;
@@ -2594,12 +2594,12 @@ void Dataspace::wipeExtra(Dataspace *data)
 {
     data->assignVar(data->variable(data->nvariables - 1), &Value::nil);
 
-    if (data->parser != (struct parser *) NULL) {
+    if (data->parser != (Parser *) NULL) {
 	/*
 	 * get rid of the parser, too
 	 */
-	ps_del(data->parser);
-	data->parser = (struct parser *) NULL;
+	delete data->parser;
+	data->parser = (Parser *) NULL;
     }
 }
 

@@ -770,7 +770,7 @@ int kf_parse_string(Frame *f, int nargs, KFun *kf)
 	error("parse_string() from special purpose object");
     }
 
-    a = ps_parse_string(f, f->sp[1].string, f->sp->string, maxalt);
+    a = Parser::parse_string(f, f->sp[1].string, f->sp->string, maxalt);
     (f->sp++)->string->del();
     f->sp->string->del();
 

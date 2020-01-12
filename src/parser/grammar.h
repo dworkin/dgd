@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,4 +19,12 @@
 
 # define GRAM_VERSION	2
 
-extern String *parse_grammar (String*);
+class Grammar {
+public:
+    static String *parse(String *gram);
+
+private:
+    static String *create(class Rule *rgxlist, Rule *strlist, Rule *estrlist,
+			  Rule *prodlist, int nrgx, int nstr, int nestr,
+			  int nprod, long size);
+};

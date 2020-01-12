@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,8 +17,52 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-struct parser;
+struct SnList {
+    class SnChunk *snc;		/* snode chunk */
+    class SNode *first;		/* first node in list */
+    SNode *last;		/* last node in list */
+};
 
-extern void	ps_del		(parser*);
-extern Array   *ps_parse_string	(Frame*, String*, String*, Int);
-extern void	ps_save		(parser*);
+class Parser : public Allocated {
+public:
+    virtual ~Parser();
+
+    void save();
+
+    static Array *parse_string(Frame *f, String *source, String *str,
+			       Int maxalt);
+
+private:
+    void reduce(class PNode *pn, char *p);
+    void shift(SNode *sn, short token, char *text, ssizet len);
+    PNode *parse(String *str, bool *toobig);
+    Int traverse(PNode *pn, PNode *next);
+
+    static Parser *create(Frame *f, String *source, String *grammar);
+    static void flatten(PNode *pn, PNode *next, Value *v);
+    static Parser *load(Frame *f, Value *elts);
+
+    Frame *frame;		/* interpreter stack frame */
+    Dataspace *data;		/* dataspace for current object */
+
+    String *source;		/* grammar source */
+    String *grammar;		/* preprocessed grammar */
+    char *fastr;		/* DFA string */
+    char *lrstr;		/* SRP string */
+
+    class Dfa *fa;		/* (partial) DFA */
+    class Srp *lr;		/* (partial) shift/reduce parser */
+    short ntoken;		/* # of tokens (regexp + string) */
+    short nprod;		/* # of nonterminals */
+
+    class PnChunk *pnc;		/* pnode chunk */
+
+    unsigned short nstates;	/* state table size */
+    SNode **states;		/* state table */
+    SnList list;		/* snode list */
+
+    class StrPChunk *strc;	/* string chunk */
+    class ArrPChunk *arrc;	/* array chunk */
+
+    Int maxalt;			/* max number of branches */
+};
