@@ -1367,13 +1367,14 @@ void kf_md5(Frame *f, int nargs, Value *val)
     char buffer[64];
     Uint digest[5];
     Int cost;
+    int i;
     Uint length;
     unsigned short bufsz;
     String *str;
 
     cost = 3 * nargs + 64;
-    while (--nargs >= 0) {
-	cost += f->sp[nargs].string->len;
+    for (i = nargs; i > 0; ) {
+	cost += f->sp[--i].string->len;
     }
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
