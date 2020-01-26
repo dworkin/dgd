@@ -1480,7 +1480,7 @@ int kf_asn_add(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_add(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    str = ASN::add(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
     (f->sp++)->string->del();
     (f->sp++)->string->del();
     f->sp->string->del();
@@ -1507,7 +1507,7 @@ int kf_asn_sub(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_sub(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    str = ASN::sub(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
     (f->sp++)->string->del();
     (f->sp++)->string->del();
     f->sp->string->del();
@@ -1534,7 +1534,7 @@ int kf_asn_cmp(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    cmp = asn_cmp(f, f->sp[1].string, f->sp[0].string);
+    cmp = ASN::cmp(f, f->sp[1].string, f->sp[0].string);
     (f->sp++)->string->del();
     f->sp->string->del();
     PUT_INTVAL(f->sp, cmp);
@@ -1560,7 +1560,7 @@ int kf_asn_mult(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_mult(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    str = ASN::mult(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
     (f->sp++)->string->del();
     (f->sp++)->string->del();
     f->sp->string->del();
@@ -1587,7 +1587,7 @@ int kf_asn_div(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_div(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    str = ASN::div(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
     (f->sp++)->string->del();
     (f->sp++)->string->del();
     f->sp->string->del();
@@ -1614,7 +1614,7 @@ int kf_asn_mod(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_mod(f, f->sp[1].string, f->sp[0].string);
+    str = ASN::mod(f, f->sp[1].string, f->sp[0].string);
     (f->sp++)->string->del();
     f->sp->string->del();
     PUT_STR(f->sp, str);
@@ -1640,7 +1640,7 @@ int kf_asn_pow(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_pow(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
+    str = ASN::pow(f, f->sp[2].string, f->sp[1].string, f->sp[0].string);
     (f->sp++)->string->del();
     (f->sp++)->string->del();
     f->sp->string->del();
@@ -1667,7 +1667,7 @@ int kf_asn_lshift(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_lshift(f, f->sp[2].string, f->sp[1].number, f->sp->string);
+    str = ASN::lshift(f, f->sp[2].string, f->sp[1].number, f->sp->string);
     f->sp->string->del();
     f->sp += 2;
     f->sp->string->del();
@@ -1694,7 +1694,7 @@ int kf_asn_rshift(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_rshift(f, f->sp[1].string, f->sp->number);
+    str = ASN::rshift(f, f->sp[1].string, f->sp->number);
     f->sp++;
     f->sp->string->del();
     PUT_STR(f->sp, str);
@@ -1720,7 +1720,7 @@ int kf_asn_and(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_and(f, f->sp[1].string, f->sp->string);
+    str = ASN::_and(f, f->sp[1].string, f->sp->string);
     (f->sp++)->string->del();
     f->sp->string->del();
     PUT_STR(f->sp, str);
@@ -1746,7 +1746,7 @@ int kf_asn_or(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_or(f, f->sp[1].string, f->sp->string);
+    str = ASN::_or(f, f->sp[1].string, f->sp->string);
     (f->sp++)->string->del();
     f->sp->string->del();
     PUT_STR(f->sp, str);
@@ -1772,7 +1772,7 @@ int kf_asn_xor(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    str = asn_xor(f, f->sp[1].string, f->sp->string);
+    str = ASN::_xor(f, f->sp[1].string, f->sp->string);
     (f->sp++)->string->del();
     f->sp->string->del();
     PUT_STR(f->sp, str);

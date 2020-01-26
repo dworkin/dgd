@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,80 +25,127 @@
 # include "interpret.h"
 # include "asn.h"
 
-/*
- * NAME:	asi->add()
- * DESCRIPTION:	a += b (sizea >= sizeb)
- */
-static bool asi_add(Uint *a, Uint *b, Uint sizea, Uint sizeb)
-{
-    Uint tmp, carry;
+class Asi {
+public:
+    Asi(Uint *num, Uint size) : num(num), size(size) { }
+    Asi() {
+	num = NULL;
+	size = 0;
+    }
 
-    sizea -= sizeb;
+    void copy(Asi &x);
+    bool add(Asi &x);
+    bool sub(Asi &x);
+    void lshift(Uint lshift);
+    void rshift(Uint rshift);
+    int cmp(Asi &a);
+    void mult(Asi &x, Asi &y, Asi &t);
+    void sqr(Asi &x, Asi &t);
+    Uint *div(Asi &x, Asi &y, Asi &t);
+    bool modinv(Asi &x, Asi &y);
+    void power(Asi &a, Asi &b, Asi &mod, Asi &t);
+    bool strtonum(String *str);
+    String *numtostr(bool minus);
+
+    Uint *num;
+    Uint size;
+
+private:
+    void mult1(Uint a, Uint b);
+    void multInner(Asi &x, Asi &y, Asi &t);
+    bool multRow(Asi &x, Uint y);
+    void sqr1(Uint a);
+    Uint div1(Uint a);
+    void monpro(Asi &x, Asi &y, Asi &n, Asi &t, Uint n0);
+    void powqmod(Asi &a, Asi &b, Asi &mod, Asi &t);
+    void pow2mod(Asi &a, Asi &b, Uint size, Asi &t);
+
+    static Uint wordinv(Uint n);
+};
+
+/*
+ * copy number
+ */
+void Asi::copy(Asi &x)
+{
+    size = x.size;
+    memmove(num, x.num, size * sizeof(Uint));
+}
+
+/*
+ * add x (size >= x.size)
+ */
+bool Asi::add(Asi &x)
+{
+    Uint *a, *b, sz, tmp, carry;
+
+    a = num;
+    b = x.num;
+    sz = x.size;
     carry = 0;
     do {
 	tmp = *a + carry;
 	carry = (tmp < carry) + ((*a++ = tmp + *b++) < tmp);
-    } while (--sizeb != 0);
+    } while (--sz != 0);
 
-    while (carry && sizea != 0) {
+    for (sz = size - x.size; sz != 0 && carry; --sz) {
 	carry = (++(*a++) == 0);
-	--sizea;
     }
 
     return (bool) carry;
 }
 
 /*
- * NAME:	asi->sub()
- * DESCRIPTION:	a -= b (a >= b, sizea >= sizeb)
+ * sub x (size >= x.size)
  */
-static bool asi_sub(Uint *a, Uint *b, Uint sizea, Uint sizeb)
+bool Asi::sub(Asi &x)
 {
-    Uint tmp, borrow;
+    Uint *a, *b, sz, tmp, borrow;
 
-    sizea -= sizeb;
+    a = num;
+    b = x.num;
+    sz = x.size;
     borrow = 0;
     do {
 	borrow = ((tmp = *a - borrow) > *a);
 	borrow += ((*a++ = tmp - *b++) > tmp);
-    } while (--sizeb != 0);
+    } while (--sz != 0);
 
-    while (borrow && sizea != 0) {
+    for (sz = size - x.size; sz != 0 && borrow; --sz) {
 	borrow = ((*a++)-- == 0);
-	--sizea;
     }
 
     return (bool) borrow;
 }
 
 /*
- * NAME:	asi->lshift()
- * DESCRIPTION:	a <<= lshift, lshift != 0
+ * left shift, lshift != 0
  */
-static void asi_lshift(Uint *a, Uint size, Uint lshift)
+void Asi::lshift(Uint lshift)
 {
-    Uint offset, rshift, tmp, bits;
+    Uint offset, *a, sz, rshift, tmp, bits;
 
     offset = (lshift + 31) >> 5;
     lshift &= 0x1f;
-    size -= offset;
+    a = num;
+    sz = size - offset;
 
     if (lshift == 0) {
-	a += size;
-	for (tmp = size; tmp > 0; --tmp) {
+	a += sz;
+	for (tmp = sz; tmp > 0; --tmp) {
 	    --a;
 	    a[offset] = *a;
 	}
 	bits = 0;
     } else {
 	rshift = 32 - lshift;
-	a += size;
+	a += sz;
 	bits = *a << lshift;
-	while (size != 0) {
+	while (sz != 0) {
 	    tmp = *--a;
 	    a[offset] = bits | (tmp >> rshift);
 	    bits = tmp << lshift;
-	    --size;
+	    --sz;
 	}
     }
 
@@ -110,19 +157,19 @@ static void asi_lshift(Uint *a, Uint size, Uint lshift)
 }
 
 /*
- * NAME:	asi->rshift()
- * DESCRIPTION:	a >>= rshift, rshift != 0
+ * right shift, rshift != 0
  */
-static void asi_rshift(Uint *a, Uint size, Uint rshift)
+void Asi::rshift(Uint rshift)
 {
-    Uint offset, lshift, tmp, bits;
+    Uint offset, *a, sz, lshift, tmp, bits;
 
     offset = (rshift + 31) >> 5;
     rshift &= 0x1f;
-    size -= offset;
+    a = num;
+    sz = size - offset;
 
     if (rshift == 0) {
-	for (tmp = size; tmp > 0; --tmp) {
+	for (tmp = sz; tmp > 0; --tmp) {
 	    *a = a[offset];
 	    a++;
 	}
@@ -130,11 +177,11 @@ static void asi_rshift(Uint *a, Uint size, Uint rshift)
     } else {
 	lshift = 32 - rshift;
 	bits = a[offset - 1] >> rshift;
-	while (size != 0) {
+	while (sz != 0) {
 	    tmp = a[offset];
 	    *a++ = bits | (tmp << lshift);
 	    bits = tmp >> rshift;
-	    --size;
+	    --sz;
 	}
     }
 
@@ -145,19 +192,21 @@ static void asi_rshift(Uint *a, Uint size, Uint rshift)
 }
 
 /*
- * NAME:	asi->cmp()
- * DESCRIPTION:	compare a and b (sizea >= sizeb)
+ * compare with x (size >= x.size)
  */
-static int asi_cmp(Uint *a, Uint *b, Uint sizea, Uint sizeb)
+int Asi::cmp(Asi &x)
 {
-    a += sizea;
-    while (sizea > sizeb) {
+    Uint *a, sz, *b;
+
+    sz = size;
+    a = num + sz;
+    while (sz > x.size) {
 	if (*--a != 0) {
 	    return 1;
 	}
-	--sizea;
+	--sz;
     }
-    b += sizea;
+    b = x.num + sz;
 
     do {
 	if (*--a < *--b) {
@@ -165,21 +214,23 @@ static int asi_cmp(Uint *a, Uint *b, Uint sizea, Uint sizeb)
 	} else if (*a > *b) {
 	    return 1;
 	}
-    } while (--sizea != 0);
+    } while (--sz != 0);
 
     return 0;
 }
 
-# ifdef Uuint
-# define asi_mult1(c, a, b)	{				\
-				    Uuint _t;			\
-				    _t = (Uuint) (a) * (b);	\
-				    (c)[0] = _t;		\
-				    (c)[1] = _t >> 32;		\
-				}
-# else
-static void asi_mult1(Uint *c, Uint a, Uint b)
+/*
+ * a * b
+ */
+void Asi::mult1(Uint a, Uint b)
 {
+# ifdef Uuint
+    Uuint t;
+
+    t = (Uuint) (a) * (b);
+    num[0] = t;
+    num[1] = t >> 32;
+# else
     unsigned short a0, a1, b0, b1;
     Uint t0, t1;
 
@@ -193,145 +244,175 @@ static void asi_mult1(Uint *c, Uint a, Uint b)
     t1 = ((t0 += t1) < t1);
     t1 = (t1 << 16) | (t0 >> 16);
     t0 <<= 16;
-    if ((c[0] = (Uint) a0 * b0 + t0) < t0) {
+    if ((num[0] = (Uint) a0 * b0 + t0) < t0) {
 	t1++;
     }
-    c[1] = (Uint) a1 * b1 + t1;
-}
+    num[1] = (Uint) a1 * b1 + t1;
 # endif
+    size = 2;
+}
 
 /*
- * NAME:	asi->mult()
- * DESCRIPTION:	c = a * b (sizea - sizeb <= 1)
- *		sizeof(t) = (sizea + sizeb) << 1
+ * compute x * y (x.size - y.size <= 1)
+ * t.size = (x.size + y.size) << 1
  */
-static void asi_mult(Uint *c, Uint *t, Uint *a, Uint *b, Uint sizea1, Uint sizeb1)
+void Asi::multInner(Asi &x, Asi &y, Asi &t)
 {
-    if (sizeb1 == 1) {
-	/* sizea <= 2, sizeb == 1 */
-	asi_mult1(c, a[0], b[0]);
-	if (sizea1 > 1) {
-	    /* sizea == 2, sizeb == 1 */
-	    asi_mult1(t, a[1], b[0]);
-	    if ((c[1] += t[0]) < t[0]) {
-		t[1]++;
+    if (y.size == 1) {
+	/* x.size <= 2, y.size == 1 */
+	mult1(x.num[0], y.num[0]);
+	if (x.size > 1) {
+	    /* x.size == 2, y.size == 1 */
+	    t.mult1(x.num[1], y.num[0]);
+	    if ((num[1] += t.num[0]) < t.num[0]) {
+		t.num[1]++;
 	    }
-	    c[2] = t[1];
+	    num[2] = t.num[1];
 	}
     } else {
-	Uint sizeab0, sizet2, sizet3, *t2;
+	Asi x0(x.num, x.size >> 1);
+	Asi x1(x.num + x0.size, x.size - x0.size);
+	Asi y0(y.num, x.size >> 1);
+	Asi y1(y.num + y0.size, y.size - y0.size);
+	Asi z1;
 	bool minus;
 
-	t2 = t + ((sizea1 + sizeb1) << 1);
-	sizeab0 = sizea1 >> 1;
-	sizea1 -= sizeab0;
-	sizeb1 -= sizeab0;
-
-	/* c0 = a0 - a1, c1 = b1 - b0 */
-	if (asi_cmp(a + sizeab0, a, sizea1, sizeab0) <= 0) {
-	    /* a0 - a1 */
-	    sizet2 = sizeab0;
-	    memcpy(c, a, sizet2 * sizeof(Uint));
-	    asi_sub(c, a + sizeab0, sizet2, sizet2);
+	/* z0 = x0 - x1, z1 = y1 - y0 */
+	if (x1.cmp(x0) <= 0) {
+	    /* x0 - x1 */
+	    copy(x0);
+	    sub(x1);
 	    minus = FALSE;
 	} else {
-	    /* -(a1 - a0) */
-	    sizet2 = sizea1;
-	    memcpy(c, a + sizeab0, sizet2 * sizeof(Uint));
-	    asi_sub(c, a, sizet2, sizeab0);
+	    /* -(x1 - x0) */
+	    copy(x1);
+	    sub(x0);
 	    minus = TRUE;
 	}
-	if (sizeab0 <= sizeb1) {
-	     if (asi_cmp(b + sizeab0, b, sizeb1, sizeab0) >= 0) {
-		/* b1 - b0 */
-		sizet3 = sizeb1;
-		memcpy(c + sizet2, b + sizeab0, sizet3 * sizeof(Uint));
-		asi_sub(c + sizet2, b, sizet3, sizeab0);
+	z1 = Asi(num + size, 0);
+	if (y0.size <= y1.size) {
+	     if (y1.cmp(y0) >= 0) {
+		/* y1 - y0 */
+		z1.copy(y1);
+		z1.sub(y0);
 	    } else {
-		/* -(b0 - b1) */
-		sizet3 = sizeab0;
-		memcpy(c + sizet2, b, sizet3 * sizeof(Uint));
-		asi_sub(c + sizet2, b + sizeab0, sizet3, sizet3);
+		/* -(y0 - y1) */
+		z1.copy(y0);
+		z1.sub(y1);
 		minus ^= TRUE;
 	    }
-	} else if (asi_cmp(b, b + sizeab0, sizeab0, sizeb1) <= 0) {
-	    /* b1 - b0 */
-	    sizet3 = sizeb1;
-	    memcpy(c + sizet2, b + sizeab0, sizet3 * sizeof(Uint));
-	    asi_sub(c + sizet2, b, sizet3, sizet3);
+	} else if (y0.cmp(y1) <= 0) {
+	    /* y1 - y0 */
+	    z1.copy(y1);
+	    z1.sub(y0);
 	} else {
-	    /* -(b0 - b1) */
-	    sizet3 = sizeab0;
-	    memcpy(c + sizet2, b, sizet3 * sizeof(Uint));
-	    asi_sub(c + sizet2, b + sizeab0, sizet3, sizeb1);
+	    /* -(y0 - y1) */
+	    z1.copy(y0);
+	    z1.sub(y1);
 	    minus ^= TRUE;
 	}
 
-	/* t3:t2 = c0 * c1 */
-	t2 -= sizet2 + sizet3;
-	if (sizet2 >= sizet3) {
-	    asi_mult(t2, t, c, c + sizet2, sizet2, sizet3);
+	/* t3:t2 = z0 * z1 */
+	Asi t23(t.num + ((x.size + y.size) << 1) - size - z1.size, 0);
+	if (size >= z1.size) {
+	    t23.multInner(*this, z1, t);
 	} else {
-	    asi_mult(t2, t, c + sizet2, t2, sizet3, sizet2);
+	    t23.multInner(z1, *this, t);
 	}
 
-	/* c1:c0 = a0 * b0, c3:c2 = a1 * b1 */
-	asi_mult(c, t, a, b, sizeab0, sizeab0);
-	asi_mult(c + (sizeab0 << 1), t, a + sizeab0, b + sizeab0, sizea1,
-		 sizeb1);
+	/* z1:z0 = x0 * y0, z3:z2 = x1 * y1 */
+	multInner(x0, y0, t);
+	Asi z23(num + size, 0);
+	z23.multInner(x1, y1, t);
 
-	/* t1:t0 = c3:c2 + c1:c0 + t3:t2 */
-	sizea1 += sizeb1;
-	memcpy(t, c + (sizeab0 << 1), sizea1 * sizeof(Uint));
-	t[sizea1] = 0;
-	sizeb1 = sizea1 + 1;
-	asi_add(t, c, sizeb1, sizeab0 << 1);
+	/* t1:t0 = z3:z2 + z1:z0 + t3:t2 */
+	t.copy(z23);
+	t.num[t.size++] = 0;
+	t.add(*this);
 	if (minus) {
-	    asi_sub(t, t2, sizeb1, sizet2 + sizet3);
+	    t.sub(t23);
 	} else {
-	    asi_add(t, t2, sizeb1, sizet2 + sizet3);
+	    t.add(t23);
 	}
 
-	/* c3:c2:c1 += t1:t0 */
-	asi_add(c + sizeab0, t, sizeab0 + sizea1, sizeb1);
+	/* z3:z2:z1 += t1:t0 */
+	Asi(num + x0.size, x0.size + z23.size).add(t);
     }
+    size = x.size + y.size;
 }
 
 /*
- * NAME:	asi->mult_row()
- * DESCRIPTION:	c += a * word
+ * compute x * y
+ * t.size = (x.size + y.size) * 3
  */
-static bool asi_mult_row(Uint *c, Uint *a, Uint b, Uint size)
+void Asi::mult(Asi &x, Asi &y, Asi &t1)
 {
-    Uint s, carry;
-    Uint t[2];
+    Asi a(x.num, x.size);
+    Asi b(y.num, y.size);
+    Asi z(num, size = a.size + b.size);
+    Asi t2(t1.num + size, 0);
 
+    memset(num, '\0', size * sizeof(Uint));
+    while (a.size != b.size) {
+	if (a.size < b.size) {
+	    Asi t = a;
+	    a = b;
+	    b = t;
+	}
+	if (a.size - b.size == 1) {
+	    break;
+	}
+
+	Asi c(a.num, b.size);
+	t1.multInner(c, b, t2);
+	z.size = t1.size;
+	z.add(t1);
+	a.num += b.size;
+	a.size -= b.size;
+	z.num += b.size;
+    }
+    t1.multInner(a, b, t2);
+    z.size = t1.size;
+    z.add(t1);
+}
+
+/*
+ * add x * word
+ */
+bool Asi::multRow(Asi &x, Uint y)
+{
+    Uint *a, *b, sz, s, carry;
+    Uint tmp[2];
+    Asi t(tmp, 2);
+
+    a = num;
+    b = x.num;
+    sz = x.size;
     s = 0;
     carry = 0;
     do {
-	asi_mult1(t, *a++, b);
-	if ((s += t[0]) < t[0]) {
-	    t[1]++;
+	t.mult1(*b++, y);
+	if ((s += t.num[0]) < t.num[0]) {
+	    t.num[1]++;
 	}
 	carry = ((s += carry) < carry);
-	carry += ((*c++ += s) < s);
-	s = t[1];
-    } while (--size != 0);
+	carry += ((*a++ += s) < s);
+	s = t.num[1];
+    } while (--sz != 0);
 
     carry = ((s += carry) < carry);
-    return (bool) (carry + ((*c += s) < s));
+    return (bool) (carry + ((*a += s) < s));
 }
 
-# ifdef Uuint
-# define asi_sqr1(b, a)	{				\
-			    Uuint _t;			\
-			    _t = (Uuint) (a) * (a);	\
-			    (b)[0] = _t;		\
-			    (b)[1] = _t >> 32;		\
-			}
-# else
-static void asi_sqr1(Uint *b, Uint a)
+void Asi::sqr1(Uint a)
 {
+# ifdef Uuint
+    Uuint t;
+
+    t = (Uuint) a * a;
+    num[0] = t;
+    num[1] = t >> 32;
+# else
     unsigned short a0, a1;
     Uint t0, t1;
 
@@ -343,185 +424,737 @@ static void asi_sqr1(Uint *b, Uint a)
     t1 = ((t0 <<= 1) < t1);
     t1 = (t1 << 16) | (t0 >> 16);
     t0 <<= 16;
-    if ((b[0] = (Uint) a0 * a0 + t0) < t0) {
+    if ((num[0] = (Uint) a0 * a0 + t0) < t0) {
 	t1++;
     }
-    b[1] = (Uint) a1 * a1 + t1;
-}
+    num[1] = (Uint) a1 * a1 + t1;
 # endif
+    size = 2;
+}
 
 /*
- * NAME:	asi->sqr()
- * DESCRIPTION:	b = a * a
- *		sizeof(t) = sizea << 2
+ * x * x
+ * t.size = x.size << 2
  */
-static void asi_sqr(Uint *b, Uint *t, Uint *a, Uint sizea1)
+void Asi::sqr(Asi &x, Asi &t)
 {
-    if (sizea1 == 1) {
-	asi_sqr1(b, a[0]);
+    if (x.size == 1) {
+	sqr1(x.num[0]);
     } else {
-	Uint sizea0, sizet2, *t2;
+	Asi x0(x.num, x.size >> 1);
+	Asi x1(x.num + x0.size, x.size - x0.size);
 
-	t2 = t + (sizea1 << 2);
-	sizea0 = sizea1 >> 1;
-	sizea1 -= sizea0;
-
-	/* b0 = a0 - a1 */
-	if (asi_cmp(a + sizea0, a, sizea1, sizea0) <= 0) {
-	    /* a0 - a1 */
-	    sizet2 = sizea0;
-	    memcpy(b, a, sizet2 * sizeof(Uint));
-	    asi_sub(b, a + sizea0, sizet2, sizet2);
+	/* y0 = x0 - x1 */
+	if (x1.cmp(x0) <= 0) {
+	    /* x0 - x1 */
+	    copy(x0);
+	    sub(x1);
 	} else {
-	    /* -(a1 - a0) */
-	    sizet2 = sizea1;
-	    memcpy(b, a + sizea0, sizet2 * sizeof(Uint));
-	    asi_sub(b, a, sizet2, sizea0);
+	    /* -(x1 - x0) */
+	    copy(x1);
+	    sub(x0);
 	}
 
-	/* t3:t2 = b0 * b0 */
-	t2 -= sizet2 << 1;
-	asi_sqr(t2, t, b, sizet2);
+	/* t3:t2 = y0 * y0 */
+	Asi t23(t.num + (x.size << 2) - (size << 1), size);
+	t23.sqr(*this, t);
 
-	/* b1:b0 = a0 * a0, b3:b2 = a1 * a1 */
-	asi_sqr(b, t, a, sizea0);
-	asi_sqr(b + (sizea0 << 1), t, a + sizea0, sizea1);
+	/* y1:y0 = x0 * x0, y3:y2 = x1 * x1 */
+	sqr(x0, t);
+	Asi y23(num + size, x1.size << 1);
+	y23.sqr(x1, t);
 
-	/* t1:t0 = b3:b2 + b1:b0 - t3:t2 */
-	sizea1 <<= 1;
-	memcpy(t, b + (sizea0 << 1), sizea1 * sizeof(Uint));
-	t[sizea1] = 0;
-	asi_add(t, b, sizea1 + 1, sizea0 << 1);
-	asi_sub(t, t2, sizea1 + 1, sizet2 << 1);
+	/* t1:t0 = y3:y2 + y1:y0 - t3:t2 */
+	t.copy(y23);
+	t.num[t.size++] = 0;
+	t.add(*this);
+	t.sub(t23);
 
-	/* b3:b2:b1 += t1:t0 */
-	asi_add(b + sizea0, t, sizea0 + sizea1, sizea1 + 1);
+	/* y3:y2:y1 += t1:t0 */
+	Asi y1(num + x0.size, x0.size + y23.size);
+	y1.add(t);
     }
+    size = x.size << 1;
 }
 
-# ifdef Uuint
-# define asi_div1(a, b)		((((Uuint) (a)[1] << 32) | (a)[0]) / (b))
-# else
-static Uint asi_div1(Uint *aa, Uint b)
+Uint Asi::div1(Uint a)
 {
+# ifdef Uuint
+    return (((Uuint) num[1] << 32) | num[0]) / a;
+# else
     Uint q1, q0;
-    Uint a[2], t[2], c[2];
+    Uint b[2], c[2], tmp[2];
+    Asi x(b, 2);
+    Asi y(c, 2);
+    Asi z(&a, 1);
+    Asi t(tmp, 2);
 
-    a[0] = aa[0];
-    a[1] = aa[1];
+    x.copy(*this);
 
-    q1 = ((a[1] ^ b) >> 16 == 0) ? 0xffff : a[1] / (unsigned short) (b >> 16);
-    asi_mult1(t, b, q1 << 16);
-    if (asi_cmp(t, a, 2, 2) > 0) {
-	c[0] = b << 16;
-	c[1] = b >> 16;
-	asi_sub(t, c, 2, 2);
+    q1 = ((x.num[1] ^ a) >> 16 == 0) ?
+	  0xffff : x.num[1] / (unsigned short) (a >> 16);
+    t.mult1(a, q1 << 16);
+    if (t.cmp(x) > 0) {
+	y.num[0] = a << 16;
+	y.num[1] = a >> 16;
+	t.sub(y);
 	--q1;
-	if (asi_cmp(t, a, 2, 2) > 0) {
-	    asi_sub(t, c, 2, 2);
+	if (t.cmp(x) > 0) {
+	    t.sub(y);
 	    --q1;
 	}
     }
-    asi_sub(a, t, 2, 2);
+    x.sub(t);
 
-    q0 = (a[1] == b >> 16) ?
-	  0xffff : ((a[1] << 16) | (a[0] >> 16)) / (unsigned short) (b >> 16);
-    asi_mult1(t, b, q0);
-    if (asi_cmp(t, a, 2, 2) > 0) {
-	asi_sub(t, &b, 2, 1);
+    q0 = (x.num[1] == a >> 16) ?
+	  0xffff :
+	  ((x.num[1] << 16) | (x.num[0] >> 16)) / (unsigned short) (a >> 16);
+    t.mult1(a, q0);
+    if (t.cmp(x) > 0) {
+	t.sub(z);
 	--q0;
-	if (asi_cmp(t, a, 2, 2) > 0) {
-	    asi_sub(t, &b, 2, 1);
+	if (t.cmp(x) > 0) {
+	    t.sub(z);
 	    --q0;
 	}
     }
 
     return (q1 << 16) | q0;
-}
 # endif
+}
 
 /*
- * NAME:	asi->div()
- * DESCRIPTION:	c1 = a / b, c0 = a % b (a >= b, b != 0)
- *		sizeof(t) = (sizeb << 1) + 1
+ * z1 = x / y, z0 = x % y (x >= y, y != 0)
+ * t.size = (y.size << 1) + 1
  */
-static Uint *asi_div(Uint *c, Uint *t, Uint *a, Uint *b, Uint sizea, Uint sizeb)
+Uint *Asi::div(Asi &x, Asi &y, Asi &t)
 {
     Uint d, q, shift;
+    Asi a(num, size);
+    Asi b(t.num, y.size);
+    Asi t2(t.num + b.size, b.size + 1);
 
     /* copy values */
-    if (a != c) {
-	memcpy(c, a, sizea * sizeof(Uint));
-	a = c;
+    if (&x != this) {
+	a.copy(x);
     }
-    c[sizea] = 0;
-    memcpy(t, b, sizeb * sizeof(Uint));
-    b = t;
-    t += sizeb;
+    a.num[a.size] = 0;
+    b.copy(y);
 
     /*
      * left shift until most significant bit of b is 1
      */
-    for (shift = 0, d = b[sizeb - 1]; !(d & 0x80000000L); shift++, d <<= 1) ;
+    for (shift = 0, d = b.num[b.size - 1]; !(d & 0x80000000L); shift++, d <<= 1)
+	;
     if (shift != 0) {
-	asi_lshift(b, sizeb, shift);
-	asi_lshift(a, sizea + 1, shift);
-	if (a[sizea] != 0) {
-	    sizea++;
+	b.lshift(shift);
+	a.size++;
+	a.lshift(shift);
+	if (a.num[a.size - 1] == 0) {
+	    --a.size;
 	}
     }
 
-    if (sizea == sizeb) {
+    size = a.size;
+    a.size = b.size;
+    if (size == b.size) {
 	/* a >= b */
-	asi_sub(a, b, sizeb, sizeb);
-	c[sizea] = 1;
+	a.sub(b);
+	num[size] = 1;
     } else {
-	a += sizea - sizeb - 1;
-	if (asi_cmp(a + 1, b, sizeb, sizeb) >= 0) {
-	    asi_sub(a + 1, b, sizeb, sizeb);
-	    c[sizea] = 1;
+	a.num += size - b.size;
+	if (a.cmp(b) >= 0) {
+	    a.sub(b);
+	    num[size] = 1;
 	} else {
-	    c[sizea] = 0;
+	    num[size] = 0;
 	}
+	--a.num;
+	a.size++;
 
 	/*
 	 * perform actual division
 	 */
-	d = b[sizeb - 1];
+	d = b.num[b.size - 1];
 	do {
-	    q = (a[sizeb] == d) ? 0xffffffffL : asi_div1(a + sizeb - 1, d);
-	    memset(t, '\0', (sizeb + 1) * sizeof(Uint));
-	    asi_mult_row(t, b, q, sizeb);
-	    if (asi_cmp(t, a, sizeb + 1, sizeb + 1) > 0) {
-		asi_sub(t, b, sizeb + 1, sizeb);
+	    if (a.num[b.size] == d) {
+		q = 0xffffffffL;
+	    } else {
+		q = Asi(a.num + b.size - 1, 2).div1(d);
+	    }
+	    memset(t2.num, '\0', t2.size * sizeof(Uint));
+	    t2.multRow(b, q);
+	    if (t2.cmp(a) > 0) {
+		t2.sub(b);
 		--q;
-		if (asi_cmp(t, a, sizeb + 1, sizeb + 1) > 0) {
-		    asi_sub(t, b, sizeb + 1, sizeb);
+		if (t2.cmp(a) > 0) {
+		    t2.sub(b);
 		    --q;
 		}
 	    }
-	    asi_sub(a, t, sizeb + 1, sizeb + 1);
-	    c[--sizea] = q;
-	    --a;
-	} while (sizea > sizeb);
+	    a.sub(t2);
+	    num[--size] = q;
+	    --a.num;
+	} while (size > b.size);
     }
 
     if (shift != 0) {
 	/* compensate for left shift */
-	asi_rshift(c, sizeb, shift);
+	rshift(shift);
     }
-    return c + sizeb;
+    return num + size;
 }
 
 /*
- * NAME:	asi->strtonum()
- * DESCRIPTION:	convert a string to an ASI
+ * Compute the multiplicative inverse of a modulo b.
+ * From "Applied Cryptography" by Bruce Schneier, Second Edition, page 247.
  */
-static void asi_strtonum(Uint *num, String *str, Uint *sz, bool *minus)
+bool Asi::modinv(Asi &x, Asi &y)
+{
+    Asi a, b;
+    bool inverse;
+
+    if (!((x.num[0] | y.num[0]) & 1)) {
+	return FALSE;	/* GCD >= 2 */
+    }
+
+    if (x.size > y.size || (x.size == y.size && x.cmp(y) > 0)) {
+	/* a > b: a <=> b */
+	a = y;
+	b = x;
+	inverse = TRUE;
+    } else {
+	a = x;
+	b = y;
+	inverse = FALSE;
+    }
+
+    /* b1 * b - a1 * a = b */
+    Asi b1(ALLOCA(Uint, a.size + b.size), 1);		/* b1 = 1 */
+    memset(b1.num, '\0', (a.size + b.size) * sizeof(Uint));
+    b1.num[0] = 1;
+    b1.size = 1;
+    Asi a1(ALLOCA(Uint, a.size + b.size), 1);		/* a1 = 0 */
+    memset(a1.num, '\0', (a.size + b.size) * sizeof(Uint));
+    a1.size = 1;
+    Asi g1(ALLOCA(Uint, b.size), 0);			/* g1 = b */
+    g1.copy(b);
+
+    /* b2 * b - a2 * a = a */
+    Asi b2(ALLOCA(Uint, a.size + b.size), 0);		/* b2 = a */
+    b2.copy(a);
+    memset(b2.num + a.size, '\0', b.size * sizeof(Uint));
+    Asi a2(ALLOCA(Uint, a.size + b.size), 0);		/* a2 = b - 1 */
+    a2.copy(b);
+    memset(a2.num + b.size, '\0', a.size * sizeof(Uint));
+    a2.sub(b1);
+    while (a2.num[a2.size - 1] == 0) {
+	if (--a2.size == 0) {
+	    a2.size++;
+	    break;
+	}
+    }
+    Asi g2(ALLOCA(Uint, a.size), 0);			/* g2 = a */
+    g2.copy(a);
+
+    do {
+	do {
+	    if (!(g1.num[0] & 1)) {
+		if ((a1.num[0] | b1.num[0]) & 1) {
+		    if (a1.size < b.size) {
+			a1.size = b.size;
+		    }
+		    if (a1.add(b)) {
+			a1.num[a1.size++] = 1;
+		    }
+		    if (b1.size < a.size) {
+			b1.size = a.size;
+		    }
+		    if (b1.add(a)) {
+			b1.num[b1.size++] = 1;
+		    }
+		}
+		a1.rshift(1);
+		if (a1.num[a1.size - 1] == 0 && --a1.size == 0) {
+		    a1.size++;
+		}
+		b1.rshift(1);
+		if (b1.num[b1.size - 1] == 0 && --b1.size == 0) {
+		    b1.size++;
+		}
+		g1.rshift(1);
+		if (g1.num[g1.size - 1] == 0 && --g1.size == 0) {
+		    g1.size++;
+		}
+	    }
+	    if (!(g2.num[0] & 1) || g1.size < g2.size || g1.cmp(g2) < 0) {
+		Asi t;
+
+		/* a1 <=> a2, b1 <=> b2, g1 <=> g2 */
+		t = a1;
+		a1 = a2;
+		a2 = t;
+		t = b1;
+		b1 = b2;
+		b2 = t;
+		t = g1;
+		g1 = g2;
+		g2 = t;
+	    }
+	} while (!(g1.num[0] & 1));
+
+	while (a1.size < a2.size || a1.cmp(a2) < 0 ||
+	       b1.size < b2.size || b1.cmp(b2) < 0) {
+	    if (a1.size < b.size) {
+		a1.size = b.size;
+	    }
+	    if (a1.add(b)) {
+		a1.num[a1.size++] = 1;
+	    }
+	    if (b1.size < a.size) {
+		b1.size = a.size;
+	    }
+	    if (b1.add(a)) {
+		b1.num[b1.size++] = 1;
+	    }
+	}
+
+	a1.sub(a2);
+	while (a1.num[a1.size - 1] == 0) {
+	    if (--a1.size == 0) {
+		a1.size++;
+		break;
+	    }
+	}
+	b1.sub(b2);
+	while (b1.num[b1.size - 1] == 0) {
+	    if (--b1.size == 0) {
+		b1.size++;
+		break;
+	    }
+	}
+	g1.sub(g2);
+	while (g1.num[g1.size - 1] == 0) {
+	    if (--g1.size == 0) {
+		g1.size++;
+		break;
+	    }
+	}
+    } while (g2.size != 1 || g2.num[0] != 0);
+
+    while (a1.size >= b.size && a1.cmp(b) >= 0 &&
+	   b1.size >= a.size && b1.cmp(a) >= 0) {
+	a1.sub(b);
+	while (a1.num[a1.size - 1] == 0) {
+	    if (--a1.size == 0) {
+		a1.size++;
+		break;
+	    }
+	}
+	b1.sub(a);
+	while (b1.num[b1.size - 1] == 0) {
+	    if (--b1.size == 0) {
+		b1.size++;
+		break;
+	    }
+	}
+    }
+
+    if (!inverse) {
+	b1.copy(b);
+	b1.sub(a1);
+	while (b1.num[b1.size - 1] == 0) {
+	    if (--b1.size == 0) {
+		b1.size++;
+		break;
+	    }
+	}
+    }
+    copy(b1);
+    inverse = (g1.size == 1 && g1.num[0] == 1);
+    AFREE(g2.num);
+    AFREE(a2.num);
+    AFREE(b2.num);
+    AFREE(g1.num);
+    AFREE(a1.num);
+    AFREE(b1.num);
+
+    return inverse;
+}
+
+/*
+ * The algorithms for fast exponentiation are based on:
+ * "High-Speed RSA Implementation" by Ã‡etin Koya KoÃ§, Version 2.0,
+ * RSA Laboratories
+ */
+
+/*
+ * compute an inverse modulo the word size (for odd n)
+ */
+Uint Asi::wordinv(Uint n)
+{
+    Uint n1, mask, i;
+
+    n1 = 1;
+    mask = 0x3;
+    i = 0x2;
+    do {
+	if (((n * n1) & mask) > i) {
+	    n1 += i;
+	}
+	i <<= 1;
+	mask |= i;
+    } while (i != 0);
+
+    return n1;
+}
+
+/*
+ * compute the Montgomery product of a and b
+ * t.size = (size + 1) << 1
+ */
+void Asi::monpro(Asi &x, Asi &y, Asi &n, Asi &t, Uint n0)
+{
+    Uint i, j, m, *d, carry;
+
+    if (x.num == y.num) {
+	sqr(x, t);
+    } else {
+	multInner(x, y, t);
+    }
+    num[size] = 0;
+    Asi c(num, n.size + 1);
+    for (i = n.size; i > 0; --i) {
+	m = c.num[0] * n0;
+	if (c.multRow(n, m)) {
+	    d = c.num + n.size;
+	    j = i;
+	    carry = 1;
+	    do {
+		carry = ((*++d += carry) < carry);
+	    } while (carry && --j != 0);
+	}
+	c.num++;
+    }
+    if (c.cmp(n) >= 0) {
+	c.sub(n);
+    }
+}
+
+# define WINDOWSZ	6
+
+/*
+ * compute a ** b % mod (a > 1, b > 1, (mod & 1) != 0)
+ * t.size = (mod.size + 1) << 1
+ */
+void Asi::powqmod(Asi &a, Asi &b, Asi &mod, Asi &t)
+{
+    Uint bit, e, window, wsize, zsize, n0;
+    Asi tab[1 << WINDOWSZ];
+
+    /* allocate */
+    Asi x(ALLOCA(Uint, (mod.size << 1) + 1), 0);
+    Asi xx(x.num + mod.size, 0);
+    Asi y(ALLOCA(Uint, (mod.size << 1) + a.size + 1), mod.size + a.size);
+    Asi yy(y.num + mod.size, 0);
+
+    /* xx = a * R % mod */
+    memset(y.num, '\0', mod.size * sizeof(Uint));
+    yy.copy(a);
+    y.div(y, mod, t);
+    xx.copy(y);
+
+    /* tab[] = { powers of xx } */
+    tab[0] = xx;	/* sentinel */
+    tab[1] = Asi(ALLOCA(Uint, mod.size), 0);
+    tab[1].copy(xx);
+
+    n0 = -wordinv(mod.num[0]);
+    window = wsize = zsize = 0;
+    size = b.size;
+    e = b.num[size - 1];
+    for (bit = 0x80000000L; (e & bit) == 0; bit >>= 1) ;
+    bit >>= 1;	/* skip most significant bit of top word */
+
+    for (;;) {
+	while (bit != 0) {
+	    if (wsize == WINDOWSZ || (zsize != 0 && !(e & bit))) {
+		y.monpro(xx, tab[window], mod, t, n0);
+		window = wsize = zsize = 0;
+	    } else {
+		window <<= 1;
+		if (tab[window].num == (Uint *) NULL) {
+		    y.monpro(tab[window >> 1], tab[window >> 1], mod, t, n0);
+		    tab[window] = Asi(ALLOCA(Uint, mod.size), 0);
+		    tab[window].copy(yy);
+		}
+		yy.copy(xx);
+	    }
+
+	    x.monpro(yy, yy, mod, t, n0);
+
+	    if (e & bit) {
+		window |= 1;
+		if (tab[window].num == (Uint *) NULL) {
+		    y.monpro(tab[window - 1], tab[1], mod, t, n0);
+		    tab[window] = Asi(ALLOCA(Uint, mod.size), 0);
+		    tab[window].copy(yy);
+		}
+		zsize = 0;
+		wsize++;
+	    } else if (wsize != 0) {
+		zsize++;
+		wsize++;
+	    }
+
+	    bit >>= 1;
+	}
+
+	if (--size == 0) {
+	    break;
+	}
+	/* next word in exponent */
+	e = b.num[size - 1];
+	bit = 0x80000000L;
+    }
+
+    if (wsize != 0) {
+	/*
+	 * still a remaining window of bits to deal with
+	 */
+	y.monpro(xx, tab[window], mod, t, n0);
+	xx.copy(yy);
+    }
+
+    /* c = xx * (R ** -1) */
+    memset(tab[1].num, '\0', mod.size * sizeof(Uint));
+    tab[1].num[0] = 1;
+    y.monpro(xx, tab[1], mod, t, n0);
+    copy(yy);
+
+    for (window = 1 << WINDOWSZ; --window != 0; ) {
+	if (tab[window].num != (Uint *) NULL) {
+	    AFREE(tab[window].num);
+	}
+    }
+    AFREE(y.num);
+    AFREE(x.num);
+}
+
+/*
+ * compute a ** b, (all operations in size words)
+ * t.size = (size + 1) << 1
+ */
+void Asi::pow2mod(Asi &a, Asi &b, Uint size, Asi &t)
+{
+    Uint e, bit, sizeb;
+    Asi x(ALLOCA(Uint, size), size);
+    Asi y(ALLOCA(Uint, size << 1), 0);
+    Asi z(ALLOCA(Uint, size << 1), 0);
+
+    /* x = a reduced to size words */
+    if (a.size >= size) {
+	memcpy(x.num, a.num, size * sizeof(Uint));
+    } else {
+	memcpy(x.num, a.num, a.size * sizeof(Uint));
+	memset(x.num + a.size, '\0', (size - a.size) * sizeof(Uint));
+    }
+
+    /* remove leading zeroes from b */
+    for (sizeb = size; b.num[sizeb - 1] == 0; --sizeb) {
+	if (sizeb == 1) {
+	    /* a ** 0 = 1 */
+	    memset(num, '\0', size * sizeof(Uint));
+	    num[0] = 1;
+	    this->size = size;
+	    return;
+	}
+    }
+
+    y.copy(x);
+    e = b.num[sizeb - 1];
+    for (bit = 0x80000000L; (e & bit) == 0; bit >>= 1) ;
+    bit >>= 1;	/* skip most significant bit of top word */
+
+    for (;;) {
+	while (bit != 0) {
+	    z.sqr(y, t);
+	    z.size = size;
+	    if (e & bit) {
+		y.multInner(z, x, t);
+		y.size = size;
+	    } else {
+		y.copy(z);
+	    }
+	    bit >>= 1;
+	}
+
+	if (--sizeb == 0) {
+	    break;
+	}
+	/* next word in exponent */
+	e = b.num[sizeb - 1];
+	bit = 0x80000000L;
+    }
+
+    copy(y);
+
+    AFREE(z.num);
+    AFREE(y.num);
+    AFREE(x.num);
+}
+
+/*
+ * compute a ** b % mod (a >= 0, b >= 0)
+ * t.size == (mod.size + 2) << 1
+ */
+void Asi::power(Asi &a, Asi &b, Asi &mod, Asi &t)
+{
+    if (b.size == 1 && b.num[0] == 0) {
+	/* a ** 0 = 1 */
+	num[0] = 1;
+	size = 1;
+	return;
+    }
+    if (a.size == 1) {
+	if (a.num[0] == 0) {
+	    /* 0 ** b = 0 */
+	    num[0] = 0;
+	    size = 1;
+	    return;
+	}
+	if (a.num[0] == 1) {
+	    /* 1 ** b = 1 */
+	    num[0] = 1;
+	    size = 1;
+	    return;
+	}
+    }
+
+    if (mod.num[0] & 1) {
+	/*
+	 * modulo odd number
+	 */
+	powqmod(a, b, mod, t);
+    } else {
+	Uint i;
+	bool minus;
+
+	/*
+	 * modulo even number
+	 */
+	Asi x(ALLOCA(Uint, mod.size), 0);
+	Asi y(ALLOCA(Uint, mod.size + 1), 0);
+	Asi z(ALLOCA(Uint, mod.size << 1), 0);
+	Asi q(ALLOCA(Uint, mod.size), 0);
+	Asi qinv(ALLOCA(Uint, mod.size), 0);
+
+	/* j = (size << 5) + i = number of least significant zero bits */
+	for (size = 0; mod.num[size] == 0; size++) ;
+	for (i = 0; !(mod.num[size] & (1 << i)); i++) ;
+
+	/* q = mod >> j */
+	q.copy(mod);
+	q.rshift((size << 5) + i);
+
+	/* size = number of words, i = mask */
+	if (i != 0) {
+	    i = 0xffffffffL >> (32 - i);
+	    size++;
+	} else {
+	    i = 0xffffffffL;
+	}
+
+	/* y = a ** b % 2 ** j */
+	y.pow2mod(a, b, size, t);
+	y.num[size - 1] &= i;
+	y.size = size;
+
+	if (q.size != 1 || q.num[0] != 1) {
+	    x.powqmod(a, b, q, t);
+
+	    /*
+	     * y = x + q * ((y - x) * q ** -1 % 2 ** j)
+	     */
+	    if (size >= q.size && y.cmp(x) >= 0) {
+		/* y - x */
+		y.sub(x);
+		minus = FALSE;
+	    } else {
+		/* x - y */
+		t.copy(x);
+		if (size > t.size) {
+		    memset(t.num + t.size, '\0',
+			   (size - t.size) * sizeof(Uint));
+		}
+		t.size = size;
+		t.sub(y);
+		y.copy(t);
+		minus = TRUE;
+	    }
+	    /* q ** -1 */
+	    if (size == 1) {
+		qinv.num[0] = wordinv(q.num[0]);
+		qinv.size = 1;
+	    } else {
+		memset(z.num, '\0', size * sizeof(Uint));
+		if (i == 0xffffffffL) {
+		    z.num[size] = 1;
+		    z.size = size + 1;
+		} else {
+		    z.num[size - 1] = i + 1;
+		    z.size = size;
+		}
+		qinv.modinv(q, z);
+	    }
+	    /* (y - x) * q ** -1 % 2 ** j */
+	    z.multInner(y, qinv, t);
+	    z.num[size - 1] &= i;
+	    z.size = size;
+	    /* q * ((y - x) * q ** -1 % 2 ** j) */
+	    y.mult(q, z, t);
+	    y.size = mod.size;
+	    if (minus) {
+		/* x - q * ((y - x) * q ** -1 % 2 ** j) */
+		if (y.cmp(x) <= 0) {
+		    memset(x.num + x.size, '\0',
+			   (y.size - x.size) * sizeof(Uint));
+		    x.size = y.size;
+		    x.sub(y);
+		    y.copy(x);
+		} else {
+		    t.copy(y);
+		    t.sub(x);
+		    y.copy(mod);
+		    y.sub(t);
+		}
+	    } else {
+		/* x + q * ((y - x) * q ** -1 % 2 ** j) */
+		y.add(x);
+		if (y.cmp(mod) >= 0) {
+		    y.sub(mod);
+		}
+	    }
+	}
+
+	copy(y);
+
+	AFREE(qinv.num);
+	AFREE(q.num);
+	AFREE(z.num);
+	AFREE(y.num);
+	AFREE(x.num);
+    }
+}
+
+/*
+ * convert a string to an ASI
+ */
+bool Asi::strtonum(String *str)
 {
     ssizet len;
     char *text;
-    Uint *tmp, size, bits;
+    Uint *tmp, bits;
 
     len = str->len;
     text = str->text;
@@ -531,9 +1164,8 @@ static void asi_strtonum(Uint *num, String *str, Uint *sz, bool *minus)
 	 */
 	num[0] = 0;
 	num[1] = 0;
-	*sz = 1;
-	*minus = FALSE;
-	return;
+	size = 1;
+	return FALSE;
     } else if ((text[0] & 0x80)) {
 	/*
 	 * negative
@@ -544,9 +1176,8 @@ static void asi_strtonum(Uint *num, String *str, Uint *sz, bool *minus)
 		/* -1 */
 		num[0] = 1;
 		num[1] = 0;
-		*sz = 1;
-		*minus = TRUE;
-		return;
+		size = 1;
+		return TRUE;
 	    }
 	}
 	size = (len + 3) / sizeof(Uint);
@@ -571,12 +1202,11 @@ static void asi_strtonum(Uint *num, String *str, Uint *sz, bool *minus)
 	    *tmp++ = bits;
 	}
 	tmp -= size;
-	asi_sub(num, tmp, size, size);
+	Asi t(tmp, size);
+	sub(t);
 	AFREE(tmp);
 
-	*sz = size;
-	*minus = TRUE;
-	return;
+	return TRUE;
 
     } else {
 	/*
@@ -588,18 +1218,18 @@ static void asi_strtonum(Uint *num, String *str, Uint *sz, bool *minus)
 		/* 0 */
 		num[0] = 0;
 		num[1] = 0;
-		*sz = 1;
-		*minus = FALSE;
-		return;
+		size = 1;
+		return FALSE;
 	    }
 	}
 	size = (len + 3) / sizeof(Uint);
 	num[size] = 0;
 
+	tmp = num;
 	text += len;
 	while (len >= 4) {
 	    text -= 4;
-	    *num++ = (UCHAR(text[0]) << 24) |
+	    *tmp++ = (UCHAR(text[0]) << 24) |
 		     (UCHAR(text[1]) << 16) |
 		     (UCHAR(text[2]) << 8) |
 		     UCHAR(text[3]);
@@ -611,21 +1241,19 @@ static void asi_strtonum(Uint *num, String *str, Uint *sz, bool *minus)
 	    do {
 		bits = (bits << 8) | UCHAR(*text++);
 	    } while (--len != 0);
-	    *num++ = bits;
+	    *tmp++ = bits;
 	}
 
-	*sz = size;
-	*minus = FALSE;
-	return;
+	return FALSE;
     }
 }
 
 /*
- * NAME:	asi->numtostr()
- * DESCRIPTION:	convert an ASI to a string
+ * convert an ASI to a string
  */
-static String *asi_numtostr(Uint *num, Uint size, bool minus)
+String *Asi::numtostr(bool minus)
 {
+    Uint *n, sz;
     ssizet len;
     Uint bits;
     char *text;
@@ -633,11 +1261,14 @@ static String *asi_numtostr(Uint *num, Uint size, bool minus)
     bool prefix;
     String *str;
 
+    n = num;
+    sz = size;
+
     /*
      * skip leading zeroes
      */
-    while (num[size - 1] == 0) {
-	if (--size == 0) {
+    while (n[sz - 1] == 0) {
+	if (--sz == 0) {
 	    /* +0, -0 */
 	    return String::create("\0", 1);
 	}
@@ -645,14 +1276,15 @@ static String *asi_numtostr(Uint *num, Uint size, bool minus)
 
     prefix = FALSE;
     if (minus) {
-	tmp = ALLOCA(Uint, size);
-	memset(tmp, '\0', size * sizeof(Uint));
-	asi_sub(tmp, num, size, size);
-	num = tmp;
+	tmp = ALLOCA(Uint, sz);
+	memset(tmp, '\0', sz * sizeof(Uint));
+	Asi t(tmp, sz);
+	t.sub(*this);
+	copy(t);
 
-	num += --size;
-	bits = *num;
-	if (size == 0 && bits == 0xffffffffL) {
+	n += --sz;
+	bits = *n;
+	if (sz == 0 && bits == 0xffffffffL) {
 	    len = 0;
 	} else {
 	    /* skip leading 0xff bytes */
@@ -663,8 +1295,8 @@ static String *asi_numtostr(Uint *num, Uint size, bool minus)
 	}
     } else {
 	/* skip leading 0x00 bytes */
-	num += --size;
-	bits = *num;
+	n += --sz;
+	bits = *n;
 	for (len = 24; (bits >> len) == 0; len -= 8) ;
 	if ((bits >> len) & 0x80) {
 	    prefix = TRUE;
@@ -673,7 +1305,7 @@ static String *asi_numtostr(Uint *num, Uint size, bool minus)
     len = (len >> 3) + 1;
 
     str = String::create((char *) NULL,
-			 (long) size * sizeof(Uint) + len + prefix);
+			 (long) sz * sizeof(Uint) + len + prefix);
     text = str->text;
     if (prefix) {
 	/* extra sign indicator */
@@ -682,13 +1314,13 @@ static String *asi_numtostr(Uint *num, Uint size, bool minus)
     do {
 	*text++ = bits >> (--len << 3);
     } while (len != 0);
-    while (size != 0) {
-	bits = *--num;
+    while (sz != 0) {
+	bits = *--n;
 	*text++ = bits >> 24;
 	*text++ = bits >> 16;
 	*text++ = bits >> 8;
 	*text++ = bits;
-	--size;
+	--sz;
     }
 
     if (minus) {
@@ -697,12 +1329,10 @@ static String *asi_numtostr(Uint *num, Uint size, bool minus)
     return str;
 }
 
-
 /*
- * NAME:	asn->ticks()
- * DESCRIPTION:	count ticks for operation, return TRUE if out of ticks
+ * count ticks for operation, return TRUE if out of ticks
  */
-static bool asn_ticks(Frame *f, Uint ticks)
+bool ASN::ticks(Frame *f, Uint ticks)
 {
     i_add_ticks(f, ticks);
     if (f->rlim->ticks < 0) {
@@ -716,174 +1346,154 @@ static bool asn_ticks(Frame *f, Uint ticks)
 }
 
 /*
- * NAME:	asn->add()
- * DESCRIPTION:	add two ASIs
+ * add two ASNs
  */
-String *asn_add(Frame *f, String *s1, String *s2, String *s3)
+String *ASN::add(Frame *f, String *s1, String *s2, String *s3)
 {
-    Uint *a, *b, *c;
-    Uint *mod, sizea, sizeb, sizec, sizemod;
+    Asi c;
     bool minusa, minusb, minusc;
     String *str;
 
-    mod = ALLOCA(Uint, (s3->len >> 2) + 2);
-    asi_strtonum(mod, s3, &sizemod, &minusa);
-    if (minusa || (sizemod == 1 && mod[0] == 0)) {
-	AFREE(mod);
+    Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
+    if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
+	AFREE(mod.num);
 	error("Invalid modulus");
     }
 
-    a = ALLOCA(Uint, (s1->len >> 2) + 4);
-    asi_strtonum(a, s1, &sizea, &minusa);
-    b = ALLOCA(Uint, (s2->len >> 2) + 4);
-    asi_strtonum(b, s2, &sizeb, &minusb);
-    i_add_ticks(f, 4 + ((sizea + sizeb + sizemod) >> 1));
+    Asi a(ALLOCA(Uint, (s1->len >> 2) + 4), 0);
+    minusa = a.strtonum(s1);
+    Asi b(ALLOCA(Uint, (s2->len >> 2) + 4), 0);
+    minusb = b.strtonum(s2);
+    i_add_ticks(f, 4 + ((a.size + b.size + mod.size) >> 1));
 
     if (minusa != minusb) {
-	if (sizea > sizeb ||
-	    (sizea == sizeb && asi_cmp(a, b, sizea, sizeb) >= 0)) {
+	if (a.size > b.size || (a.size == b.size && a.cmp(b) >= 0)) {
 	    /* a + -b, -a + b */
-	    asi_sub(a, b, sizea, sizeb);
 	    c = a;
-	    sizec = sizea;
+	    c.sub(b);
 	    minusc = minusa;
 	} else {
 	    /* -b + a, b + -a */
-	    asi_sub(b, a, sizeb, sizea);
 	    c = b;
-	    sizec = sizeb;
+	    c.sub(a);
 	    minusc = minusb;
 	}
-    } else if (sizea >= sizeb) {
+    } else if (a.size >= b.size) {
 	/* a + b, -a + -b */
-	asi_add(a, b, sizea + 1, sizeb);
 	c = a;
-	sizec = sizea + 1;
+	c.size++;
+	c.add(b);
 	minusc = minusa;
     } else {
 	/* b + a, -b + -a */
-	asi_add(b, a, sizeb + 1, sizea);
 	c = b;
-	sizec = sizeb + 1;
+	c.size++;
+	c.add(a);
 	minusc = minusb;
     }
 
-    if (sizec >= sizemod && asi_cmp(c, mod, sizec, sizemod) >= 0) {
-	asi_sub(c, mod, sizec, sizemod);
-	if (asi_cmp(c, mod, sizec, sizemod) >= 0) {
-	    Uint *t;
-
-	    if (asn_ticks(f, sizemod * (sizec - sizemod + 10))) {
-		AFREE(b);
-		AFREE(a);
-		AFREE(mod);
+    if (c.size >= mod.size && c.cmp(mod) >= 0) {
+	c.sub(mod);
+	if (c.cmp(mod) >= 0) {
+	    if (ticks(f, mod.size * (c.size - mod.size + 10))) {
+		AFREE(b.num);
+		AFREE(a.num);
+		AFREE(mod.num);
 		error("Out of ticks");
 	    }
-	    t = ALLOCA(Uint, (sizemod << 1) + 1);
-	    asi_div(c, t, c, mod, sizec, sizemod);
-	    sizec = sizemod;
-	    AFREE(t);
+	    Asi t(ALLOCA(Uint, (mod.size << 1) + 1), 0);
+	    c.div(c, mod, t);
+	    AFREE(t.num);
 	}
     }
-    str = asi_numtostr(c, sizec, minusc);
-    AFREE(b);
-    AFREE(a);
-    AFREE(mod);
+    str = c.numtostr(minusc);
+    AFREE(b.num);
+    AFREE(a.num);
+    AFREE(mod.num);
     return str;
 }
 
 /*
- * NAME:	asn->sub()
- * DESCRIPTION:	subtract one ASI from another
+ * subtract one ASN from another
  */
-String *asn_sub(Frame *f, String *s1, String *s2, String *s3)
+String *ASN::sub(Frame *f, String *s1, String *s2, String *s3)
 {
-    Uint *a, *b, *c;
-    Uint *mod, sizea, sizeb, sizec, sizemod;
+    Asi c;
     bool minusa, minusb, minusc;
     String *str;
 
-    mod = ALLOCA(Uint, (s3->len >> 2) + 2);
-    asi_strtonum(mod, s3, &sizemod, &minusa);
-    if (minusa || (sizemod == 1 && mod[0] == 0)) {
-	AFREE(mod);
+    Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
+    if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
+	AFREE(mod.num);
 	error("Invalid modulus");
     }
 
-    a = ALLOCA(Uint, (s1->len >> 2) + 4);
-    asi_strtonum(a, s1, &sizea, &minusa);
-    b = ALLOCA(Uint, (s2->len >> 2) + 4);
-    asi_strtonum(b, s2, &sizeb, &minusb);
-    i_add_ticks(f, 4 + ((sizea + sizeb + sizemod) >> 1));
+    Asi a(ALLOCA(Uint, (s1->len >> 2) + 4), 0);
+    minusa = a.strtonum(s1);
+    Asi b(ALLOCA(Uint, (s2->len >> 2) + 4), 0);
+    minusb = b.strtonum(s2);
+    i_add_ticks(f, 4 + ((a.size + b.size + mod.size) >> 1));
 
     if (minusa == minusb) {
-	if (sizea > sizeb ||
-	    (sizea == sizeb && asi_cmp(a, b, sizea, sizeb) >= 0)) {
+	if (a.size > b.size || (a.size == b.size && a.cmp(b) >= 0)) {
 	    /* a - b, -a - -b */
-	    asi_sub(a, b, sizea, sizeb);
 	    c = a;
-	    sizec = sizea;
+	    c.sub(b);
 	    minusc = minusa;
 	} else {
 	    /* b - a, -b - -a */
-	    asi_sub(b, a, sizeb, sizea);
 	    c = b;
-	    sizec = sizeb;
+	    c.sub(a);
 	    minusc = !minusb;
 	}
-    } else if (sizea >= sizeb) {
+    } else if (a.size >= b.size) {
 	/* a - -b, -a - b */
-	asi_add(a, b, sizea + 1, sizeb);
 	c = a;
-	sizec = sizea + 1;
+	c.size++;
+	c.add(b);
 	minusc = minusa;
     } else {
 	/* b - -a, -b - a */
-	asi_add(b, a, sizeb + 1, sizea);
 	c = b;
-	sizec = sizeb + 1;
+	c.size++;
+	c.add(a);
 	minusc = !minusb;
     }
 
-    if (sizec >= sizemod && asi_cmp(c, mod, sizec, sizemod) >= 0) {
-	asi_sub(c, mod, sizec, sizemod);
-	if (asi_cmp(c, mod, sizec, sizemod) >= 0) {
-	    Uint *t;
-
-	    if (asn_ticks(f, sizemod * (sizec - sizemod + 10))) {
-		AFREE(b);
-		AFREE(a);
-		AFREE(mod);
+    if (c.size >= mod.size && c.cmp(mod) >= 0) {
+	c.sub(mod);
+	if (c.cmp(mod) >= 0) {
+	    if (ticks(f, mod.size * (c.size - mod.size + 10))) {
+		AFREE(b.num);
+		AFREE(a.num);
+		AFREE(mod.num);
 		error("Out of ticks");
 	    }
-	    t = ALLOCA(Uint, (sizemod << 1) + 1);
-	    asi_div(c, t, c, mod, sizec, sizemod);
-	    sizec = sizemod;
-	    AFREE(t);
+	    Asi t(ALLOCA(Uint, (mod.size << 1) + 1), 0);
+	    c.div(c, mod, t);
+	    AFREE(t.num);
 	}
     }
-    str = asi_numtostr(c, sizec, minusc);
-    AFREE(b);
-    AFREE(a);
-    AFREE(mod);
+    str = c.numtostr(minusc);
+    AFREE(b.num);
+    AFREE(a.num);
+    AFREE(mod.num);
     return str;
 }
 
 /*
- * NAME:	asn->cmp()
- * DESCRIPTION:	compare one ASI with another
+ * compare one ASN with another
  */
-int asn_cmp(Frame *f, String *s1, String *s2)
+int ASN::cmp(Frame *f, String *s1, String *s2)
 {
-    Uint *a, *b, sizea, sizeb;
     bool minusa, minusb;
     int cmp;
 
-    a = ALLOCA(Uint, (s1->len >> 2) + 2);
-    asi_strtonum(a, s1, &sizea, &minusa);
-    b = ALLOCA(Uint, (s2->len >> 2) + 2);
-    asi_strtonum(b, s2, &sizeb, &minusb);
-    i_add_ticks(f, 4 + ((sizea + sizeb) >> 1));
+    Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
+    minusa = a.strtonum(s1);
+    Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
+    minusb = b.strtonum(s2);
+    i_add_ticks(f, 4 + ((a.size + b.size) >> 1));
 
     if (minusa != minusb) {
 	if (minusa) {
@@ -892,932 +1502,350 @@ int asn_cmp(Frame *f, String *s1, String *s2)
 	    cmp = 1;
 	}
     } else {
-	if (sizea != sizeb) {
-	    if (sizea < sizeb) {
+	if (a.size != b.size) {
+	    if (a.size < b.size) {
 		cmp = -1;
 	    } else {
 		cmp = 1;
 	    }
 	} else {
-	    cmp = asi_cmp(a, b, sizea, sizeb);
+	    cmp = a.cmp(b);
 	}
 	if (minusa) {
 	    cmp = -cmp;
 	}
     }
 
-    AFREE(b);
-    AFREE(a);
+    AFREE(b.num);
+    AFREE(a.num);
     return cmp;
 }
 
 /*
- * NAME:	asn->mult()
- * DESCRIPTION:	multiply one ASI with another
+ * multiply one ASN with another
  */
-String *asn_mult(Frame *f, String *s1, String *s2, String *s3)
+String *ASN::mult(Frame *f, String *s1, String *s2, String *s3)
 {
-    Uint *a, *b, *c, *t1, *t2;
-    Uint *aa, *bb, *cc, *mod, sizea, sizeb, sizec, sizemod;
+    Uint size;
     bool minusa, minusb;
     String *str;
 
-    mod = ALLOCA(Uint, (s3->len >> 2) + 2);
-    asi_strtonum(mod, s3, &sizemod, &minusa);
-    if (minusa || (sizemod == 1 && mod[0] == 0)) {
-	AFREE(mod);
+    Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
+    if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
+	AFREE(mod.num);
 	error("Invalid modulus");
     }
 
-    aa = a = ALLOCA(Uint, (s1->len >> 2) + 2);
-    asi_strtonum(a, s1, &sizea, &minusa);
-    bb = b = ALLOCA(Uint, (s2->len >> 2) + 2);
-    asi_strtonum(b, s2, &sizeb, &minusb);
-    if (asn_ticks(f, 4 + sizea * sizeb)) {
-	AFREE(b);
-	AFREE(a);
-	AFREE(mod);
+    Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
+    minusa = a.strtonum(s1);
+    Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
+    minusb = b.strtonum(s2);
+    if (ticks(f, 4 + a.size * b.size)) {
+	AFREE(b.num);
+	AFREE(a.num);
+	AFREE(mod.num);
 	error("Out of ticks");
     }
 
-    sizec = sizea + sizeb;
-    cc = c = ALLOCA(Uint, sizec + 1);
-    t1 = ALLOCA(Uint, (sizec << 1) + sizec);
-    t2 = t1 + sizec;
-    memset(c, '\0', sizec * sizeof(Uint));
-    while (sizea != sizeb) {
-	if (sizea < sizeb) {
-	    Uint *t, sizet;
+    size = a.size + b.size;
+    Asi c(ALLOCA(Uint, size + 1), size);
+    memset(c.num, '\0', c.size * sizeof(Uint));
+    Asi t(ALLOCA(Uint, (c.size << 1) + c.size), 0);
+    c.mult(a, b, t);
 
-	    t = a;
-	    a = b;
-	    b = t;
-	    sizet = sizea;
-	    sizea = sizeb;
-	    sizeb = sizet;
-	}
-	if (sizea - sizeb == 1) {
-	    break;
-	}
-
-	asi_mult(t1, t2, a, b, sizeb, sizeb);
-	asi_add(c, t1, sizeb << 1, sizeb << 1);
-	a += sizeb;
-	sizea -= sizeb;
-	c += sizeb;
-    }
-    asi_mult(t1, t2, a, b, sizea, sizeb);
-    asi_add(c, t1, sizea + sizeb, sizea + sizeb);
-
-    if (sizec >= sizemod && asi_cmp(cc, mod, sizec, sizemod) >= 0) {
-	if (asn_ticks(f, sizemod * (sizec - sizemod + 10))) {
-	    AFREE(t1);
-	    AFREE(cc);
-	    AFREE(bb);
-	    AFREE(aa);
-	    AFREE(mod);
+    if (c.size >= mod.size && c.cmp(mod) >= 0) {
+	if (ticks(f, mod.size * (c.size - mod.size + 10))) {
+	    AFREE(t.num);
+	    AFREE(c.num);
+	    AFREE(b.num);
+	    AFREE(a.num);
+	    AFREE(mod.num);
 	    error("Out of ticks");
 	}
-	asi_div(cc, t1, cc, mod, sizec, sizemod);
-	sizec = sizemod;
+	c.div(c, mod, t);
     }
-    str = asi_numtostr(cc, sizec, minusa ^ minusb);
-    AFREE(t1);
-    AFREE(cc);
+    str = c.numtostr(minusa ^ minusb);
+    AFREE(t.num);
+    AFREE(c.num);
 
-    AFREE(bb);
-    AFREE(aa);
-    AFREE(mod);
+    AFREE(b.num);
+    AFREE(a.num);
+    AFREE(mod.num);
     return str;
 }
 
 /*
- * NAME:	asn->div()
- * DESCRIPTION:	divide one ASI by another
+ * divide one ASN by another
  */
-String *asn_div(Frame *f, String *s1, String *s2, String *s3)
+String *ASN::div(Frame *f, String *s1, String *s2, String *s3)
 {
-    Uint *a, *b, *c, *d, *t;
-    Uint *mod, sizea, sizeb, sizemod;
     bool minusa, minusb;
     String *str;
 
-    mod = ALLOCA(Uint, (s3->len >> 2) + 2);
-    asi_strtonum(mod, s3, &sizemod, &minusa);
-    if (minusa || (sizemod == 1 && mod[0] == 0)) {
-	AFREE(mod);
+    Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
+    if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
+	AFREE(mod.num);
 	error("Invalid modulus");
     }
 
-    b = ALLOCA(Uint, (s2->len >> 2) + 2);
-    asi_strtonum(b, s2, &sizeb, &minusb);
-    if (sizeb == 1 && b[0] == 0) {
-	AFREE(b);
-	AFREE(mod);
+    Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
+    minusb = b.strtonum(s2);
+    if (b.size == 1 && b.num[0] == 0) {
+	AFREE(b.num);
+	AFREE(mod.num);
 	error("Division by zero");
     }
-    a = ALLOCA(Uint, (s1->len >> 2) + 2);
-    asi_strtonum(a, s1, &sizea, &minusa);
-    i_add_ticks(f, 4 + ((sizea + sizeb) >> 1));
+    Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
+    a.strtonum(s1);
+    i_add_ticks(f, 4 + ((a.size + b.size) >> 1));
 
-    c = ALLOCA(Uint, sizea + 2);
-    t = ALLOCA(Uint, (sizeb + sizemod) << 1); /* more than enough */
-    if (sizea >= sizeb && asi_cmp(a, b, sizea, sizeb) >= 0) {
-	if (asn_ticks(f, sizeb * (sizea - sizeb + 10))) {
-	    AFREE(t);
-	    AFREE(c);
-	    AFREE(a);
-	    AFREE(b);
-	    AFREE(mod);
+    Asi c(ALLOCA(Uint, a.size + 2), 0);
+    Asi t(ALLOCA(Uint, (b.size + mod.size) << 1), 0); /* more than enough */
+    if (a.size >= b.size && a.cmp(b) >= 0) {
+	if (ticks(f, b.size * (a.size - b.size + 10))) {
+	    AFREE(t.num);
+	    AFREE(c.num);
+	    AFREE(a.num);
+	    AFREE(b.num);
+	    AFREE(mod.num);
 	    error("Out of ticks");
 	}
-	d = asi_div(c, t, a, b, sizea, sizeb);
-	sizea -= sizeb - 1;
-	if (sizea >= sizemod && asi_cmp(d, mod, sizea, sizemod) >= 0) {
-	    if (asn_ticks(f, sizemod * (sizea - sizemod + 10))) {
-		AFREE(t);
-		AFREE(c);
-		AFREE(a);
-		AFREE(b);
-		AFREE(mod);
+	Asi d(c.div(a, b, t), a.size - b.size + 1);
+	if (d.size >= mod.size && d.cmp(mod) >= 0) {
+	    if (ticks(f, mod.size * (d.size - mod.size + 10))) {
+		AFREE(t.num);
+		AFREE(c.num);
+		AFREE(a.num);
+		AFREE(b.num);
+		AFREE(mod.num);
 		error("Out of ticks");
 	    }
-	    asi_div(c, t, d, mod, sizea, sizemod);
-	    d = c;
-	    sizea = sizemod;
+	    c.div(d, mod, t);
+	} else {
+	    c.copy(d);
 	}
     } else {
-	c[0] = 0;
-	d = c;
-	sizea = 1;
+	c.num[0] = 0;
+	c.size = 1;
     }
-    str = asi_numtostr(d, sizea, minusa ^ minusb);
-    AFREE(t);
-    AFREE(c);
+    str = c.numtostr(minusa ^ minusb);
+    AFREE(t.num);
+    AFREE(c.num);
 
-    AFREE(a);
-    AFREE(b);
-    AFREE(mod);
+    AFREE(a.num);
+    AFREE(b.num);
+    AFREE(mod.num);
     return str;
 }
 
 /*
- * NAME:	asn->mod()
- * DESCRIPTION:	take the modulus of an ASI
+ * take the modulus of an ASN
  */
-String *asn_mod(Frame *f, String *s1, String *s2)
+String *ASN::mod(Frame *f, String *s1, String *s2)
 {
-    Uint *a, *b, *c, *t;
-    Uint sizea, sizeb;
     bool minusa, minusb;
     String *str;
 
-    b = ALLOCA(Uint, (s2->len >> 2) + 2);
-    asi_strtonum(b, s2, &sizeb, &minusb);
-    if (minusb || (sizeb == 1 && b[0] == 0)) {
-	AFREE(b);
+    Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
+    if (b.strtonum(s2) || (b.size == 1 && b.num[0] == 0)) {
+	AFREE(b.num);
 	error("Invalid modulus");
     }
-    a = ALLOCA(Uint, (s1->len >> 2) + 2);
-    asi_strtonum(a, s1, &sizea, &minusa);
+    Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
+    minusa = a.strtonum(s1);
 
-    c = ALLOCA(Uint, sizea + 2);
-    t = ALLOCA(Uint, (sizeb << 1) + 1);
-    if (sizea >= sizeb && asi_cmp(a, b, sizea, sizeb) > 0) {
-	if (asn_ticks(f, sizeb * (sizea - sizeb + 10))) {
-	    AFREE(t);
-	    AFREE(c);
-	    AFREE(a);
-	    AFREE(b);
+    Asi c(ALLOCA(Uint, a.size + 2), 0);
+    Asi t(ALLOCA(Uint, (b.size << 1) + 1), 0);
+    if (a.size >= b.size && a.cmp(b) > 0) {
+	if (ticks(f, b.size * (a.size - b.size + 10))) {
+	    AFREE(t.num);
+	    AFREE(c.num);
+	    AFREE(a.num);
+	    AFREE(b.num);
 	    error("Out of ticks");
 	}
-	asi_div(c, t, a, b, sizea, sizeb);
+	c.div(a, b, t);
     } else {
-	i_add_ticks(f, 4 + sizea + (sizeb >> 1));
-	memcpy(c, a, sizea * sizeof(Uint));
-	sizeb = sizea;
+	i_add_ticks(f, 4 + a.size + (b.size >> 1));
+	c.copy(a);
     }
-    str = asi_numtostr(c, sizeb, minusa ^ minusb);
-    AFREE(t);
-    AFREE(c);
+    str = c.numtostr(minusa ^ minusb);
+    AFREE(t.num);
+    AFREE(c.num);
 
-    AFREE(a);
-    AFREE(b);
+    AFREE(a.num);
+    AFREE(b.num);
     return str;
 }
 
 /*
- * NAME:	asn->modinv()
- * DESCRIPTION:	Compute the multiplicative inverse of a modulo b.
- *		From "Applied Cryptography" by Bruce Schneier, Second Edition,
- *		page 247.
+ * compute a power of an ASN
  */
-static bool asn_modinv(Uint *c, Uint *sizec, Uint *a, Uint *b, Uint sizea, Uint sizeb)
+String *ASN::pow(Frame *f, String *s1, String *s2, String *s3)
 {
-    Uint *a1, *b1, *g1, *a2, *b2, *g2;
-    Uint sizea1, sizeb1, sizeg1, sizea2, sizeb2, sizeg2;
-    bool inverse;
-
-    if (!((a[0] | b[0]) & 1)) {
-	return FALSE;	/* GCD >= 2 */
-    }
-
-    if (sizea > sizeb ||
-	(sizea == sizeb && asi_cmp(a, b, sizea, sizeb) > 0)) {
-	/* a > b: a <=> b */
-	a1 = a; sizea1 = sizea;
-	a = b; sizea = sizeb;
-	b = a1; sizeb = sizea1;
-	inverse = TRUE;
-    } else {
-	inverse = FALSE;
-    }
-
-    /* b1 * b - a1 * a = b */
-    b1 = ALLOCA(Uint, sizea + sizeb);			/* b1 = 1 */
-    memset(b1, '\0', (sizea + sizeb) * sizeof(Uint));
-    b1[0] = 1;
-    sizeb1 = 1;
-    a1 = ALLOCA(Uint, sizea + sizeb);			/* a1 = 0 */
-    memset(a1, '\0', (sizea + sizeb) * sizeof(Uint));
-    sizea1 = 1;
-    g1 = ALLOCA(Uint, sizeg1 = sizeb);			/* g1 = b */
-    memcpy(g1, b, sizeg1 * sizeof(Uint));
-
-    /* b2 * b - a2 * a = a */
-    b2 = ALLOCA(Uint, sizea + sizeb);			/* b2 = a */
-    memset(b2 + sizea, '\0', sizeb * sizeof(Uint));
-    memcpy(b2, a, (sizeb2 = sizea) * sizeof(Uint));
-    a2 = ALLOCA(Uint, sizea + sizeb);			/* a2 = b - 1 */
-    memset(a2 + sizeb, '\0', sizea * sizeof(Uint));
-    memcpy(a2, b, (sizea2 = sizeb) * sizeof(Uint));
-    asi_sub(a2, b1, sizea2, 1);
-    while (a2[sizea2 - 1] == 0) {
-	if (--sizea2 == 0) {
-	    sizea2++;
-	    break;
-	}
-    }
-    g2 = ALLOCA(Uint, sizeg2 = sizea);			/* g2 = a */
-    memcpy(g2, a, sizeg2 * sizeof(Uint));
-
-    do {
-	do {
-	    if (!(g1[0] & 1)) {
-		if ((a1[0] | b1[0]) & 1) {
-		    if (sizea1 < sizeb) {
-			sizea1 = sizeb;
-		    }
-		    if (asi_add(a1, b, sizea1, sizeb)) {
-			a1[sizea1++] = 1;
-		    }
-		    if (sizeb1 < sizea) {
-			sizeb1 = sizea;
-		    }
-		    if (asi_add(b1, a, sizeb1, sizea)) {
-			b1[sizeb1++] = 1;
-		    }
-		}
-		asi_rshift(a1, sizea1, 1);
-		if (a1[sizea1 - 1] == 0 && --sizea1 == 0) {
-		    sizea1++;
-		}
-		asi_rshift(b1, sizeb1, 1);
-		if (b1[sizeb1 - 1] == 0 && --sizeb1 == 0) {
-		    sizeb1++;
-		}
-		asi_rshift(g1, sizeg1, 1);
-		if (g1[sizeg1 - 1] == 0 && --sizeg1 == 0) {
-		    sizeg1++;
-		}
-	    }
-	    if (!(g2[0] & 1) || sizeg1 < sizeg2 ||
-		asi_cmp(g1, g2, sizeg1, sizeg2) < 0) {
-		Uint *t, sizet;
-
-		/* a1 <=> a2, b1 <=> b2, g1 <=> g2 */
-		t = a1; sizet = sizea1;
-		a1 = a2; sizea1 = sizea2;
-		a2 = t; sizea2 = sizet;
-		t = b1; sizet = sizeb1;
-		b1 = b2; sizeb1 = sizeb2;
-		b2 = t; sizeb2 = sizet;
-		t = g1; sizet = sizeg1;
-		g1 = g2; sizeg1 = sizeg2;
-		g2 = t; sizeg2 = sizet;
-	    }
-	} while (!(g1[0] & 1));
-
-	while (sizea1 < sizea2 || asi_cmp(a1, a2, sizea1, sizea2) < 0 ||
-	       sizeb1 < sizeb2 || asi_cmp(b1, b2, sizeb1, sizeb2) < 0) {
-	    if (sizea1 < sizeb) {
-		sizea1 = sizeb;
-	    }
-	    if (asi_add(a1, b, sizea1, sizeb)) {
-		a1[sizea1++] = 1;
-	    }
-	    if (sizeb1 < sizea) {
-		sizeb1 = sizea;
-	    }
-	    if (asi_add(b1, a, sizeb1, sizea)) {
-		b1[sizeb1++] = 1;
-	    }
-	}
-
-	asi_sub(a1, a2, sizea1, sizea2);
-	while (a1[sizea1 - 1] == 0) {
-	    if (--sizea1 == 0) {
-		sizea1++;
-		break;
-	    }
-	}
-	asi_sub(b1, b2, sizeb1, sizeb2);
-	while (b1[sizeb1 - 1] == 0) {
-	    if (--sizeb1 == 0) {
-		sizeb1++;
-		break;
-	    }
-	}
-	asi_sub(g1, g2, sizeg1, sizeg2);
-	while (g1[sizeg1 - 1] == 0) {
-	    if (--sizeg1 == 0) {
-		sizeg1++;
-		break;
-	    }
-	}
-    } while (sizeg2 != 1 || g2[0] != 0);
-
-    while (sizea1 >= sizeb && asi_cmp(a1, b, sizea1, sizeb) >= 0 &&
-	   sizeb1 >= sizea && asi_cmp(b1, a, sizeb1, sizea) >= 0) {
-	asi_sub(a1, b, sizea1, sizeb);
-	while (a1[sizea1 - 1] == 0) {
-	    if (--sizea1 == 0) {
-		sizea1++;
-		break;
-	    }
-	}
-	asi_sub(b1, a, sizeb1, sizea);
-	while (b1[sizeb1 - 1] == 0) {
-	    if (--sizeb1 == 0) {
-		sizeb1++;
-		break;
-	    }
-	}
-    }
-
-    if (!inverse) {
-	sizeb1 = sizeb;
-	memcpy(b1, b, sizeb1 * sizeof(Uint));
-	asi_sub(b1, a1, sizeb1, sizea1);
-	while (b1[sizeb1 - 1] == 0) {
-	    if (--sizeb1 == 0) {
-		sizeb1++;
-		break;
-	    }
-	}
-    }
-    memcpy(c, b1, sizeb1 * sizeof(Uint));
-    *sizec = sizeb1;
-    inverse = (sizeg1 == 1 && g1[0] == 1);
-    AFREE(g2);
-    AFREE(a2);
-    AFREE(b2);
-    AFREE(g1);
-    AFREE(a1);
-    AFREE(b1);
-
-    return inverse;
-}
-
-/*
- * The algorithms for fast exponentiation are based on:
- * "High-Speed RSA Implementation" by Çetin Koya Koç, Version 2.0,
- * RSA Laboratories
- */
-
-/*
- * NAME:	asn->wordinv()
- * DESCRIPTION:	compute an inverse modulo the word size (for odd n)
- */
-static Uint asn_wordinv(Uint n)
-{
-    Uint n1, mask, i;
-
-    n1 = 1;
-    mask = 0x3;
-    i = 0x2;
-    do {
-	if (((n * n1) & mask) > i) {
-	    n1 += i;
-	}
-	i <<= 1;
-	mask |= i;
-    } while (i != 0);
-
-    return n1;
-}
-
-/*
- * NAME:	asn->monpro()
- * DESCRIPTION:	compute the Montgomery product of a and b
- *		sizeof(t) = (size + 1) << 1
- */
-static void asn_monpro(Uint *c, Uint *t, Uint *a, Uint *b, Uint *n, Uint size, Uint n0)
-{
-    Uint i, j, m, *d, carry;
-
-    if (a == b) {
-	asi_sqr(c, t, a, size);
-    } else {
-	asi_mult(c, t, a, b, size, size);
-    }
-    c[size << 1] = 0;
-    for (i = size; i > 0; --i) {
-	m = c[0] * n0;
-	if (asi_mult_row(c++, n, m, size)) {
-	    d = c + size;
-	    j = i;
-	    carry = 1;
-	    do {
-		carry = ((*d++ += carry) < carry);
-	    } while (carry && --j != 0);
-	}
-    }
-    if (asi_cmp(c, n, size + 1, size) >= 0) {
-	asi_sub(c, n, size + 1, size);
-    }
-}
-
-# define WINDOWSZ	6
-
-/*
- * NAME:	asn->powqmod()
- * DESCRIPTION:	compute a ** b % mod (a > 1, b > 1, (mod & 1) != 0)
- *		sizeof(t) = (sizemod + 1) << 1
- */
-static void asn_powqmod(Uint *c, Uint *t, Uint *a, Uint *b, Uint *mod, Uint sizea, Uint sizeb, Uint sizemod)
-{
-    Uint bit, e, window, wsize, zsize, n0, *x, *xx, *y, *yy;
-    Uint *tab[1 << WINDOWSZ];
-
-    /* allocate */
-    x = ALLOCA(Uint, (sizemod << 1) + 1);
-    xx = x + sizemod;
-    y = ALLOCA(Uint, (sizemod << 1) + sizea + 1);
-    yy = y + sizemod;
-
-    /* xx = a * R % mod */
-    memset(y, '\0', sizemod * sizeof(Uint));
-    memcpy(y + sizemod, a, sizea * sizeof(Uint));
-    asi_div(y, t, y, mod, sizemod + sizea, sizemod);
-    memcpy(xx, y, sizemod * sizeof(Uint));
-
-    /* tab[] = { powers of xx } */
-    memset(tab, '\0', (1 << WINDOWSZ) * sizeof(Uint*));
-    tab[0] = xx;	/* sentinel */
-    memcpy(tab[1] = ALLOCA(Uint, sizemod), xx, sizemod * sizeof(Uint));
-
-    n0 = -asn_wordinv(mod[0]);
-    window = wsize = zsize = 0;
-    b += sizeb;
-    e = *--b;
-    for (bit = 0x80000000L; (e & bit) == 0; bit >>= 1) ;
-    bit >>= 1;	/* skip most significant bit of top word */
-
-    for (;;) {
-	while (bit != 0) {
-	    if (wsize == WINDOWSZ || (zsize != 0 && !(e & bit))) {
-		asn_monpro(y, t, xx, tab[window], mod, sizemod, n0);
-		window = wsize = zsize = 0;
-	    } else {
-		window <<= 1;
-		if (tab[window] == (Uint *) NULL) {
-		    asn_monpro(y, t, tab[window >> 1], tab[window >> 1], mod,
-			       sizemod, n0);
-		    memcpy(tab[window] = ALLOCA(Uint, sizemod), yy,
-			   sizemod * sizeof(Uint));
-		}
-		memcpy(yy, xx, sizemod * sizeof(Uint));
-	    }
-
-	    asn_monpro(x, t, yy, yy, mod, sizemod, n0);
-
-	    if (e & bit) {
-		window |= 1;
-		if (tab[window] == (Uint *) NULL) {
-		    asn_monpro(y, t, tab[window - 1], tab[1], mod, sizemod, n0);
-		    memcpy(tab[window] = ALLOCA(Uint, sizemod), yy,
-			   sizemod * sizeof(Uint));
-		}
-		zsize = 0;
-		wsize++;
-	    } else if (wsize != 0) {
-		zsize++;
-		wsize++;
-	    }
-
-	    bit >>= 1;
-	}
-
-	if (--sizeb == 0) {
-	    break;
-	}
-	/* next word in exponent */
-	e = *--b;
-	bit = 0x80000000L;
-    }
-
-    if (wsize != 0) {
-	/*
-	 * still a remaining window of bits to deal with
-	 */
-	asn_monpro(y, t, xx, tab[window], mod, sizemod, n0);
-	memcpy(xx, yy, sizemod * sizeof(Uint));
-    }
-
-    /* c = xx * (R ** -1) */
-    memset(tab[1], '\0', sizemod * sizeof(Uint));
-    tab[1][0] = 1;
-    asn_monpro(y, t, xx, tab[1], mod, sizemod, n0);
-    memcpy(c, yy, sizemod * sizeof(Uint));
-
-    for (window = 1 << WINDOWSZ; --window != 0; ) {
-	if (tab[window] != (Uint *) NULL) {
-	    AFREE(tab[window]);
-	}
-    }
-    AFREE(y);
-    AFREE(x);
-}
-
-/*
- * NAME:	asn->pow2mod()
- * DESCRIPTION:	compute a ** b, (all operations in size words)
- *		sizeof(t) = (size + 1) << 1
- */
-static void asn_pow2mod(Uint *c, Uint *t, Uint *a, Uint *b, Uint sizea, Uint size)
-{
-    Uint *x, *y, *z, e, bit, sizeb;
-
-    x = ALLOCA(Uint, size);
-    y = ALLOCA(Uint, size << 1);
-    z = ALLOCA(Uint, size << 1);
-
-    /* x = a reduced to size words */
-    if (sizea >= size) {
-	memcpy(x, a, size * sizeof(Uint));
-    } else {
-	memcpy(x, a, sizea * sizeof(Uint));
-	memset(x + sizea, '\0', (size - sizea) * sizeof(Uint));
-    }
-
-    /* remove leading zeroes from b */
-    for (sizeb = size; b[sizeb - 1] == 0; --sizeb) {
-	if (sizeb == 1) {
-	    /* a ** 0 = 1 */
-	    memset(c, '\0', size * sizeof(Uint));
-	    c[0] = 1;
-	    return;
-	}
-    }
-
-    memcpy(y, x, size * sizeof(Uint));
-    b += sizeb;
-    e = *--b;
-    for (bit = 0x80000000L; (e & bit) == 0; bit >>= 1) ;
-    bit >>= 1;	/* skip most significant bit of top word */
-
-    for (;;) {
-	while (bit != 0) {
-	    asi_sqr(z, t, y, size);
-	    if (e & bit) {
-		asi_mult(y, t, z, x, size, size);
-	    } else {
-		memcpy(y, z, size * sizeof(Uint));
-	    }
-	    bit >>= 1;
-	}
-
-	if (--sizeb == 0) {
-	    break;
-	}
-	/* next word in exponent */
-	e = *--b;
-	bit = 0x80000000L;
-    }
-
-    memcpy(c, y, size * sizeof(Uint));
-
-    AFREE(z);
-    AFREE(y);
-    AFREE(x);
-}
-
-/*
- * NAME:	asn->power()
- * DESCRIPTION:	compute a ** b % mod (a >= 0, b >= 0)
- *		sizeof(t) == (sizemod + 2) << 1
- */
-static void asn_power(Uint *c, Uint *t, Uint *a, Uint *b, Uint *mod, Uint sizea, Uint sizeb, Uint sizemod)
-{
-    if (sizeb == 1 && b[0] == 0) {
-	/* a ** 0 = 1 */
-	memset(c, '\0', sizemod * sizeof(Uint));
-	c[0] = 1;
-	return;
-    }
-    if (sizea == 1) {
-	if (a[0] == 0) {
-	    /* 0 ** b = 0 */
-	    memset(c, '\0', sizemod * sizeof(Uint));
-	    return;
-	}
-	if (a[0] == 1) {
-	    /* 1 ** b = 1 */
-	    memset(c, '\0', sizemod * sizeof(Uint));
-	    c[0] = 1;
-	    return;
-	}
-    }
-
-    if (mod[0] & 1) {
-	/*
-	 * modulo odd number
-	 */
-	asn_powqmod(c, t, a, b, mod, sizea, sizeb, sizemod);
-    } else {
-	Uint size, i, *x, *y, *z;
-	Uint *q, *qinv, sizeq;
-
-	/*
-	 * modulo even number
-	 */
-	x = ALLOCA(Uint, sizemod);
-	y = ALLOCA(Uint, sizemod + 1);
-	z = ALLOCA(Uint, sizemod << 1);
-	q = ALLOCA(Uint, sizemod);
-	qinv = ALLOCA(Uint, sizemod);
-
-	/* j = (size << 5) + i = number of least significant zero bits */
-	for (size = 0; mod[size] == 0; size++) ;
-	for (i = 0; !(mod[size] & (1 << i)); i++) ;
-
-	/* q = mod >> j */
-	memcpy(q, mod, sizemod * sizeof(Uint));
-	asi_rshift(q, sizemod, (size << 5) + i);
-	sizeq = sizemod - size;
-	if (q[sizeq - 1] == 0) {
-	    --sizeq;
-	}
-
-	/* size = number of words, i = mask */
-	size++;
-	if (i != 0) {
-	    i = 0xffffffffL >> (32 - i);
-	} else {
-	    i = 0xffffffffL;
-	}
-
-	/* x = b % 2 ** (j - 1) */
-	if (sizeb >= size) {
-	    memcpy(x, b, size * sizeof(Uint));
-	} else {
-	    memcpy(x, b, sizeb * sizeof(Uint));
-	    memset(x + sizeb, '\0', (size - sizeb) * sizeof(Uint));
-	}
-	x[size - 1] &= i >> 1;
-
-	/* y = a ** x % 2 ** j */
-	asn_pow2mod(y, t, a, x, sizea, size);
-	y[size - 1] &= i;
-
-	if (sizeq != 1 || q[0] != 1) {
-	    asn_powqmod(x, t, a, b, q, sizea, sizeb, sizeq);
-
-	    /*
-	     * y = x + q * ((y - x) * q ** -1 % 2 ** j)
-	     */
-	    if (sizeq < size) {
-		memset(x + sizeq, '\0', (size - sizeq) * sizeof(Uint));
-	    }
-	    /* y - x */
-	    asi_sub(y, x, size, size);
-	    /* q ** -1 */
-	    if (size == 1) {
-		qinv[0] = asn_wordinv(q[0]);
-		sizea = 1;
-	    } else {
-		memset(z, '\0', size * sizeof(Uint));
-		if (i == 0xffffffffL) {
-		    z[size] = 1;
-		    sizea = size + 1;
-		} else {
-		    z[size - 1] = i + 1;
-		    sizea = size;
-		}
-		asn_modinv(qinv, &sizea, q, z, sizeq, sizea);
-	    }
-	    /* (y - x) * q ** -1 % 2 ** j */
-	    asi_mult(z, t, y, qinv, size, sizea);
-	    z[size - 1] &= i;
-	    /* q * ((y - x) * q ** -1 % 2 ** j) */
-	    asi_mult(y, t, q, z, sizeq, size);
-	    /* x + q * ((y - x) * q ** -1 % 2 ** j) */
-	    asi_add(y, x, sizemod, sizeq);
-	}
-
-	memcpy(c, y, size * sizeof(Uint));
-
-	AFREE(qinv);
-	AFREE(q);
-	AFREE(z);
-	AFREE(y);
-	AFREE(z);
-    }
-}
-
-/*
- * NAME:	asn->pow()
- * DESCRIPTION:	compute a power of an ASI
- */
-String *asn_pow(Frame *f, String *s1, String *s2, String *s3)
-{
-    Uint *a, *b, *c, *t;
-    Uint *mod, sizea, sizeb, sizemod, ticks1, ticks2;
+    Uint ticks1, ticks2;
     bool minusa, minusb;
     String *str;
 
-    mod = ALLOCA(Uint, (s3->len >> 2) + 2);
-    asi_strtonum(mod, s3, &sizemod, &minusa);
-    if (minusa || (sizemod == 1 && mod[0] == 0)) {
-	AFREE(mod);
+    Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
+    if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
+	AFREE(mod.num);
 	error("Invalid modulus");
     }
 
-    a = ALLOCA(Uint, (s1->len >> 2) + 2);
-    asi_strtonum(a, s1, &sizea, &minusa);
-    b = ALLOCA(Uint, (s2->len >> 2) + 2);
-    asi_strtonum(b, s2, &sizeb, &minusb);
-    ticks1 = sizemod * sizemod;
-    ticks2 = ticks1 * sizeb;
-    if (ticks2 / sizeb != ticks1) {
-	AFREE(b);
-	AFREE(a);
-	AFREE(mod);
+    Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
+    minusa = a.strtonum(s1);
+    Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
+    minusb = b.strtonum(s2);
+    ticks1 = mod.size * mod.size;
+    ticks2 = ticks1 * b.size;
+    if (ticks2 / b.size != ticks1) {
+	AFREE(b.num);
+	AFREE(a.num);
+	AFREE(mod.num);
 	error("Out of ticks");
     }
     ticks1 = ticks2 << 5;
-    if (ticks1 >> 5 != ticks2 || (Int) ticks1 < 0 || asn_ticks(f, ticks1)) {
-	AFREE(b);
-	AFREE(a);
-	AFREE(mod);
+    if (ticks1 >> 5 != ticks2 || (Int) ticks1 < 0 || ticks(f, ticks1)) {
+	AFREE(b.num);
+	AFREE(a.num);
+	AFREE(mod.num);
 	error("Out of ticks");
     }
 
-    c = ALLOCA(Uint, sizemod);
-    t = ALLOCA(Uint, sizemod << 2);
+    Asi c(ALLOCA(Uint, mod.size), mod.size);
+    Asi t(ALLOCA(Uint, mod.size << 2), 0);
     if (minusb) {
 	/* a ** -b = (a ** -1) ** b */
-	if (asn_ticks(f, sizea * (sizemod + 10))) {
-	    AFREE(t);
-	    AFREE(c);
-	    AFREE(b);
-	    AFREE(a);
-	    AFREE(mod);
+	if (ticks(f, a.size * (mod.size + 10))) {
+	    AFREE(t.num);
+	    AFREE(c.num);
+	    AFREE(b.num);
+	    AFREE(a.num);
+	    AFREE(mod.num);
 	    error("Out of ticks");
 	}
-	if (!asn_modinv(c, &sizea, a, mod, sizea, sizemod)) {
-	    AFREE(t);
-	    AFREE(c);
-	    AFREE(b);
-	    AFREE(a);
-	    AFREE(mod);
+	if (!c.modinv(a, mod)) {
+	    AFREE(t.num);
+	    AFREE(c.num);
+	    AFREE(b.num);
+	    AFREE(a.num);
+	    AFREE(mod.num);
 	    error("No inverse");
 	}
-	asn_power(c, t, c, b, mod, sizea, sizeb, sizemod);
+	c.power(c, b, mod, t);
     } else {
-	asn_power(c, t, a, b, mod, sizea, sizeb, sizemod);
+	c.power(a, b, mod, t);
     }
-    str = asi_numtostr(c, sizemod, minusa & (Uint) b[0]);
-    AFREE(t);
-    AFREE(c);
+    str = c.numtostr(minusa & (Uint) b.num[0]);
+    AFREE(t.num);
+    AFREE(c.num);
 
-    AFREE(b);
-    AFREE(a);
-    AFREE(mod);
+    AFREE(b.num);
+    AFREE(a.num);
+    AFREE(mod.num);
     return str;
 }
 
 /*
- * NAME:	asn->lshift()
- * DESCRIPTION:	left shift an ASI
+ * left shift an ASN
  */
-String *asn_lshift(Frame *f, String *s1, Int shift, String *s2)
+String *ASN::lshift(Frame *f, String *s1, Int shift, String *s2)
 {
-    Uint *a, *b, *c, *t, size;
-    Uint *mod, sizea, sizemod;
+    Uint size;
+    Asi a, t;
     bool minusa;
     String *str;
 
     if (shift < 0) {
 	error("Negative left shift");
     }
-    mod = ALLOCA(Uint, (s2->len >> 2) + 2);
-    asi_strtonum(mod, s2, &sizemod, &minusa);
-    if (minusa || (sizemod == 1 && mod[0] == 0)) {
-	AFREE(mod);
+    Asi mod(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
+    if (mod.strtonum(s2) || (mod.size == 1 && mod.num[0] == 0)) {
+	AFREE(mod.num);
 	error("Invalid modulus");
     }
 
     size = (s1->len >> 2) + 2 + ((shift + 31) >> 5);
-    i_add_ticks(f, 4 + size + (sizemod >> 1));
-    if (size <= sizemod << 2) {
+    i_add_ticks(f, 4 + size + (mod.size >> 1));
+    if (size <= mod.size << 2) {
 	/*
 	 * perform actual left shift
 	 */
-	a = ALLOCA(Uint, size);
-	t = ALLOCA(Uint, (sizemod << 1) + 1);
-	asi_strtonum(a, s1, &sizea, &minusa);
+	a = Asi(ALLOCA(Uint, size), 0);
+	t = Asi(ALLOCA(Uint, (mod.size << 1) + 1), 0);
+	a.strtonum(s1);
 	if (shift != 0) {
-	    sizea += (shift + 31) >> 5;
-	    asi_lshift(a, sizea, shift);
+	    a.size += (shift + 31) >> 5;
+	    a.lshift(shift);
 	}
     } else {
 	/*
 	 * multiply with 2 ** shift
 	 */
-	size = (s1->len >> 2) + 4 + sizemod;
-	a = ALLOCA(Uint, size);
-	if (size < sizemod << 2) {
-	    size = sizemod << 2;
+	size = (s1->len >> 2) + 4 + mod.size;
+	a = Asi(ALLOCA(Uint, size), 1);
+	if (size < mod.size << 2) {
+	    size = mod.size << 2;
 	}
-	t = ALLOCA(Uint, size);
-	b = ALLOCA(Uint, sizemod);
-	c = ALLOCA(Uint, (s1->len >> 2) + 2);
-	asi_strtonum(c, s1, &sizea, &minusa);
-	a[0] = 2;
-	b[0] = shift;
-	asn_power(b, t, a, b, mod, 1, 1, sizemod);
-	if (sizea >= sizemod) {
-	    asi_mult(a, t, c, b, sizea, sizemod);
-	} else {
-	    asi_mult(a, t, b, c, sizemod, sizea);
-	}
-	sizea += sizemod;
-	AFREE(c);
-	AFREE(b);
+	t = Asi(ALLOCA(Uint, size), 0);
+	Asi b(ALLOCA(Uint, mod.size), 1);
+	Asi c(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
+	c.strtonum(s1);
+	a.num[0] = 2;
+	b.num[0] = shift;
+	b.power(a, b, mod, t);
+	a.mult(b, c, t);
+	AFREE(c.num);
+	AFREE(b.num);
     }
 
-    if (sizea >= sizemod && asi_cmp(a, mod, sizea, sizemod) >= 0) {
-	if (asn_ticks(f, sizemod * (sizea - sizemod + 10))) {
-	    AFREE(t);
-	    AFREE(a);
-	    AFREE(mod);
+    if (a.size >= mod.size && a.cmp(mod) >= 0) {
+	if (ticks(f, mod.size * (a.size - mod.size + 10))) {
+	    AFREE(t.num);
+	    AFREE(a.num);
+	    AFREE(mod.num);
 	    error("Out of ticks");
 	}
-	asi_div(a, t, a, mod, sizea, sizemod);
+	a.div(a, mod, t);
     }
-    str = asi_numtostr(a, sizemod, minusa);
-    AFREE(t);
-    AFREE(a);
-    AFREE(mod);
+    str = a.numtostr(minusa);
+    AFREE(t.num);
+    AFREE(a.num);
+    AFREE(mod.num);
     return str;
 }
 
 /*
- * NAME:	asn->rshift()
- * DESCRIPTION:	right shift the ASI
+ * right shift the ASN
  */
-String *asn_rshift(Frame *f, String *s, Int shift)
+String *ASN::rshift(Frame *f, String *s, Int shift)
 {
-    Uint *a;
-    Uint sizea;
     bool minusa;
     String *str;
 
     if (shift < 0) {
 	error("Negative right shift");
     }
-    a = ALLOCA(Uint, (s->len >> 2) + 2);
-    asi_strtonum(a, s, &sizea, &minusa);
-    i_add_ticks(f, 4 + sizea);
-    if (shift >> 5 >= sizea) {
-	a[0] = 0;
-	sizea = 1;
+    Asi a(ALLOCA(Uint, (s->len >> 2) + 2), 0);
+    minusa = a.strtonum(s);
+    i_add_ticks(f, 4 + a.size);
+    if (shift >> 5 >= a.size) {
+	a.num[0] = 0;
+	a.size = 1;
     } else if (shift != 0) {
-	asi_rshift(a, sizea, shift);
+	a.rshift(shift);
     }
-    str = asi_numtostr(a, sizea, minusa);
-    AFREE(a);
+    str = a.numtostr(minusa);
+    AFREE(a.num);
 
     return str;
 }
 
 /*
- * NAME:	asn->and()
- * DESCRIPTION:	logical and of two strings
+ * logical and of two strings
  */
-String *asn_and(Frame *f, String *s1, String *s2)
+String *ASN::_and(Frame *f, String *s1, String *s2)
 {
     char *p, *q, *r;
     ssizet i, j;
@@ -1858,10 +1886,9 @@ String *asn_and(Frame *f, String *s1, String *s2)
 }
 
 /*
- * NAME:	asn->or()
- * DESCRIPTION:	logical or of two strings
+ * logical or of two strings
  */
-String *asn_or(Frame *f, String *s1, String *s2)
+String *ASN::_or(Frame *f, String *s1, String *s2)
 {
     char *p, *q, *r;
     ssizet i, j;
@@ -1902,10 +1929,9 @@ String *asn_or(Frame *f, String *s1, String *s2)
 }
 
 /*
- * NAME:	asn->xor()
- * DESCRIPTION:	logical xor of two strings
+ * logical xor of two strings
  */
-String *asn_xor(Frame *f, String *s1, String *s2)
+String *ASN::_xor(Frame *f, String *s1, String *s2)
 {
     char *p, *q, *r;
     ssizet i, j;

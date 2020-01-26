@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,15 +17,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-String *asn_add	   (Frame*, String*, String*, String*);
-String *asn_sub	   (Frame*, String*, String*, String*);
-int     asn_cmp    (Frame*, String*, String*);
-String *asn_mult   (Frame*, String*, String*, String*);
-String *asn_div	   (Frame*, String*, String*, String*);
-String *asn_mod	   (Frame*, String*, String*);
-String *asn_pow	   (Frame*, String*, String*, String*);
-String *asn_lshift (Frame*, String*, Int, String*);
-String *asn_rshift (Frame*, String*, Int);
-String *asn_and    (Frame*, String*, String*);
-String *asn_or     (Frame*, String*, String*);
-String *asn_xor    (Frame*, String*, String*);
+class ASN {
+public:
+    static String *add(Frame *f, String *s1, String *s2, String *s3);
+    static String *sub(Frame *f, String *s1, String *s2, String *s3);
+    static int cmp(Frame *f, String *s1, String *s2);
+    static String *mult(Frame *f, String *s1, String *s2, String *s3);
+    static String *div(Frame *f, String *s1, String *s2, String *s3);
+    static String *mod(Frame *f, String *s1, String *s2);
+    static String *pow(Frame *f, String *s1, String *s2, String *s3);
+    static String *lshift(Frame *f, String *s1, Int shift, String *s2);
+    static String *rshift(Frame *f, String *s, Int shift);
+    static String *_and(Frame *f, String *s1, String *s2);
+    static String *_or(Frame *f, String *s1, String *s2);
+    static String *_xor(Frame *f, String *s1, String *s2);
+
+private:
+    static bool ticks(Frame *f, Uint ticks);
+};
