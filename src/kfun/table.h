@@ -52,6 +52,7 @@ public:
 private:
     static int callgate(Frame *f, int nargs, KFun *kf);
     static char *prototype(char *proto, bool *lval);
+    static KFun *replace(KFun *table, int *size, const char *name);
     static int cmp(cvoid *cv1, cvoid *cv2);
 };
 

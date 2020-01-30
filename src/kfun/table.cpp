@@ -271,6 +271,25 @@ char *KFun::prototype(char *proto, bool *lval)
 }
 
 /*
+ * possibly replace an existing algorithmic kfun
+ */
+KFun *KFun::replace(KFun *table, int *size, const char *name)
+{
+    int i;
+    KFun *kf;
+
+    for (i = *size, kf = &table[i]; i != 0; --i) {
+	if (strcmp((--kf)->name, name) == 0) {
+	    return kf;
+	}
+    }
+
+    kf = &table[(*size)++];
+    kf->name = name;
+    return kf;
+}
+
+/*
  * add new kfuns
  */
 void KFun::add(const ExtKFun *kfadd, int n)
@@ -279,14 +298,11 @@ void KFun::add(const ExtKFun *kfadd, int n)
 
     for (; n != 0; kfadd++, --n) {
 	if (strncmp(kfadd->name, "encrypt ", 8) == 0) {
-	    kf = &kfenc[ne++];
-	    kf->name = kfadd->name + 8;
+	    kf = replace(kfenc, &ne, kfadd->name + 8);
 	} else if (strncmp(kfadd->name, "decrypt ", 8) == 0) {
-	    kf = &kfdec[nd++];
-	    kf->name = kfadd->name + 8;
+	    kf = replace(kfdec, &nd, kfadd->name + 8);
 	} else if (strncmp(kfadd->name, "hash ", 5) == 0) {
-	    kf = &kfhsh[nh++];
-	    kf->name = kfadd->name + 5;
+	    kf = replace(kfhsh, &nh, kfadd->name + 5);
 	} else {
 	    kf = &kftab[nkfun++];
 	    kf->name = kfadd->name;

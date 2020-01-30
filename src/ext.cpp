@@ -445,6 +445,10 @@ void ext_runtime_error(Frame *f, const char *mesg)
 void ext_runtime_ticks(Frame *f, int ticks)
 {
     i_add_ticks(f, ticks);
+    if (!f->rlim->noticks && f->rlim->ticks <= 0) {
+	f->rlim->ticks = 0;
+	error("Out of ticks");
+    }
 }
 
 
