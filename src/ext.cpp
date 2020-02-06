@@ -31,7 +31,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	1
-# define EXTENSION_MINOR	1
+# define EXTENSION_MINOR	2
 
 
 /*
@@ -443,6 +443,15 @@ void ext_runtime_error(Frame *f, const char *mesg)
  * DESCRIPTION:	spend ticks
  */
 void ext_runtime_ticks(Frame *f, int ticks)
+{
+    i_add_ticks(f, ticks);
+}
+
+/*
+ * NAME:	ext->runtime_check()
+ * DESCRIPTION:	check ticks
+ */
+void ext_runtime_check(Frame *f, int ticks)
 {
     i_add_ticks(f, ticks);
     if (!f->rlim->noticks && f->rlim->ticks <= 0) {
@@ -1936,7 +1945,7 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     voidf *ext_object[6];
     voidf *ext_array[6];
     voidf *ext_mapping[7];
-    voidf *ext_runtime[5];
+    voidf *ext_runtime[6];
     voidf **ftabs[11];
     int sizes[11];
     int (*init) (int, int, voidf**[], int[], const char*);
@@ -2003,6 +2012,7 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     ext_runtime[2] = (voidf *) &hash_md5_block;
     ext_runtime[3] = (voidf *) &hash_md5_end;
     ext_runtime[4] = (voidf *) &ext_runtime_ticks;
+    ext_runtime[5] = (voidf *) &ext_runtime_check;
 
     ftabs[ 0] = ext_ext;	sizes[ 0] = 5;
     ftabs[ 1] = ext_frame;	sizes[ 1] = 4;
@@ -2014,7 +2024,7 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
     ftabs[ 7] = ext_object;	sizes[ 7] = 6;
     ftabs[ 8] = ext_array;	sizes[ 8] = 6;
     ftabs[ 9] = ext_mapping;	sizes[ 9] = 7;
-    ftabs[10] = ext_runtime;	sizes[10] = 5;
+    ftabs[10] = ext_runtime;	sizes[10] = 6;
 
     if (!init(EXTENSION_MAJOR, EXTENSION_MINOR, ftabs, sizes, config)) {
 	fatal("incompatible runtime extension");
