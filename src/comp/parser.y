@@ -224,7 +224,7 @@ function_declaration
 		      Compile::funcbody($5);
 		  }
 		}
-	| class_specifier_list ident '(' formals_declaration ')'
+	| class_specifier_list function_name '(' formals_declaration ')'
 		{
 		  typechecking = Compile::typechecking();
 		  Compile::function($1, Node::createType((typechecking) ?
