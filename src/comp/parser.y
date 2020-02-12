@@ -217,7 +217,7 @@ function_declaration
 		      c_funcbody($5);
 		  }
 		}
-	| class_specifier_list ident '(' formals_declaration ')'
+	| class_specifier_list function_name '(' formals_declaration ')'
 		{
 		  typechecking = c_typechecking();
 		  c_function($1, node_type((typechecking) ? T_VOID : T_NIL,
