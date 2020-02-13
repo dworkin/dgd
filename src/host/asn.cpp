@@ -1847,7 +1847,7 @@ String *ASN::rshift(Frame *f, String *s, Int shift)
  */
 String *ASN::_and(Frame *f, String *s1, String *s2)
 {
-    char *p, *q, *r;
+    char *p, *q, *r, *buf;
     ssizet i, j;
     String *str;
 
@@ -1863,8 +1863,7 @@ String *ASN::_and(Frame *f, String *s1, String *s2)
 	r = s1->text;
     }
     i_add_ticks(f, 4 + ((i + j) >> 4));
-    str = String::create((char *) NULL, (long) i + j);
-    p = str->text;
+    buf = p = ALLOCA(char, i + j);
     if (q[0] & 0x80) {
 	while (j != 0) {
 	    *p++ = *r++;
@@ -1882,6 +1881,19 @@ String *ASN::_and(Frame *f, String *s1, String *s2)
 	--i;
     }
 
+    i = p - buf;
+    p = buf;
+    while (i != 0 && *p == '\0') {
+	p++;
+	--i;
+    }
+    if (p != buf && (i == 0 || (*p & 0x80))) {
+	--p;
+	i++;
+    }
+    str = String::create(p, i);
+    AFREE(buf);
+
     return str;
 }
 
@@ -1890,7 +1902,7 @@ String *ASN::_and(Frame *f, String *s1, String *s2)
  */
 String *ASN::_or(Frame *f, String *s1, String *s2)
 {
-    char *p, *q, *r;
+    char *p, *q, *r, *buf;
     ssizet i, j;
     String *str;
 
@@ -1906,8 +1918,7 @@ String *ASN::_or(Frame *f, String *s1, String *s2)
 	r = s1->text;
     }
     i_add_ticks(f, 4 + ((i + j) >> 4));
-    str = String::create((char *) NULL, (long) i + j);
-    p = str->text;
+    buf = p = ALLOCA(char, i + j);
     if (q[0] & 0x80) {
 	r += j;
 	while (j != 0) {
@@ -1925,6 +1936,19 @@ String *ASN::_or(Frame *f, String *s1, String *s2)
 	--i;
     }
 
+    i = p - buf;
+    p = buf;
+    while (i != 0 && *p == '\0') {
+	p++;
+	--i;
+    }
+    if (p != buf && (i == 0 || (*p & 0x80))) {
+	--p;
+	i++;
+    }
+    str = String::create(p, i);
+    AFREE(buf);
+
     return str;
 }
 
@@ -1933,7 +1957,7 @@ String *ASN::_or(Frame *f, String *s1, String *s2)
  */
 String *ASN::_xor(Frame *f, String *s1, String *s2)
 {
-    char *p, *q, *r;
+    char *p, *q, *r, *buf;
     ssizet i, j;
     String *str;
 
@@ -1949,8 +1973,7 @@ String *ASN::_xor(Frame *f, String *s1, String *s2)
 	r = s1->text;
     }
     i_add_ticks(f, 4 + ((i + j) >> 4));
-    str = String::create((char *) NULL, (long) i + j);
-    p = str->text;
+    buf = p = ALLOCA(char, i + j);
     if (q[0] & 0x80) {
 	while (j != 0) {
 	    *p++ = ~*r++;
@@ -1966,6 +1989,19 @@ String *ASN::_xor(Frame *f, String *s1, String *s2)
 	*p++ = *q++ ^ *r++;
 	--i;
     }
+
+    i = p - buf;
+    p = buf;
+    while (i != 0 && *p == '\0') {
+	p++;
+	--i;
+    }
+    if (p != buf && (i == 0 || (*p & 0x80))) {
+	--p;
+	i++;
+    }
+    str = String::create(p, i);
+    AFREE(buf);
 
     return str;
 }
