@@ -609,7 +609,9 @@ opt_caught_stmt
 case_list
 	: case	{
 		  $$ = $1;
-		  $$->r.right = $$;
+		  if ($1 != (Node *) NULL) {
+		      $$->r.right = $$;
+		  }
 		}
 	| case_list case
 		{
