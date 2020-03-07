@@ -25,4 +25,4 @@
 # include "parser.h"
 
 # define error		Compile::error
-# define warning	Compile::error
+# define warning	error
