@@ -158,7 +158,8 @@ unsigned int SnapshotInfo::restore(int fd)
     off_t posn;
 
     for (;;) {
-	if (P_read(fd, this, sizeof(SnapshotInfo)) != sizeof(SnapshotInfo) ||
+	if (P_read(fd, (char *) this, sizeof(SnapshotInfo)) !=
+							sizeof(SnapshotInfo) ||
 		   valid != 1 || version < 2 || version > FORMAT_VERSION) {
 	    error("Bad or incompatible restore file header");
 	}
