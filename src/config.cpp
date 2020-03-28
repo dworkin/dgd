@@ -308,14 +308,14 @@ bool Config::restore(int fd, int fd2)
 	error("Bad or incompatible snapshot header");
     }
     if (rheader.dflags & FLAGS_PARTIAL) {
-	SnapshotInfo *h;
+	SnapshotInfo h;
 
 	/* secondary snapshot required */
 	if (fd2 < 0) {
 	    error("Missing secondary snapshot");
 	}
-	h->restore(fd2);
-	if (memcmp(&rheader, h, DUMP_HEADERSZ) != 0) {
+	h.restore(fd2);
+	if (memcmp(&rheader, &h, DUMP_HEADERSZ) != 0) {
 	    error("Secondary snapshot has different type");
 	}
 	Swap::restore2(fd2);

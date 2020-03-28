@@ -1596,7 +1596,7 @@ String *ASN::div(Frame *f, String *s1, String *s2, String *s3)
 	error("Division by zero");
     }
     Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
-    a.strtonum(s1);
+    minusa = a.strtonum(s1);
     i_add_ticks(f, 4 + ((a.size + b.size) >> 1));
 
     Asi c(ALLOCA(Uint, a.size + 2), 0);
@@ -1643,7 +1643,7 @@ String *ASN::div(Frame *f, String *s1, String *s2, String *s3)
  */
 String *ASN::mod(Frame *f, String *s1, String *s2)
 {
-    bool minusa, minusb;
+    bool minusa;
     String *str;
 
     Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
@@ -1669,7 +1669,7 @@ String *ASN::mod(Frame *f, String *s1, String *s2)
 	i_add_ticks(f, 4 + a.size + (b.size >> 1));
 	c.copy(a);
     }
-    str = c.numtostr(minusa ^ minusb);
+    str = c.numtostr(minusa);
     AFREE(t.num);
     AFREE(c.num);
 
@@ -1737,7 +1737,7 @@ String *ASN::pow(Frame *f, String *s1, String *s2, String *s3)
     } else {
 	c.power(a, b, mod, t);
     }
-    str = c.numtostr(minusa & (Uint) b.num[0]);
+    str = c.numtostr(minusa & (bool) b.num[0]);
     AFREE(t.num);
     AFREE(c.num);
 
@@ -1774,7 +1774,7 @@ String *ASN::lshift(Frame *f, String *s1, Int shift, String *s2)
 	 */
 	a = Asi(ALLOCA(Uint, size), 0);
 	t = Asi(ALLOCA(Uint, (mod.size << 1) + 1), 0);
-	a.strtonum(s1);
+	minusa = a.strtonum(s1);
 	if (shift != 0) {
 	    a.size += (shift + 31) >> 5;
 	    a.lshift(shift);
@@ -1791,7 +1791,7 @@ String *ASN::lshift(Frame *f, String *s1, Int shift, String *s2)
 	t = Asi(ALLOCA(Uint, size), 0);
 	Asi b(ALLOCA(Uint, mod.size), 1);
 	Asi c(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
-	c.strtonum(s1);
+	minusa = c.strtonum(s1);
 	a.num[0] = 2;
 	b.num[0] = shift;
 	b.power(a, b, mod, t);

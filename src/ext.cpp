@@ -1705,6 +1705,8 @@ static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, int,
 		    void (*release)(uint64_t, uint64_t),
 		    int (*functions)(uint64_t, uint64_t, int, void*))
 {
+    UNREFERENCED_PARAMETER(functions);
+
     jit_init = init;
     jit_finish = finish;
     jit_compile = compile;

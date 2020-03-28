@@ -23,7 +23,7 @@
 /*
  * prototypes
  */
-# define FUNCDEF(name, func, proto, v) extern int func(Frame*, int, struct KFun*); extern char proto[];
+# define FUNCDEF(name, func, proto, v) extern int func(Frame*, int, KFun*); extern char proto[];
 # include "builtin.cpp"
 # include "std.cpp"
 # include "file.cpp"

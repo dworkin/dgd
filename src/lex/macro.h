@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,6 +21,9 @@
 
 class Macro : public Hashtab::Entry, public ChunkAllocated {
 public:
+    Macro(const char *name);
+    virtual ~Macro();
+
     static void init();
     static void clear();
     static void define(const char *name, const char *replace, int narg);
@@ -29,10 +32,6 @@ public:
 
     char *replace;		/* replace text */
     int narg;			/* number of arguments */
-
-private:
-    Macro(const char *name);
-    virtual ~Macro();
 };
 
 # define MA_NARG	0x1f
