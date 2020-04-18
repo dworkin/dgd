@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -219,7 +219,7 @@ void fatal(const char *format, ...)
 {
     static short count;
     va_list args;
-    char ebuf1[STRINGSZ], ebuf2[STRINGSZ];
+    char ebuf1[STRINGSZ], ebuf2[STRINGSZ + 14];
 
     if (count++ == 0) {
 	va_start(args, format);
