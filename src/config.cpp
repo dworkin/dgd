@@ -486,11 +486,11 @@ Uint Config::dsize(const char *layout)
 	    continue;
 
 	case '[':	/* struct */
-	    sz = dsize(p);
-	    al = (sz >> 8) & 0xff;
-	    rsz = (sz >> 16) & 0xff;
-	    ral = sz >> 24;
-	    sz &= 0xff;
+	    rsz = dsize(p);
+	    ral = (rsz >> 8) & 0xff;
+	    sz = (rsz >> 16) & 0xff;
+	    al = rsz >> 24;
+	    rsz &= 0xff;
 	    p = strchr(p, ']') + 1;
 	    break;
 
