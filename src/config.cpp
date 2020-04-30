@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -584,11 +584,11 @@ Uint conf_dsize(const char *layout)
 	    continue;
 
 	case '[':	/* struct */
-	    sz = conf_dsize(p);
-	    al = (sz >> 8) & 0xff;
-	    rsz = (sz >> 16) & 0xff;
-	    ral = sz >> 24;
-	    sz &= 0xff;
+	    rsz = conf_dsize(p);
+	    ral = (rsz >> 8) & 0xff;
+	    sz = (rsz >> 16) & 0xff;
+	    al = rsz >> 24;
+	    rsz &= 0xff;
 	    p = strchr(p, ']') + 1;
 	    break;
 
