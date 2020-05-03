@@ -1206,7 +1206,7 @@ int kf_call_out(Frame *f, int nargs, KFun *kf)
 	    /* delay less than 0 */
 	    return 2;
 	}
-	mdelay = 0xffff;
+	mdelay = TIME_INT;
     } else if (f->sp[nargs - 2].type == T_FLOAT) {
 	GET_FLT(&f->sp[nargs - 2], flt1);
 	if (flt1.negative() || flt1.cmp(max_int) > 0) {
@@ -1266,7 +1266,7 @@ int kf_remove_call_out(Frame *f, int n, KFun *kf)
     }
     i_add_ticks(f, 10);
     delay = f->data->delCallOut((Uint) f->sp->number, &mdelay);
-    if (mdelay != 0xffff) {
+    if (mdelay != TIME_INT) {
 	Float::itof(delay, &flt1);
 	Float::itof(mdelay, &flt2);
 	flt2.mult(thousandth);

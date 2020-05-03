@@ -329,7 +329,7 @@ Uint CallOut::check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	error("Too many callouts");
     }
 
-    if (delay == 0 && (mdelay == 0 || mdelay == 0xffff)) {
+    if (delay == 0 && (mdelay == 0 || mdelay == TIME_INT)) {
 	/*
 	 * immediate callout
 	 */
@@ -338,7 +338,7 @@ Uint CallOut::check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	}
 	*qp = &immediate;
 	*tp = t = 0;
-	*mp = 0xffff;
+	*mp = TIME_INT;
     } else {
 	/*
 	 * delayed callout
@@ -348,17 +348,17 @@ Uint CallOut::check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	    error("Too long delay");
 	}
 	t += delay;
-	if (mdelay != 0xffff) {
+	if (mdelay != TIME_INT) {
 	    m = *mp + mdelay;
 	    if (m >= 1000) {
 		m -= 1000;
 		t++;
 	    }
 	} else {
-	    m = 0xffff;
+	    m = TIME_INT;
 	}
 
-	if (mdelay == 0xffff && t < timestamp + CYCBUF_SIZE) {
+	if (mdelay == TIME_INT && t < timestamp + CYCBUF_SIZE) {
 	    /* use cyclic buffer */
 	    *qp = &cycbuf[t & CYCBUF_MASK];
 	} else {
@@ -383,7 +383,7 @@ void CallOut::create(unsigned int oindex, unsigned int handle, Uint t,
     if (q != (uindex *) NULL) {
 	co = newcallout(q, t);
     } else {
-	if (m == 0xffff) {
+	if (m == TIME_INT) {
 	    m = 0;
 	}
 	co = enqueue(t, m);
@@ -442,7 +442,7 @@ Int CallOut::remaining(Uint t, unsigned short *m)
 
     if (t != 0) {
 	t += timediff;
-	if (*m == 0xffff) {
+	if (*m == TIME_INT) {
 	    if (t > time) {
 		return t - time;
 	    }
@@ -456,7 +456,7 @@ Int CallOut::remaining(Uint t, unsigned short *m)
 	    *m -= mtime;
 	    return t - time;
 	} else {
-	    *m = 0xffff;
+	    *m = TIME_INT;
 	}
     }
 
@@ -471,7 +471,7 @@ void CallOut::del(unsigned int oindex, unsigned int handle, Uint t,
 {
     CallOut *l;
 
-    if (m == 0xffff) {
+    if (m == TIME_INT) {
 	/*
 	 * try to find the callout in the cyclic buffer
 	 */
@@ -524,14 +524,14 @@ void CallOut::list(Array *a)
 	w = &v->array->elts[2];
 	if (w->type == T_INT) {
 	    t = w->number;
-	    m = 0xffff;
+	    m = TIME_INT;
 	} else {
 	    GET_FLT(w, flt1);
 	    t = flt1.low;
 	    m = flt1.high;
 	}
 	t = remaining(t, &m);
-	if (m == 0xffff) {
+	if (m == TIME_INT) {
 	    PUT_INTVAL(w, t);
 	} else {
 	    Float::itof(t, &flt1);

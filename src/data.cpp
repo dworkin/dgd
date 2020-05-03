@@ -1796,9 +1796,6 @@ void Dataspace::loadCallouts()
     for (n = ncallouts; n > 0; --n) {
 	co->time = sco->time >> 16;
 	co->mtime = sco->time;
-	if (co->mtime == TIME_INT) {
-	    co->mtime = 0xffff;
-	}
 	co->nargs = sco->nargs;
 	if (sco->val[0].type == T_STRING) {
 	    loadValues(sco->val, co->val,
@@ -2118,8 +2115,7 @@ bool Dataspace::save(bool swap)
 	    sco = scallouts;
 	    co = callouts;
 	    for (n = ncallouts; n > 0; --n) {
-		sco->time = (Time) co->time << 16;
-		sco->time |= (co->mtime == 0xffff) ? TIME_INT : co->mtime;
+		sco->time = ((Time) co->time << 16) | co->mtime;
 		sco->nargs = co->nargs;
 		if (co->val[0].type == T_STRING) {
 		    co->val[0].modified = TRUE;
@@ -2243,8 +2239,7 @@ bool Dataspace::save(bool swap)
 	    sco = scallouts;
 	    co = callouts;
 	    for (n = ncallouts; n > 0; --n) {
-		sco->time = (Time) co->time << 16;
-		sco->time |= (co->mtime == 0xffff) ? TIME_INT : co->mtime;
+		sco->time = ((Time) co->time << 16) | co->mtime;
 		sco->nargs = co->nargs;
 		if (co->val[0].type == T_STRING) {
 		    save.save(sco->val, co->val,
@@ -2943,7 +2938,7 @@ Int Dataspace::delCallOut(Uint handle, unsigned short *mtime)
     DCallOut *co;
     Int t;
 
-    *mtime = 0xffff;
+    *mtime = TIME_INT;
     if (handle == 0 || handle > ncallouts) {
 	/* no such callout */
 	return -1;
@@ -3133,7 +3128,7 @@ Array *Dataspace::listCallouts(Dataspace *data)
 	    PUT_STRVAL(v, co->val[0].string);
 	    v++;
 	    /* time */
-	    if (co->mtime == 0xffff) {
+	    if (co->mtime == TIME_INT) {
 		PUT_INTVAL(v, co->time);
 	    } else {
 		flt.low = co->time;
