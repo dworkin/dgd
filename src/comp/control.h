@@ -170,8 +170,8 @@ private:
     static void makeFunCalls();
     static void makeSymbols();
     static void makeVarTypes();
-    static Control *_load(Object *obj, Uint instance,
-			  void (*readv) (char*, Sector*, Uint, Uint));
+    static Control *load(Object *obj, Uint instance,
+			 void (*readv) (char*, Sector*, Uint, Uint));
     static Control *conv(Object *obj, Uint instance,
 			 void (*readv) (char*, Sector*, Uint, Uint));
 

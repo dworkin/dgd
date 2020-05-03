@@ -2416,8 +2416,8 @@ static bool convDone;			/* conversion complete? */
 /*
  * load a control block
  */
-Control *Control::_load(Object *obj, Uint instance,
-			void (*readv) (char*, Sector*, Uint, Uint))
+Control *Control::load(Object *obj, Uint instance,
+		       void (*readv) (char*, Sector*, Uint, Uint))
 {
     Control *ctrl;
     SControl header;
@@ -2530,7 +2530,7 @@ Control *Control::_load(Object *obj, Uint instance,
  */
 Control *Control::load(Object *obj, Uint instance)
 {
-    return _load(obj, instance, Swap::readv);
+    return load(obj, instance, Swap::readv);
 }
 
 /*
@@ -3241,7 +3241,7 @@ Control *Control::restore(Object *obj, Uint instance,
 	if (!convDone) {
 	    ctrl = conv(obj, instance, readv);
 	} else {
-	    ctrl = _load(obj, instance, readv);
+	    ctrl = load(obj, instance, readv);
 	    if (ctrl->vmapsize == 0) {
 		ctrl->loadProgram(readv);
 		ctrl->loadStrconsts(readv);
