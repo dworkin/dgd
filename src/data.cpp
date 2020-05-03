@@ -1242,8 +1242,8 @@ static bool convDone;			/* conversion complete? */
 /*
  * load the dataspace header block
  */
-Dataspace *Dataspace::_load(Object *obj,
-			    void (*readv) (char*, Sector*, Uint, Uint))
+Dataspace *Dataspace::load(Object *obj,
+			   void (*readv) (char*, Sector*, Uint, Uint))
 {
     SDataspace header;
     Dataspace *data;
@@ -1301,7 +1301,7 @@ Dataspace *Dataspace::load(Object *obj)
 {
     Dataspace *data;
 
-    data = _load(obj, Swap::readv);
+    data = load(obj, Swap::readv);
 
     if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->master)->update &&
 	obj->count != 0) {
@@ -1314,13 +1314,14 @@ Dataspace *Dataspace::load(Object *obj)
 /*
  * convert old sarrays
  */
-Uint Dataspace::convSArray0(SArray *sa, Sector *s, Uint n, Uint size)
+Uint Dataspace::convSArray0(SArray *sa, Sector *s, Uint n, Uint offset,
+			    void (*readv) (char*, Sector*, Uint, Uint))
 {
     SArray0 *osa;
     Uint i;
 
     osa = ALLOC(SArray0, n);
-    size = Swap::convert((char *) osa, s, sa0_layout, n, size, &Swap::conv);
+    offset = Swap::convert((char *) osa, s, sa0_layout, n, offset, readv);
     for (i = 0; i < n; i++) {
 	sa->tag = osa->tag;
 	sa->ref = osa->ref;
@@ -1328,37 +1329,39 @@ Uint Dataspace::convSArray0(SArray *sa, Sector *s, Uint n, Uint size)
 	(sa++)->size = (osa++)->size;
     }
     FREE(osa - n);
-    return size;
+    return offset;
 }
 
 /*
  * convert old sstrings
  */
-Uint Dataspace::convSString0(SString *ss, Sector *s, Uint n, Uint size)
+Uint Dataspace::convSString0(SString *ss, Sector *s, Uint n, Uint offset,
+			     void (*readv) (char*, Sector*, Uint, Uint))
 {
     SString0 *oss;
     Uint i;
 
     oss = ALLOC(SString0, n);
-    size = Swap::convert((char *) oss, s, ss0_layout, n, size, &Swap::conv);
+    offset = Swap::convert((char *) oss, s, ss0_layout, n, offset, readv);
     for (i = 0; i < n; i++) {
 	ss->ref = oss->ref;
 	(ss++)->len = (oss++)->len;
     }
     FREE(oss - n);
-    return size;
+    return offset;
 }
 
 /*
  * convert old scallouts
  */
-void Dataspace::convSCallOut0(SCallOut *sco, Sector *s, Uint n, Uint size)
+void Dataspace::convSCallOut0(SCallOut *sco, Sector *s, Uint n, Uint offset,
+			      void (*readv) (char*, Sector*, Uint, Uint))
 {
     SCallOut0 *sco0;
     Uint i;
 
     sco0 = ALLOC(SCallOut0, n);
-    Swap::convert((char *) sco0, s, sco0_layout, n, size, &Swap::conv);
+    Swap::convert((char *) sco0, s, sco0_layout, n, offset, readv);
     for (i = 0; i < n; i++) {
 	if (sco0->val[0].type == T_STRING) {
 	    sco->time = ((Time) sco0->time << 16) |
@@ -1421,7 +1424,7 @@ Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
 	data->sarrays = ALLOC(SArray, header.narrays);
 	if (conv_14) {
 	    size += convSArray0(data->sarrays, data->sectors, header.narrays,
-				size);
+				size, readv);
 	} else {
 	    size += Swap::convert((char *) data->sarrays, data->sectors,
 				  sa_layout, header.narrays, size, readv);
@@ -1438,7 +1441,7 @@ Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
 	data->sstrings = ALLOC(SString, header.nstrings);
 	if (conv_14) {
 	    size += convSString0(data->sstrings, data->sectors,
-				 (Uint) header.nstrings, size);
+				 (Uint) header.nstrings, size, readv);
 	} else {
 	    size += Swap::convert((char *) data->sstrings, data->sectors,
 				  ss_layout, header.nstrings, size, readv);
@@ -1464,7 +1467,7 @@ Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
 	data->scallouts = ALLOC(SCallOut, header.ncallouts);
 	if (conv_16) {
 	    convSCallOut0(data->scallouts, data->sectors,
-			  (Uint) header.ncallouts, size);
+			  (Uint) header.ncallouts, size, readv);
 	} else {
 	    Swap::convert((char *) data->scallouts, data->sectors, sco_layout,
 			  (Uint) header.ncallouts, size, readv);
@@ -1766,7 +1769,7 @@ Value *Dataspace::elts(Array *arr)
 /*
  * load callouts from swap
  */
-void Dataspace::_loadCallouts(void (*readv) (char*, Sector*, Uint, Uint))
+void Dataspace::loadCallouts(void (*readv) (char*, Sector*, Uint, Uint))
 {
     if (ncallouts != 0) {
 	scallouts = ALLOC(SCallOut, ncallouts);
@@ -1785,7 +1788,7 @@ void Dataspace::loadCallouts()
     uindex n;
 
     if (scallouts == (SCallOut *) NULL) {
-	_loadCallouts(Swap::readv);
+	loadCallouts(Swap::readv);
     }
     sco = scallouts;
     co = callouts = ALLOC(DCallOut, ncallouts);
@@ -2428,12 +2431,12 @@ Dataspace *Dataspace::restore(Object *obj, Uint *counttab,
 	if (!convDone) {
 	    data = conv(obj, counttab, readv);
 	} else {
-	    data = _load(obj, readv);
+	    data = load(obj, readv);
 	    data->loadVars(readv);
 	    data->loadArrays(readv);
 	    data->loadElts(readv);
 	    data->loadStrings(readv);
-	    data->_loadCallouts(readv);
+	    data->loadCallouts(readv);
 	}
 	obj->data = data;
 	if (counttab != (Uint *) NULL) {

@@ -203,7 +203,7 @@ private:
     void loadValues(struct SValue *sv, Value *v, int n);
     void loadVars(void (*readv) (char*, Sector*, Uint, Uint));
     void loadElts(void (*readv) (char*, Sector*, Uint, Uint));
-    void _loadCallouts(void (*readv) (char*, Sector*, Uint, Uint));
+    void loadCallouts(void (*readv) (char*, Sector*, Uint, Uint));
     void loadCallouts();
     void saveValues(struct SValue *sv, Value *v, unsigned short n);
     bool save(bool swap);
@@ -213,11 +213,15 @@ private:
     void upgradeClone();
     void import(struct ArrImport *imp, Value *val, unsigned short n);
 
-    static Dataspace *_load(Object *obj,
+    static Dataspace *load(Object *obj,
+			   void (*readv) (char*, Sector*, Uint, Uint));
+    static Uint convSArray0(struct SArray *sa, Sector *s, Uint n, Uint offset,
 			    void (*readv) (char*, Sector*, Uint, Uint));
-    static Uint convSArray0(struct SArray *sa, Sector *s, Uint n, Uint size);
-    static Uint convSString0(struct SString *ss, Sector *s, Uint n, Uint size);
-    static void convSCallOut0(struct SCallOut *ss, Sector *s, Uint n, Uint size);
+    static Uint convSString0(struct SString *ss, Sector *s, Uint n, Uint offset,
+			     void (*readv) (char*, Sector*, Uint, Uint));
+    static void convSCallOut0(struct SCallOut *sco, Sector *s, Uint n,
+			      Uint offset,
+			      void (*readv) (char*, Sector*, Uint, Uint));
     static Dataspace *conv(Object *obj, Uint *counttab,
 			   void (*readv) (char*, Sector*, Uint, Uint));
     static void fixObjs(struct SValue *v, Uint n, Uint *ctab);
