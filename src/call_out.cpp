@@ -827,7 +827,6 @@ void CallOut::restore(int fd, Uint t, bool conv16)
     uindex n, i, offset;
     CallOut *co;
     uindex *cb;
-    uindex buffer[CYCBUF_SIZE];
 
     /* read and check header */
     timediff = t;
@@ -841,9 +840,7 @@ void CallOut::restore(int fd, Uint t, bool conv16)
     running = dh.running;
     immediate = dh.immediate;
     timestamp = dh.timestamp;
-    t = 0;
 
-    timestamp += t;
     timediff -= timestamp;
     if (queuebrk > cycbrk || cycbrk == 0) {
 	error("Restored too many callouts");
@@ -876,17 +873,8 @@ void CallOut::restore(int fd, Uint t, bool conv16)
 	    Config::dread(fd, (char *) (cotab + cycbrk), CO2_LAYOUT,
 			  (Uint) (cotabsz - cycbrk));
 	}
-	for (co = cotab, i = queuebrk; i != 0; co++, --i) {
-	    co->time += t;
-	}
     }
-    Config::dread(fd, (char *) buffer, "u", (Uint) CYCBUF_SIZE);
-
-    /* cycle around cyclic buffer */
-    t &= CYCBUF_MASK;
-    memcpy(cycbuf + t, buffer,
-	   (unsigned int) (CYCBUF_SIZE - t) * sizeof(uindex));
-    memcpy(cycbuf, buffer + CYCBUF_SIZE - t, (unsigned int) t * sizeof(uindex));
+    Config::dread(fd, (char *) cycbuf, "u", (Uint) CYCBUF_SIZE);
 
     nzero = 0;
     if (running != 0) {
