@@ -108,13 +108,13 @@ public:
     char secsize[2];
     char s[2];			/* short */
     char i[4];			/* Int */
-    char l[8];
+    char l[8];			/* Uuint */
     char utsize;		/* sizeof(uindex) + sizeof(ssizet) */
     char desize;		/* sizeof(sector) + sizeof(eindex) */
     char psize;			/* sizeof(char*), upper nibble reserved */
     char calign;		/* align(char) */
     char salign;		/* align(short) */
-    char ialign;		/* align(Int) */
+    char ilalign;		/* align(Int) + align(Uuint) */
     char palign;		/* align(char*) */
     char zalign;		/* align(struct) */
     char start[4];

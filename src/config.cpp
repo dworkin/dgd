@@ -119,10 +119,11 @@ static Config conf[] = {
 struct alignc { char fill; char c;	};
 struct aligns { char fill; short s;	};
 struct aligni { char fill; Int i;	};
+struct alignl { char fill; Uuint l;	};
 struct alignp { char fill; char *p;	};
 struct alignz { char c;			};
 
-# define FORMAT_VERSION	16
+# define FORMAT_VERSION	17
 
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
 # define DUMP_HEADERSZ	28	/* header size */
@@ -132,6 +133,8 @@ struct alignz { char c;			};
 # define FLAGS_HOTBOOT	0x04	/* hotboot snapshot */
 
 static SnapshotInfo header;	/* snapshot header */
+static int ialign;		/* align(Int) */
+static int lalign;		/* align(Uuint) */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -141,6 +144,8 @@ static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
 static int resize;		/* sizeof(eindex) */
+static int rialign;		/* align(Int) */
+static int rlalign;		/* align(Uuint) */
 static int rualign;		/* align(uindex) */
 static int rtalign;		/* align(ssizet) */
 static int rdalign;		/* align(sector) */
@@ -160,7 +165,7 @@ unsigned int SnapshotInfo::restore(int fd)
     for (;;) {
 	if (P_read(fd, (char *) this, sizeof(SnapshotInfo)) !=
 							sizeof(SnapshotInfo) ||
-		   valid != 1 || version < 2 || version > FORMAT_VERSION) {
+		   valid != 1 || version < 14 || version > FORMAT_VERSION) {
 	    error("Bad or incompatible restore file header");
 	}
 	size = (UCHAR(secsize[0]) << 8) | UCHAR(secsize[1]);
@@ -184,9 +189,11 @@ void Config::dumpinit()
 {
     short s;
     Int i;
+    Uuint l;
     alignc cdummy;
     aligns sdummy;
     aligni idummy;
+    alignl ldummy;
     alignp pdummy;
 
     header.valid = TRUE;			/* valid dump flag */
@@ -201,29 +208,40 @@ void Config::dumpinit()
 
     s = 0x1234;
     i = 0x12345678L;
+    l = 0x1234567890abcdefLL;
     header.s[0] = strchr((char *) &s, 0x12) - (char *) &s;
     header.s[1] = strchr((char *) &s, 0x34) - (char *) &s;
     header.i[0] = strchr((char *) &i, 0x12) - (char *) &i;
     header.i[1] = strchr((char *) &i, 0x34) - (char *) &i;
     header.i[2] = strchr((char *) &i, 0x56) - (char *) &i;
     header.i[3] = strchr((char *) &i, 0x78) - (char *) &i;
+    header.l[0] = strchr((char *) &l, 0x12) - (char *) &l;
+    header.l[1] = strchr((char *) &l, 0x34) - (char *) &l;
+    header.l[2] = strchr((char *) &l, 0x56) - (char *) &l;
+    header.l[3] = strchr((char *) &l, 0x78) - (char *) &l;
+    header.l[4] = strchr((char *) &l, 0x90) - (char *) &l;
+    header.l[5] = strchr((char *) &l, 0xab) - (char *) &l;
+    header.l[6] = strchr((char *) &l, 0xcd) - (char *) &l;
+    header.l[7] = strchr((char *) &l, 0xef) - (char *) &l;
     header.utsize = sizeof(uindex) | (sizeof(ssizet) << 4);
     header.desize = sizeof(Sector) | (sizeof(eindex) << 4);
     header.psize = sizeof(char*) | (sizeof(char) << 4);
     header.calign = (char *) &cdummy.c - (char *) &cdummy.fill;
     header.salign = (char *) &sdummy.s - (char *) &sdummy.fill;
-    header.ialign = (char *) &idummy.i - (char *) &idummy.fill;
+    ialign = (char *) &idummy.i - (char *) &idummy.fill;
+    lalign = (char *) &ldummy.l - (char *) &ldummy.fill;
+    header.ilalign = ialign | (lalign << 4);
     header.palign = (char *) &pdummy.p - (char *) &pdummy.fill;
     header.zalign = sizeof(alignz);
     header.zero1 = header.zero2 = 0;
 
-    ualign = (sizeof(uindex) == sizeof(short)) ? header.salign : header.ialign;
-    talign = (sizeof(ssizet) == sizeof(short)) ? header.salign : header.ialign;
-    dalign = (sizeof(Sector) == sizeof(short)) ? header.salign : header.ialign;
+    ualign = (sizeof(uindex) == sizeof(short)) ? header.salign : ialign;
+    talign = (sizeof(ssizet) == sizeof(short)) ? header.salign : ialign;
+    dalign = (sizeof(Sector) == sizeof(short)) ? header.salign : ialign;
     switch (sizeof(eindex)) {
     case sizeof(char):	ealign = header.calign; break;
     case sizeof(short):	ealign = header.salign; break;
-    case sizeof(Int):	ealign = header.ialign; break;
+    case sizeof(Int):	ealign = ialign; break;
     }
 }
 
@@ -284,11 +302,11 @@ void Config::dump(bool incr, bool boot)
  */
 bool Config::restore(int fd, int fd2)
 {
-    bool conv_14, conv_15;
+    bool conv_14, conv_15, conv_16;
     unsigned int secsize;
 
     secsize = rheader.restore(fd);
-    conv_14 = conv_15 = FALSE;
+    conv_14 = conv_15 = conv_16 = FALSE;
     if (rheader.version < 14) {
 	error("Incompatible snapshot version");
     }
@@ -300,6 +318,9 @@ bool Config::restore(int fd, int fd2)
     }
     if (rheader.version < 16) {
 	conv_15 = TRUE;
+    }
+    if (rheader.version < 17) {
+	conv_16 = TRUE;
     }
     header.version = rheader.version;
     if (memcmp(&header, &rheader, DUMP_TYPE) != 0 || rheader.zero1 != 0 ||
@@ -345,14 +366,15 @@ bool Config::restore(int fd, int fd2)
     if ((rheader.salign >> 4) != 0) {
 	error("Cannot restore Int size > 4");
     }
-    rheader.ialign &= 0xf;
-    rualign = (rusize == sizeof(short)) ? rheader.salign : rheader.ialign;
-    rtalign = (rtsize == sizeof(short)) ? rheader.salign : rheader.ialign;
-    rdalign = (rdsize == sizeof(short)) ? rheader.salign : rheader.ialign;
+    rialign = rheader.ilalign & 0xf;
+    rlalign = UCHAR(rheader.ilalign) >> 4;
+    rualign = (rusize == sizeof(short)) ? rheader.salign : rialign;
+    rtalign = (rtsize == sizeof(short)) ? rheader.salign : rialign;
+    rdalign = (rdsize == sizeof(short)) ? rheader.salign : rialign;
     switch (resize) {
     case sizeof(char):	realign = rheader.calign; break;
     case sizeof(short):	realign = rheader.salign; break;
-    case sizeof(Int):	realign = rheader.ialign; break;
+    case sizeof(Int):	realign = rialign; break;
     }
     if (sizeof(uindex) < rusize || sizeof(ssizet) < rtsize ||
 	sizeof(Sector) < rdsize) {
@@ -366,8 +388,8 @@ bool Config::restore(int fd, int fd2)
     Swap::restore(fd, secsize);
     KFun::restore(fd);
     Object::restore(fd, rheader.dflags & FLAGS_PARTIAL);
-    Dataspace::initConv(conv_14);
-    Control::initConv(conv_14, conv_15);
+    Dataspace::initConv(conv_14, conv_16);
+    Control::initConv(conv_14, conv_15, conv_16);
     if (conv_14) {
 	struct {
 	    uindex nprecomps;
@@ -386,7 +408,7 @@ bool Config::restore(int fd, int fd2)
 	}
     }
     boottime = P_time();
-    CallOut::restore(fd, boottime);
+    CallOut::restore(fd, boottime, conv_16);
 
     if (fd2 >= 0) {
 	P_close(fd2);
@@ -407,10 +429,11 @@ Uint Config::dsize(const char *layout)
     const char *p;
     Uint sz, rsz, al, ral;
     Uint size, rsize, align, ralign;
+    Uint msize, rmsize, malign, rmalign;
 
     p = layout;
-    size = rsize = 0;
-    align = ralign = 1;
+    size = rsize = msize = rmsize = 0;
+    align = ralign = malign = rmalign = 1;
     sz = rsz = al = ral = 0;
 
     for (;;) {
@@ -436,8 +459,14 @@ Uint Config::dsize(const char *layout)
 
 	case 'i':	/* Int */
 	    sz = rsz = sizeof(Int);
-	    al = header.ialign;
-	    ral = rheader.ialign;
+	    al = ialign;
+	    ral = rialign;
+	    break;
+
+	case 'l':	/* Uuint */
+	    sz = rsz = sizeof(Uuint);
+	    al = lalign;
+	    ral = rlalign;
 	    break;
 
 	case 't':	/* ssizet */
@@ -494,12 +523,33 @@ Uint Config::dsize(const char *layout)
 	    p = strchr(p, ']') + 1;
 	    break;
 
+	case '|':	/* union */
+	    msize = size;
+	    rmsize = rsize;
+	    malign = ALGN(align, header.zalign);
+	    rmalign = ALGN(ralign, rheader.zalign);
+	    size = rsize = 0;
+	    align = ralign = 1;
+	    continue;
+
 	case ']':
 	case '\0':	/* end of layout */
 	    if (p != layout + 2) {
 		/* a stuct and not an array element */
 		align = ALGN(align, header.zalign);
 		ralign = ALGN(ralign, rheader.zalign);
+	    }
+	    if (size < msize) {
+		size = msize;
+	    }
+	    if (rsize < rmsize) {
+		rsize = rmsize;
+	    }
+	    if (align < malign) {
+		align = malign;
+	    }
+	    if (ralign < rmalign) {
+		ralign = rmalign;
 	    }
 	    return ALGN(rsize, ralign) |
 		   (ralign << 8) |
@@ -527,7 +577,7 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
     rsize &= 0xff;
     while (n > 0) {
 	i = ri = 0;
-	for (p = layout; *p != '\0' && *p != ']'; p++) {
+	for (p = layout; *p != '\0' && *p != '|' && *p != ']'; p++) {
 	    switch (*p) {
 	    case 'c':
 		i = ALGN(i, header.calign);
@@ -572,14 +622,29 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		break;
 
 	    case 'i':
-		i = ALGN(i, header.ialign);
-		ri = ALGN(ri, rheader.ialign);
+		i = ALGN(i, ialign);
+		ri = ALGN(ri, rialign);
 		buf[i + header.i[0]] = rbuf[ri + rheader.i[0]];
 		buf[i + header.i[1]] = rbuf[ri + rheader.i[1]];
 		buf[i + header.i[2]] = rbuf[ri + rheader.i[2]];
 		buf[i + header.i[3]] = rbuf[ri + rheader.i[3]];
 		i += sizeof(Int);
 		ri += sizeof(Int);
+		break;
+
+	    case 'l':
+		i = ALGN(i, lalign);
+		ri = ALGN(ri, rlalign);
+		buf[i + header.l[0]] = rbuf[ri + rheader.l[0]];
+		buf[i + header.l[1]] = rbuf[ri + rheader.l[1]];
+		buf[i + header.l[2]] = rbuf[ri + rheader.l[2]];
+		buf[i + header.l[3]] = rbuf[ri + rheader.l[3]];
+		buf[i + header.l[4]] = rbuf[ri + rheader.l[4]];
+		buf[i + header.l[5]] = rbuf[ri + rheader.l[5]];
+		buf[i + header.l[6]] = rbuf[ri + rheader.l[6]];
+		buf[i + header.l[7]] = rbuf[ri + rheader.l[7]];
+		i += sizeof(Uuint);
+		ri += sizeof(Uuint);
 		break;
 
 	    case 't':

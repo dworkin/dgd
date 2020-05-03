@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -36,7 +36,7 @@ public:
     static long swaprate1();
     static long swaprate5();
     static bool save(int fd);
-    static void restore(int fd, Uint t);
+    static void restore(int fd, Uint t, bool conv16);
 
 private:
     static CallOut *enqueue(Uint t, unsigned short m);
@@ -46,11 +46,17 @@ private:
     static bool rmshort(uindex *cyc, uindex i, uindex handle, Uint t);
     static void expire();
 
+    union {
+	Time time;	/* when to call */
+	struct {
+	    uindex count;	/* # in list */
+	    uindex prev;	/* previous in list */
+	    uindex next;	/* next in list */
+	} r;
+    };
     uindex handle;	/* callout handle */
     uindex oindex;	/* index in object table */
-    Uint time;		/* when to call */
-    uindex htime;	/* when to call, high word */
-    uindex mtime;	/* when to call in milliseconds */
 };
 
-# define CO_LAYOUT	"uuiuu"
+# define CO1_LAYOUT	"[l|uuu]uu"
+# define CO2_LAYOUT	"[uuu|l]uu"

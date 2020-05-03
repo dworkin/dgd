@@ -2335,8 +2335,7 @@ struct SControl {
     short ninherits;		/* # objects in inherit table */
     uindex imapsz;		/* inherit map size */
     Uint progsize;		/* size of program code */
-    Uint compiled;		/* time of compilation */
-    unsigned short comphigh;	/* time of compilation high word */
+    Time compiled;		/* time of compilation */
     unsigned short nstrings;	/* # strings in string constant table */
     Uint strsize;		/* size of string constant table */
     char nfuncdefs;		/* # entries in function definition table */
@@ -2348,7 +2347,7 @@ struct SControl {
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
 };
 
-static char sc_layout[] = "dccsuiissicccusss";
+static char sc_layout[] = "dccsuilsicccusss";
 
 struct SControl0 {
     Sector nsectors;		/* # sectors in part one */
@@ -2371,6 +2370,28 @@ struct SControl0 {
 
 static char sc0_layout[] = "dssuiissicccusss";
 
+struct SControl1 {
+    Sector nsectors;		/* # sectors in part one */
+    char flags;			/* control flags: compression */
+    char version;		/* program version */
+    short ninherits;		/* # objects in inherit table */
+    uindex imapsz;		/* inherit map size */
+    Uint progsize;		/* size of program code */
+    Uint compiled;		/* time of compilation */
+    unsigned short comphigh;	/* time of compilation high word */
+    unsigned short nstrings;	/* # strings in string constant table */
+    Uint strsize;		/* size of string constant table */
+    char nfuncdefs;		/* # entries in function definition table */
+    char nvardefs;		/* # entries in variable definition table */
+    char nclassvars;		/* # class variables */
+    uindex nfuncalls;		/* # entries in function call table */
+    unsigned short nsymbols;	/* # entries in symbol table */
+    unsigned short nvariables;	/* # variables */
+    unsigned short vmapsize;	/* size of variable map, or 0 for none */
+};
+
+static char sc1_layout[] = "dccsuiissicccusss";
+
 struct SInherit {
     uindex oindex;		/* index in object table */
     uindex progoffset;		/* program offset */
@@ -2389,7 +2410,7 @@ struct StrConst0 {
 # define DSTR0_LAYOUT	"it"
 
 static bool conv_14;			/* convert arrays & strings? */
-static bool conv_15;			/* convert control blocks? */
+static bool conv_15, conv_16;		/* convert control blocks? */
 static bool convDone;			/* conversion complete? */
 
 /*
@@ -2462,7 +2483,7 @@ Control *Control::_load(Object *obj, Uint instance,
     }
 
     /* compile time */
-    ctrl->compiled = header.compiled;
+    ctrl->compiled = header.compiled >> 16;
 
     /* program */
     ctrl->progoffset = size;
@@ -2541,8 +2562,7 @@ Control *Control::conv(Object *obj, Uint instance,
 	header.ninherits = h0.ninherits;
 	header.imapsz = h0.imapsz;
 	header.progsize = h0.progsize;
-	header.compiled = h0.compiled;
-	header.comphigh = h0.comphigh;
+	header.compiled = (Time) h0.compiled << 16;
 	header.nstrings = h0.nstrings;
 	header.strsize = h0.strsize;
 	header.nfuncdefs = h0.nfuncdefs;
@@ -2552,6 +2572,27 @@ Control *Control::conv(Object *obj, Uint instance,
 	header.nsymbols = h0.nsymbols;
 	header.nvariables = h0.nvariables;
 	header.vmapsize = h0.vmapsize;
+    } else if (conv_16) {
+	SControl1 h1;
+
+	size = Swap::convert((char *) &h1, &obj->cfirst, sc1_layout, (Uint) 1,
+			     (Uint) 0, readv);
+	header.nsectors = h1.nsectors;
+	header.flags = h1.flags;
+	header.version = h1.version;
+	header.ninherits = h1.ninherits;
+	header.imapsz = h1.imapsz;
+	header.progsize = h1.progsize;
+	header.compiled = (Time) h1.compiled << 16;
+	header.nstrings = h1.nstrings;
+	header.strsize = h1.strsize;
+	header.nfuncdefs = h1.nfuncdefs;
+	header.nvardefs = h1.nvardefs;
+	header.nclassvars = h1.nclassvars;
+	header.nfuncalls = h1.nfuncalls;
+	header.nsymbols = h1.nsymbols;
+	header.nvariables = h1.nvariables;
+	header.vmapsize = h1.vmapsize;
     } else {
 	size = Swap::convert((char *) &header, &obj->cfirst, sc_layout,
 			     (Uint) 1, (Uint) 0, readv);
@@ -2560,7 +2601,7 @@ Control *Control::conv(Object *obj, Uint instance,
     ctrl->version = header.version;
     ctrl->ninherits = header.ninherits;
     ctrl->imapsz = header.imapsz;
-    ctrl->compiled = header.compiled;
+    ctrl->compiled = header.compiled >> 16;
     ctrl->progsize = header.progsize;
     ctrl->nstrings = header.nstrings;
     ctrl->strsize = header.strsize;
@@ -2991,8 +3032,7 @@ void Control::save()
     header.version = version;
     header.ninherits = ninherits;
     header.imapsz = imapsz;
-    header.compiled = compiled;
-    header.comphigh = 0;
+    header.compiled = (Time) compiled << 16;
     header.progsize = progsize;
     header.nstrings = nstrings;
     header.strsize = strsize;
@@ -3349,17 +3389,18 @@ void Control::init()
 {
     chead = ctail = (Control *) NULL;
     nctrl = 0;
-    conv_14 = conv_15 = FALSE;
+    conv_14 = conv_15 = conv_16 = FALSE;
     convDone = FALSE;
 }
 
 /*
  * prepare for conversions
  */
-void Control::initConv(bool c14, bool c15)
+void Control::initConv(bool c14, bool c15, bool c16)
 {
     conv_14 = c14;
     conv_15 = c15;
+    conv_16 = c16;
 }
 
 /*

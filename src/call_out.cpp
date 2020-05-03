@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,10 +31,7 @@
 # define CYCBUF_MASK	(CYCBUF_SIZE - 1) /* cyclic buffer mask */
 # define SWPERIOD	60		/* swaprate buffer size */
 
-# define count		time
-# define last		htime
-# define prev		htime
-# define next		mtime
+# define last		prev
 
 static CallOut *cotab;			/* callout table */
 static uindex cotabsz;			/* callout table size */
@@ -66,7 +63,6 @@ bool CallOut::init(unsigned int max)
 	/* only if callouts are enabled */
 	cotab = ALLOC(CallOut, max + 1);
 	cotab[0].time = 0;	/* sentinel for the heap */
-	cotab[0].mtime = 0;
 	cotab++;
 	flist = 0;
 	timestamp = timeout = 0;
@@ -94,6 +90,7 @@ CallOut *CallOut::enqueue(Uint t, unsigned short m)
 {
     uindex i, j;
     CallOut *l;
+    Time time;
 
     /*
      * create a free spot in the heap, and sift it upward
@@ -105,14 +102,13 @@ CallOut *CallOut::enqueue(Uint t, unsigned short m)
 # endif
     i = ++queuebrk;
     l = cotab - 1;
-    for (j = i >> 1; l[j].time > t || (l[j].time == t && l[j].mtime > m);
-	 i = j, j >>= 1) {
+    time = ((Time) t << 16) | m;
+    for (j = i >> 1; l[j].time > time; i = j, j >>= 1) {
 	l[i] = l[j];
     }
 
     l = &l[i];
-    l->time = t;
-    l->mtime = m;
+    l->time = time;
     return l;
 }
 
@@ -121,29 +117,25 @@ CallOut *CallOut::enqueue(Uint t, unsigned short m)
  */
 void CallOut::dequeue(uindex i)
 {
-    Uint t;
-    short m;
+    Time t;
     uindex j;
     CallOut *l;
 
     l = cotab - 1;
     i++;
     t = l[queuebrk].time;
-    m = l[queuebrk].mtime;
     if (t < l[i].time) {
 	/* sift upward */
-	for (j = i >> 1; l[j].time > t || (l[j].time == t && l[j].mtime > m);
-	     i = j, j >>= 1) {
+	for (j = i >> 1; l[j].time > t; i = j, j >>= 1) {
 	    l[i] = l[j];
 	}
     } else if (i <= UINDEX_MAX / 2) {
 	/* sift downward */
 	for (j = i << 1; j < queuebrk; i = j, j <<= 1) {
-	    if (l[j].time > l[j + 1].time ||
-		(l[j].time == l[j + 1].time && l[j].mtime > l[j + 1].mtime)) {
+	    if (l[j].time > l[j + 1].time) {
 		j++;
 	    }
-	    if (t < l[j].time || (t == l[j].time && m <= l[j].mtime)) {
+	    if (t <= l[j].time) {
 		break;
 	    }
 	    l[i] = l[j];
@@ -164,7 +156,7 @@ CallOut *CallOut::newcallout(uindex *list, Uint t)
     if (flist != 0) {
 	/* get callout from free list */
 	i = flist;
-	flist = cotab[i].next;
+	flist = cotab[i].r.next;
     } else {
 	/* allocate new callout */
 # ifdef DEBUG
@@ -183,7 +175,7 @@ CallOut *CallOut::newcallout(uindex *list, Uint t)
     if (*list == 0) {
 	/* first one in list */
 	*list = i;
-	co->count = 1;
+	co->r.count = 1;
 
 	if (t != 0 && (timeout == 0 || t < timeout)) {
 	    timeout = t;
@@ -191,12 +183,12 @@ CallOut *CallOut::newcallout(uindex *list, Uint t)
     } else {
 	/* add to list */
 	first = &cotab[*list];
-	last = (first->count == 1) ? first : &cotab[first->last];
-	last->next = i;
-	first->count++;
-	first->last = i;
+	last = (first->r.count == 1) ? first : &cotab[first->r.last];
+	last->r.next = i;
+	first->r.count++;
+	first->r.last = i;
     }
-    co->prev = co->next = 0;
+    co->r.prev = co->r.next = 0;
 
     return co;
 }
@@ -216,7 +208,7 @@ void CallOut::freecallout(uindex *cyc, uindex j, uindex i, Uint t)
     l = cotab;
     first = &l[*cyc];
     if (i == j) {
-	if (first->count == 1) {
+	if (first->r.count == 1) {
 	    *cyc = 0;
 
 	    if (t != 0 && t == timeout) {
@@ -230,21 +222,21 @@ void CallOut::freecallout(uindex *cyc, uindex j, uindex i, Uint t)
 		}
 	    }
 	} else {
-	    *cyc = first->next;
-	    l[first->next].count = first->count - 1;
-	    if (first->count != 2) {
-		l[first->next].last = first->last;
+	    *cyc = first->r.next;
+	    l[first->r.next].r.count = first->r.count - 1;
+	    if (first->r.count != 2) {
+		l[first->r.next].r.last = first->r.last;
 	    }
 	}
     } else {
-	--first->count;
-	if (i == first->last) {
-	    l[j].prev = l[j].next = 0;
-	    if (first->count != 1) {
-		first->last = j;
+	--first->r.count;
+	if (i == first->r.last) {
+	    l[j].r.prev = l[j].r.next = 0;
+	    if (first->r.count != 1) {
+		first->r.last = j;
 	    }
 	} else {
-	    l[j].next = l[i].next;
+	    l[j].r.next = l[i].r.next;
 	}
     }
 
@@ -258,13 +250,13 @@ void CallOut::freecallout(uindex *cyc, uindex j, uindex i, Uint t)
 	    /* followed by free callout */
 	    if (cycbrk == flist) {
 		/* first in the free list */
-		flist = l->next;
+		flist = l->r.next;
 	    } else {
 		/* connect previous to next */
-		cotab[l->prev].next = l->next;
-		if (l->next != 0) {
+		cotab[l->r.prev].r.next = l->r.next;
+		if (l->r.next != 0) {
 		    /* connect next to previous */
-		    cotab[l->next].prev = l->prev;
+		    cotab[l->r.next].r.prev = l->r.prev;
 		}
 	    }
 	}
@@ -272,10 +264,10 @@ void CallOut::freecallout(uindex *cyc, uindex j, uindex i, Uint t)
 	/* add to free list */
 	if (flist != 0) {
 	    /* link next to current */
-	    cotab[flist].prev = i;
+	    cotab[flist].r.prev = i;
 	}
 	/* link to next */
-	l->next = flist;
+	l->r.next = flist;
 	flist = i;
     }
 }
@@ -419,12 +411,12 @@ bool CallOut::rmshort(uindex *cyc, uindex i, uindex handle, Uint t)
 	    freecallout(cyc, k, k, t);
 	    return TRUE;
 	}
-	if (l[*cyc].count != 1) {
+	if (l[*cyc].r.count != 1) {
 	    /*
 	     * list contains more than 1 element
 	     */
 	    j = k;
-	    k = l[j].next;
+	    k = l[j].r.next;
 	    do {
 		if (l[k].oindex == i && l[k].handle == handle) {
 		    /* found it */
@@ -432,7 +424,7 @@ bool CallOut::rmshort(uindex *cyc, uindex i, uindex handle, Uint t)
 		    return TRUE;
 		}
 		j = k;
-	    } while ((k = l[j].next) != 0);
+	    } while ((k = l[j].r.next) != 0);
 	}
     }
     return FALSE;
@@ -560,18 +552,19 @@ void CallOut::expire()
     uindex handle, oindex, i, *cyc;
     Uint t;
     unsigned short m;
+    Time time;
 
     t = P_mtime(&m) - timediff;
+    time = ((Time) t << 16) | m;
     if ((timeout != 0 && timeout <= t) ||
-	(queuebrk != 0 &&
-	 (cotab[0].time < t || (cotab[0].time == t && cotab[0].mtime <= m)))) {
+	(queuebrk != 0 && cotab[0].time <= time)) {
 	while (timestamp < t) {
 	    timestamp++;
 
 	    /*
 	     * from queue
 	     */
-	    while (queuebrk != 0 && cotab[0].time < timestamp) {
+	    while (queuebrk != 0 && (Uint) (cotab[0].time >> 16) < timestamp) {
 		handle = cotab[0].handle;
 		oindex = cotab[0].oindex;
 		dequeue(0);
@@ -591,21 +584,21 @@ void CallOut::expire()
 		    immediate = i;
 		} else {
 		    first = &cotab[immediate];
-		    last = (first->count == 1) ? first : &cotab[first->last];
-		    last->next = i;
-		    first->count += cotab[i].count;
-		    first->last = (cotab[i].count == 1) ? i : cotab[i].last;
+		    last = (first->r.count == 1) ?
+			    first : &cotab[first->r.last];
+		    last->r.next = i;
+		    first->r.count += cotab[i].r.count;
+		    first->r.last = (cotab[i].r.count == 1) ?
+				     i : cotab[i].r.last;
 		}
-		nzero += cotab[i].count;
+		nzero += cotab[i].r.count;
 	    }
 	}
 
 	/*
 	 * from queue
 	 */
-	while (queuebrk != 0 &&
-	       (cotab[0].time < t ||
-		(cotab[0].time == t && cotab[0].mtime <= m))) {
+	while (queuebrk != 0 && cotab[0].time <= time) {
 	    handle = cotab[0].handle;
 	    oindex = cotab[0].oindex;
 	    dequeue(0);
@@ -712,10 +705,9 @@ Uint CallOut::delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
 	rmtime = 0;
     }
     if (queuebrk != 0 &&
-	(rtime == 0 || cotab[0].time < rtime ||
-	 (cotab[0].time == rtime && cotab[0].mtime <= rmtime))) {
-	rtime = cotab[0].time;
-	rmtime = cotab[0].mtime;
+	(rtime == 0 || cotab[0].time <= (((Time) rtime << 16) | rmtime))) {
+	rtime = cotab[0].time >> 16;
+	rmtime = cotab[0].time;
     }
     if (rtime != 0) {
 	rtime += timediff;
@@ -764,6 +756,16 @@ long CallOut::swaprate5()
     return ::swaprate5;
 }
 
+
+struct CallOut0 {
+    uindex handle;		/* callout handle */
+    uindex oindex;		/* index in object table */
+    Uint time;			/* when to call */
+    uindex htime;		/* when to call, high word */
+    uindex mtime;		/* when to call, milliseconds */
+};
+
+# define CO0_LAYOUT	"uuiuu"
 
 struct CallOutHeader {
     uindex cotabsz;		/* callout table size */
@@ -819,7 +821,7 @@ bool CallOut::save(int fd)
 /*
  * restore callout table
  */
-void CallOut::restore(int fd, Uint t)
+void CallOut::restore(int fd, Uint t, bool conv16)
 {
     CallOutHeader dh;
     uindex n, i, offset;
@@ -850,10 +852,30 @@ void CallOut::restore(int fd, Uint t)
     /* read tables */
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	Config::dread(fd, (char *) cotab, CO_LAYOUT, (Uint) queuebrk);
-	Config::dread(fd, (char *) (cotab + cycbrk), CO_LAYOUT,
-		      (Uint) (cotabsz - cycbrk));
+	if (conv16) {
+	    CallOut0 *co;
 
+	    co = ALLOC(CallOut0, n);
+	    Config::dread(fd, (char *) co, CO0_LAYOUT, (Uint) n);
+	    for (i = 0; i < queuebrk; co++, i++) {
+		cotab[i].time = (((Time) co->htime) << 48) |
+				(((Time) co->time) << 16) | co->mtime;
+		cotab[i].handle = co->handle;
+		cotab[i].oindex = co->oindex;
+	    }
+	    for (i = cycbrk; i < cotabsz; co++, i++) {
+		cotab[i].r.count = co->time;
+		cotab[i].r.prev = co->htime;
+		cotab[i].r.next = co->mtime;
+		cotab[i].handle = co->handle;
+		cotab[i].oindex = co->oindex;
+	    }
+	    FREE(co - queuebrk - cotabsz + cycbrk);
+	} else {
+	    Config::dread(fd, (char *) cotab, CO1_LAYOUT, (Uint) queuebrk);
+	    Config::dread(fd, (char *) (cotab + cycbrk), CO2_LAYOUT,
+			  (Uint) (cotabsz - cycbrk));
+	}
 	for (co = cotab, i = queuebrk; i != 0; co++, --i) {
 	    co->time += t;
 	}
@@ -869,11 +891,11 @@ void CallOut::restore(int fd, Uint t)
     nzero = 0;
     if (running != 0) {
 	running += offset;
-	nzero += cotab[running].count;
+	nzero += cotab[running].r.count;
     }
     if (immediate != 0) {
 	immediate += offset;
-	nzero += cotab[immediate].count;
+	nzero += cotab[immediate].r.count;
     }
 
     if (offset != 0) {
@@ -887,11 +909,11 @@ void CallOut::restore(int fd, Uint t)
 	    }
 	}
 	for (i = cotabsz - cycbrk, co = cotab + cycbrk; i > 0; --i, co++) {
-	    if (co->prev != 0) {
-		co->prev += offset;
+	    if (co->r.prev != 0) {
+		co->r.prev += offset;
 	    }
-	    if (co->next != 0) {
-		co->next += offset;
+	    if (co->r.next != 0) {
+		co->r.next += offset;
 	    }
 	}
     }

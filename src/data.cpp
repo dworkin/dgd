@@ -1215,6 +1215,14 @@ struct SString0 {
 static char ss0_layout[] = "iti";
 
 struct SCallOut {
+    Time time;			/* time of call */
+    uindex nargs;		/* number of arguments */
+    SValue val[4];		/* function name, 3 direct arguments */
+};
+
+static char sco_layout[] = "lu[ccui][ccui][ccui][ccui]";
+
+struct SCallOut0 {
     Uint time;			/* time of call */
     unsigned short htime;	/* time of call, high word */
     unsigned short mtime;	/* time of call milliseconds */
@@ -1222,12 +1230,13 @@ struct SCallOut {
     SValue val[4];		/* function name, 3 direct arguments */
 };
 
-static char sco_layout[] = "issu[ccui][ccui][ccui][ccui]";
+static char sco0_layout[] = "issu[ccui][ccui][ccui][ccui]";
 
 # define co_prev	time
 # define co_next	nargs
 
 static bool conv_14;			/* convert arrays & strings? */
+static bool conv_16;			/* convert callouts? */
 static bool convDone;			/* conversion complete? */
 
 /*
@@ -1341,6 +1350,32 @@ Uint Dataspace::convSString0(SString *ss, Sector *s, Uint n, Uint size)
 }
 
 /*
+ * convert old scallouts
+ */
+void Dataspace::convSCallOut0(SCallOut *sco, Sector *s, Uint n, Uint size)
+{
+    SCallOut0 *sco0;
+    Uint i;
+
+    sco0 = ALLOC(SCallOut0, n);
+    Swap::convert((char *) sco0, s, sco0_layout, n, size, &Swap::conv);
+    for (i = 0; i < n; i++) {
+	if (sco0->val[0].type == T_STRING) {
+	    sco->time = ((Time) sco0->time << 16) |
+			 ((sco0->mtime == 0xffff) ? TIME_INT : sco0->mtime);
+	} else {
+	    sco->time = sco0->time;
+	}
+	sco->nargs = sco0->nargs;
+	sco->val[0] = sco0->val[0];
+	sco->val[1] = sco0->val[1];
+	sco->val[2] = sco0->val[2];
+	(sco++)->val[3] = (sco0++)->val[3];
+    }
+    FREE(sco0 - n);
+}
+
+/*
  * convert dataspace
  */
 Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
@@ -1427,8 +1462,13 @@ Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
 	/* callouts */
 	CallOut::cotime(&dummy);
 	data->scallouts = ALLOC(SCallOut, header.ncallouts);
-	Swap::convert((char *) data->scallouts, data->sectors, sco_layout,
-		      (Uint) header.ncallouts, size, readv);
+	if (conv_16) {
+	    convSCallOut0(data->scallouts, data->sectors,
+			  (Uint) header.ncallouts, size);
+	} else {
+	    Swap::convert((char *) data->scallouts, data->sectors, sco_layout,
+			  (Uint) header.ncallouts, size, readv);
+	}
     }
 
     data->ctrl = obj->control();
@@ -1751,8 +1791,11 @@ void Dataspace::loadCallouts()
     co = callouts = ALLOC(DCallOut, ncallouts);
 
     for (n = ncallouts; n > 0; --n) {
-	co->time = sco->time;
-	co->mtime = sco->mtime;
+	co->time = sco->time >> 16;
+	co->mtime = sco->time;
+	if (co->mtime == TIME_INT) {
+	    co->mtime = 0xffff;
+	}
 	co->nargs = sco->nargs;
 	if (sco->val[0].type == T_STRING) {
 	    loadValues(sco->val, co->val,
@@ -2072,9 +2115,8 @@ bool Dataspace::save(bool swap)
 	    sco = scallouts;
 	    co = callouts;
 	    for (n = ncallouts; n > 0; --n) {
-		sco->time = co->time;
-		sco->htime = 0;
-		sco->mtime = co->mtime;
+		sco->time = (Time) co->time << 16;
+		sco->time |= (co->mtime == 0xffff) ? TIME_INT : co->mtime;
 		sco->nargs = co->nargs;
 		if (co->val[0].type == T_STRING) {
 		    co->val[0].modified = TRUE;
@@ -2198,9 +2240,8 @@ bool Dataspace::save(bool swap)
 	    sco = scallouts;
 	    co = callouts;
 	    for (n = ncallouts; n > 0; --n) {
-		sco->time = co->time;
-		sco->htime = 0;
-		sco->mtime = co->mtime;
+		sco->time = (Time) co->time << 16;
+		sco->time |= (co->mtime == 0xffff) ? TIME_INT : co->mtime;
 		sco->nargs = co->nargs;
 		if (co->val[0].type == T_STRING) {
 		    save.save(sco->val, co->val,
@@ -3563,16 +3604,17 @@ void Dataspace::init()
     dhead = dtail = (Dataspace *) NULL;
     gcdata = (Dataspace *) NULL;
     ndata = 0;
-    conv_14 = FALSE;
+    conv_14 = conv_16 = FALSE;
     convDone = FALSE;
 }
 
 /*
  * prepare for conversions
  */
-void Dataspace::initConv(bool c14)
+void Dataspace::initConv(bool c14, bool c16)
 {
     conv_14 = c14;
+    conv_16 = c16;
 }
 
 /*

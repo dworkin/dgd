@@ -162,7 +162,7 @@ public:
     static Object *upgradeLWO(Array *lwobj, Object *obj);
     static void xport();
     static void init();
-    static void initConv(bool c14);
+    static void initConv(bool c14, bool c16);
     static void converted();
     static Sector swapout(unsigned int frag);
     static void upgradeMemory(Object *tmpl, Object *newob);
@@ -217,6 +217,7 @@ private:
 			    void (*readv) (char*, Sector*, Uint, Uint));
     static Uint convSArray0(struct SArray *sa, Sector *s, Uint n, Uint size);
     static Uint convSString0(struct SString *ss, Sector *s, Uint n, Uint size);
+    static void convSCallOut0(struct SCallOut *ss, Sector *s, Uint n, Uint size);
     static Dataspace *conv(Object *obj, Uint *counttab,
 			   void (*readv) (char*, Sector*, Uint, Uint));
     static void fixObjs(struct SValue *v, Uint n, Uint *ctab);
