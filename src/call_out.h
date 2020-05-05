@@ -31,7 +31,7 @@ public:
     static void call(Frame *f);
     static void info(uindex *n1, uindex *n2);
     static Uint cotime(unsigned short *mtime);
-    static Uint delay(Uint rtime, unsigned int rmtime, unsigned short *mtime);
+    static Uint delay(Uint rtime, unsigned short rmtime, unsigned short *mtime);
     static void swapcount(unsigned int count);
     static long swaprate1();
     static long swaprate5();

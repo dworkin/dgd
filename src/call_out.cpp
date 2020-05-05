@@ -682,7 +682,7 @@ void CallOut::info(uindex *n1, uindex *n2)
 /*
  * return the time until the next timeout
  */
-Uint CallOut::delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
+Uint CallOut::delay(Uint rtime, unsigned short rmtime, unsigned short *mtime)
 {
     Uint t;
     unsigned short m;
