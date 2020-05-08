@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -542,7 +542,7 @@ void Udp::recv6(int n)
 		    udescs[n].size = size;
 		    memcpy(udescs[n].buffer, buffer, size);
 		    udescs[n].accept = TRUE;
-		    write(outpkts, buffer, 1);
+		    (void) write(outpkts, buffer, 1);
 		}
 		break;
 	    }
@@ -589,7 +589,7 @@ void Udp::recv6(int n)
 		memcpy(p, buffer, size);
 		conn->bufsz += size + 2;
 		conn->npkts++;
-		write(outpkts, buffer, 1);
+		(void) write(outpkts, buffer, 1);
 	    }
 	    break;
 	}
@@ -636,7 +636,7 @@ void Udp::recv(int n)
 		    udescs[n].size = size;
 		    memcpy(udescs[n].buffer, buffer, size);
 		    udescs[n].accept = TRUE;
-		    write(outpkts, buffer, 1);
+		    (void) write(outpkts, buffer, 1);
 		}
 		break;
 	    }
@@ -682,7 +682,7 @@ void Udp::recv(int n)
 		memcpy(p, buffer, size);
 		conn->bufsz += size + 2;
 		conn->npkts++;
-		write(outpkts, buffer, 1);
+		(void) write(outpkts, buffer, 1);
 	    }
 	    break;
 	}
@@ -894,7 +894,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
     FD_SET(in, &infds);
     closed = 0;
 
-    pipe(fds);
+    (void) pipe(fds);
     inpkts = fds[0];
     outpkts = fds[1];
     FD_SET(inpkts, &infds);
@@ -1562,7 +1562,7 @@ void XConnection::del()
 	    *hash = next;
 	}
 	if (npkts != 0) {
-	    ::read(inpkts, udpbuf, npkts);
+	    (void) ::read(inpkts, udpbuf, npkts);
 	}
 	pthread_mutex_unlock(&udpmutex);
 	FREE(udpbuf);
@@ -1707,7 +1707,7 @@ int XConnection::readUdp(char *buf, unsigned int len)
 	    memcpy(buf, udpbuf + 2, len = size);
 	}
 	--npkts;
-	::read(inpkts, &discard, 1);
+	(void) ::read(inpkts, &discard, 1);
 	bufsz -= size + 2;
 	for (p = udpbuf, q = p + size + 2, n = bufsz; n != 0; --n) {
 	    *p++ = *q++;
@@ -2270,7 +2270,7 @@ Connection *Connection::import(int fd, char *addr, unsigned short port,
 		*hash = conn;
 	    }
 	    conn->npkts = npkts;
-	    ::write(outpkts, conn->udpbuf, npkts);
+	    (void) ::write(outpkts, conn->udpbuf, npkts);
 	}
     } else {
 	closed++;
