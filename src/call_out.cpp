@@ -850,24 +850,24 @@ void CallOut::restore(int fd, Uint t, bool conv16)
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
 	if (conv16) {
-	    CallOut0 *co;
+	    CallOut0 *co0;
 
-	    co = ALLOC(CallOut0, n);
-	    Config::dread(fd, (char *) co, CO0_LAYOUT, (Uint) n);
-	    for (i = 0; i < queuebrk; co++, i++) {
-		cotab[i].time = (((Time) co->htime) << 48) |
-				(((Time) co->time) << 16) | co->mtime;
-		cotab[i].handle = co->handle;
-		cotab[i].oindex = co->oindex;
+	    co0 = ALLOC(CallOut0, n);
+	    Config::dread(fd, (char *) co0, CO0_LAYOUT, (Uint) n);
+	    for (i = 0; i < queuebrk; co0++, i++) {
+		cotab[i].time = (((Time) co0->htime) << 48) |
+				(((Time) co0->time) << 16) | co0->mtime;
+		cotab[i].handle = co0->handle;
+		cotab[i].oindex = co0->oindex;
 	    }
-	    for (i = cycbrk; i < cotabsz; co++, i++) {
-		cotab[i].r.count = co->time;
-		cotab[i].r.prev = co->htime;
-		cotab[i].r.next = co->mtime;
-		cotab[i].handle = co->handle;
-		cotab[i].oindex = co->oindex;
+	    for (i = cycbrk; i < cotabsz; co0++, i++) {
+		cotab[i].r.count = co0->time;
+		cotab[i].r.prev = co0->htime;
+		cotab[i].r.next = co0->mtime;
+		cotab[i].handle = co0->handle;
+		cotab[i].oindex = co0->oindex;
 	    }
-	    FREE(co - queuebrk - cotabsz + cycbrk);
+	    FREE(co0 - queuebrk - cotabsz + cycbrk);
 	} else {
 	    Config::dread(fd, (char *) cotab, CO1_LAYOUT, (Uint) queuebrk);
 	    Config::dread(fd, (char *) (cotab + cycbrk), CO2_LAYOUT,
