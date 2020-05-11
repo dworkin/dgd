@@ -98,6 +98,7 @@
     <ClInclude Include="..\..\ed\regexp.h" />
     <ClInclude Include="..\..\ed\vars.h" />
     <ClInclude Include="..\..\error.h" />
+    <ClInclude Include="..\..\ext.h" />
     <ClInclude Include="..\..\hash.h" />
     <ClInclude Include="..\..\host.h" />
     <ClInclude Include="..\..\interpret.h" />

@@ -28,6 +28,7 @@
 # include "editor.h"
 # include "call_out.h"
 # include "comm.h"
+# include "ext.h"
 # include "node.h"
 # include "compile.h"
 # include <stdarg.h>
@@ -72,8 +73,6 @@ void interrupt()
 {
     intr = TRUE;
 }
-
-extern void ext_finish();
 
 /*
  * NAME:	endtask()
@@ -124,7 +123,7 @@ void endtask()
     if (Object::stop) {
 	Swap::finish();
 	Config::modFinish();
-	ext_finish();
+	Ext::finish();
 
 	if (Object::boot) {
 	    char **hotboot;

@@ -234,6 +234,9 @@
     <ClInclude Include="..\..\error.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\ext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\hash.h">
       <Filter>Header Files</Filter>
     </ClInclude>

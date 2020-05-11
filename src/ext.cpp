@@ -27,6 +27,7 @@
 # include "interpret.h"
 # include "comm.h"
 # include "table.h"
+# include "ext.h"
 # include <float.h>
 # include <math.h>
 
@@ -35,8 +36,7 @@
 
 
 /*
- * NAME:	ext->frame_object()
- * DESCRIPTION:	return the current object
+ * return the current object
  */
 static Object *ext_frame_object(Frame *f)
 {
@@ -44,8 +44,7 @@ static Object *ext_frame_object(Frame *f)
 }
 
 /*
- * NAME:	ext->frame_dataspace()
- * DESCRIPTION:	return the current dataspace
+ * return the current dataspace
  */
 static Dataspace *ext_frame_dataspace(Frame *f)
 {
@@ -53,8 +52,7 @@ static Dataspace *ext_frame_dataspace(Frame *f)
 }
 
 /*
- * NAME:	ext->frame_arg()
- * DESCRIPTION:	return the given argument
+ * return the given argument
  */
 static Value *ext_frame_arg(Frame *f, int nargs, int arg)
 {
@@ -62,8 +60,7 @@ static Value *ext_frame_arg(Frame *f, int nargs, int arg)
 }
 
 /*
- * NAME:	ext->frame_atomic()
- * DESCRIPTION:	running atomically?
+ * running atomically?
  */
 static int ext_frame_atomic(Frame *f)
 {
@@ -71,8 +68,7 @@ static int ext_frame_atomic(Frame *f)
 }
 
 /*
- * NAME:	ext->value_type()
- * DESCRIPTION:	return the type of a value
+ * return the type of a value
  */
 static int ext_value_type(Value *val)
 {
@@ -80,8 +76,7 @@ static int ext_value_type(Value *val)
 }
 
 /*
- * NAME:	ext->value_nil()
- * DESCRIPTION:	return nil
+ * return nil
  */
 static Value *ext_value_nil()
 {
@@ -89,8 +84,7 @@ static Value *ext_value_nil()
 }
 
 /*
- * NAME:	ext->value_temp()
- * DESCRIPTION:	return a scratch value
+ * return a scratch value
  */
 Value *ext_value_temp(Dataspace *data)
 {
@@ -101,8 +95,7 @@ Value *ext_value_temp(Dataspace *data)
 }
 
 /*
- * NAME:	ext->value_temp2()
- * DESCRIPTION:	return another scratch value
+ * return another scratch value
  */
 static Value *ext_value_temp2(Dataspace *data)
 {
@@ -113,8 +106,7 @@ static Value *ext_value_temp2(Dataspace *data)
 }
 
 /*
- * NAME:	ext->int_getval()
- * DESCRIPTION:	retrieve an int from a value
+ * retrieve an int from a value
  */
 static Int ext_int_getval(Value *val)
 {
@@ -122,8 +114,7 @@ static Int ext_int_getval(Value *val)
 }
 
 /*
- * NAME:	ext->int_putval()
- * DESCRIPTION:	store an int in a value
+ * store an int in a value
  */
 static void ext_int_putval(Value *val, Int i)
 {
@@ -132,8 +123,7 @@ static void ext_int_putval(Value *val, Int i)
 
 # ifndef NOFLOAT
 /*
- * NAME:	ext->float_getval()
- * DESCRIPTION:	retrieve a float from a value
+ * retrieve a float from a value
  */
 static long double ext_float_getval(Value *val)
 {
@@ -151,8 +141,7 @@ static long double ext_float_getval(Value *val)
 }
 
 /*
- * NAME:	ext->float_putval()
- * DESCRIPTION:	store a float in a value
+ * store a float in a value
  */
 static int ext_float_putval(Value *val, long double ld)
 {
@@ -195,8 +184,7 @@ static int ext_float_putval(Value *val, long double ld)
 # endif
 
 /*
- * NAME:	ext->string_getval()
- * DESCRIPTION:	retrieve a string from a value
+ * retrieve a string from a value
  */
 static String *ext_string_getval(Value *val)
 {
@@ -204,8 +192,7 @@ static String *ext_string_getval(Value *val)
 }
 
 /*
- * NAME:	ext->string_putval()
- * DESCRIPTION:	store a string in a value
+ * store a string in a value
  */
 static void ext_string_putval(Value *val, String *str)
 {
@@ -213,8 +200,7 @@ static void ext_string_putval(Value *val, String *str)
 }
 
 /*
- * NAME:	ext->string_new()
- * DESCRIPTION:	create a new string
+ * create a new string
  */
 static String *ext_string_new(Dataspace *data, char *text, int len)
 {
@@ -228,8 +214,7 @@ static String *ext_string_new(Dataspace *data, char *text, int len)
 }
 
 /*
- * NAME:	ext->string_text()
- * DESCRIPTION:	return string text
+ * return string text
  */
 static char *ext_string_text(String *str)
 {
@@ -237,8 +222,7 @@ static char *ext_string_text(String *str)
 }
 
 /*
- * NAME:	ext->string_length()
- * DESCRIPTION:	return string length
+ * return string length
  */
 static int ext_string_length(String *str)
 {
@@ -246,8 +230,7 @@ static int ext_string_length(String *str)
 }
 
 /*
- * NAME:	ext->object_putval()
- * DESCRIPTION:	store an object in a value
+ * store an object in a value
  */
 static void ext_object_putval(Value *val, Object *obj)
 {
@@ -255,8 +238,7 @@ static void ext_object_putval(Value *val, Object *obj)
 }
 
 /*
- * NAME:	ext->object_name()
- * DESCRIPTION:	store the name of an object
+ * store the name of an object
  */
 static const char *ext_object_name(Frame *f, Object *obj, char *buf)
 {
@@ -265,8 +247,7 @@ static const char *ext_object_name(Frame *f, Object *obj, char *buf)
 }
 
 /*
- * NAME:	ext->object_isspecial()
- * DESCRIPTION:	return TRUE if the given object is special, FALSE otherwise
+ * return TRUE if the given object is special, FALSE otherwise
  */
 static int ext_object_isspecial(Object *obj)
 {
@@ -274,8 +255,7 @@ static int ext_object_isspecial(Object *obj)
 }
 
 /*
- * NAME:	ext->object_ismarked()
- * DESCRIPTION:	return TRUE if the given object is marked, FALSE otherwise
+ * return TRUE if the given object is marked, FALSE otherwise
  */
 static int ext_object_ismarked(Object *obj)
 {
@@ -283,8 +263,7 @@ static int ext_object_ismarked(Object *obj)
 }
 
 /*
- * NAME:	ext->object_mark()
- * DESCRIPTION:	mark the given object
+ * mark the given object
  */
 static void ext_object_mark(Object *obj)
 {
@@ -292,8 +271,7 @@ static void ext_object_mark(Object *obj)
 }
 
 /*
- * NAME:	ext->object_unmark()
- * DESCRIPTION:	unmark the given object
+ * unmark the given object
  */
 static void ext_object_unmark(Object *obj)
 {
@@ -301,8 +279,7 @@ static void ext_object_unmark(Object *obj)
 }
 
 /*
- * NAME:	ext->array_getval()
- * DESCRIPTION:	retrieve an array from a value
+ * retrieve an array from a value
  */
 static Array *ext_array_getval(Value *val)
 {
@@ -310,8 +287,7 @@ static Array *ext_array_getval(Value *val)
 }
 
 /*
- * NAME:	ext->array_putval()
- * DESCRIPTION:	store an array in a value
+ * store an array in a value
  */
 static void ext_array_putval(Value *val, Array *a)
 {
@@ -319,8 +295,7 @@ static void ext_array_putval(Value *val, Array *a)
 }
 
 /*
- * NAME:	ext->array_new()
- * DESCRIPTION:	create a new array
+ * create a new array
  */
 static Array *ext_array_new(Dataspace *data, int size)
 {
@@ -332,8 +307,7 @@ static Array *ext_array_new(Dataspace *data, int size)
 }
 
 /*
- * NAME:	ext->array_index()
- * DESCRIPTION:	return an array element
+ * return an array element
  */
 static Value *ext_array_index(Array *a, int i)
 {
@@ -341,8 +315,7 @@ static Value *ext_array_index(Array *a, int i)
 }
 
 /*
- * NAME:	ext->array_assign()
- * DESCRIPTION:	assign a value to an array element
+ * assign a value to an array element
  */
 static void ext_array_assign(Dataspace *data, Array *a, int i, Value *val)
 {
@@ -350,8 +323,7 @@ static void ext_array_assign(Dataspace *data, Array *a, int i, Value *val)
 }
 
 /*
- * NAME:	ext->array_size()
- * DESCRIPTION:	return the size of an array
+ * return the size of an array
  */
 static int ext_array_size(Array *a)
 {
@@ -359,8 +331,7 @@ static int ext_array_size(Array *a)
 }
 
 /*
- * NAME:	ext->mapping_putval()
- * DESCRIPTION:	store a mapping in a value
+ * store a mapping in a value
  */
 static void ext_mapping_putval(Value *val, Array *m)
 {
@@ -368,8 +339,7 @@ static void ext_mapping_putval(Value *val, Array *m)
 }
 
 /*
- * NAME:	ext->mapping_new()
- * DESCRIPTION:	create a new mapping
+ * create a new mapping
  */
 static Array *ext_mapping_new(Dataspace *data)
 {
@@ -377,8 +347,7 @@ static Array *ext_mapping_new(Dataspace *data)
 }
 
 /*
- * NAME:	ext->mapping_index()
- * DESCRIPTION:	return a value from a mapping
+ * return a value from a mapping
  */
 static Value *ext_mapping_index(Array *m, Value *idx)
 {
@@ -391,8 +360,7 @@ static Value *ext_mapping_index(Array *m, Value *idx)
 }
 
 /*
- * NAME:	ext->mapping_assign()
- * DESCRIPTION:	assign to a mapping value
+ * assign to a mapping value
  */
 static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
 			       Value *val)
@@ -405,8 +373,7 @@ static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
 }
 
 /*
- * NAME:	ext->mapping_enum()
- * DESCRIPTION:	return the nth enumerated index
+ * return the nth enumerated index
  */
 static Value *ext_mapping_enum(Array *m, int i)
 {
@@ -415,8 +382,7 @@ static Value *ext_mapping_enum(Array *m, int i)
 }
 
 /*
- * NAME:	ext->mapping_size()
- * DESCRIPTION:	return the size of a mapping
+ * return the size of a mapping
  */
 static int ext_mapping_size(Array *m)
 {
@@ -424,8 +390,7 @@ static int ext_mapping_size(Array *m)
 }
 
 /*
- * NAME:	ext->runtime_error()
- * DESCRIPTION:	handle an error at runtime
+ * handle an error at runtime
  */
 void ext_runtime_error(Frame *f, const char *mesg)
 {
@@ -439,8 +404,7 @@ void ext_runtime_error(Frame *f, const char *mesg)
 }
 
 /*
- * NAME:	ext->runtime_ticks()
- * DESCRIPTION:	spend ticks
+ * spend ticks
  */
 void ext_runtime_ticks(Frame *f, int ticks)
 {
@@ -448,8 +412,7 @@ void ext_runtime_ticks(Frame *f, int ticks)
 }
 
 /*
- * NAME:	ext->runtime_check()
- * DESCRIPTION:	check ticks
+ * check ticks
  */
 void ext_runtime_check(Frame *f, int ticks)
 {
@@ -1671,11 +1634,10 @@ static void (*mod_fdlist)(int*, int);
 static void (*mod_finish)();
 
 /*
- * NAME:	ext->spawn()
- * DESCRIPTION:	supply function to pass open descriptors to, after a
- *		subprocess has been spawned
+ * supply function to pass open descriptors to, after a subprocess has been
+ * spawned
  */
-static void ext_spawn(void (*fdlist)(int*, int), void (*finish)())
+void Ext::spawn(void (*fdlist)(int*, int), void (*finish)())
 {
     /* close channels with other modules */
     Config::modFinish();
@@ -1693,17 +1655,16 @@ static int (*jit_execute)(uint64_t, uint64_t, int, int, void*);
 static void (*jit_release)(uint64_t, uint64_t);
 
 /*
- * NAME:        ext->jit()
- * DESCRIPTION: initialize JIT extension
+ * initialize JIT extension
  */
-static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, int,
-				uint8_t*, size_t, void**),
-		    void (*finish)(),
-		    void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
-				    int, uint8_t*, size_t, uint8_t*, size_t),
-		    int (*execute)(uint64_t, uint64_t, int, int, void*),
-		    void (*release)(uint64_t, uint64_t),
-		    int (*functions)(uint64_t, uint64_t, int, void*))
+void Ext::jit(int (*init)(int, int, size_t, size_t, int, int, int, uint8_t*,
+			  size_t, void**),
+	      void (*finish)(),
+	      void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
+			      uint8_t*, size_t, uint8_t*, size_t),
+	      int (*execute)(uint64_t, uint64_t, int, int, void*),
+	      void (*release)(uint64_t, uint64_t),
+	      int (*functions)(uint64_t, uint64_t, int, void*))
 {
     UNREFERENCED_PARAMETER(functions);
 
@@ -1715,10 +1676,9 @@ static void ext_jit(int (*init)(int, int, size_t, size_t, int, int, int,
 }
 
 /*
- * NAME:        ext->kfuns()
- * DESCRIPTION: pass kernel function prototypes to the JIT extension
+ * pass kernel function prototypes to the JIT extension
  */
-void ext_kfuns(char *protos, int size, int nkfun)
+void Ext::kfuns(char *protos, int size, int nkfun)
 {
     if (jit_compile != NULL) {
 	static voidf *vmtab[96];
@@ -1831,7 +1791,7 @@ void ext_kfuns(char *protos, int size, int nkfun)
 /*
  * JIT compile program
  */
-static void ext_compile(const Frame *f, Control *ctrl)
+void Ext::compile(const Frame *f, Control *ctrl)
 {
     Object *obj;
     int i, j, nftypes;
@@ -1887,10 +1847,9 @@ static void ext_compile(const Frame *f, Control *ctrl)
 }
 
 /*
- * NAME:	ext->execute()
- * DESCRIPTION:	JIT-compile and execute a function
+ * JIT-compile and execute a function
  */
-bool ext_execute(const Frame *f, int func)
+bool Ext::execute(const Frame *f, int func)
 {
     Control *ctrl;
     int result;
@@ -1912,7 +1871,7 @@ bool ext_execute(const Frame *f, int func)
     }
 
     if (result < 0) {
-	ext_compile(f, ctrl);
+	compile(f, ctrl);
 
 	return FALSE;
     } else {
@@ -1923,7 +1882,7 @@ bool ext_execute(const Frame *f, int func)
 /*
  * remove JIT-compiled object
  */
-void ext_release(uint64_t index, uint64_t instance)
+void Ext::release(uint64_t index, uint64_t instance)
 {
     if (jit_compile != NULL) {
 	(*jit_release)(index, instance);
@@ -1931,11 +1890,10 @@ void ext_release(uint64_t index, uint64_t instance)
 }
 
 /*
- * NAME:	ext->dgd()
- * DESCRIPTION:	initialize extension interface
+ * initialize extension interface
  */
-bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
-	     void (**finish)())
+bool Ext::load(char *module, char *config, void (**fdlist)(int*, int),
+	       void (**finish)())
 {
     voidf *ext_ext[5];
     voidf *ext_frame[4];
@@ -1963,9 +1921,9 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
 
     ext_ext[0] = (voidf *) &KFun::add;
     ext_ext[1] = (voidf *) NULL;
-    ext_ext[2] = (voidf *) &ext_spawn;
+    ext_ext[2] = (voidf *) &spawn;
     ext_ext[3] = (voidf *) &Connection::fdclose;
-    ext_ext[4] = (voidf *) &ext_jit;
+    ext_ext[4] = (voidf *) &jit;
     ext_frame[0] = (voidf *) &ext_frame_object;
     ext_frame[1] = (voidf *) &ext_frame_dataspace;
     ext_frame[2] = (voidf *) &ext_frame_arg;
@@ -2037,10 +1995,9 @@ bool ext_dgd(char *module, char *config, void (**fdlist)(int*, int),
 }
 
 /*
- * NAME:	ext->finish()
- * DESCRIPTION:	finish JIT compiler interface
+ * finish JIT compiler interface
  */
-void ext_finish()
+void Ext::finish()
 {
     if (jit_compile != NULL) {
 	(*jit_finish)();

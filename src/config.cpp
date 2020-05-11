@@ -31,6 +31,7 @@
 # include "editor.h"
 # include "call_out.h"
 # include "comm.h"
+# include "ext.h"
 # include "version.h"
 # include "macro.h"
 # include "token.h"
@@ -1414,9 +1415,6 @@ bool Config::includes()
 }
 
 
-extern bool ext_dgd (char*, char*, void (**)(int*, int), void (**)());
-extern void ext_finish();
-
 /*
  * initialize the driver
  */
@@ -1476,7 +1474,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     memset(mfdlist, '\0', MAX_STRINGS * sizeof(void (*)(int*, int)));
     memset(mfinish, '\0', MAX_STRINGS * sizeof(void (*)()));
     for (i = 0; modules[i] != NULL; i++) {
-	if (!ext_dgd(modules[i], modconf[i], &mfdlist[i], &mfinish[i])) {
+	if (!Ext::load(modules[i], modconf[i], &mfdlist[i], &mfinish[i])) {
 	    message("Config error: cannot load runtime extension \"%s\"\012",
 		    modules[i]);
 	    if (snapshot2 != (char *) NULL) {
@@ -1486,13 +1484,13 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 		P_close(fd);
 	    }
 	    modFinish();
-	    ext_finish();
+	    Ext::finish();
 	    Alloc::finish();
 	    return FALSE;
 	}
     }
     if (module != (char *) NULL &&
-	!ext_dgd(modules[i] = module, NULL, &mfdlist[i], &mfinish[i])) {
+	!Ext::load(modules[i] = module, NULL, &mfdlist[i], &mfinish[i])) {
 	message("Config error: cannot load runtime extension \"%s\"\012",/* LF*/
 		module);
 	if (snapshot2 != (char *) NULL) {
@@ -1502,7 +1500,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    P_close(fd);
 	}
 	modFinish();
-	ext_finish();
+	Ext::finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1521,7 +1519,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    P_close(fd);
 	}
 	modFinish();
-	ext_finish();
+	Ext::finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1541,7 +1539,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    P_close(fd);
 	}
 	modFinish();
-	ext_finish();
+	Ext::finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1579,7 +1577,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    P_close(fd);
 	}
 	modFinish();
-	ext_finish();
+	Ext::finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1614,7 +1612,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    P_close(fd);
 	}
 	modFinish();
-	ext_finish();
+	Ext::finish();
 	Alloc::finish();
 	return FALSE;
     }
@@ -1678,7 +1676,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	Array::freeall();
 	String::clean();
 	modFinish();
-	ext_finish();
+	Ext::finish();
 	Alloc::finish();
 	return FALSE;
     }

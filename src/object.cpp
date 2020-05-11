@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,9 +26,8 @@
 # include "control.h"
 # include "data.h"
 # include "interpret.h"
+# include "ext.h"
 
-
-extern void ext_release(uint64_t, uint64_t);
 
 class ObjPatch : public ChunkAllocated {
 public:
@@ -1069,7 +1068,7 @@ void Object::clean()
 
 	    if (up->flags & O_COMPILED) {
 		up->flags &= ~O_COMPILED;
-		ext_release(up->index, up->ctrl->instance);
+		Ext::release(up->index, up->ctrl->instance);
 	    }
 
 	    /* swap control blocks */
@@ -1104,7 +1103,7 @@ void Object::clean()
 	baseplane.destruct = o->cref;
 
 	if (o->flags & O_COMPILED) {
-	    ext_release(o->index, o->control()->instance);
+	    Ext::release(o->index, o->control()->instance);
 	}
 
 	/* free control block */

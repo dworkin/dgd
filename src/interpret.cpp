@@ -25,6 +25,7 @@
 # include "control.h"
 # include "data.h"
 # include "interpret.h"
+# include "ext.h"
 # include "table.h"
 
 # ifdef DEBUG
@@ -2034,8 +2035,6 @@ void Frame::interpret(char *pc)
     }
 }
 
-extern bool ext_execute(const Frame*, int);
-
 /*
  * Call a function in an object. The arguments must be on the stack already.
  */
@@ -2246,7 +2245,7 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
 
     /* execute code */
     f.source = 0;
-    if (!ext_execute(&f, funci)) {
+    if (!Ext::execute(&f, funci)) {
 	f.prog = pc += 2;
 	f.interpret(pc);
     }

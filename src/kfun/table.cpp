@@ -19,6 +19,7 @@
 
 # define INCLUDE_FILE_IO
 # include "kfun.h"
+# include "ext.h"
 
 /*
  * prototypes
@@ -59,9 +60,6 @@ extern void kf_dec_key(Frame *, int, Value *);
 extern void kf_xcrypt(Frame *, int, Value *);
 extern void kf_md5(Frame *, int, Value *);
 extern void kf_sha1(Frame *, int, Value *);
-
-extern Value *ext_value_temp(Dataspace*);
-extern void ext_kfuns(char*, int, int);
 
 /*
  * handle an argument error in a builtin kfun
@@ -387,7 +385,7 @@ void KFun::jit()
     }
 
     protos -= size;
-    ext_kfuns(protos, size, nkf);
+    Ext::kfuns(protos, size, nkf);
     AFREE(protos);
 }
 
