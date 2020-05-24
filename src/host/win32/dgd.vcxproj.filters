@@ -139,9 +139,6 @@
     <ClCompile Include="..\crypt.cpp">
       <Filter>Source Files\host</Filter>
     </ClCompile>
-    <ClCompile Include="..\simfloat.cpp">
-      <Filter>Source Files\host</Filter>
-    </ClCompile>
     <ClCompile Include="connect.cpp">
       <Filter>Source Files\host\win32</Filter>
     </ClCompile>
@@ -159,6 +156,9 @@
     </ClCompile>
     <ClCompile Include="windgd.cpp">
       <Filter>Source Files\host\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hostfloat.cpp">
+      <Filter>Source Files\host</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
