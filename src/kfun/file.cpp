@@ -1625,7 +1625,7 @@ int kf_get_dir(Frame *f, int nargs, KFun *kf)
     if (nfiles != 0) {
 	Value *n, *s, *t;
 
-	qsort(ftable, nfiles, sizeof(fileinfo), cmp);
+	std::qsort(ftable, nfiles, sizeof(fileinfo), cmp);
 	n = a->elts[0].array->elts;
 	s = a->elts[1].array->elts;
 	t = a->elts[2].array->elts;

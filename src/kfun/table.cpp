@@ -334,11 +334,11 @@ void KFun::init()
 	*k1++ = i;
 	*k2++ = i;
     }
-    qsort((void *) (kftab + KF_BUILTINS), nkfun - KF_BUILTINS,
-	  sizeof(KFun), cmp);
-    qsort(kfenc, ne, sizeof(KFun), cmp);
-    qsort(kfdec, nd, sizeof(KFun), cmp);
-    qsort(kfhsh, nh, sizeof(KFun), cmp);
+    std::qsort((void *) (kftab + KF_BUILTINS), nkfun - KF_BUILTINS,
+	       sizeof(KFun), cmp);
+    std::qsort(kfenc, ne, sizeof(KFun), cmp);
+    std::qsort(kfdec, nd, sizeof(KFun), cmp);
+    std::qsort(kfhsh, nh, sizeof(KFun), cmp);
     for (n = 0; kftab[i].name[1] == '.'; n++) {
 	*k2++ = '\0';
 	i++;

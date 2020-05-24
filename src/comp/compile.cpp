@@ -1400,7 +1400,7 @@ Node *Compile::endSwitch(Node *expr, Node *stmt)
 		    --i;
 		}
 	    }
-	    qsort(v -= size, size, sizeof(Node *), cmp);
+	    std::qsort(v -= size, size, sizeof(Node *), cmp);
 
 	    if (switch_list->type == T_STRING) {
 		type = N_SWITCH_STR;

@@ -230,7 +230,7 @@ void fatal(const char *format, ...)
 
 	P_message(ebuf2);	/* show message */
     }
-    abort();
+    std::abort();
 }
 
 /*

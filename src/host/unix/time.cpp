@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -58,7 +58,7 @@ char *P_ctime(char *buf, Uint time)
     if (offset != 0) {
 	long year;
 
-	year = strtol(buf + 20, (char **) NULL, 10) + offset;
+	year = std::strtol(buf + 20, (char **) NULL, 10) + offset;
 	if (year > 2100 ||
 	    (year == 2100 && (buf[4] != 'J' || buf[5] != 'a') &&
 	     (buf[4] != 'F' || (buf[8] == '2' && buf[9] == '9')))) {
@@ -66,7 +66,7 @@ char *P_ctime(char *buf, Uint time)
 	    t -= 378604800L;
 	    offset += 12;
 	    memcpy(buf, ctime(&t), 26);
-	    year = strtol(buf + 20, (char **) NULL, 10) + offset;
+	    year = std::strtol(buf + 20, (char **) NULL, 10) + offset;
 	}
 	sprintf(buf + 20, "%ld\012", year);
     }

@@ -61,7 +61,7 @@ endif
 ifeq ($(HOST),SOLARIS)
   DEFINES+=-D_FILE_OFFSET_BITS=64
   LIBS+=-lsocket -lnsl
-  CXX=CC -mt
+  CXX=CC -mt -std=c++11
 endif
 
 SRC=	alloc.cpp error.cpp hash.cpp swap.cpp str.cpp array.cpp object.cpp \

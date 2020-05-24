@@ -933,11 +933,11 @@ SrpState *Srp::expand(SrpState *state)
     /*
      * sort and merge token and goto tables
      */
-    qsort(symbols, ngoto, sizeof(unsigned short), cmp);
+    std::qsort(symbols, ngoto, sizeof(unsigned short), cmp);
     memcpy(symbols + ngoto, tokens, nshift * sizeof(unsigned short));
     AFREE(tokens);
     tokens = symbols + ngoto;
-    qsort(tokens, nshift, sizeof(unsigned short), cmp);
+    std::qsort(tokens, nshift, sizeof(unsigned short), cmp);
 
     /*
      * create target table

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -926,7 +926,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 
     /* copy and sort values of subtrahend */
     copytmp(data, v2 = ALLOCA(Value, a2->size), a2);
-    qsort(v2, a2->size, sizeof(Value), cmp);
+    std::qsort(v2, a2->size, sizeof(Value), cmp);
 
     v1 = Dataspace::elts(this);
     v3 = a3->elts;
@@ -1001,7 +1001,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 
     /* copy and sort values of 2nd array */
     copytmp(data, v2 = ALLOCA(Value, a2->size), a2);
-    qsort(v2, a2->size, sizeof(Value), cmp);
+    std::qsort(v2, a2->size, sizeof(Value), cmp);
 
     v1 = Dataspace::elts(this);
     v3 = a3->elts;
@@ -1087,7 +1087,7 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
 
     /* copy and sort values of 1st array */
     copytmp(data, v1 = ALLOCA(Value, size), this);
-    qsort(v1, size, sizeof(Value), cmp);
+    std::qsort(v1, size, sizeof(Value), cmp);
 
     v = v3;
     v2 = Dataspace::elts(a2);
@@ -1177,7 +1177,7 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
 
     /* copy and sort values of 2nd array */
     copytmp(data, v2 = ALLOCA(Value, a2->size), a2);
-    qsort(v2, a2->size, sizeof(Value), cmp);
+    std::qsort(v2, a2->size, sizeof(Value), cmp);
 
     /* room for first half of result */
     v3 = ALLOCA(Value, size);
@@ -1202,7 +1202,7 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
 
     /* sort copy of 1st array */
     v1 -= size;
-    qsort(v1, sz = w - v1, sizeof(Value), cmp);
+    std::qsort(v1, sz = w - v1, sizeof(Value), cmp);
 
     v = v2;
     w = a2->elts;
@@ -1320,7 +1320,7 @@ void Array::mapSort()
     }
 
     if (sz != 0) {
-	qsort(v = elts, i = sz >> 1, 2 * sizeof(Value), cmp);
+	std::qsort(v = elts, i = sz >> 1, 2 * sizeof(Value), cmp);
 	while (--i != 0) {
 	    if (cmp((cvoid *) v, (cvoid *) &v[2]) == 0 &&
 		(!T_INDEXED(v->type) || v->array == v[2].array)) {
@@ -1428,7 +1428,7 @@ void Array::mapDehash(Dataspace *data, bool clean)
 	hashmod = FALSE;
 
 	if (sz != 0) {
-	    qsort(v2, sz, sizeof(Value) << 1, cmp);
+	    std::qsort(v2, sz, sizeof(Value) << 1, cmp);
 	    sz <<= 1;
 
 	    /*
@@ -1616,7 +1616,7 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
 
     /* copy and sort values of array */
     copytmp(data, v2 = ALLOCA(Value, a2->size), a2);
-    qsort(v2, a2->size, sizeof(Value), cmp);
+    std::qsort(v2, a2->size, sizeof(Value), cmp);
 
     v1 = elts;
     v3 = m3->elts;
@@ -1699,7 +1699,7 @@ Array *Array::mapIntersect(Dataspace *data, Array *a2)
 
     /* copy and sort values of array */
     copytmp(data, v2 = ALLOCA(Value, a2->size), a2);
-    qsort(v2, a2->size, sizeof(Value), cmp);
+    std::qsort(v2, a2->size, sizeof(Value), cmp);
 
     v1 = elts;
     v3 = m3->elts;

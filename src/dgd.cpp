@@ -140,7 +140,7 @@ void endtask()
 	Array::freeall();
 	String::clean();
 	Alloc::finish();
-	exit(Object::boot);
+	std::exit(Object::boot);
     }
 }
 
