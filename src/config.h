@@ -17,21 +17,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* these may be changed, but sizeof(type) <= sizeof(int) */
-typedef unsigned short uindex;
+/*
+ * These may be changed, but sizeof(type) <= sizeof(int)
+ *
+ * UINDEX limits the number of objects
+ * SECTOR limits the number of swap sectors (the size of a snapshot)
+ * EINDEX limits the number of connected users
+ *
+ * default: 64K objects, 64K swap sectors, 255 users
+ */
+# ifndef UINDEX_TYPE
+# define UINDEX_TYPE	unsigned short
 # define UINDEX_MAX	USHRT_MAX
+# endif
+# ifndef SECTOR_TYPE
+# define SECTOR_TYPE	UINDEX_TYPE
+# define SECTOR_MAX	UINDEX_MAX
+# endif
+# ifndef EINDEX_TYPE
+# define EINDEX_TYPE	unsigned char
+# define EINDEX_MAX	UCHAR_MAX
+# endif
 
-typedef uindex Sector;
-# define SW_UNUSED	UINDEX_MAX
+typedef UINDEX_TYPE uindex;
+typedef SECTOR_TYPE Sector;
+# define SW_UNUSED	SECTOR_MAX
+typedef EINDEX_TYPE eindex;
+# define EINDEX(e)	((eindex) e)
 
-/* sizeof(ssizet) <= sizeof(uindex) */
+/* sizeof(ssizet) <= sizeof(uindex), best kept at 16 bits */
 typedef unsigned short ssizet;
 # define SSIZET_MAX	USHRT_MAX
-
-/* eindex can be anything */
-typedef unsigned char eindex;
-# define EINDEX_MAX	UCHAR_MAX
-# define EINDEX(e)	UCHAR(e)
 
 typedef unsigned short kfindex;
 # define KFTAB_SIZE	1024
