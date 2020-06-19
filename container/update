@@ -1,0 +1,17 @@
+#!/bin/sh
+
+apk update
+apk upgrade
+
+git -C /container/dgd pull
+make -C /container/dgd/src DEFINES='-DUINDEX_TYPE="unsigned int" -DUINDEX_MAX=UINT_MAX -DEINDEX_TYPE="unsigned short" -DEINDEX_MAX=USHRT_MAX' DEBUG=-O2 install
+git -C /container/lpc-ext pull
+make -C /container/lpc-ext DEBUG=-O2 jit zlib crypto
+
+sed < /container/server.dgd > /container/config				\
+	-e 's!^directory.*$!directory = "/container/src";!'		\
+	-e 's!^swap_file.*$!swap_file = "/container/state/swap";!'	\
+	-e 's!^dump_file.*$!dump_file = "/container/state/snapshot";!'	\
+	-e 's!^ed_tmpfile.*$!ed_tmpfile = "/container/state/ed";!'	\
+	-e 's!^hotboot.*$!hotboot = ({ "/container/dgd/bin/dgd", "/container/config", "/container/state/snapshot", "/container/state/snapshot.old" });!'\
+	-e 's!^modules.*$!modules = ([ "/container/lpc-ext/jit.1.2" : "/container", "/container/lpc-ext/zlib.1.2" : "", "/container/lpc-ext/crypto.1.2" : "" ]);!'

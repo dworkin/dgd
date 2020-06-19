@@ -1,0 +1,11 @@
+version: "3"
+services:
+    dgd-server:
+        build: .
+        volumes:
+          - ./server.dgd:/container/server.dgd:ro
+          - ./src:/container/src
+          - ./state:/container/state
+        ports:
+          - "8023:8023/tcp"
+          - "8080:8080/tcp"

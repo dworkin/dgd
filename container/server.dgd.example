@@ -1,0 +1,27 @@
+telnet_port	= 8023;			/* telnet port number */
+binary_port	= 8080;			/* binary port number */
+directory	= PLACEHOLDER;		/* base directory */
+ed_tmpfile	= PLACEHOLDER;		/* proto editor tmpfile */
+swap_file	= PLACEHOLDER;		/* swap file */
+swap_size	= 65535;		/* # sectors in swap file */
+sector_size	= 1024;			/* swap sector size */
+swap_fragment	= 256;			/* fragment to swap out */
+static_chunk	= 64512;		/* static memory chunk */
+dynamic_chunk	= 261120;		/* dynamic memory chunk */
+dump_file	= PLACEHOLDER;		/* snapshot file */
+dump_interval	= 3600;			/* snapshot rebuild interval */
+hotboot		= PLACEHOLDER;
+modules		= PLACEHOLDER;
+typechecking	= 2;			/* global typechecking */
+include_file	= "/include/std.h";	/* standard include file */
+include_dirs	= ({ "/include", "~/include", "~/api/include" });
+					/* include directories to search */
+auto_object	= "/kernel/lib/auto";	/* automatically inherited object */
+driver_object	= "/kernel/sys/driver";	/* driver object */
+create		= "_F_create";		/* low-level create function */
+
+users		= 255;			/* max # of users */
+editors		= 10;			/* max # of editor sessions */
+objects		= 10000;		/* max # of objects */
+call_outs	= 10000;		/* max # of call_outs */
+array_size	= 32767;		/* max array size */

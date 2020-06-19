@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/container/update
+exec su dgd -c "/container/dgd/bin/dgd $*"
