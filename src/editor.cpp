@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -184,6 +184,7 @@ String *Editor::command(Object *obj, char *cmd)
 	    error((char *) NULL);	/* pass on error */
 	}
 	output("%s\012", ErrorContext::exception()->text);	/* LF */
+	ErrorContext::pop();
     }
 
     if (outbufsz == 0) {
@@ -233,14 +234,10 @@ void ed_error(const char *f, ...)
 
     if (f != (char *) NULL) {
 	internal = TRUE;
-	try {
-	    ErrorContext::push((ErrorContext::Handler) ed_handler);
-	    va_start(args, f);
-	    error(f, args);
-	    va_end(args);
-	} catch (...) {
-	    error((char *) NULL);
-	}
+	ErrorContext::push((ErrorContext::Handler) ed_handler);
+	va_start(args, f);
+	error(f, args);
+	va_end(args);
     } else {
 	error((char *) NULL);
     }
