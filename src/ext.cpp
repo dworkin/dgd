@@ -1491,7 +1491,12 @@ static double ext_vm_pop_float(Frame *f)
  */
 static bool ext_vm_switch_int(Frame *f)
 {
-    return (f->sp->type == T_INT);
+    if (f->sp->type == T_INT) {
+	return TRUE;
+    } else {
+	(f->sp++)->del();
+	return FALSE;
+    }
 }
 
 /*
