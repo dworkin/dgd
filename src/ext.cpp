@@ -1553,7 +1553,7 @@ static uint32_t ext_vm_switch_string(Frame *f, uint16_t *table, uint32_t size)
 		low = (mid >> 1) + 1;
 	    }
 	}
-    } else if (f->sp->type == T_NIL && table[0] == 0 && table[1] == 0xffff) {
+    } else if (VAL_NIL(f->sp) && table[0] == 0 && table[1] == 0xffff) {
 	size = 0;	/* case nil */
     }
 
