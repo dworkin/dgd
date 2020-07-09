@@ -1626,6 +1626,12 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	ErrorContext::push();
 	Alloc::dynamicMode();
 	if (snapshot == (char *) NULL) {
+	    /* no restored connections */
+	    fdlist();
+
+	    /* prepare JIT compiler */
+	    KFun::jit();
+
 	    /* initialize mudlib */
 	    Control::converted();
 	    Dataspace::converted();
@@ -1641,6 +1647,12 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 
 	    /* restore snapshot */
 	    hotbooted = restore(fd, fd2);
+
+	    /* inform extension modules about restored connections */
+	    fdlist();
+
+	    /* prepare JIT compiler */
+	    KFun::jit();
 
 	    /* notify mudlib */
 	    try {
@@ -1683,12 +1695,6 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     (cframe->sp++)->del();
     endtask();
     ErrorContext::pop();		/* remove guard */
-
-    /* inform extension modules about restored connections */
-    fdlist();
-
-    /* prepare JIT compiler */
-    KFun::jit();
 
     /* start accepting connections */
     Comm::listen();
