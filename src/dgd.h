@@ -44,10 +44,14 @@ typedef Uuint Time;
 
 # define TIME_INT		2000
 
-extern bool call_driver_object	(Frame*, const char*, int);
-extern void interrupt		();
-extern void endtask		();
-extern void errhandler		(Frame*, Int);
-extern int  dgd_main		(int, char**);
+class DGD {
+public:
+    static bool callDriver(Frame *frame, const char *func, int narg);
+    static void interrupt();
+    static void endTask();
+    static void errHandler(Frame *f, Int depth);
+    static int main(int argc, char **argv);
+};
+
 
 extern bool intr;

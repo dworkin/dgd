@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,8 +23,7 @@ extern void srand48	(long);
 extern long lrand48	();
 
 /*
- * NAME:	P->srandom()
- * DESCRIPTION:	set the random seed
+ * set the random seed
  */
 void P_srandom(long s)
 {
@@ -32,8 +31,7 @@ void P_srandom(long s)
 }
 
 /*
- * NAME:	P->random()
- * DESCRIPTION:	return a long random number
+ * return a long random number
  */
 long P_random()
 {

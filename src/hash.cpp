@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -60,8 +60,7 @@ unsigned char Hashtab::tab[256] = {
 };
 
 /*
- * NAME:	Hashtab::create()
- * DESCRIPTION:	hashtable factory
+ * hashtable factory
  */
 Hashtab *Hashtab::create(unsigned int size, unsigned int maxlen, bool mem)
 {
@@ -69,10 +68,9 @@ Hashtab *Hashtab::create(unsigned int size, unsigned int maxlen, bool mem)
 }
 
 /*
- * NAME:	Hashtab::hashstr()
- * DESCRIPTION:	Hash string s, considering at most len characters. Return
- *		an unsigned modulo size.
- *		Based on Peter K. Pearson's article in CACM 33-6, pp 677.
+ * Hash string s, considering at most len characters. Return
+ * an unsigned modulo size.
+ * Based on Peter K. Pearson's article in CACM 33-6, pp 677.
  */
 unsigned short Hashtab::hashstr(const char *str, unsigned int len)
 {
@@ -88,8 +86,7 @@ unsigned short Hashtab::hashstr(const char *str, unsigned int len)
 }
 
 /*
- * NAME:	Hashtab::hashmem()
- * DESCRIPTION:	hash memory
+ * hash memory
  */
 unsigned short Hashtab::hashmem(const char *mem, unsigned int len)
 {
@@ -106,9 +103,8 @@ unsigned short Hashtab::hashmem(const char *mem, unsigned int len)
 
 
 /*
- * NAME:	HashtabImpl()
- * DESCRIPTION:	create a new hashtable of size "size", where "maxlen" characters
- *		of each string are significant
+ * create a new hashtable of size "size", where "maxlen" characters
+ * of each string are significant
  */
 HashtabImpl::HashtabImpl(unsigned int size, unsigned int maxlen, bool mem)
 {
@@ -120,8 +116,7 @@ HashtabImpl::HashtabImpl(unsigned int size, unsigned int maxlen, bool mem)
 }
 
 /*
- * NAME:	~HashtabImpl()
- * DESCRIPTION:	delete a hash table
+ * delete a hash table
  */
 HashtabImpl::~HashtabImpl()
 {
@@ -129,9 +124,8 @@ HashtabImpl::~HashtabImpl()
 }
 
 /*
- * NAME:	HashtabImpl::lookup()
- * DESCRIPTION:	lookup a name in a hashtable, return the address of the entry
- *		or &NULL if none found
+ * lookup a name in a hashtable, return the address of the entry
+ * or &NULL if none found
  */
 Hashtab::Entry **HashtabImpl::lookup(const char *name, bool move)
 {

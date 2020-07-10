@@ -95,8 +95,7 @@ void ErrorContext::pop()
 }
 
 /*
- * NAME:	dummyHandler()
- * DESCRIPTION:	dummy handler for previously handled error
+ * dummy handler for previously handled error
  */
 static void dummyHandler(Frame *f, Int depth)
 {
@@ -136,8 +135,7 @@ void ErrorContext::clearException()
 }
 
 /*
- * NAME:	error()
- * DESCRIPTION:	cause an error, with a string argument
+ * cause an error, with a string argument
  */
 void error(String *str)
 {
@@ -192,8 +190,7 @@ void error(String *str)
 }
 
 /*
- * NAME:	error()
- * DESCRIPTION:	cause an error
+ * cause an error
  */
 void error(const char *format, ...)
 {
@@ -211,9 +208,8 @@ void error(const char *format, ...)
 }
 
 /*
- * NAME:	fatal()
- * DESCRIPTION:	a fatal error has been encountered; terminate the program and
- *		dump a core if possible
+ * a fatal error has been encountered; terminate the program and
+ * dump a core if possible
  */
 void fatal(const char *format, ...)
 {
@@ -234,8 +230,7 @@ void fatal(const char *format, ...)
 }
 
 /*
- * NAME:	message()
- * DESCRIPTION:	issue a message on stderr
+ * issue a message on stderr
  */
 void message(const char *format, ...)
 {

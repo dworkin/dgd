@@ -1,6 +1,6 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,8 +31,7 @@ Float thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
 
 
 /*
- * NAME:	f_edom()
- * DESCRIPTION:	Domain error
+ * Domain error
  */
 static void f_edom()
 {
@@ -40,8 +39,7 @@ static void f_edom()
 }
 
 /*
- * NAME:	f_erange()
- * DESCRIPTION:	Out of range
+ * Out of range
  */
 static void f_erange()
 {
@@ -49,8 +47,7 @@ static void f_erange()
 }
 
 /*
- * NAME:	f_get()
- * DESCRIPTION:	retrieve a float from a value
+ * retrieve a float from a value
  */
 static double f_get(const Float *flt)
 {
@@ -66,8 +63,7 @@ static double f_get(const Float *flt)
 }
 
 /*
- * NAME:	f_put()
- * DESCRIPTION:	store a float in a value
+ * store a float in a value
  */
 static bool f_put(Float *flt, double d)
 {
@@ -131,10 +127,9 @@ static const double tenths[] = {
 };
 
 /*
- * NAME:	Float::atof()
- * DESCRIPTION:	Convert a string to a float.  The string must be in the
- *		proper format.  Return TRUE if the operation was successful,
- *		FALSE otherwise.
+ * Convert a string to a float.  The string must be in the
+ * proper format.  Return TRUE if the operation was successful,
+ * FALSE otherwise.
  */
 bool Float::atof(char **s, Float *f)
 {
@@ -219,8 +214,7 @@ bool Float::atof(char **s, Float *f)
 }
 
 /*
- * NAME:	Float::ftoa()
- * DESCRIPTION:	convert a float to a string
+ * convert a float to a string
  */
 void Float::ftoa(char *buffer)
 {
@@ -331,8 +325,7 @@ void Float::ftoa(char *buffer)
 }
 
 /*
- * NAME:	Float::itof()
- * DESCRIPTION:	convert an integer to a float
+ * convert an integer to a float
  */
 void Float::itof(Int i, Float *f)
 {
@@ -340,8 +333,7 @@ void Float::itof(Int i, Float *f)
 }
 
 /*
- * NAME:	Float::ftoi()
- * DESCRIPTION:	convert a float to an integer
+ * convert a float to an integer
  */
 Int Float::ftoi()
 {
@@ -363,8 +355,7 @@ Int Float::ftoi()
 }
 
 /*
- * NAME:	Float::add()
- * DESCRIPTION:	add a Float
+ * add a Float
  */
 void Float::add(Float &f)
 {
@@ -374,8 +365,7 @@ void Float::add(Float &f)
 }
 
 /*
- * NAME:	Float::sub()
- * DESCRIPTION:	subtract a Float
+ * subtract a Float
  */
 void Float::sub(Float &f)
 {
@@ -385,8 +375,7 @@ void Float::sub(Float &f)
 }
 
 /*
- * NAME:	Float::mult()
- * DESCRIPTION:	multiply by a Float
+ * multiply by a Float
  */
 void Float::mult(Float &f)
 {
@@ -396,8 +385,7 @@ void Float::mult(Float &f)
 }
 
 /*
- * NAME:	Float::div()
- * DESCRIPTION:	divide by a Float
+ * divide by a Float
  */
 void Float::div(Float &f)
 {
@@ -413,8 +401,7 @@ void Float::div(Float &f)
 }
 
 /*
- * NAME:	Float::cmp()
- * DESCRIPTION:	compare with a Float
+ * compare with a Float
  */
 int Float::cmp(Float &f)
 {
@@ -432,8 +419,7 @@ int Float::cmp(Float &f)
 }
 
 /*
- * NAME:	Float::floor()
- * DESCRIPTION:	round a float downwards
+ * round a float downwards
  */
 void Float::floor()
 {
@@ -441,8 +427,7 @@ void Float::floor()
 }
 
 /*
- * NAME:	Float::ceil()
- * DESCRIPTION:	round a float upwards
+ * round a float upwards
  */
 void Float::ceil()
 {
@@ -450,8 +435,7 @@ void Float::ceil()
 }
 
 /*
- * NAME:	Float::fmod()
- * DESCRIPTION:	perform fmod
+ * perform fmod
  */
 void Float::fmod(Float &f)
 {
@@ -467,8 +451,7 @@ void Float::fmod(Float &f)
 }
 
 /*
- * NAME:	Float::frexp()
- * DESCRIPTION:	split a float into a fraction and an exponent
+ * split a float into a fraction and an exponent
  */
 Int Float::frexp()
 {
@@ -483,8 +466,7 @@ Int Float::frexp()
 }
 
 /*
- * NAME:	Float::ldexp()
- * DESCRIPTION:	make a float from a fraction and an exponent
+ * make a float from a fraction and an exponent
  */
 void Float::ldexp(Int exp)
 {
@@ -504,8 +486,7 @@ void Float::ldexp(Int exp)
 }
 
 /*
- * NAME:	Float::modf()
- * DESCRIPTION:	split float into fraction and integer part
+ * split float into fraction and integer part
  */
 void Float::modf(Float *f)
 {
@@ -517,8 +498,7 @@ void Float::modf(Float *f)
 
 
 /*
- * NAME:	Float::exp()
- * DESCRIPTION:	exp(f)
+ * exp(f)
  */
 void Float::exp()
 {
@@ -528,8 +508,7 @@ void Float::exp()
 }
 
 /*
- * NAME:	Float::log()
- * DESCRIPTION:	log(f)
+ * log(f)
  */
 void Float::log()
 {
@@ -545,8 +524,7 @@ void Float::log()
 }
 
 /*
- * NAME:	Float::log10()
- * DESCRIPTION:	log10(f)
+ * log10(f)
  */
 void Float::log10()
 {
@@ -562,8 +540,7 @@ void Float::log10()
 }
 
 /*
- * NAME:	Float::pow()
- * DESCRIPTION:	pow(f1, f2)
+ * pow(f1, f2)
  */
 void Float::pow(Float &f)
 {
@@ -589,8 +566,7 @@ void Float::pow(Float &f)
 }
 
 /*
- * NAME:	Float::sqrt()
- * DESCRIPTION:	sqrt(f)
+ * sqrt(f)
  */
 void Float::sqrt()
 {
@@ -606,8 +582,7 @@ void Float::sqrt()
 }
 
 /*
- * NAME:	Float::cos()
- * DESCRIPTION:	cos(f)
+ * cos(f)
  */
 void Float::cos()
 {
@@ -617,8 +592,7 @@ void Float::cos()
 }
 
 /*
- * NAME:	Float::sin()
- * DESCRIPTION:	sin(f)
+ * sin(f)
  */
 void Float::sin()
 {
@@ -628,8 +602,7 @@ void Float::sin()
 }
 
 /*
- * NAME:	Float::tan()
- * DESCRIPTION:	float(f)
+ * float(f)
  */
 void Float::tan()
 {
@@ -639,8 +612,7 @@ void Float::tan()
 }
 
 /*
- * NAME:	Float::acos()
- * DESCRIPTION:	acos(f)
+ * acos(f)
  */
 void Float::acos()
 {
@@ -656,8 +628,7 @@ void Float::acos()
 }
 
 /*
- * NAME:	Float::asin()
- * DESCRIPTION:	asin(f)
+ * asin(f)
  */
 void Float::asin()
 {
@@ -673,8 +644,7 @@ void Float::asin()
 }
 
 /*
- * NAME:	Float::atan()
- * DESCRIPTION:	atan(f)
+ * atan(f)
  */
 void Float::atan()
 {
@@ -684,8 +654,7 @@ void Float::atan()
 }
 
 /*
- * NAME:	Float::atan2()
- * DESCRIPTION:	atan2(f)
+ * atan2(f)
  */
 void Float::atan2(Float &f)
 {
@@ -695,8 +664,7 @@ void Float::atan2(Float &f)
 }
 
 /*
- * NAME:	Float::cosh()
- * DESCRIPTION:	cosh(f)
+ * cosh(f)
  */
 void Float::cosh()
 {
@@ -706,8 +674,7 @@ void Float::cosh()
 }
 
 /*
- * NAME:	Float::sinh()
- * DESCRIPTION:	sinh(f)
+ * sinh(f)
  */
 void Float::sinh()
 {
@@ -717,8 +684,7 @@ void Float::sinh()
 }
 
 /*
- * NAME:	Float::tanh()
- * DESCRIPTION:	tanh(f)
+ * tanh(f)
  */
 void Float::tanh()
 {

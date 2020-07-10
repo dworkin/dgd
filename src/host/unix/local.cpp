@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,20 +23,18 @@
 extern "C" {
 
 /*
- * NAME:	term()
- * DESCRIPTION:	catch SIGTERM
+ * catch SIGTERM
  */
 static void term(int arg)
 {
     signal(SIGTERM, term);
-    interrupt();
+    DGD::interrupt();
 }
 
 }
 
 /*
- * NAME:	main()
- * DESCRIPTION:	main program
+ * main program
  */
 int main(int argc, char *argv[])
 {
@@ -47,12 +45,11 @@ int main(int argc, char *argv[])
     P_srandom(seed ^ ((long) mtime << 22));
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, term);
-    return dgd_main(argc, argv);
+    return DGD::main(argc, argv);
 }
 
 /*
- * NAME:	P->message()
- * DESCRIPTION:	show message
+ * show message
  */
 void P_message(const char *mess)
 {

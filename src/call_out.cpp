@@ -655,7 +655,7 @@ void CallOut::call(Frame *f)
 	    freecallout(&running, i, i, 0);
 
 	    try {
-		ErrorContext::push((ErrorContext::Handler) errhandler);
+		ErrorContext::push(DGD::errHandler);
 		str = obj->dataspace()->callOut(handle, f, &nargs);
 		if (f->call(obj, (Array *) NULL, str->text, str->len, TRUE,
 			    nargs)) {
@@ -665,7 +665,7 @@ void CallOut::call(Frame *f)
 		(f->sp++)->string->del();
 		ErrorContext::pop();
 	    } catch (...) { }
-	    endtask();
+	    DGD::endTask();
 	}
     }
 }

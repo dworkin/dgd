@@ -717,8 +717,7 @@ void Array::discard(Backup **ac)
 
 
 /*
- * NAME:	copytmp()
- * DESCRIPTION:	make temporary copies of values
+ * make temporary copies of values
  */
 static void copytmp(Dataspace *data, Value *v1, Array *a)
 {
@@ -773,8 +772,7 @@ Array *Array::add(Dataspace *data, Array *a2)
 }
 
 /*
- * NAME:	cmp()
- * DESCRIPTION:	compare two values
+ * compare two values
  */
 static int cmp(cvoid *cv1, cvoid *cv2)
 {
@@ -823,8 +821,7 @@ static int cmp(cvoid *cv1, cvoid *cv2)
 }
 
 /*
- * NAME:	search()
- * DESCRIPTION:	search for a value in an array
+ * search for a value in an array
  */
 static int search(Value *v1, Value *v2, unsigned short h, int step, bool place)
 {
@@ -1591,8 +1588,7 @@ Array *Array::mapAdd(Dataspace *data, Array *m2)
 }
 
 /*
- * NAME:	mapping->sub()
- * DESCRIPTION:	subtract an array from a mapping
+ * subtract an array from a mapping
  */
 Array *Array::mapSub(Dataspace *data, Array *a2)
 {

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -857,7 +857,7 @@ void Comm::acceptTelnet(Frame *f, Connection *conn, int port)
     try {
 	ErrorContext::push();
 	PUSH_INTVAL(f, port);
-	call_driver_object(f, "telnet_connect", 1);
+	DGD::callDriver(f, "telnet_connect", 1);
 	if (f->sp->type != T_OBJECT) {
 	    fatal("driver->telnet_connect() did not return persistent object");
 	}
@@ -876,7 +876,7 @@ void Comm::acceptTelnet(Frame *f, Connection *conn, int port)
     if (f->call(obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	(f->sp++)->del();
     }
-    endtask();
+    DGD::endTask();
     this_user = OBJ_NONE;
 }
 
@@ -890,7 +890,7 @@ void Comm::accept(Frame *f, Connection *conn, int port)
     try {
 	ErrorContext::push();
 	PUSH_INTVAL(f, port);
-	call_driver_object(f, "binary_connect", 1);
+	DGD::callDriver(f, "binary_connect", 1);
 	if (f->sp->type != T_OBJECT) {
 	    fatal("driver->binary_connect() did not return persistent object");
 	}
@@ -907,7 +907,7 @@ void Comm::accept(Frame *f, Connection *conn, int port)
     if (f->call(obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	(f->sp++)->del();
     }
-    endtask();
+    DGD::endTask();
     this_user = OBJ_NONE;
 }
 
@@ -921,7 +921,7 @@ void Comm::acceptDgram(Frame *f, Connection *conn, int port)
     try {
 	ErrorContext::push();
 	PUSH_INTVAL(f, port);
-	call_driver_object(f, "datagram_connect", 1);
+	DGD::callDriver(f, "datagram_connect", 1);
 	if (f->sp->type != T_OBJECT) {
 	    fatal("driver->datagram_connect() did not return persistent object");
 	}
@@ -939,7 +939,7 @@ void Comm::acceptDgram(Frame *f, Connection *conn, int port)
     if (f->call(obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	(f->sp++)->del();
     }
-    endtask();
+    DGD::endTask();
     this_user = OBJ_NONE;
 }
 
@@ -975,7 +975,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
     }
 
     try {
-	ErrorContext::push(errhandler);
+	ErrorContext::push(DGD::errHandler);
 	if (ntport != 0 && nusers < maxusers) {
 	    n = nexttport;
 	    do {
@@ -1083,7 +1083,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 				    TRUE, 1)) {
 			    (f->sp++)->del();
 			}
-			endtask();
+			DGD::endTask();
 		    } else if (retval > 0) {
 			/*
 			 * Connection completed, call open in the user object.
@@ -1091,7 +1091,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 			if (f->call(obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 			    (f->sp++)->del();
 			}
-			endtask();
+			DGD::endTask();
 		    }
 		    this_user = old_user;
 		}
@@ -1114,7 +1114,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 		this_user = obj->index;
 		if (f->call(obj, (Array *) NULL, "message_done", 12, TRUE, 0)) {
 		    (f->sp++)->del();
-		    endtask();
+		    DGD::endTask();
 		}
 
 		this_user = OBJ_NONE;
@@ -1148,7 +1148,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 			     * empty buffer, no more input, no pending output
 			     */
 			    usr->del(f, obj, FALSE);
-			    endtask();    /* this cannot be in comm_del() */
+			    DGD::endTask(); /* this cannot be in comm_del() */
 			    break;
 			}
 		    }
@@ -1365,7 +1365,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 			if (f->call(obj, (Array *) NULL, "receive_datagram", 16,
 				    TRUE, 1)) {
 			    (f->sp++)->del();
-			    endtask();
+			    DGD::endTask();
 			}
 			this_user = OBJ_NONE;
 		    }
@@ -1378,7 +1378,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 		    if (f->call(obj, (Array *) NULL, "datagram_attach", 15,
 				TRUE, 0)) {
 			(f->sp++)->del();
-			endtask();
+			DGD::endTask();
 		    }
 		    this_user = OBJ_NONE;
 		}
@@ -1390,7 +1390,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 			 * no more input and no pending output
 			 */
 			usr->del(f, obj, FALSE);
-			endtask();	/* this cannot be in comm_del() */
+			DGD::endTask();	/* this cannot be in comm_del() */
 			break;
 		    }
 		    continue;
@@ -1402,7 +1402,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 	    this_user = obj->index;
 	    if (f->call(obj, (Array *) NULL, "receive_message", 15, TRUE, 1)) {
 		(f->sp++)->del();
-		endtask();
+		DGD::endTask();
 	    }
 	    this_user = OBJ_NONE;
 	    break;
@@ -1410,7 +1410,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 
 	ErrorContext::pop();
     } catch (...) {
-	endtask();
+	DGD::endTask();
 	this_user = OBJ_NONE;
 	return;
     }

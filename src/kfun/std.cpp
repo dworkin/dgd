@@ -128,7 +128,7 @@ int kf_call_other(Frame *f, int nargs, KFun *kf)
     if (val->type == T_STRING) {
 	*--f->sp = *val;
 	*val = Value::nil;	/* erase old copy */
-	call_driver_object(f, "call_object", 1);
+	DGD::callDriver(f, "call_object", 1);
 	*val = *f->sp++;
     }
     switch (val->type) {
@@ -480,7 +480,7 @@ int kf_instanceof(Frame *f, int nargs, KFun *kf)
 	strcpy(str->text + 1, name);
 	strcpy(str->text + str->len - 3, "#-1");
     }
-    call_driver_object(f, "object_type", 2);
+    DGD::callDriver(f, "object_type", 2);
     if (f->sp->type != T_STRING) {
 	error("Invalid object type");
     }

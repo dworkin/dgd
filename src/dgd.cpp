@@ -40,10 +40,9 @@ static bool rebuild;		/* rebuild swapfile? */
 bool intr;			/* received an interrupt? */
 
 /*
- * NAME:	call_driver_object()
- * DESCRIPTION:	call a function in the driver object
+ * call a function in the driver object
  */
-bool call_driver_object(Frame *f, const char *func, int narg)
+bool DGD::callDriver(Frame *f, const char *func, int narg)
 {
     Object *driver;
     char *driver_name;
@@ -66,19 +65,17 @@ bool call_driver_object(Frame *f, const char *func, int narg)
 }
 
 /*
- * NAME:	interrupt()
- * DESCRIPTION:	register an interrupt
+ * register an interrupt
  */
-void interrupt()
+void DGD::interrupt()
 {
     intr = TRUE;
 }
 
 /*
- * NAME:	endtask()
- * DESCRIPTION:	clean up after a task has terminated
+ * clean up after a task has terminated
  */
-void endtask()
+void DGD::endTask()
 {
     Comm::flush();
     Dataspace::xport();
@@ -145,20 +142,18 @@ void endtask()
 }
 
 /*
- * NAME:	errhandler()
- * DESCRIPTION:	default error handler
+ * default error handler
  */
-void errhandler(Frame *f, Int depth)
+void DGD::errHandler(Frame *f, Int depth)
 {
     UNREFERENCED_PARAMETER(depth);
     Frame::runtimeError(f, (Int) 0);
 }
 
 /*
- * NAME:	dgd_main()
- * DESCRIPTION:	the main loop of DGD
+ * the main loop of DGD
  */
-int dgd_main(int argc, char **argv)
+int DGD::main(int argc, char **argv)
 {
     char *program, *module;
     Uint rtime, timeout;
@@ -217,12 +212,12 @@ int dgd_main(int argc, char **argv)
 	if (intr) {
 	    intr = FALSE;
 	    try {
-		ErrorContext::push((ErrorContext::Handler) errhandler);
-		call_driver_object(cframe, "interrupt", 0);
+		ErrorContext::push((ErrorContext::Handler) errHandler);
+		callDriver(cframe, "interrupt", 0);
 		(cframe->sp++)->del();
 		ErrorContext::pop();
 	    } catch (...) { }
-	    endtask();
+	    endTask();
 	}
 
 	/* handle user input */

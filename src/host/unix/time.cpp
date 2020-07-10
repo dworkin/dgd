@@ -22,8 +22,7 @@
 # include <sys/time.h>
 
 /*
- * NAME:	P->time()
- * DESCRIPTION:	return the current time
+ * return the current time
  */
 Uint P_time()
 {
@@ -31,8 +30,7 @@ Uint P_time()
 }
 
 /*
- * NAME:	P->mtime()
- * DESCRIPTION:	return the current time in milliseconds
+ * return the current time in milliseconds
  */
 Uint P_mtime(unsigned short *milli)
 {
@@ -44,8 +42,7 @@ Uint P_mtime(unsigned short *milli)
 }
 
 /*
- * NAME:	P->ctime()
- * DESCRIPTION:	convert the given time to a string
+ * convert the given time to a string
  */
 char *P_ctime(char *buf, Uint time)
 {

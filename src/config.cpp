@@ -1636,8 +1636,8 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    Control::converted();
 	    Dataspace::converted();
 	    try {
-		ErrorContext::push((ErrorContext::Handler) errhandler);
-		call_driver_object(cframe, "initialize", 0);
+		ErrorContext::push(DGD::errHandler);
+		DGD::callDriver(cframe, "initialize", 0);
 		ErrorContext::pop();
 	    } catch (...) {
 		error((char *) NULL);
@@ -1656,12 +1656,12 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 
 	    /* notify mudlib */
 	    try {
-		ErrorContext::push((ErrorContext::Handler) errhandler);
+		ErrorContext::push(DGD::errHandler);
 		if (hotbooted) {
 		    PUSH_INTVAL(cframe, TRUE);
-		    call_driver_object(cframe, "restored", 1);
+		    DGD::callDriver(cframe, "restored", 1);
 		} else {
-		    call_driver_object(cframe, "restored", 0);
+		    DGD::callDriver(cframe, "restored", 0);
 		}
 		ErrorContext::pop();
 	    } catch (...) {
@@ -1671,7 +1671,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	ErrorContext::pop();
     } catch (...) {
 	message((char *) NULL);
-	endtask();
+	DGD::endTask();
 	message("Config error: initialization failed\012");	/* LF */
 	ErrorContext::pop();		/* remove guard */
 
@@ -1693,7 +1693,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	return FALSE;
     }
     (cframe->sp++)->del();
-    endtask();
+    DGD::endTask();
     ErrorContext::pop();		/* remove guard */
 
     /* start accepting connections */
@@ -2030,8 +2030,7 @@ Array *Config::object(Dataspace *data, Object *obj)
 
 
 /*
- * NAME:	strtoint()
- * DESCRIPTION:	retrieve an Int from a string (utility function)
+ * retrieve an Int from a string (utility function)
  */
 Int strtoint(char **str)
 {

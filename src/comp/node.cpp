@@ -33,8 +33,7 @@
 static class nodechunk : public Chunk<Node, NODE_CHUNK> {
 public:
     /*
-     * NAME:		item()
-     * DESCRIPTION:	dereference strings when iterating through items
+     * dereference strings when iterating through items
      */
     virtual bool item(Node *n) {
 	if (n->type == N_STR || n->type == N_GOTO || n->type == N_LABEL) {
@@ -223,8 +222,7 @@ Node *Node::createMon(int type, int mod, Node *left)
 }
 
 /*
- * NAME:	node->bin()
- * DESCRIPTION:	create a node for a binary operator
+ * create a node for a binary operator
  */
 Node *Node::createBin(int type, int mod, Node *left, Node *right)
 {

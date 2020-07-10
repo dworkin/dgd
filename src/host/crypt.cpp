@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -271,8 +271,7 @@ static char out[64] = {
 				 (b) ^= (t), (a) ^= (t) << (n))
 
 /*
- * NAME:	P->setkey()
- * DESCRIPTION:	prepare a key for encryption or decryption
+ * prepare a key for encryption or decryption
  */
 static void P_setkey(Uint *keys, char *k)
 {
@@ -334,8 +333,7 @@ static void P_setkey(Uint *keys, char *k)
 }
 
 /*
- * NAME:	P->crypt()
- * DESCRIPTION:	Unix password encryption.
+ * Unix password encryption.
  */
 char *P_crypt(char *passwd, char *salt)
 {
@@ -422,8 +420,7 @@ char *P_crypt(char *passwd, char *salt)
 }
 
 /*
- * NAME:	P->encrypt_des_key()
- * DESCRIPTION:	return a DES key prepared for encryption
+ * return a DES key prepared for encryption
  */
 String *P_encrypt_des_key(Frame *f, String *keystr)
 {
@@ -454,8 +451,7 @@ String *P_encrypt_des_key(Frame *f, String *keystr)
 }
 
 /*
- * NAME:	P->decrypt_des_key()
- * DESCRIPTION:	return a DES key prepared for decryption
+ * return a DES key prepared for decryption
  */
 String *P_decrypt_des_key(Frame *f, String *keystr)
 {
@@ -492,8 +488,7 @@ String *P_decrypt_des_key(Frame *f, String *keystr)
 }
 
 /*
- * NAME:	P->encrypt_des()
- * DESCRIPTION:	encrypt (or decrypt) a string
+ * encrypt (or decrypt) a string
  */
 String *P_encrypt_des(Frame *f, String *keystr, String *mesg)
 {

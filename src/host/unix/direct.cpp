@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,8 +23,7 @@
 static DIR *d;
 
 /*
- * NAME:	P->opendir()
- * DESCRIPTION:	open a directory
+ * open a directory
  */
 bool P_opendir(const char *dir)
 {
@@ -33,8 +32,7 @@ bool P_opendir(const char *dir)
 }
 
 /*
- * NAME:	P->readdir()
- * DESCRIPTION:	read a directory, skipping . and ..
+ * read a directory, skipping . and ..
  */
 char *P_readdir()
 {
@@ -51,8 +49,7 @@ char *P_readdir()
 }
 
 /*
- * NAME:	P->closedir()
- * DESCRIPTION:	close a directory
+ * close a directory
  */
 void P_closedir()
 {

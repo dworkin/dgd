@@ -515,7 +515,7 @@ bool Compile::inherit(char *file, Node *label, int priv)
 
 	strncpy(buf, file, STRINGSZ - 1);
 	buf[STRINGSZ - 1] = '\0';
-	if (call_driver_object(f, "inherit_program", 3)) {
+	if (DGD::callDriver(f, "inherit_program", 3)) {
 	    if (f->sp->type == T_OBJECT) {
 		obj = OBJR(f->sp->oindex);
 		f->sp++;
@@ -746,7 +746,7 @@ String *Compile::objecttype(Node *n)
 	p = TokenBuf::filename();
 	PUSH_STRVAL(f, String::create(p, strlen(p)));
 	PUSH_STRVAL(f, n->l.string);
-	call_driver_object(f, "object_type", 2);
+	DGD::callDriver(f, "object_type", 2);
 	if (f->sp->type != T_STRING) {
 	    error("invalid object type");
 	    p = n->l.string->text;
@@ -1239,7 +1239,7 @@ Node *Compile::endRlimits(Node *n1, Node *n2, Node *n3)
 				      strlen(current->file) + 1));
 	f->sp->string->text[0] = '/';
 	strcpy(f->sp->string->text + 1, current->file);
-	call_driver_object(f, "compile_rlimits", 1);
+	DGD::callDriver(f, "compile_rlimits", 1);
 	n1 = Node::createBin(N_RLIMITS, VAL_TRUE(f->sp),
 			     Node::createBin(N_PAIR, 0, n1, n2),
 			     n3);
@@ -2555,7 +2555,7 @@ void Compile::error(const char *format, ...)
 	va_end(args);
 	PUSH_STRVAL(f, String::create(buf, strlen(buf)));
 
-	call_driver_object(f, "compile_error", 3);
+	DGD::callDriver(f, "compile_error", 3);
 	(f->sp++)->del();
     } else {
 	/* there is no driver object to call; show the error on stderr */

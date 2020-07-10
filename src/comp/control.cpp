@@ -905,7 +905,7 @@ bool Control::inherit(Frame *f, char *from, Object *obj, String *label,
 		(--f->sp)->type = T_OBJECT;
 		f->sp->oindex = obj->index;
 		f->sp->objcnt = ocount = obj->count;
-		call_driver_object(f, "recompile", 1);
+		DGD::callDriver(f, "recompile", 1);
 		(f->sp++)->del();
 		obj = OBJR(obj->index);
 		if (obj->count != ocount) {
@@ -2773,7 +2773,7 @@ char *Control::program()
 }
 
 /*
- * DESCRIPTION:	load strings text
+ * load strings text
  */
 void Control::loadStext(void (*readv) (char*, Sector*, Uint, Uint))
 {

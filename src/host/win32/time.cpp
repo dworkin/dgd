@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,8 +24,7 @@
 # define UNIXBIRTH	0x019db1ded53e8000
 
 /*
- * NAME:	P->time()
- * DESCRIPTION:	return the time in seconds since Jan 1, 1970
+ * return the time in seconds since Jan 1, 1970
  */
 Uint P_time()
 {
@@ -40,8 +39,7 @@ Uint P_time()
 }
 
 /*
- * NAME:	P->mtime()
- * DESCRIPTION:	return the time in seconds since Jan 1, 1970 in milliseconds
+ * return the time in seconds since Jan 1, 1970 in milliseconds
  */
 Uint P_mtime(unsigned short *milli)
 {
@@ -57,8 +55,7 @@ Uint P_mtime(unsigned short *milli)
 }
 
 /*
- * NAME:	P->ctime()
- * DESCRIPTION:	return time as string
+ * return time as string
  */
 char *P_ctime(char *buf, Uint time)
 {

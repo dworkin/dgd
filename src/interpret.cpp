@@ -1177,7 +1177,7 @@ void Frame::checkRlimits()
     }
 
     /* obj, stack, ticks */
-    call_driver_object(this, "runtime_rlimits", 3);
+    DGD::callDriver(this, "runtime_rlimits", 3);
 
     if (!VAL_TRUE(sp)) {
 	error("Illegal use of rlimits");
@@ -2317,7 +2317,7 @@ bool Frame::call(Object *obj, Array *lwobj, const char *func, unsigned int len,
 	    data->assignElt(lwobj, &lwobj->elts[1], &val);
 	    PUSH_LWOVAL(this, lwobj);
 	    PUSH_STRVAL(this, String::create(func, len));
-	    call_driver_object(this, "touch", 2);
+	    DGD::callDriver(this, "touch", 2);
 	    if (VAL_TRUE(sp)) {
 		/* preserve through call */
 		flt.high = TRUE;
@@ -2339,7 +2339,7 @@ bool Frame::call(Object *obj, Array *lwobj, const char *func, unsigned int len,
 	if (O_HASDATA(obj)) {
 	    PUSH_OBJVAL(this, obj);
 	    PUSH_STRVAL(this, String::create(func, len));
-	    call_driver_object(this, "touch", 2);
+	    DGD::callDriver(this, "touch", 2);
 	    if (VAL_TRUE(sp)) {
 		obj->flags &= ~O_TOUCHED;	/* preserve though call */
 	    }
@@ -2675,7 +2675,7 @@ bool Frame::callCritical(const char *func, int narg, int flag)
 	ErrorContext::push((ErrorContext::Handler) ((flag) ?
 						     NULL : emptyhandler));
 	sp -= narg;	/* recover arguments */
-	call_driver_object(this, func, narg);
+	DGD::callDriver(this, func, narg);
 	ok = TRUE;
 	ErrorContext::pop();
     } catch (...) {

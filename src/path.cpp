@@ -113,7 +113,7 @@ char *Path::edRead(char *buf, char *file)
 	return resolve(buf, file);
     } else {
 	PUSH_STRVAL(f, String::create(file, strlen(file)));
-	call_driver_object(f, "path_read", 1);
+	DGD::callDriver(f, "path_read", 1);
 	if (f->sp->type != T_STRING) {
 	    (f->sp++)->del();
 	    return (char *) NULL;
@@ -136,7 +136,7 @@ char *Path::edWrite(char *buf, char *file)
 	return resolve(buf, file);
     } else {
 	PUSH_STRVAL(f, String::create(file, strlen(file)));
-	call_driver_object(f, "path_write", 1);
+	DGD::callDriver(f, "path_write", 1);
 	if (f->sp->type != T_STRING) {
 	    (f->sp++)->del();
 	    return (char *) NULL;
@@ -167,7 +167,7 @@ char *Path::include(char *buf, char *from, char *file, String ***strs,
     f = cframe;
     PUSH_STRVAL(f, String::create(from, strlen(from)));
     PUSH_STRVAL(f, String::create(file, strlen(file)));
-    if (!call_driver_object(f, "include_file", 2)) {
+    if (!DGD::callDriver(f, "include_file", 2)) {
 	f->sp++;
 	return Path::from(buf, from, file);
     }

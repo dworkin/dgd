@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,7 +25,7 @@ extern void conn_intr();
 BOOL WINAPI handler(DWORD type)
 {
     UNREFERENCED_PARAMETER(type);
-    interrupt();
+    DGD::interrupt();
     conn_intr();
     return TRUE;
 }
@@ -38,12 +38,11 @@ int main(int argc, char **argv)
     seed = P_mtime(&mtime);
     P_srandom(seed ^ ((long) mtime << 22));
     SetConsoleCtrlHandler(handler, TRUE);
-    return dgd_main(argc, argv);
+    return DGD::main(argc, argv);
 }
 
 /*
- * NAME:    P->message()
- * DESCRIPTION: show message
+ * show message
  */
 void P_message(const char *mess)
 {

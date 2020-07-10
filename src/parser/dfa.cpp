@@ -1516,12 +1516,11 @@ DfaState *Dfa::expand(DfaState *state)
 }
 
 /*
- * NAME:	dfa->scan()
- * DESCRIPTION:	Scan input, while lazily constructing a DFA.
- *		Return values:	[0 ..>	token
- *				-1	end of string
- *				-2	Invalid token
- *				-3	DFA too large (deallocate)
+ * Scan input, while lazily constructing a DFA.
+ * Return values:	[0 ..>	token
+ *			-1	end of string
+ *			-2	Invalid token
+ *			-3	DFA too large (deallocate)
  */
 short Dfa::scan(String *str, ssizet *strlen, char **token, ssizet *len)
 {
