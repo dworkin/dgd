@@ -1818,7 +1818,7 @@ Node *YYParser::_and(int op, Node *n1, Node *n2, const char *name)
     }
     if ((((type=n1->mod) == T_MIXED || type == T_MAPPING) &&
 	 ((n2->mod & T_REF) != 0 || n2->mod == T_MIXED)) ||
-	((type=Compile::matchType(n1->mod, n2->mod)) & T_REF) != T_NIL) {
+	((type=Compile::matchType(n1->mod, n2->mod)) & T_REF) != 0) {
 	/*
 	 * possibly array & array or mapping & array
 	 */
@@ -1840,7 +1840,7 @@ Node *YYParser::_xor(int op, Node *n1, Node *n2, const char *name)
 	return n1;
     }
     if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
-	((type=Compile::matchType(n1->mod, n2->mod)) & T_REF) != T_NIL) {
+	((type=Compile::matchType(n1->mod, n2->mod)) & T_REF) != 0) {
 	/*
 	 * possibly array ^ array
 	 */
@@ -1862,7 +1862,7 @@ Node *YYParser::_or(int op, Node *n1, Node *n2, const char *name)
 	return n1;
     }
     if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
-	((type=Compile::matchType(n1->mod, n2->mod)) & T_REF) != T_NIL) {
+	((type=Compile::matchType(n1->mod, n2->mod)) & T_REF) != 0) {
 	/*
 	 * possibly array | array
 	 */
