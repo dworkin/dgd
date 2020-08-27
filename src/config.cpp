@@ -1422,7 +1422,8 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 		  char *module, Sector *fragment)
 {
     char buf[STRINGSZ];
-    int fd, fd2, i;
+    char abs_path[STRINGSZ];
+    int fd, fd2, i, j;
     bool init;
     Sector cache;
 
@@ -1507,6 +1508,40 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 
     /* initialize kfuns */
     KFun::init();
+
+    /* if conf[DIRECTORY] is empty, set it to the directory containing
+       the config file */
+    if (conf[DIRECTORY].str[0] == 0) {
+        if (realpath(configfile, abs_path) == NULL) {
+            message("Config error: couldn't get real path for config file \"%s\"\012", /* LF */
+                configfile);
+            if (snapshot2 != (char *) NULL) {
+                P_close(fd2);
+            }
+            if (snapshot != (char *) NULL) {
+                P_close(fd);
+            }
+            modFinish();
+            Ext::finish();
+            Alloc::finish();
+            return FALSE;
+        }
+
+        /* cut off the final filename, leave only the absolute directory */
+        for(i = 0, j = 0; abs_path[i] != 0; i++) {
+            if(abs_path[i] == '/') {
+                j = i;
+            }
+        }
+        if (abs_path[j] == '/') {
+            abs_path[j] = 0;
+        }
+
+        Alloc::staticMode();
+        Alloc::free(conf[DIRECTORY].str);
+        conf[DIRECTORY].str = strcpy(ALLOC(char, strlen(abs_path) + 1), abs_path);
+        Alloc::dynamicMode();
+    }
 
     /* change directory */
     if (P_chdir(path_native(buf, conf[DIRECTORY].str)) < 0) {
