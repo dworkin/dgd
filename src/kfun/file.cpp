@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1528,16 +1528,32 @@ struct fileinfo {
  * NAME:	getinfo()
  * DESCRIPTION:	get info about a file
  */
-static bool getinfo(char *path, char *file, fileinfo *finf)
+static bool getinfo(const char *path, char *file, fileinfo *finf)
 {
     struct stat sbuf;
+    register int pathlen, filelen;
+    char *buf;
 
-    if (P_stat(path, &sbuf) < 0) {
+    pathlen = strlen(path);
+    filelen = strlen(file);
+    if (strcmp(path, ".") == 0) {
+	buf = ALLOCA(char, filelen + 1);
+	memcpy(buf, file, filelen + 1);
+    } else {
+	buf = ALLOCA(char, pathlen + filelen + 2);
+	memcpy(buf, path, pathlen);
+	buf[pathlen++] = '/';
+	memcpy(buf + pathlen, file, filelen + 1);
+    }
+
+    if (P_stat(buf, &sbuf) < 0) {
 	/*
 	 * the file does not exist
 	 */
+	AFREE(buf);
 	return FALSE;
     }
+    AFREE(buf);
 
     str_ref(finf->name = str_new(file, (long) strlen(file)));
     if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
@@ -1607,34 +1623,27 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
 	 * single file
 	 */
 	nfiles++;
-    } else if (strcmp(dir, ".") == 0 || P_chdir(dir) >= 0) {
-	if (P_opendir(".")) {
-	    /*
-	     * read files from directory
-	     */
-	    i = conf_array_size();
-	    while (nfiles < i && (file=P_readdir()) != (char *) NULL) {
-		if (match(pat, file) > 0 && getinfo(file, file, &finf)) {
-		    /* add file */
-		    if (nfiles == ftabsz) {
-			fileinfo *tmp;
+    } else if (P_opendir(dir)) {
+	/*
+	 * read files from directory
+	 */
+	i = conf_array_size();
+	while (nfiles < i && (file=P_readdir()) != (char *) NULL) {
+	    if (match(pat, file) > 0 && getinfo(dir, file, &finf)) {
+		/* add file */
+		if (nfiles == ftabsz) {
+		    fileinfo *tmp;
 
-			tmp = ALLOC(fileinfo, ftabsz + FILEINFO_CHUNK);
-			memcpy(tmp, ftable, ftabsz * sizeof(fileinfo));
-			ftabsz += FILEINFO_CHUNK;
-			FREE(ftable);
-			ftable = tmp;
-		    }
-		    ftable[nfiles++] = finf;
+		    tmp = ALLOC(fileinfo, ftabsz + FILEINFO_CHUNK);
+		    memcpy(tmp, ftable, ftabsz * sizeof(fileinfo));
+		    ftabsz += FILEINFO_CHUNK;
+		    FREE(ftable);
+		    ftable = tmp;
 		}
+		ftable[nfiles++] = finf;
 	    }
-	    P_closedir();
 	}
-
-	if (strcmp(dir, ".") != 0 &&
-	    P_chdir(path_native(buf, conf_base_dir())) < 0) {
-	    fatal("cannot chdir back to base dir");
-	}
+	P_closedir();
     }
 
     /* prepare return value */
