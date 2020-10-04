@@ -23,8 +23,9 @@
  * UINDEX limits the number of objects
  * SECTOR limits the number of swap sectors (the size of a snapshot)
  * EINDEX limits the number of connected users
+ * SSIZET limits the length of a string (best kept at 16 bits)
  *
- * default: 64K objects, 64K swap sectors, 255 users
+ * default: 64K objects, 64K swap sectors, 255 users, max string length 64K
  */
 # ifndef UINDEX_TYPE
 # define UINDEX_TYPE	unsigned short
@@ -38,16 +39,18 @@
 # define EINDEX_TYPE	unsigned char
 # define EINDEX_MAX	UCHAR_MAX
 # endif
+# ifndef SSIZET_TYPE
+# define SSIZET_TYPE	unsigned short
+# define SSIZET_MAX	USHRT_MAX
+# endif
 
 typedef UINDEX_TYPE uindex;
 typedef SECTOR_TYPE Sector;
 # define SW_UNUSED	SECTOR_MAX
 typedef EINDEX_TYPE eindex;
 # define EINDEX(e)	((eindex) e)
+typedef SSIZET_TYPE ssizet;
 
-/* sizeof(ssizet) <= sizeof(uindex), best kept at 16 bits */
-typedef unsigned short ssizet;
-# define SSIZET_MAX	USHRT_MAX
 
 typedef unsigned short kfindex;
 # define KFTAB_SIZE	1024
