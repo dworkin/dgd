@@ -1,10 +1,19 @@
 			*** EXPERIMENTAL ***
 
-Run DGD inside a docker container, with the LPC source tree and snapshot
-files outside the container.  The container is persistent and can be
-updated without being stopped; DGD is configured to be hotbooted into a
-new version after an update.  The JIT compiler extension, gzip extension and
-crypto extension are included in the container.
+The files in this directory can be used to run DGD inside a docker
+container, which will contain the DGD binary and JIT object cache, but not
+the LPC source tree or the snapshot files.
+
+In contrast to the typical container setup, which depends on static images
+that have to be replaced to keep up with new releases and the disclosure
+of vulnerabilities, necessitating a restart of the container, this
+configuration is persistent and all components (including the base
+system) can be updated without restarting, and without service interruption
+even for connected clients.
+
+DGD is configured to be hotbooted into a new version after an update.  The
+JIT compiler extension, gzip extension and crypto extension are included
+in the container.
 
 The container expects the following to be present in the current directory
 when started:
@@ -22,4 +31,4 @@ Then, copy docker-compose.yml.example to docker-compose.yml and change
 the ports to match those in the configuration file.
 
 Build and start the container with "docker-compose up".  Update the
-container with "docker exec <container-id> /container/update".
+running container with "docker exec <container-id> /container/update".
