@@ -8,8 +8,8 @@ WORKDIR /container
 
 ADD server update /container/
 
-RUN git clone git://github.com/dworkin/dgd.git
-RUN git clone git://github.com/dworkin/lpc-ext.git
+RUN git clone -b release git://github.com/dworkin/dgd.git
+RUN git clone -b release git://github.com/dworkin/lpc-ext.git
 RUN mkdir cache
 RUN chown dgd:dgd cache
 RUN ln -s lpc-ext/jit/jitcomp
