@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -3498,8 +3498,9 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 	     */
 	    oindex = lwobj->elts[0].oindex;
 	    obj = OBJR(oindex);
-	    if (obj->update != flt.low) {
+	    if (flt.low != obj->update) {
 		d_upgrade_lwobj(lwobj, obj);
+		flt.low = obj->update;
 	    }
 	}
 	if (flt.high != FALSE) {
