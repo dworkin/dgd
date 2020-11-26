@@ -2304,8 +2304,9 @@ bool Frame::call(Object *obj, Array *lwobj, const char *func, unsigned int len,
 	     */
 	    oindex = lwobj->elts[0].oindex;
 	    obj = OBJR(oindex);
-	    if (obj->update != flt.low) {
+	    if (flt.low != obj->update) {
 		Dataspace::upgradeLWO(lwobj, obj);
+		flt.low = obj->update;
 	    }
 	}
 	if (flt.high != FALSE) {
