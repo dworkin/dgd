@@ -18,6 +18,12 @@
 
 class Ext {
 public:
+# ifndef NOFLOAT
+    static double getFloat(const Float *flt);
+    static bool checkFloat(double *d);
+    static void constrainFloat(double *d);
+    static void putFloat(Float *flt, double d);
+# endif
     static void kfuns(char *protos, int size, int nkfun);
     static bool execute(const Frame *f, int func);
     static void release(uint64_t index, uint64_t instance);

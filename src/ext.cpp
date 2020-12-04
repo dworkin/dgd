@@ -123,21 +123,103 @@ static void ext_int_putval(Value *val, Int i)
 
 # ifndef NOFLOAT
 /*
+ * get a double from a Float
+ */
+double Ext::getFloat(const Float *flt)
+{
+    double d;
+
+    if ((flt->high | flt->low) == 0) {
+	return 0.0;
+    } else {
+	d = ldexp((double) (0x10 | (flt->high & 0xf)), 32);
+	d = ldexp(d + flt->low, ((flt->high >> 4) & 0x7ff) - 1023 - 36);
+	return ((flt->high >> 15) ? -d : d);
+    }
+}
+
+/*
+ * check that a value is within range
+ */
+bool Ext::checkFloat(double *d)
+{
+    unsigned short sign;
+    int e;
+
+
+    if (*d == 0.0) {
+	return TRUE;
+    }
+    if (!isfinite(*d)) {
+	return FALSE;
+    }
+
+# if (DBL_MANT_DIG > 37)
+    sign = (*d < 0.0);
+    *d = frexp(fabs(*d), &e);
+    *d += (double) (1 << (DBL_MANT_DIG - 38));
+    *d -= (double) (1 << (DBL_MANT_DIG - 38));
+    if (*d >= 1.0) {
+	if (++e > 1023) {
+	    return FALSE;
+	}
+	*d = ldexp(*d, -1);
+    }
+    *d = ldexp(*d, e);
+    if (sign) {
+	*d = -*d;
+    }
+# else
+    frexp(*d, &e);
+# endif
+    if (e <= -1023) {
+	*d = 0.0;
+    }
+
+    return TRUE;
+}
+
+/*
+ * constrain a float to a range
+ */
+void Ext::constrainFloat(double *d)
+{
+    if (!checkFloat(d)) {
+	error("Result too large");
+    }
+}
+
+/*
+ * put a double in a Float
+ */
+void Ext::putFloat(Float *flt, double d)
+{
+    unsigned short sign;
+    int e;
+    Uuint m;
+
+    if (d == 0.0) {
+	flt->high = 0;
+	flt->low = 0;
+    } else {
+	sign = (d < 0.0);
+	d = frexp(fabs(d), &e);
+	m = (Uuint) ldexp(d, 37);
+	flt->high = (sign << 15) | ((e - 1 + 1023) << 4) |
+		    ((unsigned short) (m >> 32) & 0xf);
+	flt->low = (Uuint) m;
+    }
+}
+
+/*
  * retrieve a float from a value
  */
 static long double ext_float_getval(Value *val)
 {
     Float flt;
-    double d;
 
     GET_FLT(val, flt);
-    if ((flt.high | flt.low) == 0) {
-	return 0.0;
-    } else {
-	d = ldexp((double) (0x10 | (flt.high & 0xf)), 32);
-	d = ldexp(d + flt.low, ((flt.high >> 4) & 0x7ff) - 1023 - 36);
-	return (long double) ((flt.high >> 15) ? -d : d);
-    }
+    return (long double) Ext::getFloat(&flt);
 }
 
 /*
@@ -145,39 +227,15 @@ static long double ext_float_getval(Value *val)
  */
 static int ext_float_putval(Value *val, long double ld)
 {
-    double d;
     Float flt;
-    unsigned short sign;
-    int e;
-    Uuint m;
+    double d;
 
     d = (double) ld;
-    if (d == 0.0) {
-	flt.high = 0;
-	flt.low = 0;
-    } else {
-	sign = (d < 0.0);
-	d = frexp(fabs(d), &e);
-# if (DBL_MANT_DIG > 37)
-	d += (double) (1 << (DBL_MANT_DIG - 38));
-	d -= (double) (1 << (DBL_MANT_DIG - 38));
-	if (d >= 1.0) {
-	    if (++e > 1023) {
-		return FALSE;
-	    }
-	    d = ldexp(d, -1);
-	}
-# endif
-	if (e <= -1023) {
-	    flt.high = 0;
-	    flt.low = 0;
-	} else {
-	    m = (Uuint) ldexp(d, 37);
-	    flt.high = (sign << 15) | ((e - 1 + 1023) << 4) |
-		       ((unsigned short) (m >> 32) & 0xf);
-	    flt.low = (Uuint) m;
-	}
+    if (!Ext::checkFloat(&d))  {
+	return FALSE;
     }
+
+    Ext::putFloat(&flt, d);
     PUT_FLTVAL(val, flt);
     return TRUE;
 }
@@ -432,6 +490,7 @@ static void ext_vm_int(Frame *f, Int n)
     PUSH_INTVAL(f, n);
 }
 
+# ifndef NOFLOAT
 /*
  * push float on the stack
  */
@@ -439,6 +498,7 @@ static void ext_vm_float(Frame *f, double flt)
 {
     ext_float_putval(--f->sp, flt);
 }
+# endif
 
 /*
  * push string on the stack
@@ -464,6 +524,7 @@ static Int ext_vm_param_int(Frame *f, uint8_t param)
     return f->argp[param].number;
 }
 
+# ifndef NOFLOAT
 /*
  * get float parameter
  */
@@ -471,6 +532,7 @@ static double ext_vm_param_float(Frame *f, uint8_t param)
 {
     return ext_float_getval(f->argp + param);
 }
+# endif
 
 /*
  * push local variable on the stack
@@ -488,6 +550,7 @@ static Int ext_vm_local_int(Frame *f, uint8_t local)
     return (f->fp - local)->number;
 }
 
+# ifndef NOFLOAT
 /*
  * get float local variable
  */
@@ -495,6 +558,7 @@ static double ext_vm_local_float(Frame *f, uint8_t local)
 {
     return ext_float_getval(f->fp - local);
 }
+# endif
 
 /*
  * get global variable
@@ -512,6 +576,7 @@ static Int ext_vm_global_int(Frame *f, uint16_t inherit, uint8_t index)
     return f->global(inherit, index)->number;
 }
 
+# ifndef NOFLOAT
 /*
  * get float global variable
  */
@@ -519,6 +584,7 @@ static double ext_vm_global_float(Frame *f, uint16_t inherit, uint8_t index)
 {
     return ext_float_getval(f->global(inherit, index));
 }
+# endif
 
 /*
  * index value on the stack
@@ -629,6 +695,7 @@ static Int ext_vm_cast_int(Frame *f)
     return (f->sp++)->number;
 }
 
+# ifndef NOFLOAT
 /*
  * cast value to a float
  */
@@ -639,6 +706,7 @@ static double ext_vm_cast_float(Frame *f)
     }
     return ext_float_getval(f->sp++);
 }
+# endif
 
 /*
  * obj <= "/path/to/thing"
@@ -707,6 +775,7 @@ static void ext_vm_store_param_int(Frame *f, uint8_t param, Int number)
     f->storeParam(param, &val);
 }
 
+# ifndef NOFLOAT
 /*
  * store float in parameter
  */
@@ -717,6 +786,7 @@ static void ext_vm_store_param_float(Frame *f, uint8_t param, double flt)
     ext_float_putval(&val, flt);
     f->storeParam(param, &val);
 }
+# endif
 
 /*
  * store local variable
@@ -737,6 +807,7 @@ static void ext_vm_store_local_int(Frame *f, uint8_t local, Int number)
     f->storeLocal(local, &val);
 }
 
+# ifndef NOFLOAT
 /*
  * store float in local variable
  */
@@ -747,6 +818,7 @@ static void ext_vm_store_local_float(Frame *f, uint8_t local, double flt)
     ext_float_putval(&val, flt);
     f->storeLocal(local, &val);
 }
+# endif
 
 /*
  * store global variable
@@ -768,6 +840,7 @@ static void ext_vm_store_global_int(Frame *f, uint16_t inherit,
     f->storeGlobal(inherit, index, &val);
 }
 
+# ifndef NOFLOAT
 /*
  * store float in global variable
  */
@@ -779,6 +852,7 @@ static void ext_vm_store_global_float(Frame *f, uint16_t inherit,
     ext_float_putval(&val, flt);
     f->storeGlobal(inherit, index, &val);
 }
+# endif
 
 /*
  * indexed store
@@ -916,6 +990,7 @@ static Int ext_vm_stores_param_int(Frame *f, uint8_t param)
     return f->argp[param].number;
 }
 
+# ifndef NOFLOAT
 /*
  * store float in parameter
  */
@@ -926,6 +1001,7 @@ static double ext_vm_stores_param_float(Frame *f, uint8_t param)
     }
     return ext_float_getval(f->argp + param);
 }
+# endif
 
 /*
  * store value in local variable
@@ -949,6 +1025,7 @@ static Int ext_vm_stores_local_int(Frame *f, uint8_t local, Int n)
     return n;
 }
 
+# ifndef NOFLOAT
 /*
  * store float in local variable
  */
@@ -960,6 +1037,7 @@ static double ext_vm_stores_local_float(Frame *f, uint8_t local, double flt)
     }
     return flt;
 }
+# endif
 
 /*
  * store value in global variable
@@ -1109,6 +1187,7 @@ static Int ext_vm_rshift_int(Frame *f, Int num, Int shift)
     }
 }
 
+# ifndef NOFLOAT
 /*
  * convert to float
  */
@@ -1116,15 +1195,14 @@ static double ext_vm_tofloat(Frame *f)
 {
     try {
 	Float flt;
-	Value val;
 
 	f->toFloat(&flt);
-	PUT_FLT(&val, flt);
-	return ext_float_getval(&val);
+	return Ext::getFloat(&flt);
     } catch (...) {
 	longjmp(*ErrorContext::env, 1);
     }
 }
+# endif
 
 /*
  * convert to int
@@ -1138,6 +1216,7 @@ static Int ext_vm_toint(Frame *f)
     }
 }
 
+# ifndef NOFLOAT
 /*
  * convert float to int
  */
@@ -1146,16 +1225,23 @@ static Int ext_vm_toint_float(Frame *f, double iflt)
     UNREFERENCED_PARAMETER(f);
 
     try {
-	Value val;
-	Float flt;
-
-	ext_float_putval(&val, iflt);
-	GET_FLT(&val, flt);
-	return flt.ftoi();
+	if (iflt >= 0) {
+	    iflt = floor(iflt + 0.5);
+	    if (iflt > 2147483647.0) {
+		error("Result too large");
+	    }
+	} else {
+	    iflt = ceil(iflt - 0.5);
+	    if (iflt < -2147483648.0) {
+		error("Result too large");
+	    }
+	}
+	return (Int) iflt;
     } catch (...) {
 	longjmp(*ErrorContext::env, 1);
     }
 }
+# endif
 
 /*
  * nil
@@ -1165,23 +1251,17 @@ static void ext_vm_nil(Frame *f)
     *--f->sp = Value::nil;
 }
 
+# ifndef NOFLOAT
 /*
  * float addition
  */
 static double ext_vm_add_float(Frame *f, double flt1, double flt2)
 {
     try {
-	Value val;
-	Float f1, f2;
-
 	i_add_ticks(f, 1);
-	ext_float_putval(&val, flt1);
-	GET_FLT(&val, f1);
-	ext_float_putval(&val, flt2);
-	GET_FLT(&val, f2);
-	f1.add(f2);
-	PUT_FLTVAL(&val, f1);
-	return ext_float_getval(&val);
+	flt1 += flt2;
+	Ext::constrainFloat(&flt1);
+	return flt1;
     } catch (...) {
 	longjmp(*ErrorContext::env, 1);
     }
@@ -1193,17 +1273,12 @@ static double ext_vm_add_float(Frame *f, double flt1, double flt2)
 static double ext_vm_div_float(Frame *f, double flt1, double flt2)
 {
     try {
-	Value val;
-	Float f1, f2;
-
-	i_add_ticks(f, 1);
-	ext_float_putval(&val, flt1);
-	GET_FLT(&val, f1);
-	ext_float_putval(&val, flt2);
-	GET_FLT(&val, f2);
-	f1.div(f2);
-	PUT_FLTVAL(&val, f1);
-	return ext_float_getval(&val);
+	if (flt2 == 0.0) {
+	    error("Division by zero");
+	}
+	flt1 /= flt2;
+	Ext::constrainFloat(&flt1);
+	return flt1;
     } catch (...) {
 	longjmp(*ErrorContext::env, 1);
     }
@@ -1215,17 +1290,9 @@ static double ext_vm_div_float(Frame *f, double flt1, double flt2)
 static double ext_vm_mult_float(Frame *f, double flt1, double flt2)
 {
     try {
-	Value val;
-	Float f1, f2;
-
-	i_add_ticks(f, 1);
-	ext_float_putval(&val, flt1);
-	GET_FLT(&val, f1);
-	ext_float_putval(&val, flt2);
-	GET_FLT(&val, f2);
-	f1.mult(f2);
-	PUT_FLTVAL(&val, f1);
-	return ext_float_getval(&val);
+	flt1 *= flt2;
+	Ext::constrainFloat(&flt1);
+	return flt1;
     } catch (...) {
 	longjmp(*ErrorContext::env, 1);
     }
@@ -1237,21 +1304,14 @@ static double ext_vm_mult_float(Frame *f, double flt1, double flt2)
 static double ext_vm_sub_float(Frame *f, double flt1, double flt2)
 {
     try {
-	Value val;
-	Float f1, f2;
-
-	i_add_ticks(f, 1);
-	ext_float_putval(&val, flt1);
-	GET_FLT(&val, f1);
-	ext_float_putval(&val, flt2);
-	GET_FLT(&val, f2);
-	f1.sub(f2);
-	PUT_FLTVAL(&val, f1);
-	return ext_float_getval(&val);
+	flt1 -= flt2;
+	Ext::constrainFloat(&flt1);
+	return flt1;
     } catch (...) {
 	longjmp(*ErrorContext::env, 1);
     }
 }
+# endif
 
 /*
  * call kernel function
@@ -1689,17 +1749,33 @@ void Ext::kfuns(char *protos, int size, int nkfun)
 	static voidf *vmtab[96];
 
 	vmtab[ 0] = (voidf *) &ext_vm_int;
+# ifndef NOFLOAT
 	vmtab[ 1] = (voidf *) &ext_vm_float;
+# else
+	vmtab[ 1] = (voidf *) NULL;
+# endif
 	vmtab[ 2] = (voidf *) &ext_vm_string;
 	vmtab[ 3] = (voidf *) &ext_vm_param;
 	vmtab[ 4] = (voidf *) &ext_vm_param_int;
+# ifndef NOFLOAT
 	vmtab[ 5] = (voidf *) &ext_vm_param_float;
+# else
+	vmtab[ 5] = (voidf *) NULL;
+# endif
 	vmtab[ 6] = (voidf *) &ext_vm_local;
 	vmtab[ 7] = (voidf *) &ext_vm_local_int;
+# ifndef NOFLOAT
 	vmtab[ 8] = (voidf *) &ext_vm_local_float;
+# else
+	vmtab[ 8] = (voidf *) NULL;
+# endif
 	vmtab[ 9] = (voidf *) &ext_vm_global;
 	vmtab[10] = (voidf *) &ext_vm_global_int;
+# ifndef NOFLOAT
 	vmtab[11] = (voidf *) &ext_vm_global_float;
+# else
+	vmtab[11] = (voidf *) NULL;
+# endif
 	vmtab[12] = (voidf *) &ext_vm_index;
 	vmtab[13] = (voidf *) &ext_vm_index_int;
 	vmtab[14] = (voidf *) &ext_vm_index2;
@@ -1708,20 +1784,36 @@ void Ext::kfuns(char *protos, int size, int nkfun)
 	vmtab[17] = (voidf *) &ext_vm_map_aggregate;
 	vmtab[18] = (voidf *) &ext_vm_cast;
 	vmtab[19] = (voidf *) &ext_vm_cast_int;
+# ifndef NOFLOAT
 	vmtab[20] = (voidf *) &ext_vm_cast_float;
+# else
+	vmtab[20] = (voidf *) NULL;
+# endif
 	vmtab[21] = (voidf *) &ext_vm_instanceof;
 	vmtab[22] = (voidf *) &ext_vm_range;
 	vmtab[23] = (voidf *) &ext_vm_range_from;
 	vmtab[24] = (voidf *) &ext_vm_range_to;
 	vmtab[25] = (voidf *) &ext_vm_store_param;
 	vmtab[26] = (voidf *) &ext_vm_store_param_int;
+# ifndef NOFLOAT
 	vmtab[27] = (voidf *) &ext_vm_store_param_float;
+# else
+	vmtab[27] = (voidf *) NULL;
+# endif
 	vmtab[28] = (voidf *) &ext_vm_store_local;
 	vmtab[29] = (voidf *) &ext_vm_store_local_int;
+# ifndef NOFLOAT
 	vmtab[30] = (voidf *) &ext_vm_store_local_float;
+# else
+	vmtab[30] = (voidf *) NULL;
+# endif
 	vmtab[31] = (voidf *) &ext_vm_store_global;
 	vmtab[32] = (voidf *) &ext_vm_store_global_int;
+# ifndef NOFLOAT
 	vmtab[33] = (voidf *) &ext_vm_store_global_float;
+# else
+	vmtab[33] = (voidf *) NULL;
+# endif
 	vmtab[34] = (voidf *) &ext_vm_store_index;
 	vmtab[35] = (voidf *) &ext_vm_store_param_index;
 	vmtab[36] = (voidf *) &ext_vm_store_local_index;
@@ -1733,10 +1825,18 @@ void Ext::kfuns(char *protos, int size, int nkfun)
 	vmtab[42] = (voidf *) &ext_vm_stores_cast;
 	vmtab[43] = (voidf *) &ext_vm_stores_param;
 	vmtab[44] = (voidf *) &ext_vm_stores_param_int;
+# ifndef NOFLOAT
 	vmtab[45] = (voidf *) &ext_vm_stores_param_float;
+# else
+	vmtab[45] = (voidf *) NULL;
+# endif
 	vmtab[46] = (voidf *) &ext_vm_stores_local;
 	vmtab[47] = (voidf *) &ext_vm_stores_local_int;
+# ifndef NOFLOAT
 	vmtab[48] = (voidf *) &ext_vm_stores_local_float;
+# else
+	vmtab[48] = (voidf *) NULL;
+# endif
 	vmtab[49] = (voidf *) &ext_vm_stores_global;
 	vmtab[50] = (voidf *) &ext_vm_stores_index;
 	vmtab[51] = (voidf *) &ext_vm_stores_param_index;
@@ -1747,14 +1847,29 @@ void Ext::kfuns(char *protos, int size, int nkfun)
 	vmtab[56] = (voidf *) &ext_vm_lshift_int;
 	vmtab[57] = (voidf *) &ext_vm_mod_int;
 	vmtab[58] = (voidf *) &ext_vm_rshift_int;
+# ifndef NOFLOAT
 	vmtab[59] = (voidf *) &ext_vm_tofloat;
+# else
+	vmtab[59] = (voidf *) NULL;
+# endif
 	vmtab[60] = (voidf *) &ext_vm_toint;
+# ifndef NOFLOAT
 	vmtab[61] = (voidf *) &ext_vm_toint_float;
+# else
+	vmtab[61] = (voidf *) NULL;
+# endif
 	vmtab[62] = (voidf *) &ext_vm_nil;
+# ifndef NOFLOAT
 	vmtab[63] = (voidf *) &ext_vm_add_float;
 	vmtab[64] = (voidf *) &ext_vm_div_float;
 	vmtab[65] = (voidf *) &ext_vm_mult_float;
 	vmtab[66] = (voidf *) &ext_vm_sub_float;
+# else
+	vmtab[63] = (voidf *) NULL;
+	vmtab[64] = (voidf *) NULL;
+	vmtab[65] = (voidf *) NULL;
+	vmtab[66] = (voidf *) NULL;
+# endif
 	vmtab[67] = (voidf *) &ext_vm_kfunc;
 	vmtab[68] = (voidf *) &ext_vm_kfunc_int;
 	vmtab[69] = (voidf *) &ext_vm_kfunc_float;

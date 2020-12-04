@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+# Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -80,6 +80,7 @@ connect.cpp: unix/connect.cpp
 $(OBJ):	../dgd.h ../host.h ../config.h ../alloc.h ../error.h
 connect.o: ../hash.h ../comm.h
 simfloat.o hostfloat.o: ../xfloat.h
+hostfloat.o: ../ext.h
 crypt.o asn.o: ../str.h ../array.h ../object.h ../hash.h ../swap.h
 crypt.o asn.o: ../interpret.h ../data.h
 asn.o: ../asn.h

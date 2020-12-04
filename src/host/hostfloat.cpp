@@ -19,6 +19,7 @@
 # define INCLUDE_CTYPE
 # include "dgd.h"
 # include "xfloat.h"
+# include "ext.h"
 # include <float.h>
 # include <math.h>
 
@@ -51,55 +52,16 @@ static void f_erange()
  */
 static double f_get(const Float *flt)
 {
-    double d;
-
-    if ((flt->high | flt->low) == 0) {
-	return 0.0;
-    } else {
-	d = ::ldexp((double) (0x10 | (flt->high & 0xf)), 32);
-	d = ::ldexp(d + flt->low, ((flt->high >> 4) & 0x7ff) - 1023 - 36);
-	return ((flt->high >> 15) ? -d : d);
-    }
+    return Ext::getFloat(flt);
 }
 
 /*
  * store a float in a value
  */
-static bool f_put(Float *flt, double d)
+static void f_put(Float *flt, double d)
 {
-    unsigned short sign;
-    int e;
-    Uuint m;
-
-    if (d == 0.0) {
-	flt->high = 0;
-	flt->low = 0;
-    } else if (!isfinite(d)) {
-	return FALSE;
-    } else {
-	sign = (d < 0.0);
-	d = ::frexp(fabs(d), &e);
-# if (DBL_MANT_DIG > 37)
-	d += (double) (1 << (DBL_MANT_DIG - 38));
-	d -= (double) (1 << (DBL_MANT_DIG - 38));
-	if (d >= 1.0) {
-	    if (++e > 1023) {
-		return FALSE;
-	    }
-	    d = ::ldexp(d, -1);
-	}
-# endif
-	if (e <= -1023) {
-	    flt->high = 0;
-	    flt->low = 0;
-	} else {
-	    m = (Uuint) ::ldexp(d, 37);
-	    flt->high = (sign << 15) | ((e - 1 + 1023) << 4) |
-		        ((unsigned short) (m >> 32) & 0xf);
-	    flt->low = (Uuint) m;
-	}
-    }
-    return TRUE;
+    Ext::constrainFloat(&d);
+    Ext::putFloat(flt, d);
 }
 
 static const double tens[] = {
@@ -206,9 +168,10 @@ bool Float::atof(char **s, Float *f)
 	a = -a;
     }
 
-    if (!f_put(f, a)) {
+    if (!Ext::checkFloat(&a)) {
 	return FALSE;
     }
+    Ext::putFloat(f, a);
     *s = p;
     return TRUE;
 }
@@ -359,9 +322,7 @@ Int Float::ftoi()
  */
 void Float::add(Float &f)
 {
-    if (!f_put(this, f_get(this) + f_get(&f))) {
-	f_erange();
-    }
+    f_put(this, f_get(this) + f_get(&f));
 }
 
 /*
@@ -369,9 +330,7 @@ void Float::add(Float &f)
  */
 void Float::sub(Float &f)
 {
-    if (!f_put(this, f_get(this) - f_get(&f))) {
-	f_erange();
-    }
+    f_put(this, f_get(this) - f_get(&f));
 }
 
 /*
@@ -379,9 +338,7 @@ void Float::sub(Float &f)
  */
 void Float::mult(Float &f)
 {
-    if (!f_put(this, f_get(this) * f_get(&f))) {
-	f_erange();
-    }
+    f_put(this, f_get(this) * f_get(&f));
 }
 
 /*
@@ -395,9 +352,7 @@ void Float::div(Float &f)
     if (a == 0.0) {
 	error("Division by zero");
     }
-    if (!f_put(this, f_get(this) / a)) {
-	f_erange();
-    }
+    f_put(this, f_get(this) / a);
 }
 
 /*
@@ -445,9 +400,7 @@ void Float::fmod(Float &f)
     if (a == 0.0) {
 	f_edom();
     }
-    if (!f_put(this, ::fmod(f_get(this), a))) {
-	f_erange();
-    }
+    f_put(this, ::fmod(f_get(this), a));
 }
 
 /*
@@ -502,9 +455,7 @@ void Float::modf(Float *f)
  */
 void Float::exp()
 {
-    if (!f_put(this, ::exp(f_get(this)))) {
-	f_erange();
-    }
+    f_put(this, ::exp(f_get(this)));
 }
 
 /*
@@ -518,9 +469,7 @@ void Float::log()
     if (a <= 0.0) {
 	f_edom();
     }
-    if (!f_put(this, ::log(a))) {
-	f_erange();
-    }
+    f_put(this, ::log(a));
 }
 
 /*
@@ -534,9 +483,7 @@ void Float::log10()
     if (a <= 0.0) {
 	f_edom();
     }
-    if (!f_put(this, ::log10(a))) {
-	f_erange();
-    }
+    f_put(this, ::log10(a));
 }
 
 /*
@@ -560,9 +507,7 @@ void Float::pow(Float &f)
 	}
     }
 
-    if (!f_put(this, ::pow(a, b))) {
-	f_erange();
-    }
+    f_put(this, ::pow(a, b));
 }
 
 /*
@@ -576,9 +521,7 @@ void Float::sqrt()
     if (a < 0.0) {
 	f_edom();
     }
-    if (!f_put(this, ::sqrt(a))) {
-	f_erange();
-    }
+    f_put(this, ::sqrt(a));
 }
 
 /*
@@ -586,9 +529,7 @@ void Float::sqrt()
  */
 void Float::cos()
 {
-    if (!f_put(this, ::cos(f_get(this)))) {
-	f_erange();
-    }
+    f_put(this, ::cos(f_get(this)));
 }
 
 /*
@@ -596,9 +537,7 @@ void Float::cos()
  */
 void Float::sin()
 {
-    if (!f_put(this, ::sin(f_get(this)))) {
-	f_erange();
-    }
+    f_put(this, ::sin(f_get(this)));
 }
 
 /*
@@ -606,9 +545,7 @@ void Float::sin()
  */
 void Float::tan()
 {
-    if (!f_put(this, ::tan(f_get(this)))) {
-	f_erange();
-    }
+    f_put(this, ::tan(f_get(this)));
 }
 
 /*
@@ -622,9 +559,7 @@ void Float::acos()
     if (fabs(a) > 1.0) {
 	f_edom();
     }
-    if (!f_put(this, ::acos(a))) {
-	f_erange();
-    }
+    f_put(this, ::acos(a));
 }
 
 /*
@@ -638,9 +573,7 @@ void Float::asin()
     if (fabs(a) > 1.0) {
 	f_edom();
     }
-    if (!f_put(this, ::asin(a))) {
-	f_erange();
-    }
+    f_put(this, ::asin(a));
 }
 
 /*
@@ -648,9 +581,7 @@ void Float::asin()
  */
 void Float::atan()
 {
-    if (!f_put(this, ::atan(f_get(this)))) {
-	f_erange();
-    }
+    f_put(this, ::atan(f_get(this)));
 }
 
 /*
@@ -658,9 +589,7 @@ void Float::atan()
  */
 void Float::atan2(Float &f)
 {
-    if (!f_put(this, ::atan2(f_get(this), f_get(&f)))) {
-	f_erange();
-    }
+    f_put(this, ::atan2(f_get(this), f_get(&f)));
 }
 
 /*
@@ -668,9 +597,7 @@ void Float::atan2(Float &f)
  */
 void Float::cosh()
 {
-    if (!f_put(this, ::cosh(f_get(this)))) {
-	f_erange();
-    }
+    f_put(this, ::cosh(f_get(this)));
 }
 
 /*
@@ -678,9 +605,7 @@ void Float::cosh()
  */
 void Float::sinh()
 {
-    if (!f_put(this, ::sinh(f_get(this)))) {
-	f_erange();
-    }
+    f_put(this, ::sinh(f_get(this)));
 }
 
 /*
@@ -688,7 +613,5 @@ void Float::sinh()
  */
 void Float::tanh()
 {
-    if (!f_put(this, ::tanh(f_get(this)))) {
-	f_erange();
-    }
+    f_put(this, ::tanh(f_get(this)));
 }
