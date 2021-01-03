@@ -97,7 +97,7 @@ CallOut *CallOut::enqueue(Uint t, unsigned short m)
      */
 # ifdef DEBUG
     if (queuebrk == cycbrk) {
-	fatal("callout table overflow");
+	ec->fatal("callout table overflow");
     }
 # endif
     i = ++queuebrk;
@@ -161,7 +161,7 @@ CallOut *CallOut::newcallout(uindex *list, Uint t)
 	/* allocate new callout */
 # ifdef DEBUG
 	if (cycbrk == queuebrk || cycbrk == 1) {
-	    fatal("callout table overflow");
+	    ec->fatal("callout table overflow");
 	}
 # endif
 	i = --cycbrk;
@@ -326,7 +326,7 @@ Uint CallOut::check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
     }
 
     if (queuebrk + (uindex) n == cycbrk || cycbrk - (uindex) n == 1) {
-	error("Too many callouts");
+	ec->error("Too many callouts");
     }
 
     if (delay == 0 && (mdelay == 0 || mdelay == TIME_INT)) {
@@ -345,7 +345,7 @@ Uint CallOut::check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	 */
 	t = cotime(mp) - timediff;
 	if (t + delay + 1 <= t) {
-	    error("Too long delay");
+	    ec->error("Too long delay");
 	}
 	t += delay;
 	if (mdelay != TIME_INT) {
@@ -498,7 +498,7 @@ void CallOut::del(unsigned int oindex, unsigned int handle, Uint t,
     for (;;) {
 # ifdef DEBUG
 	if (l == cotab + queuebrk) {
-	    fatal("failed to remove callout");
+	    ec->fatal("failed to remove callout");
 	}
 # endif
 	if (l->oindex == oindex && l->handle == handle) {
@@ -655,7 +655,7 @@ void CallOut::call(Frame *f)
 	    freecallout(&running, i, i, 0);
 
 	    try {
-		ErrorContext::push(DGD::errHandler);
+		ec->push(DGD::errHandler);
 		str = obj->dataspace()->callOut(handle, f, &nargs);
 		if (f->call(obj, (Array *) NULL, str->text, str->len, TRUE,
 			    nargs)) {
@@ -663,7 +663,7 @@ void CallOut::call(Frame *f)
 		    (f->sp++)->del();
 		}
 		(f->sp++)->string->del();
-		ErrorContext::pop();
+		ec->pop();
 	    } catch (...) { }
 	    DGD::endTask();
 	}
@@ -843,7 +843,7 @@ void CallOut::restore(int fd, Uint t, bool conv16)
 
     timediff -= timestamp;
     if (queuebrk > cycbrk || cycbrk == 0) {
-	error("Restored too many callouts");
+	ec->error("Restored too many callouts");
     }
 
     /* read tables */

@@ -640,7 +640,7 @@ int CmdBuf::global()
      */
     glob_rx = new RxBuf();
     try {
-	ErrorContext::push();
+	ec->push();
 	/* compile regexp */
 	p = glob_rx->comp(buffer);
 	if (p != (char *) NULL) {
@@ -673,7 +673,7 @@ int CmdBuf::global()
 
 	/* pop error context */
 	aborted = FALSE;
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	aborted = TRUE;
     }

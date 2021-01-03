@@ -86,7 +86,7 @@ void Editor::clear()
 void Editor::checkRecursion()
 {
     if (recursion) {
-	error("Recursion in editor command");
+	ec->error("Recursion in editor command");
     }
 }
 
@@ -100,11 +100,11 @@ void Editor::create(Object *obj)
 
     checkRecursion();
     if (EINDEX(newed) != EINDEX_MAX) {
-	error("Too many simultaneous editors started");
+	ec->error("Too many simultaneous editors started");
     }
     e = flist;
     if (e == (Editor *) NULL) {
-	error("Too many editor instances");
+	ec->error("Too many editor instances");
     }
     flist = e->next;
     obj->etabi = newed = e - editors;
@@ -159,14 +159,14 @@ String *Editor::command(Object *obj, char *cmd)
 
     checkRecursion();
     if (strchr(cmd, LF) != (char *) NULL) {
-	error("Newline in editor command");
+	ec->error("Newline in editor command");
     }
 
     e = &editors[EINDEX(obj->etabi)];
     outbufsz = 0;
     internal = FALSE;
     try {
-	ErrorContext::push();
+	ec->push();
 	recursion = TRUE;
 	if (e->ed->command(cmd)) {
 	    e->ed->edbuf.lb.inact();
@@ -175,16 +175,16 @@ String *Editor::command(Object *obj, char *cmd)
 	    recursion = FALSE;
 	    del(obj);
 	}
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
 	e->ed->edbuf.lb.inact();
 	recursion = FALSE;
 	if (!internal) {
-	    error((char *) NULL);	/* pass on error */
+	    ec->error((char *) NULL);	/* pass on error */
 	}
-	output("%s\012", ErrorContext::exception()->text);	/* LF */
-	ErrorContext::pop();
+	output("%s\012", ec->exception()->text);	/* LF */
+	ec->pop();
     }
 
     if (outbufsz == 0) {
@@ -219,7 +219,7 @@ void output(const char *f, ...)
     va_end(args);
     len = strlen(buf);
     if (outbufsz + len > USHRT_MAX) {
-	error("Editor output string too long");
+	ec->error("Editor output string too long");
     }
     memcpy(outbuf + outbufsz, buf, len);
     outbufsz += len;
@@ -234,11 +234,11 @@ void ed_error(const char *f, ...)
 
     if (f != (char *) NULL) {
 	internal = TRUE;
-	ErrorContext::push((ErrorContext::Handler) ed_handler);
+	ec->push((ErrorContext::Handler) ed_handler);
 	va_start(args, f);
-	error(f, args);
+	ec->error(f, args);
 	va_end(args);
     } else {
-	error((char *) NULL);
+	ec->error((char *) NULL);
     }
 }

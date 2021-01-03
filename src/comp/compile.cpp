@@ -521,7 +521,7 @@ bool Compile::inherit(char *file, Node *label, int priv)
 		f->sp++;
 	    } else {
 		/* returned value not an object */
-		::error("Cannot inherit \"%s\"", buf);
+		ec->error("Cannot inherit \"%s\"", buf);
 	    }
 
 	    if (ncomp != ncompiled) {
@@ -569,24 +569,24 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 
 	for (cc = current, n = 0; cc != (Context *) NULL; cc = cc->prev, n++) {
 	    if (strcmp(file, cc->file) == 0) {
-		::error("Cycle in inheritance from \"/%s.c\"", current->file);
+		ec->error("Cycle in inheritance from \"/%s.c\"", current->file);
 	    }
 	}
 	if (n >= 255) {
-	    ::error("Compilation nesting too deep");
+	    ec->error("Compilation nesting too deep");
 	}
 
 	PP::clear();
 	Control::clear();
 	clear();
     } else if (current != (Context *) NULL) {
-	::error("Compilation within compilation");
+	ec->error("Compilation within compilation");
     }
 
     c.file = file;
     if (strncmp(file, BIPREFIX, BIPREFIXLEN) == 0 ||
 	strchr(file, '#') != (char *) NULL) {
-	::error("Illegal object name \"/%s\"", file);
+	ec->error("Illegal object name \"/%s\"", file);
     }
     strcpy(file_c, file);
     if (strs == (String **) NULL) {
@@ -598,7 +598,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
     ncompiled++;
 
     try {
-	ErrorContext::push();
+	ec->push();
 	for (;;) {
 	    if (autodriver() != 0) {
 		Control::prepare();
@@ -625,8 +625,8 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 		}
 		/* inherit auto object */
 		if (O_UPGRADING(aobj)) {
-		    ::error("Upgraded auto object while compiling \"/%s\"",
-			    file_c);
+		    ec->error("Upgraded auto object while compiling \"/%s\"",
+			      file_c);
 		}
 		Control::prepare();
 		Control::inherit(c.frame, file, aobj, (String *) NULL, FALSE);
@@ -635,28 +635,28 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 	    if (strs != (String **) NULL) {
 		PP::init(file_c, paths, strs, nstr, 1);
 	    } else if (!PP::init(file_c, paths, (String **) NULL, 0, 1)) {
-		::error("Could not compile \"/%s\"", file_c);
+		ec->error("Could not compile \"/%s\"", file_c);
 	    }
 	    if (!TokenBuf::include(include, (String **) NULL, 0)) {
-		::error("Could not include \"/%s\"", include);
+		ec->error("Could not include \"/%s\"", include);
 	    }
 
 	    Codegen::init(c.prev != (Context *) NULL);
 	    if (yyparse() == 0 && Control::checkFuncs()) {
 		if (obj != (Object *) NULL) {
 		    if (obj->count == 0) {
-			::error("Object destructed during recompilation");
+			ec->error("Object destructed during recompilation");
 		    }
 		    if (O_UPGRADING(obj)) {
-			::error("Object recompiled during recompilation");
+			ec->error("Object recompiled during recompilation");
 		    }
 		    if (O_INHERITED(obj)) {
 			/* inherited */
-			::error("Object inherited during recompilation");
+			ec->error("Object inherited during recompilation");
 		    }
 		}
 		if (!Object::space()) {
-		    ::error("Too many objects");
+		    ec->error("Too many objects");
 		}
 
 		/*
@@ -671,16 +671,16 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 		clear();
 	    } else {
 		/* compilation failed */
-		::error("Failed to compile \"/%s\"", file_c);
+		ec->error("Failed to compile \"/%s\"", file_c);
 	    }
 	}
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	PP::clear();
 	Control::clear();
 	clear();
 	current = c.prev;
-	::error((char *) NULL);
+	ec->error((char *) NULL);
     }
 
     PP::clear();
@@ -1575,7 +1575,7 @@ Node *Compile::caseLabel(Node *n1, Node *n2)
 	} else {
 	    /* range */
 	    if (n2->type != N_INT) {
-		Compile::error("bad case range");
+		error("bad case range");
 		switch_list->type = T_NIL;
 		return (Node *) NULL;
 	    }
@@ -2563,7 +2563,7 @@ void Compile::error(const char *format, ...)
 	va_start(args, format);
 	vsprintf(buf + strlen(buf), format, args);
 	va_end(args);
-	message("%s\012", buf);     /* LF */
+	ec->message("%s\012", buf);     /* LF */
     }
 
     nerrors++;

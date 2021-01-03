@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -865,7 +865,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (!ipv6 && !ipv4) {
-	    message("unknown host %s\012", thosts[n]);	/* LF */
+	    ec->message("unknown host %s\012", thosts[n]);	/* LF */
 	    return FALSE;
 	}
 
@@ -930,7 +930,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (!ipv6 && !ipv4) {
-	    message("unknown host %s\012", bhosts[n]);	/* LF */
+	    ec->message("unknown host %s\012", bhosts[n]);	/* LF */
 	    return FALSE;
 	}
 
@@ -995,7 +995,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (!ipv6 && !ipv4) {
-	    message("unknown host %s\012", dhosts[n]);	/* LF */
+	    ec->message("unknown host %s\012", dhosts[n]);	/* LF */
 	    return FALSE;
 	}
 
@@ -1056,18 +1056,18 @@ void Connection::listen()
 
     for (n = 0; n < ntdescs; n++) {
 	if (tdescs[n].in6 != INVALID_SOCKET && ::listen(tdescs[n].in6, 64) != 0) {
-	    fatal("listen failed");
+	    ec->fatal("listen failed");
 	}
 	if (tdescs[n].in4 != INVALID_SOCKET && ::listen(tdescs[n].in4, 64) != 0) {
-	    fatal("listen failed");
+	    ec->fatal("listen failed");
 	}
     }
     for (n = 0; n < nbdescs; n++) {
 	if (bdescs[n].in6 != INVALID_SOCKET && ::listen(bdescs[n].in6, 64) != 0) {
-	    fatal("listen failed");
+	    ec->fatal("listen failed");
 	}
 	if (bdescs[n].in4 != INVALID_SOCKET && ::listen(bdescs[n].in4, 64) != 0) {
-	    fatal("listen failed");
+	    ec->fatal("listen failed");
 	}
     }
     if (self != INVALID_SOCKET) {
@@ -1120,24 +1120,24 @@ void Connection::listen()
 	nonblock = TRUE;
 	if (tdescs[n].in6 != INVALID_SOCKET &&
 	    ioctlsocket(tdescs[n].in6, FIONBIO, &nonblock) != 0) {
-	    fatal("ioctlsocket failed");
+	    ec->fatal("ioctlsocket failed");
 	}
 	nonblock = TRUE;
 	if (tdescs[n].in4 != INVALID_SOCKET &&
 	    ioctlsocket(tdescs[n].in4, FIONBIO, &nonblock) != 0) {
-	    fatal("ioctlsocket failed");
+	    ec->fatal("ioctlsocket failed");
 	}
     }
     for (n = 0; n < nbdescs; n++) {
 	nonblock = TRUE;
 	if (bdescs[n].in6 != INVALID_SOCKET &&
 	    ioctlsocket(bdescs[n].in6, FIONBIO, &nonblock) != 0) {
-	    fatal("ioctlsocket failed");
+	    ec->fatal("ioctlsocket failed");
 	}
 	nonblock = TRUE;
 	if (bdescs[n].in4 != INVALID_SOCKET &&
 	    ioctlsocket(bdescs[n].in4, FIONBIO, &nonblock) != 0) {
-	    fatal("ioctlsocket failed");
+	    ec->fatal("ioctlsocket failed");
 	}
     }
     if (nudescs != 0) {

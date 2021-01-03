@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -83,7 +83,7 @@ static Flt ln2c2 =	FLT_CONST(0, -20, 0x7f7d, 0x1cf79abL);
  */
 void Flt::edom()
 {
-    error("Math argument");
+    ec->error("Math argument");
 }
 
 /*
@@ -91,7 +91,7 @@ void Flt::edom()
  */
 void Flt::erange()
 {
-    error("Result too large");
+    ec->error("Result too large");
 }
 
 /*
@@ -333,7 +333,7 @@ void Flt::div(Flt *b)
     unsigned short divh, i;
 
     if (b->exp == 0) {
-	error("Division by zero");
+	ec->error("Division by zero");
     }
     if (exp == 0) {
 	/* a is 0 */

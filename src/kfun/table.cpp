@@ -66,7 +66,7 @@ extern void kf_sha1(Frame *, int, Value *);
  */
 void KFun::argError(int n)
 {
-    error("Bad argument %d for kfun %s", n, name);
+    ec->error("Bad argument %d for kfun %s", n, name);
 }
 
 /*
@@ -78,7 +78,7 @@ void KFun::unary(Frame *f)
 	argError(1);
     }
     if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
-	error("operator %s did not return a light-weight object", name);
+	ec->error("operator %s did not return a light-weight object", name);
     }
 
     f->sp[1].array->del();
@@ -100,7 +100,7 @@ void KFun::binary(Frame *f)
 	argError(1);
     }
     if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
-	error("operator %s did not return a light-weight object", name);
+	ec->error("operator %s did not return a light-weight object", name);
     }
 
     f->sp[1].array->del();
@@ -122,7 +122,7 @@ void KFun::compare(Frame *f)
 	argError(1);
     }
     if (f->sp->type != T_INT || (f->sp->number & ~1)) {
-	error("operator %s did not return a truth value", name);
+	ec->error("operator %s did not return a truth value", name);
     }
 
     f->sp[1].array->del();
@@ -140,7 +140,7 @@ void KFun::ternary(Frame *f)
 	argError(1);
     }
     if (f->sp->type != T_LWOBJECT || f->sp->array->elts[0].type != T_OBJECT) {
-	error("operator %s did not return a light-weight object", name);
+	ec->error("operator %s did not return a light-weight object", name);
     }
 
     f->sp[1].array->del();
@@ -174,7 +174,7 @@ void KFun::clear()
  */
 int KFun::callgate(Frame *f, int nargs, KFun *kf)
 {
-    if (!setjmp(*ErrorContext::push())) {
+    if (!setjmp(*ec->push())) {
 	Value val;
 
 	val = Value::nil;
@@ -187,9 +187,9 @@ int KFun::callgate(Frame *f, int nargs, KFun *kf)
 	    PUSH_ARRVAL(f, ext_value_temp(f->data)->array);
 	}
 
-	ErrorContext::pop();
+	ec->pop();
     } else {
-	error((char *) NULL);
+	ec->error((char *) NULL);
     }
     return 0;
 }
@@ -442,8 +442,8 @@ void KFun::reclaim()
 	n = kfind[i + 128 - KF_BUILTINS];
 	if (kfx[n] == i + 128 - KF_BUILTINS) {
 	    if (i != last) {
-		message("*** Reclaimed %d kernel function%s\012", last - i,
-			((last - i > 1) ? "s" : ""));
+		ec->message("*** Reclaimed %d kernel function%s\012", last - i,
+			    ((last - i > 1) ? "s" : ""));
 	    }
 	    break;
 	}
@@ -453,8 +453,8 @@ void KFun::reclaim()
     /* copy last to 0.removed_kfuns */
     for (i = KF_BUILTINS; i < nkfun && kftab[i].name[1] == '.'; i++) {
 	if (kfx[i] != '\0') {
-	    message("*** Preparing to reclaim unused kfun %s\012",
-		    kftab[i].name);
+	    ec->message("*** Preparing to reclaim unused kfun %s\012",
+			kftab[i].name);
 	    n = kfind[last-- + 128 - KF_BUILTINS];
 	    kfx[n] = kfx[i];
 	    kfind[kfx[n]] = n;
@@ -542,7 +542,7 @@ void KFun::restore(int fd)
     /* fix kfuns */
     buffer = ALLOCA(char, dh.kfnamelen);
     if (P_read(fd, buffer, (unsigned int) dh.kfnamelen) < 0) {
-	fatal("cannot restore kfun names");
+	ec->fatal("cannot restore kfun names");
     }
     memset(kfx + KF_BUILTINS, '\0', (nkfun - KF_BUILTINS) * sizeof(kfindex));
     buflen = 0;
@@ -552,13 +552,13 @@ void KFun::restore(int fd)
 	    if (n < 0 || kftab[n].version != buffer[buflen] - '0') {
 		n = find(kftab, KF_BUILTINS, nkfun, buffer + buflen);
 		if (n < 0) {
-		    error("Restored unknown kfun: %s", buffer + buflen);
+		    ec->error("Restored unknown kfun: %s", buffer + buflen);
 		}
 	    }
 	} else {
 	    n = find(kftab, KF_BUILTINS, nkfun, buffer + buflen);
 	    if (n < 0) {
-		error("Restored unknown kfun: %s", buffer + buflen);
+		ec->error("Restored unknown kfun: %s", buffer + buflen);
 	    }
 	}
 	kfx[n] = i + 128;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -144,7 +144,7 @@ void LineBuf::init()
     fd = P_open(path_native(buf, file), O_CREAT | O_TRUNC | O_RDWR | O_BINARY,
 		0600);
     if (fd < 0) {
-	fatal("cannot create editor tmpfile \"%s\"", file);
+	ec->fatal("cannot create editor tmpfile \"%s\"", file);
     }
 }
 
@@ -182,7 +182,7 @@ void LineBuf::act()
     if (fd < 0) {
 	fd = P_open(path_native(buf, file), O_RDWR | O_BINARY, 0);
 	if (fd < 0) {
-	    fatal("cannot reopen editor tmpfile \"%s\"", file);
+	    ec->fatal("cannot reopen editor tmpfile \"%s\"", file);
 	}
     }
 }
@@ -241,7 +241,7 @@ LineBuf::Blk *LineBuf::load(Block b)
 		bt = bt->prev;
 		P_lseek(fd, bt->offset = b - (b % BLOCK_SIZE), SEEK_SET);
 		if (P_read(fd, bt->buf, BLOCK_SIZE) != BLOCK_SIZE) {
-		    fatal("cannot read editor tmpfile \"%s\"", file);
+		    ec->fatal("cannot read editor tmpfile \"%s\"", file);
 		}
 	    }
 

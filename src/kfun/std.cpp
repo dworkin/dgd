@@ -56,13 +56,13 @@ int kf_compile_object(Frame *f, int nargs, KFun *kf)
     obj = Object::find(file, OACC_MODIFY);
     if (obj != (Object *) NULL) {
 	if (!(obj->flags & O_MASTER)) {
-	    error("Cannot recompile cloned object");
+	    ec->error("Cannot recompile cloned object");
 	}
 	if (O_UPGRADING(obj)) {
-	    error("Object is already being upgraded");
+	    ec->error("Object is already being upgraded");
 	}
 	if (O_INHERITED(obj)) {
-	    error("Cannot recompile inherited object");
+	    ec->error("Cannot recompile inherited object");
 	}
     }
     if (--nargs != 0) {
@@ -74,7 +74,7 @@ int kf_compile_object(Frame *f, int nargs, KFun *kf)
 	strs = (String **) NULL;
     }
     try {
-	ErrorContext::push();
+	ec->push();
 	if (OBJR(f->oindex)->flags & O_DRIVER) {
 	    Frame *xf;
 
@@ -86,12 +86,12 @@ int kf_compile_object(Frame *f, int nargs, KFun *kf)
 	    iflag = FALSE;
 	}
 	obj = Compile::compile(f, file, obj, strs, nargs, iflag);
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	if (nargs != 0) {
 	    AFREE(strs - nargs);
 	}
-	error((char *) NULL);
+	ec->error((char *) NULL);
     }
     if (nargs != 0) {
 	AFREE(strs - nargs);
@@ -348,11 +348,11 @@ int kf_clone_object(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_LWOBJECT) {
-	error("Cloning from a non-persistent object");
+	ec->error("Cloning from a non-persistent object");
     }
     obj = OBJW(f->sp->oindex);
     if (!(obj->flags & O_MASTER)) {
-	error("Cloning from a clone");
+	ec->error("Cloning from a clone");
     }
     obj = obj->clone();
     PUT_OBJ(f->sp, obj);
@@ -381,7 +381,7 @@ int kf_destruct_object(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_LWOBJECT) {
-	error("Destructing a non-persistent object");
+	ec->error("Destructing a non-persistent object");
     }
     obj = OBJW(f->sp->oindex);
     switch (obj->flags & O_SPECIAL) {
@@ -391,7 +391,7 @@ int kf_destruct_object(Frame *f, int n, KFun *kf)
 
     case O_EDITOR:
 	if (f->level != 0) {
-	    error("Destructing editor object in atomic function");
+	    ec->error("Destructing editor object in atomic function");
 	}
 	Editor::del(obj);
 	break;
@@ -421,7 +421,7 @@ int kf_new_object(Frame *f, int n, KFun *kf)
 
     if (f->sp->type == T_OBJECT) {
 	if (!((obj=OBJW(f->sp->oindex))->flags & O_MASTER)) {
-	    error("Creating new instance from a non-master object");
+	    ec->error("Creating new instance from a non-master object");
 	}
 
 	PUT_LWOVAL(f->sp, Array::lwoCreate(f->data, obj));
@@ -482,7 +482,7 @@ int kf_instanceof(Frame *f, int nargs, KFun *kf)
     }
     DGD::callDriver(f, "object_type", 2);
     if (f->sp->type != T_STRING) {
-	error("Invalid object type");
+	ec->error("Invalid object type");
     }
     Path::resolve(buffer, f->sp->string->text);
     if (builtin != (char *) NULL) {
@@ -997,7 +997,7 @@ int kf_error(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    error(f->sp->string);
+    ec->error(f->sp->string);
     return 0;
 }
 # endif
@@ -1221,7 +1221,7 @@ int kf_call_out(Frame *f, int nargs, KFun *kf)
 	return 2;
     }
     if (f->lwobj != (Array *) NULL) {
-	error("call_out() in non-persistent object");
+	ec->error("call_out() in non-persistent object");
     }
 
     i_add_ticks(f, nargs);
@@ -1262,7 +1262,7 @@ int kf_remove_call_out(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->lwobj != (Array *) NULL) {
-	error("remove_call_out() in non-persistent object");
+	ec->error("remove_call_out() in non-persistent object");
     }
     i_add_ticks(f, 10);
     delay = f->data->delCallOut((Uint) f->sp->number, &mdelay);
@@ -1353,20 +1353,20 @@ int kf_connect(Frame *f, int nargs, KFun *kf)
 	f->sp++;
     }
     if (f->lwobj != (Array *) NULL) {
-	error("connect() in non-persistent object");
+	ec->error("connect() in non-persistent object");
     }
     obj = OBJW(f->oindex);
 
     if (obj->count == 0) {
-	error("connect() in destructed object");
+	ec->error("connect() in destructed object");
     }
 
     if (obj->flags & O_SPECIAL) {
-	error("connect() in special purpose object");
+	ec->error("connect() in special purpose object");
     }
 
     if (f->sp->number < 1 || f->sp->number > 65535) {
-	error("Port number out of range");
+	ec->error("Port number out of range");
     }
     port = (f->sp++)->number;
 
@@ -1415,20 +1415,20 @@ int kf_connect_datagram(Frame *f, int nargs, KFun *kf)
 	(f->sp++)->string->del();
     }
     if (f->lwobj != (Array *) NULL) {
-	error("connect_datagram() in non-persistent object");
+	ec->error("connect_datagram() in non-persistent object");
     }
     obj = OBJW(f->oindex);
 
     if (obj->count == 0) {
-	error("connect_datagram() in destructed object");
+	ec->error("connect_datagram() in destructed object");
     }
 
     if (obj->flags & O_SPECIAL) {
-	error("connect_datagram() in special purpose object");
+	ec->error("connect_datagram() in special purpose object");
     }
 
     if (f->sp->number < 1 || f->sp->number > 65535) {
-	error("Port number out of range");
+	ec->error("Port number out of range");
     }
     port = (f->sp++)->number;
 
@@ -1458,7 +1458,7 @@ int kf_shutdown(Frame *f, int nargs, KFun *kf)
     if (nargs != 0) {
 	boot = (f->sp->number != 0);
 	if (boot && Config::hotbootExec() == (char **) NULL) {
-	    error("Hotbooting is disabled");
+	    ec->error("Hotbooting is disabled");
 	}
 	f->sp++;
     } else {
@@ -1601,7 +1601,7 @@ int kf_extend_function(Frame *f, int nargs, KFun *kf)
     if (f->sp[nargs].type != T_LWOBJECT ||
 	(elts=Dataspace::elts(a=f->sp[nargs].array))[0].type != T_INT ||
 	elts[0].number != BUILTIN_FUNCTION) {
-	error("Bad argument 1 for kfun *");
+	ec->error("Bad argument 1 for kfun *");
     }
 
     if (nargs != 0) {
@@ -1650,13 +1650,13 @@ int kf_call_function(Frame *f, int nargs, KFun *kf)
     if (f->sp[nargs].type != T_LWOBJECT ||
 	(elts=Dataspace::elts(a=f->sp[nargs].array))[0].type != T_INT ||
 	elts[0].number != BUILTIN_FUNCTION) {
-	error("Bad argument 1 for kfun *");
+	ec->error("Bad argument 1 for kfun *");
     }
 
     switch (elts[3].type) {
     case T_OBJECT:
 	if (DESTRUCTED(&elts[3])) {
-	    error("Function in destructed object");
+	    ec->error("Function in destructed object");
 	}
 	obj = OBJR(elts[3].oindex);
 	lwobj = NULL;
@@ -1667,12 +1667,12 @@ int kf_call_function(Frame *f, int nargs, KFun *kf)
 	lwobj = elts[3].array;
 	v = Dataspace::elts(lwobj);
 	if (v->type == T_OBJECT && DESTRUCTED(v)) {
-	    error("Function in destructed object");
+	    ec->error("Function in destructed object");
 	}
 	break;
 
     default:
-	error("Function in destructed object");
+	ec->error("Function in destructed object");
 	break;
     }
 
@@ -1694,7 +1694,7 @@ int kf_call_function(Frame *f, int nargs, KFun *kf)
 
     if (!f->call(obj, lwobj, elts[4].string->text, elts[4].string->len, TRUE,
 		 nargs)) {
-	error("Function not found");
+	ec->error("Function not found");
     }
 
     a->del();

@@ -167,7 +167,7 @@ unsigned int SnapshotInfo::restore(int fd)
 	if (P_read(fd, (char *) this, sizeof(SnapshotInfo)) !=
 							sizeof(SnapshotInfo) ||
 		   valid != 1 || version < 14 || version > FORMAT_VERSION) {
-	    error("Bad or incompatible restore file header");
+	    ec->error("Bad or incompatible restore file header");
 	}
 	size = (UCHAR(secsize[0]) << 8) | UCHAR(secsize[1]);
 	posn = (UCHAR(offset[0]) << 24) |
@@ -280,13 +280,13 @@ void Config::dump(bool incr, bool boot)
     }
     fd = Swap::save(conf[DUMP_FILE].str, header.dflags & FLAGS_PARTIAL);
     if (!KFun::dump(fd)) {
-	fatal("failed to dump kfun table");
+	ec->fatal("failed to dump kfun table");
     }
     if (!Object::save(fd, incr)) {
-	fatal("failed to dump object table");
+	ec->fatal("failed to dump object table");
     }
     if (!CallOut::save(fd)) {
-	fatal("failed to dump callout table");
+	ec->fatal("failed to dump callout table");
     }
     if (boot) {
 	boot = Comm::save(fd);
@@ -309,11 +309,11 @@ bool Config::restore(int fd, int fd2)
     secsize = rheader.restore(fd);
     conv_14 = conv_15 = conv_16 = FALSE;
     if (rheader.version < 14) {
-	error("Incompatible snapshot version");
+	ec->error("Incompatible snapshot version");
     }
     if (rheader.version < 15) {
 	if (!(rheader.dflags & FLAGS_COMP159)) {
-	    error("Snapshot contains legacy programs");
+	    ec->error("Snapshot contains legacy programs");
 	}
 	conv_14 = TRUE;
     }
@@ -327,18 +327,18 @@ bool Config::restore(int fd, int fd2)
     if (memcmp(&header, &rheader, DUMP_TYPE) != 0 || rheader.zero1 != 0 ||
 	rheader.zero2 != 0 || rheader.zero3 != 0 || rheader.zero4 != 0 ||
 	rheader.zero5 != 0) {
-	error("Bad or incompatible snapshot header");
+	ec->error("Bad or incompatible snapshot header");
     }
     if (rheader.dflags & FLAGS_PARTIAL) {
 	SnapshotInfo h;
 
 	/* secondary snapshot required */
 	if (fd2 < 0) {
-	    error("Missing secondary snapshot");
+	    ec->error("Missing secondary snapshot");
 	}
 	h.restore(fd2);
 	if (memcmp(&rheader, &h, DUMP_HEADERSZ) != 0) {
-	    error("Secondary snapshot has different type");
+	    ec->error("Secondary snapshot has different type");
 	}
 	Swap::restore2(fd2);
     }
@@ -362,10 +362,10 @@ bool Config::restore(int fd, int fd2)
 	resize = sizeof(char);			/* backward compat */
     }
     if ((rheader.calign >> 4) != 0) {
-	error("Cannot restore arrsize > 2");
+	ec->error("Cannot restore arrsize > 2");
     }
     if ((rheader.salign >> 4) != 0) {
-	error("Cannot restore Int size > 4");
+	ec->error("Cannot restore Int size > 4");
     }
     rialign = rheader.ilalign & 0xf;
     rlalign = UCHAR(rheader.ilalign) >> 4;
@@ -379,10 +379,10 @@ bool Config::restore(int fd, int fd2)
     }
     if (sizeof(uindex) < rusize || sizeof(ssizet) < rtsize ||
 	sizeof(Sector) < rdsize) {
-	error("Cannot restore uindex, ssizet or sector of greater width");
+	ec->error("Cannot restore uindex, ssizet or sector of greater width");
     }
     if ((rheader.psize >> 4) > 1) {
-	error("Cannot restore hindex > 1");	/* Hydra only */
+	ec->error("Cannot restore hindex > 1");	/* Hydra only */
     }
     rheader.psize &= 0xf;
 
@@ -405,7 +405,7 @@ bool Config::restore(int fd, int fd2)
 
 	dread(fd, (char *) &dh, "uiiiiiii", (Uint) 1);
 	if (dh.nprecomps != 0) {
-	    fatal("precompiled objects in snapshot");
+	    ec->fatal("precompiled objects in snapshot");
 	}
     }
     boottime = P_time();
@@ -776,7 +776,7 @@ void Config::dread(int fd, char *buf, const char *layout, Uint n)
 	    i = n;
 	}
 	if (P_read(fd, buffer, i * rsize) != i * rsize) {
-	    fatal("cannot read from snapshot");
+	    ec->fatal("cannot read from snapshot");
 	}
 	Config::dconv(buf, buffer, layout, (Uint) i);
 	buf += size * i;
@@ -802,7 +802,7 @@ static int ntports, nbports, ndports;
  */
 void Config::err(const char *err)
 {
-    message("Config error, line %u: %s\012", TokenBuf::line(), err);	/* LF */
+    ec->message("Config error, line %u: %s\012", TokenBuf::line(), err);/* LF */
 }
 
 /*
@@ -1169,7 +1169,7 @@ bool Config::open(char *file)
 
     Path::resolve(fname, file);
     if ((fd=P_open(fname, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
-	message("Config error: cannot create \"/%s\"\012", fname);	/* LF */
+	ec->message("Config error: cannot create \"/%s\"\012", fname);	/* LF */
 	return FALSE;
     }
     bufsz = 0;
@@ -1205,7 +1205,7 @@ void Config::puts(const char *str)
 bool Config::close()
 {
     if (bufsz > 0 && P_write(fd, obuf, bufsz) != bufsz) {
-	message("Config error: cannot write include file\012");		/* LF */
+	ec->message("Config error: cannot write include file\012");	/* LF */
 	P_close(fd);
 	return FALSE;
     }
@@ -1433,7 +1433,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
      */
     if (!PP::init(path_native(buf, configfile), (char **) NULL,
 		  (String **) NULL, 0, 0)) {
-	message("Config error: cannot open config file\012");	/* LF */
+	ec->message("Config error: cannot open config file\012");	/* LF */
 	Alloc::finish();
 	return FALSE;
     }
@@ -1475,8 +1475,8 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     memset(mfinish, '\0', MAX_STRINGS * sizeof(void (*)()));
     for (i = 0; modules[i] != NULL; i++) {
 	if (!Ext::load(modules[i], modconf[i], &mfdlist[i], &mfinish[i])) {
-	    message("Config error: cannot load runtime extension \"%s\"\012",
-		    modules[i]);
+	    ec->message("Config error: cannot load runtime extension \"%s\"\012",
+			modules[i]);
 	    if (snapshot2 != (char *) NULL) {
 		P_close(fd2);
 	    }
@@ -1491,8 +1491,8 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     }
     if (module != (char *) NULL &&
 	!Ext::load(modules[i] = module, NULL, &mfdlist[i], &mfinish[i])) {
-	message("Config error: cannot load runtime extension \"%s\"\012",/* LF*/
-		module);
+	ec->message("Config error: cannot load runtime extension \"%s\"\012",
+		    module); /* LF*/
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
 	}
@@ -1510,7 +1510,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 
     /* change directory */
     if (P_chdir(path_native(buf, conf[DIRECTORY].str)) < 0) {
-	message("Config error: bad base directory \"%s\"\012",	/* LF */
+	ec->message("Config error: bad base directory \"%s\"\012",	/* LF */
 		conf[DIRECTORY].str);
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
@@ -1621,9 +1621,9 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     dumpinit();
 
     Alloc::staticMode();		/* allocate error context statically */
-    ErrorContext::push();		/* guard error context */
+    ec->push();				/* guard error context */
     try {
-	ErrorContext::push();
+	ec->push();
 	Alloc::dynamicMode();
 	if (snapshot == (char *) NULL) {
 	    /* no restored connections */
@@ -1636,11 +1636,11 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    Control::converted();
 	    Dataspace::converted();
 	    try {
-		ErrorContext::push(DGD::errHandler);
+		ec->push(DGD::errHandler);
 		DGD::callDriver(cframe, "initialize", 0);
-		ErrorContext::pop();
+		ec->pop();
 	    } catch (...) {
-		error((char *) NULL);
+		ec->error((char *) NULL);
 	    }
 	} else {
 	    bool hotbooted;
@@ -1656,24 +1656,24 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 
 	    /* notify mudlib */
 	    try {
-		ErrorContext::push(DGD::errHandler);
+		ec->push(DGD::errHandler);
 		if (hotbooted) {
 		    PUSH_INTVAL(cframe, TRUE);
 		    DGD::callDriver(cframe, "restored", 1);
 		} else {
 		    DGD::callDriver(cframe, "restored", 0);
 		}
-		ErrorContext::pop();
+		ec->pop();
 	    } catch (...) {
-		error((char *) NULL);
+		ec->error((char *) NULL);
 	    }
 	}
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
-	message((char *) NULL);
+	ec->message((char *) NULL);
 	DGD::endTask();
-	message("Config error: initialization failed\012");	/* LF */
-	ErrorContext::pop();		/* remove guard */
+	ec->message("Config error: initialization failed\012");	/* LF */
+	ec->pop();			/* remove guard */
 
 	Swap::finish();
 	Comm::clear();
@@ -1694,7 +1694,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     }
     (cframe->sp++)->del();
     DGD::endTask();
-    ErrorContext::pop();		/* remove guard */
+    ec->pop();				/* remove guard */
 
     /* start accepting connections */
     Comm::listen();
@@ -1923,16 +1923,16 @@ Array *Config::status(Frame *f)
     Array *a;
 
     try {
-	ErrorContext::push();
+	ec->push();
 	a = Array::createNil(f->data, 27);
 	for (i = 0, v = a->elts; i < 27; i++, v++) {
 	    statusi(f, i, v);
 	}
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	a->ref();
 	a->del();
-	error((char *) NULL);
+	ec->error((char *) NULL);
     }
 
     return a;
@@ -2014,15 +2014,15 @@ Array *Config::object(Dataspace *data, Object *obj)
 
     a = Array::createNil(data, 7);
     try {
-	ErrorContext::push();
+	ec->push();
 	for (i = 0, v = a->elts; i < 7; i++, v++) {
 	    objecti(data, obj, i, v);
 	}
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	a->ref();
 	a->del();
-	error((char *) NULL);
+	ec->error((char *) NULL);
     }
 
     return a;

@@ -28,12 +28,10 @@
 # include <stdarg.h>
 
 
-static ErrorContext *econtext;		/* current error context */
-static ErrorContext *atomicec;		/* first context beyond atomic */
-jmp_buf *ErrorContext::env;		/* current error env */
-String *ErrorContext::err;		/* current error string */
+static ErrorContextImpl eci;		/* global error context */
+ErrorContext *ec = &eci;
 
-ErrorContext::ErrorContext(Frame *frame, Handler handler)
+ErrorContextImpl::ErrorFrame::ErrorFrame(Frame *frame, Handler handler)
 {
     f = frame;
     offset = frame->fp - frame->sp;
@@ -41,56 +39,56 @@ ErrorContext::ErrorContext(Frame *frame, Handler handler)
     rlim = frame->rlim;
 
     this->handler = handler;
-    next = (ErrorContext *) NULL;
+    next = (ErrorFrame *) NULL;
 }
 
 /*
  * push a new errorcontext
  */
-jmp_buf *ErrorContext::push(Handler handler)
+jmp_buf *ErrorContextImpl::push(Handler handler)
 {
-    ErrorContext *e;
+    ErrorFrame *e;
     jmp_buf *jump;
 
-    if (econtext == (ErrorContext *) NULL) {
+    if (eFrame == (ErrorFrame *) NULL) {
 	Alloc::staticMode();
-	e = new ErrorContext(cframe, handler);
+	e = new ErrorFrame(cframe, handler);
 	Alloc::dynamicMode();
 	jump = (jmp_buf *) NULL;
     } else {
-	e = new ErrorContext(cframe, handler);
-	jump = &econtext->extEnv;
+	e = new ErrorFrame(cframe, handler);
+	jump = &eFrame->env;
     }
-    e->next = econtext;
-    econtext = e;
-    env = &e->extEnv;
+    e->next = eFrame;
+    eFrame = e;
+    ec->env = &e->env;
     return jump;
 }
 
 /*
  * pop the current errorcontext
  */
-void ErrorContext::pop()
+void ErrorContextImpl::pop()
 {
-    ErrorContext *e;
+    ErrorFrame *e;
 
-    e = econtext;
+    e = eFrame;
 # ifdef DEBUG
-    if (e == (ErrorContext *) NULL) {
+    if (e == (ErrorFrame *) NULL) {
 	fatal("pop empty error stack");
     }
 # endif
     cframe->atomic = e->atomic;
-    econtext = e->next;
-    if (econtext == (ErrorContext *) NULL) {
+    eFrame = e->next;
+    if (eFrame == (ErrorFrame *) NULL) {
 	Alloc::staticMode();
 	delete e;
 	Alloc::dynamicMode();
 	clearException();
-	env = (jmp_buf *) NULL;
+	ec->env = (jmp_buf *) NULL;
     } else {
 	delete e;
-	env = &econtext->extEnv;
+	ec->env = &eFrame->env;
     }
 }
 
@@ -106,19 +104,19 @@ static void dummyHandler(Frame *f, Int depth)
 /*
  * set the current error string
  */
-void ErrorContext::setException(String *err)
+void ErrorContextImpl::setException(String *err)
 {
-    if (ErrorContext::err != (String *) NULL) {
-	ErrorContext::err->del();
+    if (this->err != (String *) NULL) {
+	this->err->del();
     }
-    ErrorContext::err = err;
+    this->err = err;
     err->ref();
 }
 
 /*
  * return the current error string
  */
-String *ErrorContext::exception()
+String *ErrorContextImpl::exception()
 {
     return err;
 }
@@ -126,7 +124,7 @@ String *ErrorContext::exception()
 /*
  * clear the error context string
  */
-void ErrorContext::clearException()
+void ErrorContextImpl::clearException()
 {
     if (err != (String *) NULL) {
 	err->del();
@@ -135,64 +133,64 @@ void ErrorContext::clearException()
 }
 
 /*
- * cause an error, with a string argument
+ * handle error
  */
-void error(String *str)
+void ErrorContextImpl::error(String *str)
 {
-    ErrorContext *e;
+    ErrorFrame *e;
     int offset;
-    ErrorContext::Handler handler;
+    Handler handler;
 
     if (str != (String *) NULL) {
-	ErrorContext::setException(str);
+	setException(str);
 # ifdef DEBUG
-    } else if (ErrorContext::exception() == (String *) NULL) {
+    } else if (exception() == (String *) NULL) {
 	fatal("no error string");
 # endif
     }
 
-    e = econtext;
+    e = eFrame;
     offset = e->offset;
 
-    if (atomicec == (ErrorContext *) NULL || atomicec == e) {
+    if (atomicFrame == (ErrorFrame *) NULL || atomicFrame == e) {
 	do {
 	    if (cframe->level != e->f->level) {
-		if (atomicec == (ErrorContext *) NULL) {
+		if (atomicFrame == (ErrorFrame *) NULL) {
 		    cframe->atomicError(e->f->level);
-		    if (e != econtext) {
-			atomicec = e;
+		    if (e != eFrame) {
+			atomicFrame = e;
 			break;	/* handle rollback later */
 		    }
 		}
 
 		cframe = cframe->restore(e->f->level);
-		atomicec = (ErrorContext *) NULL;
+		atomicFrame = (ErrorFrame *) NULL;
 	    }
 
-	    if (e->handler != (ErrorContext::Handler) NULL) {
+	    if (e->handler != (Handler) NULL) {
 		handler = e->handler;
-		e->handler = (ErrorContext::Handler) dummyHandler;
+		e->handler = (Handler) dummyHandler;
 		(*handler)(cframe, e->f->depth);
 		break;
 	    }
 	    e = e->next;
-	} while (e != (ErrorContext *) NULL);
+	} while (e != (ErrorFrame *) NULL);
     }
 
-    if (cframe->rlim != econtext->rlim) {
-	cframe->setRlimits(econtext->rlim);
+    if (cframe->rlim != eFrame->rlim) {
+	cframe->setRlimits(eFrame->rlim);
     }
-    cframe = cframe->setSp(econtext->f->fp - offset);
-    cframe->atomic = econtext->atomic;
-    cframe->rlim = econtext->rlim;
-    ErrorContext::pop();
+    cframe = cframe->setSp(eFrame->f->fp - eFrame->offset);
+    cframe->atomic = eFrame->atomic;
+    cframe->rlim = eFrame->rlim;
+    pop();
     throw "LPC error";
 }
 
 /*
  * cause an error
  */
-void error(const char *format, ...)
+void ErrorContextImpl::error(const char *format, ...)
 {
     va_list args;
     char ebuf[4 * STRINGSZ];
@@ -211,7 +209,7 @@ void error(const char *format, ...)
  * a fatal error has been encountered; terminate the program and
  * dump a core if possible
  */
-void fatal(const char *format, ...)
+void ErrorContextImpl::fatal(const char *format, ...)
 {
     static short count;
     va_list args;
@@ -232,19 +230,19 @@ void fatal(const char *format, ...)
 /*
  * issue a message on stderr
  */
-void message(const char *format, ...)
+void ErrorContextImpl::message(const char *format, ...)
 {
     va_list args;
     char ebuf[4 * STRINGSZ];
 
     if (format == (char *) NULL) {
 # ifdef DEBUG
-	if (ErrorContext::exception() == (String *) NULL) {
+	if (exception() == (String *) NULL) {
 	    fatal("no error string");
 	}
 # endif
-	if (ErrorContext::exception()->len <= sizeof(ebuf) - 2) {
-	    sprintf(ebuf, "%s\012", ErrorContext::exception()->text);
+	if (exception()->len <= sizeof(ebuf) - 2) {
+	    sprintf(ebuf, "%s\012", exception()->text);
 	} else {
 	    strcpy(ebuf, "[too long error string]\012");
 	}

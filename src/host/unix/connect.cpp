@@ -972,7 +972,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (!ipv6 && !ipv4) {
-	    message("unknown host %s\012", thosts[n]);	/* LF */
+	    ec->message("unknown host %s\012", thosts[n]);	/* LF */
 	    return FALSE;
 	}
 
@@ -1036,7 +1036,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (!ipv6 && !ipv4) {
-	    message("unknown host %s\012", bhosts[n]);	/* LF */
+	    ec->message("unknown host %s\012", bhosts[n]);	/* LF */
 	    return FALSE;
 	}
 
@@ -1100,7 +1100,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (!ipv6 && !ipv4) {
-	    message("unknown host %s\012", dhosts[n]);	/* LF */
+	    ec->message("unknown host %s\012", dhosts[n]);	/* LF */
 	    return FALSE;
 	}
 
@@ -1210,7 +1210,7 @@ void Connection::listen()
 	    } else {
 		continue;
 	    }
-	    fatal("conn_listen failed");
+	    ec->fatal("conn_listen failed");
 	}
     }
     for (n = 0; n < ntdescs; n++) {
@@ -1229,7 +1229,7 @@ void Connection::listen()
 	    } else {
 		continue;
 	    }
-	    fatal("conn_listen failed");
+	    ec->fatal("conn_listen failed");
 	}
     }
     for (n = 0; n < nbdescs; n++) {
@@ -1241,7 +1241,7 @@ void Connection::listen()
 	    } else {
 		continue;
 	    }
-	    fatal("conn_listen failed");
+	    ec->fatal("conn_listen failed");
 	}
     }
     for (n = 0; n < nbdescs; n++) {
@@ -1260,7 +1260,7 @@ void Connection::listen()
 	    } else {
 		continue;
 	    }
-	    fatal("conn_listen failed");
+	    ec->fatal("conn_listen failed");
 	}
     }
 }

@@ -1357,7 +1357,7 @@ String *ASN::add(Frame *f, String *s1, String *s2, String *s3)
     Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
     if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
 	AFREE(mod.num);
-	error("Invalid modulus");
+	ec->error("Invalid modulus");
     }
 
     Asi a(ALLOCA(Uint, (s1->len >> 2) + 4), 0);
@@ -1399,7 +1399,7 @@ String *ASN::add(Frame *f, String *s1, String *s2, String *s3)
 		AFREE(b.num);
 		AFREE(a.num);
 		AFREE(mod.num);
-		error("Out of ticks");
+		ec->error("Out of ticks");
 	    }
 	    Asi t(ALLOCA(Uint, (mod.size << 1) + 1), 0);
 	    c.div(c, mod, t);
@@ -1425,7 +1425,7 @@ String *ASN::sub(Frame *f, String *s1, String *s2, String *s3)
     Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
     if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
 	AFREE(mod.num);
-	error("Invalid modulus");
+	ec->error("Invalid modulus");
     }
 
     Asi a(ALLOCA(Uint, (s1->len >> 2) + 4), 0);
@@ -1467,7 +1467,7 @@ String *ASN::sub(Frame *f, String *s1, String *s2, String *s3)
 		AFREE(b.num);
 		AFREE(a.num);
 		AFREE(mod.num);
-		error("Out of ticks");
+		ec->error("Out of ticks");
 	    }
 	    Asi t(ALLOCA(Uint, (mod.size << 1) + 1), 0);
 	    c.div(c, mod, t);
@@ -1533,7 +1533,7 @@ String *ASN::mult(Frame *f, String *s1, String *s2, String *s3)
     Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
     if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
 	AFREE(mod.num);
-	error("Invalid modulus");
+	ec->error("Invalid modulus");
     }
 
     Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
@@ -1544,7 +1544,7 @@ String *ASN::mult(Frame *f, String *s1, String *s2, String *s3)
 	AFREE(b.num);
 	AFREE(a.num);
 	AFREE(mod.num);
-	error("Out of ticks");
+	ec->error("Out of ticks");
     }
 
     size = a.size + b.size;
@@ -1560,7 +1560,7 @@ String *ASN::mult(Frame *f, String *s1, String *s2, String *s3)
 	    AFREE(b.num);
 	    AFREE(a.num);
 	    AFREE(mod.num);
-	    error("Out of ticks");
+	    ec->error("Out of ticks");
 	}
 	c.div(c, mod, t);
     }
@@ -1585,7 +1585,7 @@ String *ASN::div(Frame *f, String *s1, String *s2, String *s3)
     Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
     if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
 	AFREE(mod.num);
-	error("Invalid modulus");
+	ec->error("Invalid modulus");
     }
 
     Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
@@ -1593,7 +1593,7 @@ String *ASN::div(Frame *f, String *s1, String *s2, String *s3)
     if (b.size == 1 && b.num[0] == 0) {
 	AFREE(b.num);
 	AFREE(mod.num);
-	error("Division by zero");
+	ec->error("Division by zero");
     }
     Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
     minusa = a.strtonum(s1);
@@ -1608,7 +1608,7 @@ String *ASN::div(Frame *f, String *s1, String *s2, String *s3)
 	    AFREE(a.num);
 	    AFREE(b.num);
 	    AFREE(mod.num);
-	    error("Out of ticks");
+	    ec->error("Out of ticks");
 	}
 	Asi d(c.div(a, b, t), a.size - b.size + 1);
 	if (d.size >= mod.size && d.cmp(mod) >= 0) {
@@ -1618,7 +1618,7 @@ String *ASN::div(Frame *f, String *s1, String *s2, String *s3)
 		AFREE(a.num);
 		AFREE(b.num);
 		AFREE(mod.num);
-		error("Out of ticks");
+		ec->error("Out of ticks");
 	    }
 	    c.div(d, mod, t);
 	} else {
@@ -1649,7 +1649,7 @@ String *ASN::mod(Frame *f, String *s1, String *s2)
     Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
     if (b.strtonum(s2) || (b.size == 1 && b.num[0] == 0)) {
 	AFREE(b.num);
-	error("Invalid modulus");
+	ec->error("Invalid modulus");
     }
     Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
     minusa = a.strtonum(s1);
@@ -1662,7 +1662,7 @@ String *ASN::mod(Frame *f, String *s1, String *s2)
 	    AFREE(c.num);
 	    AFREE(a.num);
 	    AFREE(b.num);
-	    error("Out of ticks");
+	    ec->error("Out of ticks");
 	}
 	c.div(a, b, t);
     } else {
@@ -1690,7 +1690,7 @@ String *ASN::pow(Frame *f, String *s1, String *s2, String *s3)
     Asi mod(ALLOCA(Uint, (s3->len >> 2) + 2), 0);
     if (mod.strtonum(s3) || (mod.size == 1 && mod.num[0] == 0)) {
 	AFREE(mod.num);
-	error("Invalid modulus");
+	ec->error("Invalid modulus");
     }
 
     Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
@@ -1703,14 +1703,14 @@ String *ASN::pow(Frame *f, String *s1, String *s2, String *s3)
 	AFREE(b.num);
 	AFREE(a.num);
 	AFREE(mod.num);
-	error("Out of ticks");
+	ec->error("Out of ticks");
     }
     ticks1 = ticks2 << 5;
     if (ticks1 >> 5 != ticks2 || (Int) ticks1 < 0 || ticks(f, ticks1)) {
 	AFREE(b.num);
 	AFREE(a.num);
 	AFREE(mod.num);
-	error("Out of ticks");
+	ec->error("Out of ticks");
     }
 
     Asi c(ALLOCA(Uint, mod.size), mod.size);
@@ -1723,7 +1723,7 @@ String *ASN::pow(Frame *f, String *s1, String *s2, String *s3)
 	    AFREE(b.num);
 	    AFREE(a.num);
 	    AFREE(mod.num);
-	    error("Out of ticks");
+	    ec->error("Out of ticks");
 	}
 	if (!c.modinv(a, mod)) {
 	    AFREE(t.num);
@@ -1731,7 +1731,7 @@ String *ASN::pow(Frame *f, String *s1, String *s2, String *s3)
 	    AFREE(b.num);
 	    AFREE(a.num);
 	    AFREE(mod.num);
-	    error("No inverse");
+	    ec->error("No inverse");
 	}
 	c.power(c, b, mod, t);
     } else {
@@ -1758,12 +1758,12 @@ String *ASN::lshift(Frame *f, String *s1, Int shift, String *s2)
     String *str;
 
     if (shift < 0) {
-	error("Negative left shift");
+	ec->error("Negative left shift");
     }
     Asi mod(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
     if (mod.strtonum(s2) || (mod.size == 1 && mod.num[0] == 0)) {
 	AFREE(mod.num);
-	error("Invalid modulus");
+	ec->error("Invalid modulus");
     }
 
     size = (s1->len >> 2) + 2 + ((shift + 31) >> 5);
@@ -1805,7 +1805,7 @@ String *ASN::lshift(Frame *f, String *s1, Int shift, String *s2)
 	    AFREE(t.num);
 	    AFREE(a.num);
 	    AFREE(mod.num);
-	    error("Out of ticks");
+	    ec->error("Out of ticks");
 	}
 	a.div(a, mod, t);
     }
@@ -1825,7 +1825,7 @@ String *ASN::rshift(Frame *f, String *s, Int shift)
     String *str;
 
     if (shift < 0) {
-	error("Negative right shift");
+	ec->error("Negative right shift");
     }
     Asi a(ALLOCA(Uint, (s->len >> 2) + 2), 0);
     minusa = a.strtonum(s);

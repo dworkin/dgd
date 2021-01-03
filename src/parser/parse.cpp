@@ -430,7 +430,7 @@ PNode *Parser::parse(String *str, bool *toobig)
 			frame->rlim->ticks = 0x7fffffff;
 		    } else {
 			FREE(states);
-			error("Out of ticks");
+			ec->error("Out of ticks");
 		    }
 		}
 	    }
@@ -447,7 +447,7 @@ PNode *Parser::parse(String *str, bool *toobig)
 	case DFA_REJECT:
 	    /* bad token */
 	    FREE(states);
-	    error("Bad token at offset %u", str->len - size);
+	    ec->error("Bad token at offset %u", str->len - size);
 	    return (PNode *) NULL;
 
 	case DFA_TOOBIG:
@@ -589,19 +589,19 @@ Int Parser::traverse(PNode *pn, PNode *next)
 		data->parser = (Parser *) NULL;
 
 		try {
-		    ErrorContext::push();
+		    ec->push();
 		    PUSH_ARRVAL(frame, a);
 		    call = frame->call(OBJR(frame->oindex),
 				       (Array *) NULL, pn->text + 2 + n,
 				       UCHAR(pn->text[1]) - n - 1, TRUE, 1);
-		    ErrorContext::pop();
+		    ec->pop();
 		} catch (...) {
 		    /* error: restore original parser */
 		    if (data->parser != (Parser *) NULL) {
 			delete data->parser;
 		    }
 		    data->parser = this;
-		    error((char *) NULL);	/* pass on error */
+		    ec->error((char *) NULL);	/* pass on error */
 		}
 
 		/* restore original parser */
@@ -869,7 +869,7 @@ Array *Parser::parse_string(Frame *f, String *source, String *str, Int maxalt)
     a = (Array *) NULL;
     ps->maxalt = maxalt;
     try {
-	ErrorContext::push();
+	ec->push();
 	/*
 	 * do the parse thing
 	 */
@@ -901,12 +901,12 @@ Array *Parser::parse_string(Frame *f, String *source, String *str, Int maxalt)
 	    /*
 	     * lexer or parser has become too big
 	     */
-	    error("Grammar too large");
+	    ec->error("Grammar too large");
 	}
 	delete ps->pnc;
 	ps->pnc = (PnChunk *) NULL;
 
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	/*
 	 * error occurred; clean up
@@ -920,7 +920,7 @@ Array *Parser::parse_string(Frame *f, String *source, String *str, Int maxalt)
 	delete ps->arrc;
 	ps->arrc = (ArrPChunk *) NULL;
 
-	error((char *) NULL);	/* pass on error */
+	ec->error((char *) NULL);	/* pass on error */
     }
 
     return a;

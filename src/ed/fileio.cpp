@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -129,9 +129,9 @@ bool IO::load(EditBuf *eb, char *fname, Int l)
 
     /* add the block to the edit buffer */
     try {
-	ErrorContext::push();
+	ec->push();
 	eb->add(l, get_line);
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	P_close(ffd);
 	error((char *) NULL);	/* pass on error */
@@ -208,12 +208,12 @@ bool IO::save(EditBuf *eb, char *fname, Int first, Int last, int append)
 
     /* write range */
     try {
-	ErrorContext::push();
+	ec->push();
 	eb->range(first, last, put_line, FALSE);
 	if (P_write(ffd, buffer, inbuf) != inbuf) {
 	    error("error while writing file \"/%s\"", filename);
 	}
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	P_close(ffd);
 	error((char *) NULL);	/* pass on error */

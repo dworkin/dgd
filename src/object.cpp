@@ -279,7 +279,7 @@ Object *Object::alloc()
     } else {
 	/* use new space in object table */
 	if (oplane->nobjects == otabsize) {
-	    error("Too many objects");
+	    ec->error("Too many objects");
 	}
 	n = oplane->nobjects++;
 	obj = OBJW(n);
@@ -682,7 +682,7 @@ void Object::upgraded(Object *tmpl)
 {
 # ifdef DEBUG
     if (count == 0) {
-	fatal("upgrading destructed object");
+	ec->fatal("upgrading destructed object");
     }
 # endif
     if (!(flags & O_MASTER)) {
@@ -702,7 +702,7 @@ void Object::del(Frame *f)
 {
     if (count == 0) {
 	/* can happen if object selfdestructs in close()-on-destruct */
-	error("Destructing destructed object");
+	ec->error("Destructing destructed object");
     }
     f->objDest(this);	/* wipe out occurrences on the stack */
     if (data == (Dataspace *) NULL && dfirst != SW_UNUSED) {
@@ -781,7 +781,7 @@ const char *Object::builtinName(Int type)
 
 # ifdef DEBUG
     default:
-	fatal("unknown builtin type %d", type);
+	ec->fatal("unknown builtin type %d", type);
 # endif
     }
     return NULL;
@@ -930,7 +930,7 @@ void Object::cleanUpgrades()
 	    if (o->ref == 0) {
 # ifdef DEBUG
 		if (o->prev != OBJ_NONE) {
-		    fatal("removing issue in middle of list");
+		    ec->fatal("removing issue in middle of list");
 		}
 # endif
 		/* remove from template list */
@@ -1313,7 +1313,7 @@ void Object::restore(int fd, bool part)
     Config::dread(fd, (char *) &dh, oh_layout, (Uint) 1);
 
     if (dh.nobjects > otabsize) {
-	error("Too many objects in restore file (%u)", dh.nobjects);
+	ec->error("Too many objects in restore file (%u)", dh.nobjects);
     }
 
     Config::dread(fd, (char *) objTable, OBJ_LAYOUT, (Uint) dh.nobjects);
@@ -1338,7 +1338,7 @@ void Object::restore(int fd, bool part)
 		len = (dh.onamelen > CHUNKSZ - buflen) ?
 		       CHUNKSZ - buflen : dh.onamelen;
 		if (P_read(fd, buffer + buflen, len) != len) {
-		    fatal("cannot restore object names");
+		    ec->fatal("cannot restore object names");
 		}
 		dh.onamelen -= len;
 		buflen += len;
@@ -1558,7 +1558,7 @@ void Object::dumpState(bool incr)
 void Object::finish(bool boot)
 {
     if (boot && !oplane->dump) {
-	error("Hotbooting without snapshot");
+	ec->error("Hotbooting without snapshot");
     }
     oplane->stop = TRUE;
     oplane->boot = boot;

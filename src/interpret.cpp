@@ -268,14 +268,14 @@ void Frame::mapAggregate(unsigned int size)
 	    *--elts = *sp++;
 	} while (--size != 0);
 	try {
-	    ErrorContext::push();
+	    ec->push();
 	    a->mapSort();
-	    ErrorContext::pop();
+	    ec->pop();
 	} catch (...) {
 	    /* error in sorting, delete mapping and pass on error */
 	    a->ref();
 	    a->del();
-	    error((char *) NULL);
+	    ec->error((char *) NULL);
 	}
 	Dataspace::refImports(a);
     }
@@ -293,7 +293,7 @@ int Frame::spread(int n)
     Value *v;
 
     if (sp->type != T_ARRAY) {
-	error("Spread of non-array");
+	ec->error("Spread of non-array");
     }
     a = sp->array;
 
@@ -353,7 +353,7 @@ void Frame::oper(Array *lwobj, const char *op, int nargs, Value *var,
 	pushValue(val);
     }
     if (!call((Object *) NULL, lwobj, op, strlen(op), TRUE, nargs)) {
-	error("Index on bad type");
+	ec->error("Index on bad type");
     }
 
     *var = *sp++;
@@ -370,7 +370,7 @@ void Frame::index(Value *aval, Value *ival, Value *val, bool keep)
     switch (aval->type) {
     case T_STRING:
 	if (ival->type != T_INT) {
-	    error("Non-numeric string index");
+	    ec->error("Non-numeric string index");
 	}
 	i = UCHAR(aval->string->text[aval->string->index(ival->number)]);
 	if (!keep) {
@@ -381,7 +381,7 @@ void Frame::index(Value *aval, Value *ival, Value *val, bool keep)
 
     case T_ARRAY:
 	if (ival->type != T_INT) {
-	    error("Non-numeric array index");
+	    ec->error("Non-numeric array index");
 	}
 	*val = Dataspace::elts(aval->array)[aval->array->index(ival->number)];
 	break;
@@ -402,7 +402,7 @@ void Frame::index(Value *aval, Value *ival, Value *val, bool keep)
 	return;
 
     default:
-	error("Index on bad type");
+	ec->error("Index on bad type");
     }
 
     switch (val->type) {
@@ -510,7 +510,7 @@ int Frame::instanceOf(Uint sclass)
 	break;
 
     default:
-	error("Instance of bad type");
+	ec->error("Instance of bad type");
     }
 
     return instance;
@@ -535,22 +535,22 @@ void Frame::cast(Value *val, unsigned int type, Uint sclass)
     if (type == T_CLASS) {
 	if (val->type == T_OBJECT) {
 	    if (!instanceOf(val->oindex, sclass)) {
-		error("Value is not of object type /%s", className(sclass));
+		ec->error("Value is not of object type /%s", className(sclass));
 	    }
 	    return;
 	} else if (val->type == T_LWOBJECT) {
 	    elts = Dataspace::elts(val->array);
 	    if (elts->type == T_OBJECT) {
 		if (!instanceOf(elts->oindex, sclass)) {
-		    error("Value is not of object type /%s",
-			  className(sclass));
+		    ec->error("Value is not of object type /%s",
+			      className(sclass));
 		}
 	    } else if (strcmp(Object::builtinName(elts->number),
 			      className(sclass)) != 0) {
 		/*
 		 * builtin types can only be cast to their own type
 		 */
-		error("Value is not of object type /%s", className(sclass));
+		ec->error("Value is not of object type /%s", className(sclass));
 	    }
 	    return;
 	}
@@ -560,9 +560,9 @@ void Frame::cast(Value *val, unsigned int type, Uint sclass)
 	(!VAL_NIL(val) || !T_POINTER(type))) {
 	Value::typeName(tnbuf, type);
 	if (strchr("aeiuoy", tnbuf[0]) != (char *) NULL) {
-	    error("Value is not an %s", tnbuf);
+	    ec->error("Value is not an %s", tnbuf);
 	} else {
-	    error("Value is not a %s", tnbuf);
+	    ec->error("Value is not a %s", tnbuf);
 	}
     }
 }
@@ -613,10 +613,10 @@ bool Frame::storeIndex(Value *var, Value *aval, Value *ival, Value *val)
     switch (aval->type) {
     case T_STRING:
 	if (ival->type != T_INT) {
-	    error("Non-numeric string index");
+	    ec->error("Non-numeric string index");
 	}
 	if (val->type != T_INT) {
-	    error("Non-numeric value in indexed string assignment");
+	    ec->error("Non-numeric value in indexed string assignment");
 	}
 	i = aval->string->index(ival->number);
 	str = String::create(aval->string->text, aval->string->len);
@@ -626,7 +626,7 @@ bool Frame::storeIndex(Value *var, Value *aval, Value *ival, Value *val)
 
     case T_ARRAY:
 	if (ival->type != T_INT) {
-	    error("Non-numeric array index");
+	    ec->error("Non-numeric array index");
 	}
 	arr = aval->array;
 	aval = &Dataspace::elts(arr)[arr->index(ival->number)];
@@ -656,7 +656,7 @@ bool Frame::storeIndex(Value *var, Value *aval, Value *ival, Value *val)
 	break;
 
     default:
-	error("Index on bad type");
+	ec->error("Index on bad type");
     }
 
     return FALSE;
@@ -855,7 +855,7 @@ void Frame::stores(int skip, int assign)
 
 # ifdef DEBUG
 	default:
-	    fatal("invalid store");
+	    ec->fatal("invalid store");
 # endif
 	}
 	--skip;
@@ -933,7 +933,7 @@ void Frame::stores(int skip, int assign)
 
 # ifdef DEBUG
 	default:
-	    fatal("invalid store");
+	    ec->fatal("invalid store");
 # endif
 	}
 	--assign;
@@ -1008,7 +1008,7 @@ void Frame::lvalues(int n)
 	}
 
 	if (n < nassign) {
-	    error("Missing lvalue");
+	    ec->error("Missing lvalue");
 	}
     }
 
@@ -1021,7 +1021,7 @@ void Frame::lvalues(int n)
 Int Frame::div(Int num, Int denom)
 {
     if (denom == 0) {
-	error("Division by zero");
+	ec->error("Division by zero");
     }
     return num / denom;
 }
@@ -1033,7 +1033,7 @@ Int Frame::lshift(Int num, Int shift)
 {
     if ((shift & ~31) != 0) {
 	if (shift < 0) {
-	    error("Negative left shift");
+	    ec->error("Negative left shift");
 	}
 	return 0;
     } else {
@@ -1047,7 +1047,7 @@ Int Frame::lshift(Int num, Int shift)
 Int Frame::mod(Int num, Int denom)
 {
     if (denom == 0) {
-	error("Modulus by zero");
+	ec->error("Modulus by zero");
     }
     return num % denom;
 }
@@ -1059,7 +1059,7 @@ Int Frame::rshift(Int num, Int shift)
 {
     if ((shift & ~31) != 0) {
 	if (shift < 0) {
-	    error("Negative right shift");
+	    ec->error("Negative right shift");
 	}
 	return 0;
     } else {
@@ -1083,13 +1083,13 @@ void Frame::toFloat(Float *flt)
 	p = sp->string->text;
 	if (!Float::atof(&p, flt) ||
 	    p != sp->string->text + sp->string->len) {
-	    error("String cannot be converted to float");
+	    ec->error("String cannot be converted to float");
 	}
 	sp->string->del();
     } else if (sp->type == T_FLOAT) {
 	GET_FLT(sp, *flt);
     } else {
-	error("Value is not a float");
+	ec->error("Value is not a float");
     }
 
     sp++;
@@ -1115,13 +1115,13 @@ Int Frame::toInt()
 	p = sp->string->text;
 	i = strtoint(&p);
 	if (p != sp->string->text + sp->string->len) {
-	    error("String cannot be converted to int");
+	    ec->error("String cannot be converted to int");
 	}
 	sp->string->del();
 	sp++;
 	return i;
     } else if (sp->type != T_INT) {
-	error("Value is not an int");
+	ec->error("Value is not an int");
     }
 
     return (sp++)->number;
@@ -1165,7 +1165,7 @@ void Frame::checkRlimits()
 
     obj = OBJR(oindex);
     if (obj->count == 0) {
-	error("Illegal use of rlimits");
+	ec->error("Illegal use of rlimits");
     }
     --sp;
     sp[0] = sp[1];
@@ -1180,7 +1180,7 @@ void Frame::checkRlimits()
     DGD::callDriver(this, "runtime_rlimits", 3);
 
     if (!VAL_TRUE(sp)) {
-	error("Illegal use of rlimits");
+	ec->error("Illegal use of rlimits");
     }
     (sp++)->del();
 }
@@ -1232,10 +1232,10 @@ void Frame::rlimits(bool privileged)
     Int newdepth, newticks;
 
     if (sp[1].type != T_INT) {
-	error("Bad rlimits depth type");
+	ec->error("Bad rlimits depth type");
     }
     if (sp->type != T_INT) {
-	error("Bad rlimits ticks type");
+	ec->error("Bad rlimits ticks type");
     }
     newdepth = sp[1].number;
     newticks = sp->number;
@@ -1391,20 +1391,20 @@ void Frame::typecheck(Frame *f, const char *name, const char *ftype,
 		atype == T_OBJECT) {
 		if (sp[i].type == T_OBJECT) {
 		    if (!f->instanceOf(sp[i].oindex, sclass)) {
-			error("Bad object argument %d for function %s",
-			      nargs - i, name);
+			ec->error("Bad object argument %d for function %s",
+				  nargs - i, name);
 		    }
 		} else {
 		    elts = Dataspace::elts(sp[i].array);
 		    if (elts->type == T_OBJECT) {
 			if (!f->instanceOf(elts->oindex, sclass)) {
-			    error("Bad object argument %d for function %s",
-				  nargs - i, name);
+			    ec->error("Bad object argument %d for function %s",
+				      nargs - i, name);
 			}
 		    } else if (strcmp(Object::builtinName(elts->number),
 				      className(sclass)) != 0) {
-			error("Bad object argument %d for function %s",
-			      nargs - i, name);
+			ec->error("Bad object argument %d for function %s",
+				  nargs - i, name);
 		    }
 		}
 		continue;
@@ -1412,11 +1412,12 @@ void Frame::typecheck(Frame *f, const char *name, const char *ftype,
 	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
 		if (!VAL_NIL(sp + i) || !T_POINTER(ptype)) {
 		    /* wrong type */
-		    error("Bad argument %d (%s) for %s %s", nargs - i,
-			  Value::typeName(tnbuf, atype), ftype, name);
+		    ec->error("Bad argument %d (%s) for %s %s", nargs - i,
+			      Value::typeName(tnbuf, atype), ftype, name);
 		} else if (strict) {
 		    /* nil argument */
-		    error("Bad argument %d for %s %s", nargs - i, ftype, name);
+		    ec->error("Bad argument %d for %s %s", nargs - i, ftype,
+			      name);
 		}
 	    }
 	}
@@ -1646,9 +1647,9 @@ void Frame::kfunc(int n, int nargs)
     kf = &KFUN(n);
     if (PROTO_VARGS(kf->proto) == 0 && nargs != PROTO_NARGS(kf->proto)) {
 	if (nargs < PROTO_NARGS(kf->proto)) {
-	    error("Too few arguments for kfun %s", kf->name);
+	    ec->error("Too few arguments for kfun %s", kf->name);
 	} else {
-	    error("Too many arguments for kfun %s", kf->name);
+	    ec->error("Too many arguments for kfun %s", kf->name);
 	}
     }
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
@@ -1657,11 +1658,11 @@ void Frame::kfunc(int n, int nargs)
     nargs = (*kf->func)(this, nargs, kf);
     if (nargs != 0) {
 	if (nargs < 0) {
-	    error("Too few arguments for kfun %s", kf->name);
+	    ec->error("Too few arguments for kfun %s", kf->name);
 	} else if (nargs <= PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto)) {
-	    error("Bad argument %d for kfun %s", nargs, kf->name);
+	    ec->error("Bad argument %d for kfun %s", nargs, kf->name);
 	} else {
-	    error("Too many arguments for kfun %s", kf->name);
+	    ec->error("Too many arguments for kfun %s", kf->name);
 	}
     }
 }
@@ -1696,7 +1697,7 @@ void Frame::interpret(char *pc)
     for (;;) {
 # ifdef DEBUG
 	if (sp < stack + MIN_STACK) {
-	    fatal("out of value stack");
+	    ec->fatal("out of value stack");
 	}
 # endif
 	instr = FETCH1U(pc);
@@ -1798,10 +1799,10 @@ void Frame::interpret(char *pc)
 		lvalues(u);
 	    } else {
 		if (sp->type != T_ARRAY) {
-		    error("Value is not an array");
+		    ec->error("Value is not an array");
 		}
 		if (u > sp->array->size) {
-		    error("Wrong number of lvalues");
+		    ec->error("Wrong number of lvalues");
 		}
 		Dataspace::elts(sp->array);
 		stores(0, u);
@@ -1994,10 +1995,10 @@ void Frame::interpret(char *pc)
 	    atomic = this->atomic;
 	    p = prog + FETCH2U(pc, u);
 	    try {
-		ErrorContext::push((ErrorContext::Handler) runtimeError);
+		ec->push((ErrorContext::Handler) runtimeError);
 		this->atomic = FALSE;
 		interpret(pc);
-		ErrorContext::pop();
+		ec->pop();
 		pc = this->pc;
 		*--sp = Value::nil;
 	    } catch (...) {
@@ -2007,7 +2008,7 @@ void Frame::interpret(char *pc)
 		    loop_ticks(this);
 		}
 		pc = p;
-		PUSH_STRVAL(this, ErrorContext::exception());
+		PUSH_STRVAL(this, ec->exception());
 	    }
 	    this->atomic = atomic;
 	    break;
@@ -2024,7 +2025,7 @@ void Frame::interpret(char *pc)
 
 # ifdef DEBUG
 	default:
-	    fatal("illegal instruction");
+	    ec->fatal("illegal instruction");
 # endif
 	}
 
@@ -2088,13 +2089,13 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
     f.depth = depth + 1;
     f.rlim = rlim;
     if (f.depth >= f.rlim->maxdepth && !f.rlim->nodepth) {
-	error("Stack overflow");
+	ec->error("Stack overflow");
     }
     if (f.rlim->ticks < 100) {
 	if (f.rlim->noticks) {
 	    f.rlim->ticks = 0x7fffffff;
 	} else {
-	    error("Out of ticks");
+	    ec->error("Out of ticks");
 	}
     }
     f.kflv = FALSE;
@@ -2108,8 +2109,8 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
     /* get the function */
     f.func = &f.p_ctrl->funcs()[funci];
     if (f.func->sclass & C_UNDEFINED) {
-	error("Undefined function %s",
-	      f.p_ctrl->strconst(f.func->inherit, f.func->index)->text);
+	ec->error("Undefined function %s",
+		  f.p_ctrl->strconst(f.func->inherit, f.func->index)->text);
     }
 
     pc = f.p_ctrl->program() + f.func->offset;
@@ -2127,8 +2128,8 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
 
 	/* if fewer actual than formal parameters, check for varargs */
 	if (nargs < PROTO_NARGS(pc) && stricttc) {
-	    error("Insufficient arguments for function %s",
-		  f.p_ctrl->strconst(f.func->inherit, f.func->index)->text);
+	    ec->error("Insufficient arguments for function %s",
+		      f.p_ctrl->strconst(f.func->inherit, f.func->index)->text);
 	}
 
 	/* add missing arguments */
@@ -2187,8 +2188,8 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
 	pc += PROTO_SIZE(pc);
     } else if (nargs > n) {
 	if (stricttc) {
-	    error("Too many arguments for function %s",
-		  f.p_ctrl->strconst(f.func->inherit, f.func->index)->text);
+	    ec->error("Too many arguments for function %s",
+		      f.p_ctrl->strconst(f.func->inherit, f.func->index)->text);
 	}
 
 	/* pop superfluous arguments */
@@ -2254,7 +2255,7 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
     /* clean up stack, move return value to outer stackframe */
 # ifdef DEBUG
     if (f.sp != f.fp - nargs) {
-	fatal("bad stack pointer after function call");
+	ec->fatal("bad stack pointer after function call");
     }
 # endif
     f.pop(f.fp - f.sp);
@@ -2673,12 +2674,11 @@ bool Frame::callCritical(const char *func, int narg, int flag)
     newRlimits(-1, -1);
     sp += narg;		/* so the error context knows what to pop */
     try {
-	ErrorContext::push((ErrorContext::Handler) ((flag) ?
-						     NULL : emptyhandler));
+	ec->push((ErrorContext::Handler) ((flag) ? NULL : emptyhandler));
 	sp -= narg;	/* recover arguments */
 	DGD::callDriver(this, func, narg);
 	ok = TRUE;
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	ok = FALSE;
     }
@@ -2692,15 +2692,15 @@ bool Frame::callCritical(const char *func, int narg, int flag)
  */
 void Frame::runtimeError(Frame *f, Int depth)
 {
-    PUSH_STRVAL(f, ErrorContext::exception());
+    PUSH_STRVAL(f, ec->exception());
     PUSH_INTVAL(f, depth);
     PUSH_INTVAL(f, f->getTicks());
     if (!f->callCritical("runtime_error", 3, FALSE)) {
-	message("Error within runtime_error:\012");	/* LF */
-	message((char *) NULL);
+	ec->message("Error within runtime_error:\012");	/* LF */
+	ec->message((char *) NULL);
     } else {
 	if (f->sp->type == T_STRING) {
-	    ErrorContext::setException(f->sp->string);
+	    ec->setException(f->sp->string);
 	}
 	(f->sp++)->del();
     }
@@ -2715,15 +2715,15 @@ void Frame::atomicError(Int level)
 
     for (f = this; f->level != level; f = f->prev) ;
 
-    PUSH_STRVAL(this, ErrorContext::exception());
+    PUSH_STRVAL(this, ec->exception());
     PUSH_INTVAL(this, f->depth);
     PUSH_INTVAL(this, getTicks());
     if (!callCritical("atomic_error", 3, FALSE)) {
-	message("Error within atomic_error:\012");	/* LF */
-	message((char *) NULL);
+	ec->message("Error within atomic_error:\012");	/* LF */
+	ec->message((char *) NULL);
     } else {
 	if (sp->type == T_STRING) {
-	    ErrorContext::setException(sp->string);
+	    ec->setException(sp->string);
 	}
 	(sp++)->del();
     }

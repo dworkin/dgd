@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -132,7 +132,7 @@ void Swap::create()
     P_unlink(p);
     swap = P_open(p, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
     if (swap < 0 || !write(swap, cbuf, sectorsize)) {
-	fatal("cannot create swap file \"%s\"", swapfile);
+	ec->fatal("cannot create swap file \"%s\"", swapfile);
     }
 }
 
@@ -173,7 +173,7 @@ void Swap::newv(Sector *vec, unsigned int size)
     while (size > 0) {
 	/* allocate a new sector */
 	if (nsectors == swapsize) {
-	    fatal("out of sectors");
+	    ec->fatal("out of sectors");
 	}
 	map[*vec++ = nsectors++] = SW_UNUSED;
 	--size;
@@ -339,7 +339,7 @@ Swap::SwapSlot *Swap::load(Sector sec, bool restore, bool fill)
 		     */
 		    if (sfree == SW_UNUSED) {
 			if (ssectors == SW_UNUSED) {
-			    fatal("out of sectors");
+			    ec->fatal("out of sectors");
 			}
 			save = ssectors++;
 		    } else {
@@ -354,7 +354,7 @@ Swap::SwapSlot *Swap::load(Sector sec, bool restore, bool fill)
 		}
 		P_lseek(swap, (off_t) (save + 1L) * sectorsize, SEEK_SET);
 		if (!write(swap, h + 1, sectorsize)) {
-		    fatal("cannot write swap file");
+		    ec->fatal("cannot write swap file");
 		}
 	    }
 	    map[h->sec] = save;
@@ -374,7 +374,7 @@ Swap::SwapSlot *Swap::load(Sector sec, bool restore, bool fill)
 		 */
 		P_lseek(dump, (off_t) (load + 1L) * sectorsize, SEEK_SET);
 		if (P_read(dump, (char *) (h + 1), sectorsize) <= 0) {
-		    fatal("cannot read snapshot");
+		    ec->fatal("cannot read snapshot");
 		}
 	    } else if (fill) {
 		/*
@@ -382,7 +382,7 @@ Swap::SwapSlot *Swap::load(Sector sec, bool restore, bool fill)
 		 */
 		P_lseek(swap, (off_t) (load + 1L) * sectorsize, SEEK_SET);
 		if (P_read(swap, (char *) (h + 1), sectorsize) <= 0) {
-		    fatal("cannot read swap file");
+		    ec->fatal("cannot read swap file");
 		}
 	    }
 	} else if (fill) {
@@ -493,7 +493,7 @@ void Swap::conv(char *m, Sector *vec, Uint size, Uint idx)
 	if (*vec != cached) {
 	    P_lseek(dump, (off_t) (map[*vec] + 1L) * restoresecsize, SEEK_SET);
 	    if (P_read(dump, cbuf, restoresecsize) <= 0) {
-		fatal("cannot read snapshot");
+		ec->fatal("cannot read snapshot");
 	    }
 	    map[cached = *vec] = SW_UNUSED;
 	}
@@ -519,7 +519,7 @@ void Swap::conv2(char *m, Sector *vec, Uint size, Uint idx)
 	    P_lseek(dump2, (off_t) (map[*vec] + 1L) * restoresecsize,
 		    SEEK_SET);
 	    if (P_read(dump2, cbuf, restoresecsize) <= 0) {
-		fatal("cannot read secondary snapshot");
+		ec->fatal("cannot read secondary snapshot");
 	    }
 	    map[cached = *vec] = SW_UNUSED;
 	}
@@ -735,7 +735,7 @@ int Swap::save(char *snapshot, bool keep)
 		 */
 		if (sfree == SW_UNUSED) {
 		    if (ssectors == SW_UNUSED) {
-			fatal("out of sectors");
+			ec->fatal("out of sectors");
 		    }
 		    sec = ssectors++;
 		} else {
@@ -747,7 +747,7 @@ int Swap::save(char *snapshot, bool keep)
 	    }
 	    P_lseek(swap, (off_t) (sec + 1L) * sectorsize, SEEK_SET);
 	    if (!write(swap, h + 1, sectorsize)) {
-		fatal("cannot write swap file");
+		ec->fatal("cannot write swap file");
 	    }
 	}
 	map[h->sec] = sec;
@@ -778,22 +778,22 @@ int Swap::save(char *snapshot, bool keep)
 	    old = P_open(q, O_RDWR | O_BINARY, 0);
 	    swap = P_open(p, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
 	    if (old < 0 || swap < 0) {
-		fatal("cannot move swap file");
+		ec->fatal("cannot move swap file");
 	    }
 	    /* copy initial sector */
 	    if (P_read(old, cbuf, sectorsize) <= 0) {
-		fatal("cannot read swap file");
+		ec->fatal("cannot read swap file");
 	    }
 	    if (!write(swap, cbuf, sectorsize)) {
-		fatal("cannot write snapshot");
+		ec->fatal("cannot write snapshot");
 	    }
 	    /* copy swap sectors */
 	    for (n = ssectors; n > 0; --n) {
 		if (P_read(old, cbuf, sectorsize) <= 0) {
-		    fatal("cannot read swap file");
+		    ec->fatal("cannot read swap file");
 		}
 		if (!write(swap, cbuf, sectorsize)) {
-		    fatal("cannot write snapshot");
+		    ec->fatal("cannot write snapshot");
 		}
 	    }
 	    P_close(old);
@@ -803,7 +803,7 @@ int Swap::save(char *snapshot, bool keep)
 	     */
 	    swap = P_open(p, O_RDWR | O_BINARY, 0);
 	    if (swap < 0) {
-		fatal("cannot reopen snapshot");
+		ec->fatal("cannot reopen snapshot");
 	    }
 	}
     }
@@ -811,7 +811,7 @@ int Swap::save(char *snapshot, bool keep)
     /* write map */
     P_lseek(swap, (off_t) (ssectors + 1L) * sectorsize, SEEK_SET);
     if (!write(swap, map, nsectors * sizeof(Sector))) {
-	fatal("cannot write sector map to snapshot");
+	ec->fatal("cannot write sector map to snapshot");
     }
 
     /* fix the sector map */
@@ -843,7 +843,7 @@ void Swap::save2(SnapshotInfo *header, int size, bool incr)
 	sectors /= sectorsize;
 	if (offset != 0) {
 	    if (!write(swap, cbuf, sectorsize - offset)) {
-		fatal("cannot extend swap file");
+		ec->fatal("cannot extend swap file");
 	    }
 	    sectors++;
 	}
@@ -863,7 +863,7 @@ void Swap::save2(SnapshotInfo *header, int size, bool incr)
     dh.mfree = mfree;
     memcpy(cbuf + sectorsize - sizeof(DumpHeader), &dh, sizeof(DumpHeader));
     if (!write(swap, cbuf, sectorsize)) {
-	fatal("cannot write snapshot header");
+	ec->fatal("cannot write snapshot header");
     }
 
     if (!swapping) {
@@ -874,7 +874,7 @@ void Swap::save2(SnapshotInfo *header, int size, bool incr)
 	save[3] = sectors;
 	P_lseek(swap, prev * sectorsize + size - sizeof(save), SEEK_SET);
 	if (!write(swap, save, sizeof(save))) {
-	    fatal("cannot write offset");
+	    ec->fatal("cannot write offset");
 	}
 	prev = sectors;
     }
@@ -912,10 +912,10 @@ void Swap::restore(int fd, unsigned int secsize)
     P_lseek(fd, -(off_t) (Config::dsize(dh_layout) & 0xff), SEEK_CUR);
     Config::dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.secsize != secsize) {
-	error("Wrong sector size (%d)", dh.secsize);
+	ec->error("Wrong sector size (%d)", dh.secsize);
     }
     if (dh.nsectors > swapsize) {
-	error("Too many sectors in restore file (%d)", dh.nsectors);
+	ec->error("Too many sectors in restore file (%d)", dh.nsectors);
     }
     restoresecsize = secsize;
     if (secsize > sectorsize) {

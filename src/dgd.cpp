@@ -59,7 +59,7 @@ bool DGD::callDriver(Frame *f, const char *func, int narg)
 	dcount = driver->count;
     }
     if (!f->call(driver, (Array *) NULL, func, strlen(func), TRUE, narg)) {
-	fatal("missing function in driver object: %s", func);
+	ec->fatal("missing function in driver object: %s", func);
     }
     return TRUE;
 }
@@ -82,7 +82,7 @@ void DGD::endTask()
     Object::clean();
     Frame::clear();
     Editor::clear();
-    ErrorContext::clearException();
+    ec->clearException();
 
     CallOut::swapcount(Dataspace::swapout(fragment));
 
@@ -130,7 +130,7 @@ void DGD::endTask()
 	     */
 	    hotboot = Config::hotbootExec();
 	    P_execv(hotboot[0], hotboot);
-	    message("Hotboot failed\012");	/* LF */
+	    ec->message("Hotboot failed\012");	/* LF */
 	}
 
 	Comm::finish();
@@ -176,8 +176,8 @@ int DGD::main(int argc, char **argv)
 	argv++;
     }
     if (argc < 1 || argc > 3) {
-	message("Usage: %s [-e module] config_file [[partial_snapshot] snapshot]\012",     /* LF */
-		program);
+	ec->message("Usage: %s [-e module] config_file [[partial_snapshot] snapshot]\012",     /* LF */
+		    program);
 	return 2;
     }
 
@@ -212,10 +212,10 @@ int DGD::main(int argc, char **argv)
 	if (intr) {
 	    intr = FALSE;
 	    try {
-		ErrorContext::push((ErrorContext::Handler) errHandler);
+		ec->push((ErrorContext::Handler) errHandler);
 		callDriver(cframe, "interrupt", 0);
 		(cframe->sp++)->del();
-		ErrorContext::pop();
+		ec->pop();
 	    } catch (...) { }
 	    endTask();
 	}

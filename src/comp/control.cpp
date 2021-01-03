@@ -3340,7 +3340,7 @@ Array *Control::undefined(Dataspace *data)
 
     m = (Array *) NULL;
     try {
-	ErrorContext::push();
+	ec->push();
 	m = Array::mapCreate(data, size);
 	memset(m->elts, '\0', size * sizeof(Value));
 	for (i = nsymbols, symb = symbols; i != 0; --i, symb++) {
@@ -3366,7 +3366,7 @@ Array *Control::undefined(Dataspace *data)
 		PUT_STRVAL(v, ctrl->strconst(f->inherit, f->index));
 	    }
 	}
-	ErrorContext::pop();
+	ec->pop();
     } catch (...) {
 	if (m != (Array *) NULL) {
 	    /* discard mapping */
@@ -3374,7 +3374,7 @@ Array *Control::undefined(Dataspace *data)
 	    m->del();
 	}
 	AFREE(list);
-	error((char *) NULL);	/* pass on error */
+	ec->error((char *) NULL);	/* pass on error */
     }
     AFREE(list);
 
