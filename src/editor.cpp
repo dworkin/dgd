@@ -37,6 +37,63 @@ static bool recursion;		/* recursion in editor command */
 static bool internal;		/* flag editor internal error */
 
 /*
+ * fake error handler
+ */
+static void ed_handler(Frame *f, Int depth)
+{
+    /*
+     * This function just exists to prevent the higher level error handler
+     * from being called.
+     */
+    UNREFERENCED_PARAMETER(f);
+    UNREFERENCED_PARAMETER(depth);
+}
+
+class EditorErrorContext : public ErrorContextImpl {
+public:
+    /*
+     * handle an editor internal error
+     */
+    virtual void error(const char *format, ...) {
+	char ebuf[2 * STRINGSZ];
+	va_list args;
+
+	if (format != (char *) NULL) {
+	    internal = TRUE;
+	    ec->push((ErrorContext::Handler) ed_handler);
+	    va_start(args, format);
+	    vsprintf(ebuf, format, args);
+	    va_end(args);
+	    ec->error(ebuf);
+	} else {
+	    ec->error((char *) NULL);
+	}
+    }
+
+    /*
+     * handle output from the editor
+     */
+    virtual void message(const char *format, ...) {
+	char buf[2 * MAX_LINE_SIZE + 15];
+	va_list args;
+	Uint len;
+
+	va_start(args, format);
+	vsprintf(buf, format, args);
+	va_end(args);
+	len = strlen(buf);
+	if (outbufsz + len > USHRT_MAX) {
+	    ec->error("Editor output string too long");
+	}
+	memcpy(outbuf + outbufsz, buf, len);
+	outbufsz += len;
+    }
+};
+
+static EditorErrorContext edec;	/* editor error context */
+ErrorContext *edc = &edec;
+
+/*
  * initialize editor handling
  */
 void Editor::init(char *tmp, int num)
@@ -136,21 +193,6 @@ void Editor::del(Object *obj)
 }
 
 /*
- * fake error handler
- */
-static void ed_handler(Frame *f, Int depth)
-{
-    /*
-     * This function just exists to prevent the higher level error handler
-     * from being called.
-     */
-    UNREFERENCED_PARAMETER(f);
-    UNREFERENCED_PARAMETER(depth);
-}
-
-extern void output(const char *, ...);
-
-/*
  * handle an editor command
  */
 String *Editor::command(Object *obj, char *cmd)
@@ -183,7 +225,7 @@ String *Editor::command(Object *obj, char *cmd)
 	if (!internal) {
 	    ec->error((char *) NULL);	/* pass on error */
 	}
-	output("%s\012", ec->exception()->text);	/* LF */
+	edc->message("%s\012", ec->exception()->text);	/* LF */
 	ec->pop();
     }
 
@@ -202,43 +244,5 @@ const char *Editor::status(Object *obj)
 	return "insert";
     } else {
 	return "command";
-    }
-}
-
-/*
- * handle output from the editor
- */
-void output(const char *f, ...)
-{
-    va_list args;
-    char buf[2 * MAX_LINE_SIZE + 15];
-    Uint len;
-
-    va_start(args, f);
-    vsprintf(buf, f, args);
-    va_end(args);
-    len = strlen(buf);
-    if (outbufsz + len > USHRT_MAX) {
-	ec->error("Editor output string too long");
-    }
-    memcpy(outbuf + outbufsz, buf, len);
-    outbufsz += len;
-}
-
-/*
- * handle an editor internal error
- */
-void ed_error(const char *f, ...)
-{
-    va_list args;
-
-    if (f != (char *) NULL) {
-	internal = TRUE;
-	ec->push((ErrorContext::Handler) ed_handler);
-	va_start(args, f);
-	ec->error(f, args);
-	va_end(args);
-    } else {
-	ec->error((char *) NULL);
     }
 }

@@ -59,7 +59,7 @@ char *IO::get_line()
 	    if (i <= 0) {
 		/* eof or error */
 		if (i < 0) {
-		    error("error while reading file \"/%s\"", filename);
+		    edc->error("error while reading file \"/%s\"", filename);
 		}
 		if (p == lbuf) {
 		    return (char *) NULL;
@@ -129,12 +129,12 @@ bool IO::load(EditBuf *eb, char *fname, Int l)
 
     /* add the block to the edit buffer */
     try {
-	ec->push();
+	edc->push();
 	eb->add(l, get_line);
-	ec->pop();
+	edc->pop();
     } catch (...) {
 	P_close(ffd);
-	error((char *) NULL);	/* pass on error */
+	edc->error((char *) NULL);	/* pass on error */
     }
     P_close(ffd);
 
@@ -161,7 +161,7 @@ void IO::put_line(const char *text)
 	    len -= chunk;
 	}
 	if (P_write(ffd, buffer, BUF_SIZE) != BUF_SIZE) {
-	    error("error while writing file \"/%s\"", filename);
+	    edc->error("error while writing file \"/%s\"", filename);
 	}
 	inbuf = 0;
     }
@@ -208,15 +208,15 @@ bool IO::save(EditBuf *eb, char *fname, Int first, Int last, int append)
 
     /* write range */
     try {
-	ec->push();
+	edc->push();
 	eb->range(first, last, put_line, FALSE);
 	if (P_write(ffd, buffer, inbuf) != inbuf) {
-	    error("error while writing file \"/%s\"", filename);
+	    edc->error("error while writing file \"/%s\"", filename);
 	}
-	ec->pop();
+	edc->pop();
     } catch (...) {
 	P_close(ffd);
-	error((char *) NULL);	/* pass on error */
+	edc->error((char *) NULL);	/* pass on error */
     }
     P_close(ffd);
 
@@ -228,16 +228,16 @@ bool IO::save(EditBuf *eb, char *fname, Int first, Int last, int append)
  */
 void IO::show()
 {
-    output("%ld lines, %ld characters", (long) lines,
-	   (long) (chars + zero - split - ill));
+    edc->message("%ld lines, %ld characters", (long) lines,
+		 (long) (chars + zero - split - ill));
     if (zero > 0) {
-	output(" [%ld zero]", (long) zero);
+	edc->message(" [%ld zero]", (long) zero);
     }
     if (split > 0) {
-	output(" [%ld split]", (long) split);
+	edc->message(" [%ld split]", (long) split);
     }
     if (ill) {
-	output(" [incomplete last line]");
+	edc->message(" [incomplete last line]");
     }
-    output("\012");	/* LF */
+    edc->message("\012");	/* LF */
 }

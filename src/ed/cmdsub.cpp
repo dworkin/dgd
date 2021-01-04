@@ -97,7 +97,7 @@ void CmdBuf::println(const char *text)
 	*p++ = '$';
     }
     *p = '\0';
-    output("%s\012", buffer);	/* LF */
+    edc->message("%s\012", buffer);	/* LF */
 }
 
 /*
@@ -163,7 +163,7 @@ int CmdBuf::page()
     Int offset, window;
 
     if (edbuf.lines == 0) {
-	error("No lines in buffer");
+	edc->error("No lines in buffer");
     }
 
     window = WINDOW(vars);
@@ -212,7 +212,7 @@ int CmdBuf::page()
  */
 int CmdBuf::assign()
 {
-    output("%ld\012", (long) (first < 0) ? edbuf.lines : first);	/* LF */
+    edc->message("%ld\012", (long) (first < 0) ? edbuf.lines : first);	/* LF */
     return 0;
 }
 
@@ -223,7 +223,7 @@ int CmdBuf::assign()
 int CmdBuf::domark()
 {
     if (!islower(cmd[0])) {
-	error("Mark must specify a letter");
+	edc->error("Mark must specify a letter");
     }
     mark[*cmd++ - 'a'] = first;
     return 0;
@@ -314,7 +314,7 @@ int CmdBuf::move()
     Int offset, *m1, *m2;
 
     if (a_addr >= first - 1 && a_addr <= last) {
-	error("Move to moved line");
+	edc->error("Move to moved line");
     }
 
     dodo(first);
@@ -360,7 +360,7 @@ int CmdBuf::put()
 	b = buf;
     }
     if (b == (Block) 0) {
-	error("Nothing in buffer");
+	edc->error("Nothing in buffer");
     }
 
     dodo(first);
@@ -432,7 +432,7 @@ void CmdBuf::doshift(const char *text)
 	/* Error: line too long. Finish block of lines already shifted. */
 	cb->last = cb->lineno;
 	cb->endblock();
-	error("Result of shift would be too long");
+	edc->error("Result of shift would be too long");
     }
 }
 
@@ -590,7 +590,7 @@ void CmdBuf::indent(const char *text)
 		} else if (*p == '\0') {
 		    cb->last = cb->lineno;
 		    cb->endblock();
-		    error("Unterminated string");
+		    edc->error("Unterminated string");
 		} else if (*p == '\\' && *++p == '\0') {
 		    break;
 		}
@@ -725,7 +725,7 @@ void CmdBuf::indent(const char *text)
 		    /* out of stack. Finish already indented block. */
 		    cb->last = cb->lineno;
 		    cb->endblock();
-		    error("Nesting too deep");
+		    edc->error("Nesting too deep");
 		}
 
 		/* handle indentation */
@@ -838,7 +838,7 @@ void CmdBuf::join(const char *text)
     }
     cb->buflen += strlen(text);
     if (cb->buflen >= MAX_LINE_SIZE) {
-	error("Result of join would be too long");
+	edc->error("Result of join would be too long");
     }
     strcpy(p, text);
 }
@@ -852,7 +852,7 @@ int CmdBuf::join()
     Int *m;
 
     if (edbuf.lines == 0) {
-	error("No lines in buffer");
+	edc->error("No lines in buffer");
     }
     if (first < 0) {
 	first = cthis;
@@ -901,7 +901,7 @@ void CmdBuf::sub(const char *text, unsigned int size)
 	    endblock();
 	}
 	cthis = othis = lineno;
-	error("Line overflow in substitute");
+	edc->error("Line overflow in substitute");
     }
 
     p = buffer + buflen;
@@ -1148,7 +1148,7 @@ int CmdBuf::subst()
     if (delim == '\0' || strchr("0123456789gpl#-+", delim) != (char*) NULL) {
 	/* no search pattern & replace string specified */
 	if (search[0] == '\0') {
-	    error("No previous substitute to repeat");
+	    edc->error("No previous substitute to repeat");
 	}
     } else if (!isalpha(delim)) {
 	char *q;
@@ -1164,7 +1164,7 @@ int CmdBuf::subst()
 	    }
 	    if (q == replace + STRINGSZ - 1) {
 		search[0] = '\0';
-		error("Replace string too large");
+		edc->error("Replace string too large");
 	    }
 	    if ((*q++ = *p++) == '\\' && *p != '\0') {
 		*q++ = *p++;
@@ -1178,13 +1178,13 @@ int CmdBuf::subst()
     }
 
     if (search[0] == '\0') {
-	error("Missing regular expression for substitute");
+	edc->error("Missing regular expression for substitute");
     }
 
     /* compile regexp */
     p = regexp.comp(search);
     if (p != (char *) NULL) {
-	error(p);
+	edc->error(p);
     }
 
     count();	/* get count */
@@ -1225,7 +1225,7 @@ int CmdBuf::subst()
 	    }
 	}
     } else if (!(flags & CB_GLOBAL)) {
-	error("Substitute pattern match failed");
+	edc->error("Substitute pattern match failed");
     }
 
     return RET_FLAGS;
@@ -1259,7 +1259,7 @@ bool CmdBuf::getfname(char *buffer)
 	return FALSE;
     }
     if (p - cmd >= STRINGSZ) {
-	error("Filename too long");
+	edc->error("Filename too long");
     }
 
     /* copy */
@@ -1283,19 +1283,19 @@ int CmdBuf::file()
 
     /* give statistics */
     if (fname[0] == '\0') {
-	output("No file");
+	edc->message("No file");
     } else {
-	output("\"%s\"", fname);
+	edc->message("\"%s\"", fname);
     }
     if (flags & CB_NOIMAGE) {
-	output(" [Not edited]");
+	edc->message(" [Not edited]");
     }
     if (edits > 0) {
-	output(" [Modified]");
+	edc->message(" [Modified]");
     }
-    output(" line %ld of %ld --%d%%--\012", /* LF */
-	   (long) cthis, (long) edbuf.lines,
-	   (edbuf.lines == 0) ? 0 : (int) ((100 * cthis) / edbuf.lines));
+    edc->message(" line %ld of %ld --%d%%--\012", /* LF */
+		 (long) cthis, (long) edbuf.lines,
+		 (edbuf.lines == 0) ? 0 : (int) ((100 * cthis) / edbuf.lines));
 
     return 0;
 }
@@ -1312,7 +1312,7 @@ int CmdBuf::read()
 
     if (!getfname(buffer)) {
 	if (fname[0] == '\0') {
-	    error("No current filename");
+	    edc->error("No current filename");
 	}
 	/* read current file, by default. I don't know why, but ex has it
 	   that way. */
@@ -1320,9 +1320,9 @@ int CmdBuf::read()
     }
 
     dodo(first);
-    output("\"%s\" ", buffer);
+    edc->message("\"%s\" ", buffer);
     if (!iob.load(&edbuf, buffer, first)) {
-	error("is unreadable");
+	edc->error("is unreadable");
     }
     iob.show();
 
@@ -1342,12 +1342,12 @@ int CmdBuf::edit()
     not_in_global();
 
     if (edits > 0 && !(flags & CB_EXCL)) {
-	error("No write since last change (edit! overrides)");
+	edc->error("No write since last change (edit! overrides)");
     }
 
     getfname(fname);
     if (fname[0] == '\0') {
-	error("No current filename");
+	edc->error("No current filename");
     }
 
     Alloc::staticMode();
@@ -1361,9 +1361,9 @@ int CmdBuf::edit()
     memset(zbuf, '\0', sizeof(zbuf));
     undo = (Block) -1;	/* not 0! */
 
-    output("\"%s\" ", fname);
+    edc->message("\"%s\" ", fname);
     if (!iob.load(&edbuf, fname, first)) {
-	error("is unreadable");
+	edc->error("is unreadable");
     }
     iob.show();
     if (iob.zero > 0 || iob.split > 0 || iob.ill) {
@@ -1384,7 +1384,7 @@ int CmdBuf::quit()
     not_in_global();
 
     if (edits > 0 && !(flags & CB_EXCL)) {
-	error("No write since last change (quit! overrides)");
+	edc->error("No write since last change (quit! overrides)");
     }
 
     return RET_QUIT;
@@ -1411,23 +1411,23 @@ int CmdBuf::write()
     /* check if write can be done */
     if (!getfname(buffer)) {
 	if (fname[0] == '\0') {
-	    error("No current filename");
+	    edc->error("No current filename");
 	}
 	strcpy(buffer, fname);
     }
     if (strcmp(buffer, fname) == 0) {
 	if (first == 1 && last == edbuf.lines) {
 	    if ((flags & (CB_NOIMAGE|CB_EXCL)) == CB_NOIMAGE) {
-		error("File is changed (use w! to override)");
+		edc->error("File is changed (use w! to override)");
 	    }
 	} else if (!(flags & CB_EXCL)) {
-	    error("Use w! to write partial buffer");
+	    edc->error("Use w! to write partial buffer");
 	}
     }
 
-    output("\"%s\" ", buffer);
+    edc->message("\"%s\" ", buffer);
     if (!iob.save(&edbuf, buffer, first, last, append)) {
-	error("write failed");
+	edc->error("write failed");
     }
     iob.show();
 

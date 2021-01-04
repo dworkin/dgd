@@ -144,7 +144,7 @@ void LineBuf::init()
     fd = P_open(path_native(buf, file), O_CREAT | O_TRUNC | O_RDWR | O_BINARY,
 		0600);
     if (fd < 0) {
-	ec->fatal("cannot create editor tmpfile \"%s\"", file);
+	edc->fatal("cannot create editor tmpfile \"%s\"", file);
     }
 }
 
@@ -182,7 +182,7 @@ void LineBuf::act()
     if (fd < 0) {
 	fd = P_open(path_native(buf, file), O_RDWR | O_BINARY, 0);
 	if (fd < 0) {
-	    ec->fatal("cannot reopen editor tmpfile \"%s\"", file);
+	    edc->fatal("cannot reopen editor tmpfile \"%s\"", file);
 	}
     }
 }
@@ -197,7 +197,7 @@ void LineBuf::write()
 
 # ifdef TMPFILE_SIZE
 	if (wb->offset >= TMPFILE_SIZE - BLOCK_SIZE) {
-	    error("Editor tmpfile too large");
+	    edc->error("Editor tmpfile too large");
 	}
 # endif
 
@@ -207,7 +207,7 @@ void LineBuf::write()
 	/* write in tmpfile */
 	P_lseek(fd, offset = wb->offset, SEEK_SET);	/* EOF */
 	if (P_write(fd, wb->buf, BLOCK_SIZE) < 0) {
-	    error("Failed to write editor tmpfile");
+	    edc->error("Failed to write editor tmpfile");
 	}
 	/* cycle buffers */
 	wb = wb->prev;
@@ -241,7 +241,7 @@ LineBuf::Blk *LineBuf::load(Block b)
 		bt = bt->prev;
 		P_lseek(fd, bt->offset = b - (b % BLOCK_SIZE), SEEK_SET);
 		if (P_read(fd, bt->buf, BLOCK_SIZE) != BLOCK_SIZE) {
-		    ec->fatal("cannot read editor tmpfile \"%s\"", file);
+		    edc->fatal("cannot read editor tmpfile \"%s\"", file);
 		}
 	    }
 
@@ -559,7 +559,7 @@ Block LineBuf::cat(Block b1, Block b2)
     bb.llast = b2;
     bb.depth = ((depth1 > depth2) ? depth1 : depth2) + 1;
     if (bb.depth > EDMAXDEPTH) {
-	error("Editor line tree too large");
+	edc->error("Editor line tree too large");
     }
     if (depth1 == depth2 &&
 	(depth1 == 1 || (bp1->depth & bp2->depth & EDFULLTREE))) {

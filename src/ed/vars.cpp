@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -81,14 +81,14 @@ void Vars::set(Vars *v, char *option)
 		p = val;
 		i = strtoint(&p);
 		if (val == p || i < 0) {
-		    error("Bad numeric value for option \"%s\"", v->name);
+		    edc->error("Bad numeric value for option \"%s\"", v->name);
 		}
 		v->val = i;
 	    }
 	    return;
 	}
     }
-    error("No such option");
+    edc->error("No such option");
 }
 
 /*
@@ -96,7 +96,7 @@ void Vars::set(Vars *v, char *option)
  */
 void Vars::show(Vars *v)
 {
-    output("%signorecase\011",   ((v++)->val) ? "" : "no");	/* HT */
-    output("shiftwidth=%ld\011", (long) (v++)->val);		/* HT */
-    output("window=%ld\012",     (long) (v++)->val);		/* LF */
+    edc->message("%signorecase\011",   ((v++)->val) ? "" : "no");	/* HT */
+    edc->message("shiftwidth=%ld\011", (long) (v++)->val);		/* HT */
+    edc->message("window=%ld\012",     (long) (v++)->val);		/* LF */
 }

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -66,7 +66,7 @@ void EditBuf::add(Int ln, char *(*getline) ())
 
 	size = lines + lb.size(b);
 	if (size < 0) {
-	    error("Too many lines");
+	    edc->error("Too many lines");
 	}
 
 	if (ln == 0) {
@@ -132,7 +132,7 @@ void EditBuf::change(Int first, Int last, Block b)
     if (b != (Block) 0) {
 	size += lb.size(b);
 	if (size < 0) {
-	    error("Too many lines");
+	    edc->error("Too many lines");
 	}
     }
 
@@ -194,7 +194,7 @@ void EditBuf::put(Int ln, Block b)
 
     size = lines + lb.size(b);
     if (size < 0) {
-	error("Too many lines");
+	edc->error("Too many lines");
     }
 
     if (ln == 0) {
