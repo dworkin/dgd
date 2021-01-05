@@ -691,20 +691,20 @@ int XConnection::port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6,
     on = 1;
     if (setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on)) < 0)
     {
-	P_message("setsockopt() failed\n");
+	ec->message("setsockopt() failed\n");
 	return FALSE;
     }
     if (type == SOCK_STREAM) {
 	on = 1;
 	if (setsockopt(*fd, SOL_SOCKET, SO_OOBINLINE, (char *) &on, sizeof(on))
 									< 0) {
-	    P_message("setsockopt() failed\n");
+	    ec->message("setsockopt() failed\n");
 	    return FALSE;
 	}
     }
     WSAHtons(*fd, port, &sin6->sin6_port);
     if (bind(*fd, (struct sockaddr *) sin6, sizeof(struct sockaddr_in6)) < 0) {
-	P_message("bind() failed\n");
+	ec->message("bind() failed\n");
 	return FALSE;
     }
 
@@ -723,26 +723,26 @@ int XConnection::port4(SOCKET *fd, int type, struct sockaddr_in *sin,
     int on;
 
     if ((*fd=socket(AF_INET, type, 0)) == INVALID_SOCKET) {
-	P_message("socket() failed\n");
+	ec->message("socket() failed\n");
 	return FALSE;
     }
     on = 1;
     if (setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on)) < 0)
     {
-	P_message("setsockopt() failed\n");
+	ec->message("setsockopt() failed\n");
 	return FALSE;
     }
     if (type == SOCK_STREAM) {
 	on = 1;
 	if (setsockopt(*fd, SOL_SOCKET, SO_OOBINLINE, (char *) &on, sizeof(on))
 									< 0) {
-	    P_message("setsockopt() failed\n");
+	    ec->message("setsockopt() failed\n");
 	    return FALSE;
 	}
     }
     sin->sin_port = htons(port);
     if (bind(*fd, (struct sockaddr *) sin, sizeof(struct sockaddr_in)) < 0) {
-	P_message("bind() failed\n");
+	ec->message("bind() failed\n");
 	return FALSE;
     }
 
@@ -773,12 +773,12 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 
     /* initialize winsock */
     if (WSAStartup(MAKEWORD(2, 0), &wsadata) != 0) {
-	P_message("WSAStartup failed (no winsock?)\n");
+	ec->message("WSAStartup failed (no winsock?)\n");
 	return FALSE;
     }
     if (LOBYTE(wsadata.wVersion) != 2 || HIBYTE(wsadata.wVersion) != 0) {
 	WSACleanup();
-	P_message("Winsock 2.0 not supported\n");
+	ec->message("Winsock 2.0 not supported\n");
 	return FALSE;
     }
 
@@ -1772,26 +1772,26 @@ Connection *Connection::connect(void *addr, int len)
 
     sock = socket(((struct sockaddr_in *) addr)->sin_family, SOCK_STREAM, 0);
     if (sock < 0) {
-	P_message("socket");
+	ec->message("socket failed\n");
 	return NULL;
     }
     on = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
-	P_message("setsockopt");
+	ec->message("setsockopt failed\n");
 	closesocket(sock);
 	return NULL;
     }
     on = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
 		   sizeof(on)) < 0) {
-	P_message("setsockopt");
+	ec->message("setsockopt failed\n");
 	closesocket(sock);
 	return NULL;
     }
     nonblock = TRUE;
     if (ioctlsocket(sock, FIONBIO, &nonblock) != 0) {
-	P_message("ioctlsocket");
+	ec->message("ioctlsocket failed\n");
 	closesocket(sock);
 	return NULL;
     }

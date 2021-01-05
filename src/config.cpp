@@ -1449,7 +1449,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     if (snapshot != (char *) NULL) {
 	fd = P_open(path_native(buf, snapshot), O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
-	    P_message("Config error: cannot open restore file\012");    /* LF */
+	    ec->message("Config error: cannot open restore file\012"); /* LF */
 	    Alloc::finish();
 	    return FALSE;
 	}
@@ -1457,7 +1457,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     if (snapshot2 != (char *) NULL) {
 	fd2 = P_open(path_native(buf, snapshot2), O_RDONLY | O_BINARY, 0);
 	if (fd2 < 0) {
-	    P_message("Config error: cannot open secondary restore file\012");    /* LF */
+	    ec->message("Config error: cannot open secondary restore file\012"); /* LF */
 	    if (snapshot != (char *) NULL) {
 		P_close(fd);
 	    }

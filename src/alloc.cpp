@@ -246,7 +246,7 @@ public:
 	    memSize += schunk->size = chunksz;
 	    if (schunksz != 0 && dmem) {
 		/* fragmentation matters */
-		P_message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
+		ec->message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
 	    }
 	}
 	if (schunk->size - size <= MOFFSET) {
@@ -1019,8 +1019,7 @@ void Alloc::purge()
 		sprintf(buf + strlen(buf), " %02x", UCHAR(*p));
 	    }
 	}
-	strcat(buf, "\012");	/* LF */
-	P_message(buf);
+	ec->message("%s\012", buf);	/* LF */
 	MemChunk::free(hlist + 1);
     }
 # endif
