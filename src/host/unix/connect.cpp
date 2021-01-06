@@ -319,9 +319,9 @@ IpAddr *IpAddr::create(In46Addr *ipnum)
 	/*
 	 * allocate new ipaddr
 	 */
-	Alloc::staticMode();
+	MM->staticMode();
 	ipa = ALLOC(IpAddr, 1);
-	Alloc::dynamicMode();
+	MM->dynamicMode();
 
 	/* put in hash table */
 	ipa->link = *hash;
@@ -1368,9 +1368,9 @@ XConnection *XConnection::createUdp(int port)
     conn = (XConnection *) flist;
     flist = conn->next;
     conn->name = (char *) NULL;
-    Alloc::staticMode();
+    MM->staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    Alloc::dynamicMode();
+    MM->dynamicMode();
     hash = &udphtab[udescs[port].hashval];
     pthread_mutex_lock(&udpmutex);
     conn->next = *hash;
@@ -1515,9 +1515,9 @@ bool XConnection::udp(char *challenge, unsigned int len)
     next = conn;
     *hash = this;
     npkts = 0;
-    Alloc::staticMode();
+    MM->staticMode();
     udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    Alloc::dynamicMode();
+    MM->dynamicMode();
     memset(udpbuf, '\0', UDPHASHSZ);
     name = (const char *) memcpy(udpbuf, challenge, bufsz = len);
     pthread_mutex_unlock(&udpmutex);
@@ -1997,9 +1997,9 @@ Connection *Connection::connectDgram(int uport, void *addr, int len)
     conn = (XConnection *) flist;
     flist = conn->next;
     conn->name = (char *) NULL;
-    Alloc::staticMode();
+    MM->staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    Alloc::dynamicMode();
+    MM->dynamicMode();
     conn->fd = -2;
     conn->addr = NULL;
     conn->port = port;
@@ -2254,9 +2254,9 @@ Connection *Connection::import(int fd, char *addr, unsigned short port,
 		Hashtab::Entry **hash;
 
 		conn->bufsz = bufsz;
-		Alloc::staticMode();
+		MM->staticMode();
 		conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-		Alloc::dynamicMode();
+		MM->dynamicMode();
 		memcpy(conn->udpbuf, buf, bufsz);
 # ifdef INET6
 		if (inaddr.ipv6) {

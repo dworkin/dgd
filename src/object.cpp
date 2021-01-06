@@ -345,9 +345,9 @@ void Object::commitPlane()
 			    /*
 			     * make object name static
 			     */
-			    Alloc::staticMode();
+			    MM->staticMode();
 			    name = ALLOC(char, strlen(op->obj.name) + 1);
-			    Alloc::dynamicMode();
+			    MM->dynamicMode();
 			    strcpy(name, op->obj.name);
 			    FREE(op->obj.name);
 			    op->obj.name = name;
@@ -539,11 +539,11 @@ Object *Object::create(char *name, Control *ctrl)
 
     /* put object in object name hash table */
     if (base) {
-	Alloc::staticMode();
+	MM->staticMode();
     }
     o->name = strcpy(ALLOC(char, strlen(name) + 1), name);
     if (base) {
-	Alloc::dynamicMode();
+	MM->dynamicMode();
     } else if (oplane->htab == (Hashtab *) NULL) {
 	oplane->htab = Hashtab::create(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
     }
@@ -1344,9 +1344,9 @@ void Object::restore(int fd, bool part)
 		buflen += len;
 		p = buffer;
 	    }
-	    Alloc::staticMode();
+	    MM->staticMode();
 	    o->name = strcpy(ALLOC(char, len = strlen(p) + 1), p);
-	    Alloc::dynamicMode();
+	    MM->dynamicMode();
 
 	    if (o->count != 0) {
 		Hashtab::Entry **h;

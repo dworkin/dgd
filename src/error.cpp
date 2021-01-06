@@ -51,9 +51,9 @@ jmp_buf *ErrorContextImpl::push(Handler handler)
     jmp_buf *jump;
 
     if (eFrame == (ErrorFrame *) NULL) {
-	Alloc::staticMode();
+	MM->staticMode();
 	e = new ErrorFrame(cframe, handler);
-	Alloc::dynamicMode();
+	MM->dynamicMode();
 	jump = (jmp_buf *) NULL;
     } else {
 	e = new ErrorFrame(cframe, handler);
@@ -81,9 +81,9 @@ void ErrorContextImpl::pop()
     cframe->atomic = e->atomic;
     eFrame = e->next;
     if (eFrame == (ErrorFrame *) NULL) {
-	Alloc::staticMode();
+	MM->staticMode();
 	delete e;
-	Alloc::dynamicMode();
+	MM->dynamicMode();
 	clearException();
 	ec->env = (jmp_buf *) NULL;
     } else {

@@ -1350,9 +1350,9 @@ int CmdBuf::edit()
 	edc->error("No current filename");
     }
 
-    Alloc::staticMode();
+    MM->staticMode();
     edbuf.clear();
-    Alloc::dynamicMode();
+    MM->dynamicMode();
     flags &= ~CB_NOIMAGE;
     edits = 0;
     first = cthis = 0;

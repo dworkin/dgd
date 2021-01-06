@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,50 +26,72 @@ public:
 	size_t dmemused;	/* dynamic memory used */
     };
 
-    static void init(size_t staticSize, size_t dynamicSize);
-    static void finish();
+    virtual void init(size_t staticSize, size_t dynamicSize) = 0;
+    virtual void finish() = 0;
 
 # ifdef MEMDEBUG
 
 # define ALLOC(type, size)						      \
-			((type *) (Alloc::alloc(sizeof(type) * (size_t) (size),\
+			((type *) (MM->alloc(sizeof(type) * (size_t) (size),  \
 						__FILE__, __LINE__)))
 # define REALLOC(mem, type, size1, size2)				      \
-			((type *) (Alloc::realloc((char *) (mem),	      \
+			((type *) (MM->realloc((char *) (mem),		      \
 					     sizeof(type) * (size_t) (size1), \
 					     sizeof(type) * (size_t) (size2), \
 					     __FILE__, __LINE__)))
-    static char *alloc(size_t size, const char *file, int line);
-    static char *realloc(char *mem, size_t size1, size_t size2,
-			 const char *file, int line);
+    virtual char *alloc(size_t size, const char *file, int line) = 0;
+    virtual char *realloc(char *mem, size_t size1, size_t size2,
+			  const char *file, int line) = 0;
 
 # else
 
 # define ALLOC(type, size)						      \
-			((type *) (Alloc::alloc(sizeof(type) * (size_t)(size))))
+			((type *) (MM->alloc(sizeof(type) * (size_t)(size))))
 # define REALLOC(mem, type, size1, size2)				      \
-			((type *) (Alloc::realloc((char *) (mem),	      \
+			((type *) (MM->realloc((char *) (mem),	 	      \
 					     sizeof(type) * (size_t) (size1), \
 					     sizeof(type) * (size_t) (size2))))
-    static char *alloc(size_t size);
-    static char *realloc(char *mem, size_t size1, size_t size2);
+    virtual char *alloc(size_t size) = 0;
+    virtual char *realloc(char *mem, size_t size1, size_t size2) = 0;
 
 # endif
 
-# define FREE(mem)	Alloc::free((char *) (mem))
+# define FREE(mem)	MM->free((char *) (mem))
 
-    static void free(char *mem);
+    virtual void free(char *mem) = 0;
 
-    static void dynamicMode();
-    static void staticMode();
+    virtual void dynamicMode() = 0;
+    virtual void staticMode() = 0;
 
-    static Info *info();
-    static bool check();
-    static void purge();
+    virtual Info *info() = 0;
+    virtual bool check() = 0;
+    virtual void purge() = 0;
+};
+
+class AllocImpl : public Alloc {
+public:
+    virtual void init(size_t staticSize, size_t dynamicSize);
+    virtual void finish();
+# ifdef MEMDEBUG
+    virtual char *alloc(size_t size, const char *file, int line);
+    virtual char *realloc(char *mem, size_t size1, size_t size2,
+			  const char *file, int line);
+# else
+    virtual char *alloc(size_t size);
+    virtual char *realloc(char *mem, size_t size1, size_t size2);
+# endif
+    virtual void free(char *mem);
+    virtual void dynamicMode();
+    virtual void staticMode();
+    virtual Info *info();
+    virtual bool check();
+    virtual void purge();
 
 private:
     static int sLevel;			/* static level */
 };
+
+extern Alloc *MM;
 
 /*
  * inherit from this to use DGD's memory manager
@@ -78,16 +100,16 @@ class Allocated {
 public:
 # ifdef MEMDEBUG
     static void *operator new(size_t size, const char *file, int line) {
-	return Alloc::alloc(size, file, line);
+	return MM->alloc(size, file, line);
     }
 # else
     static void *operator new(size_t size) {
-	return Alloc::alloc(size);
+	return MM->alloc(size);
     }
 # endif
 
     static void operator delete(void *ptr) {
-	Alloc::free((char *) ptr);
+	MM->free((char *) ptr);
     }
 };
 

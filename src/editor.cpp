@@ -168,9 +168,9 @@ void Editor::create(Object *obj)
     obj->flags |= O_EDITOR;
 
     sprintf(tmp, "%s%05u", tmpedfile, EINDEX(obj->etabi));
-    Alloc::staticMode();
+    MM->staticMode();
     e->ed = new CmdBuf(tmp);
-    Alloc::dynamicMode();
+    MM->dynamicMode();
 }
 
 /*

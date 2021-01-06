@@ -140,10 +140,10 @@ User *User::create(Frame *f, Object *obj, Connection *conn, int flags)
 	usr->state = TS_DATA;
 	usr->newlines = 0;
 	usr->inbufsz = 0;
-	Alloc::staticMode();
+	MM->staticMode();
 	usr->inbuf = ALLOC(char, INBUF_SIZE + 1);
 	*usr->inbuf++ = LF;	/* sentinel */
-	Alloc::dynamicMode();
+	MM->dynamicMode();
 
 	arr->elts[0].number = CF_ECHO;
 	PUT_STRVAL_NOREF(&val, String::create(init, sizeof(init)));
@@ -1745,10 +1745,10 @@ bool Comm::restore(int fd)
 	    newlines += usr->newlines;
 	    usr->conn = conn;
 	    if (usr->flags & CF_TELNET) {
-		Alloc::staticMode();
+		MM->staticMode();
 		usr->inbuf = ALLOC(char, INBUF_SIZE + 1);
 		*usr->inbuf++ = LF;	/* sentinel */
-		Alloc::dynamicMode();
+		MM->dynamicMode();
 	    } else {
 		usr->inbuf = (char *) NULL;
 	    }

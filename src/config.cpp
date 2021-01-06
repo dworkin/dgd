@@ -906,9 +906,9 @@ bool Config::config()
 		l = STRINGSZ - 1;
 		p[l] = '\0';
 	    }
-	    Alloc::staticMode();
+	    MM->staticMode();
 	    conf[m].str = strcpy(ALLOC(char, l + 1), p);
-	    Alloc::dynamicMode();
+	    MM->dynamicMode();
 	    break;
 
 	case '(':
@@ -930,10 +930,10 @@ bool Config::config()
 		    err("array too large");
 		    return FALSE;
 		}
-		Alloc::staticMode();
+		MM->staticMode();
 		strs[l] = strcpy(ALLOC(char, strlen(yytext) + 1), yytext);
 		l++;
-		Alloc::dynamicMode();
+		MM->dynamicMode();
 		if ((c=PP::gettok()) == '}') {
 		    break;
 		}
@@ -984,10 +984,10 @@ bool Config::config()
 		    if (strcmp(yytext, "*") == 0) {
 			strs[l] = (char *) NULL;
 		    } else {
-			Alloc::staticMode();
+			MM->staticMode();
 			strs[l] = strcpy(ALLOC(char, strlen(yytext) + 1),
 					 yytext);
-			Alloc::dynamicMode();
+			MM->dynamicMode();
 		    }
 		    if (PP::gettok() != ':') {
 			err("':' expected");
@@ -1047,10 +1047,10 @@ bool Config::config()
 			err("string expected");
 			return FALSE;
 		    }
-		    Alloc::staticMode();
+		    MM->staticMode();
 		    modules[l] = strcpy(ALLOC(char, strlen(yytext) + 1),
 					yytext);
-		    Alloc::dynamicMode();
+		    MM->dynamicMode();
 		    if (PP::gettok() != ':') {
 			err("':' expected");
 			return FALSE;
@@ -1059,10 +1059,10 @@ bool Config::config()
 			err("string expected");
 			return FALSE;
 		    }
-		    Alloc::staticMode();
+		    MM->staticMode();
 		    modconf[l++] = strcpy(ALLOC(char, strlen(yytext) + 1),
 					  yytext);
-		    Alloc::dynamicMode();
+		    MM->dynamicMode();
 		    if ((c=PP::gettok()) == ']') {
 			break;
 		    }
@@ -1434,14 +1434,14 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     if (!PP::init(path_native(buf, configfile), (char **) NULL,
 		  (String **) NULL, 0, 0)) {
 	ec->message("Config error: cannot open config file\012");	/* LF */
-	Alloc::finish();
+	MM->finish();
 	return FALSE;
     }
     init = config();
     PP::clear();
-    Alloc::purge();
+    MM->purge();
     if (!init) {
-	Alloc::finish();
+	MM->finish();
 	return FALSE;
     }
 
@@ -1450,7 +1450,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	fd = P_open(path_native(buf, snapshot), O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
 	    ec->message("Config error: cannot open restore file\012"); /* LF */
-	    Alloc::finish();
+	    MM->finish();
 	    return FALSE;
 	}
     }
@@ -1461,12 +1461,12 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    if (snapshot != (char *) NULL) {
 		P_close(fd);
 	    }
-	    Alloc::finish();
+	    MM->finish();
 	    return FALSE;
 	}
     }
 
-    Alloc::staticMode();
+    MM->staticMode();
 
     /* remove previously added kfuns */
     KFun::clear();
@@ -1485,7 +1485,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    }
 	    modFinish();
 	    Ext::finish();
-	    Alloc::finish();
+	    MM->finish();
 	    return FALSE;
 	}
     }
@@ -1501,7 +1501,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	}
 	modFinish();
 	Ext::finish();
-	Alloc::finish();
+	MM->finish();
 	return FALSE;
     }
 
@@ -1520,7 +1520,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	}
 	modFinish();
 	Ext::finish();
-	Alloc::finish();
+	MM->finish();
 	return FALSE;
     }
 
@@ -1540,7 +1540,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	}
 	modFinish();
 	Ext::finish();
-	Alloc::finish();
+	MM->finish();
 	return FALSE;
     }
 
@@ -1578,7 +1578,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	}
 	modFinish();
 	Ext::finish();
-	Alloc::finish();
+	MM->finish();
 	return FALSE;
     }
 
@@ -1592,11 +1592,10 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 		  dirs,
 		  (int) conf[TYPECHECKING].num);
 
-    Alloc::dynamicMode();
+    MM->dynamicMode();
 
     /* initialize memory manager */
-    Alloc::init((size_t) conf[STATIC_CHUNK].num,
-		(size_t) conf[DYNAMIC_CHUNK].num);
+    MM->init((size_t) conf[STATIC_CHUNK].num, (size_t) conf[DYNAMIC_CHUNK].num);
 
     /*
      * create include files
@@ -1613,18 +1612,18 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	}
 	modFinish();
 	Ext::finish();
-	Alloc::finish();
+	MM->finish();
 	return FALSE;
     }
 
     /* initialize snapshot header */
     dumpinit();
 
-    Alloc::staticMode();		/* allocate error context statically */
+    MM->staticMode();			/* allocate error context statically */
     ec->push();				/* guard error context */
     try {
 	ec->push();
-	Alloc::dynamicMode();
+	MM->dynamicMode();
 	if (snapshot == (char *) NULL) {
 	    /* no restored connections */
 	    fdlist();
@@ -1689,7 +1688,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	String::clean();
 	modFinish();
 	Ext::finish();
-	Alloc::finish();
+	MM->finish();
 	return FALSE;
     }
     (cframe->sp++)->del();
@@ -1821,19 +1820,19 @@ bool Config::statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 9:	/* ST_SMEMSIZE */
-	putval(v, Alloc::info()->smemsize);
+	putval(v, MM->info()->smemsize);
 	break;
 
     case 10:	/* ST_SMEMUSED */
-	putval(v, Alloc::info()->smemused);
+	putval(v, MM->info()->smemused);
 	break;
 
     case 11:	/* ST_DMEMSIZE */
-	putval(v, Alloc::info()->dmemsize);
+	putval(v, MM->info()->dmemsize);
 	break;
 
     case 12:	/* ST_DMEMUSED */
-	putval(v, Alloc::info()->dmemused);
+	putval(v, MM->info()->dmemused);
 	break;
 
     case 13:	/* ST_OTABSIZE */

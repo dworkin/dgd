@@ -248,9 +248,9 @@ IpAddr *IpAddr::create(In46Addr *ipnum)
 	/*
 	 * allocate new ipaddr
 	 */
-	Alloc::staticMode();
+	MM->staticMode();
 	ipa = ALLOC(IpAddr, 1);
-	Alloc::dynamicMode();
+	MM->dynamicMode();
 
 	/* put in hash table */
 	ipa->link = *hash;
@@ -1242,9 +1242,9 @@ XConnection *XConnection::createUdp(int port)
     conn = (XConnection *) flist;
     flist = conn->next;
     conn->name = (char *) NULL;
-    Alloc::staticMode();
+    MM->staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    Alloc::dynamicMode();
+    MM->dynamicMode();
     hash = &udphtab[udescs[port].hashval];
     EnterCriticalSection(&udpmutex);
     conn->next = *hash;
@@ -1385,9 +1385,9 @@ bool XConnection::udp(char *challenge, unsigned int len)
     next = conn;
     *hash = this;
     npkts = 0;
-    Alloc::staticMode();
+    MM->staticMode();
     udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    Alloc::dynamicMode();
+    MM->dynamicMode();
     memset(udpbuf, '\0', UDPHASHSZ);
     name = (const char *) memcpy(udpbuf, challenge, bufsz = len);
     LeaveCriticalSection(&udpmutex);
@@ -1849,9 +1849,9 @@ Connection *Connection::connectDgram(int uport, void *addr, int len)
     conn = (XConnection *) flist;
     flist = conn->next;
     conn->name = (char *) NULL;
-    Alloc::staticMode();
+    MM->staticMode();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
-    Alloc::dynamicMode();
+    MM->dynamicMode();
     conn->fd = INVALID_SOCKET;
     conn->udpFlag = TRUE;
     conn->addr = NULL;

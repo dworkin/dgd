@@ -780,12 +780,15 @@ size_t DynamicMem::memUsed;		/* dynamic memory used */
 static MemHeader *hlist;	/* list of all dynamic memory chunks */
 # endif
 
-int Alloc::sLevel;
+static AllocImpl MMI;
+Alloc *MM = &MMI;
+
+int AllocImpl::sLevel;
 
 /*
  * initialize memory manager
  */
-void Alloc::init(size_t ssz, size_t dsz)
+void AllocImpl::init(size_t ssz, size_t dsz)
 {
     StaticMem::init(ssz);
     DynamicMem::init(dsz);
@@ -794,7 +797,7 @@ void Alloc::init(size_t ssz, size_t dsz)
 /*
  * enter static mode
  */
-void Alloc::staticMode()
+void AllocImpl::staticMode()
 {
     sLevel++;
 }
@@ -802,7 +805,7 @@ void Alloc::staticMode()
 /*
  * reenter dynamic mode
  */
-void Alloc::dynamicMode()
+void AllocImpl::dynamicMode()
 {
     --sLevel;
 }
@@ -811,9 +814,9 @@ void Alloc::dynamicMode()
  * allocate memory
  */
 # ifdef MEMDEBUG
-char *Alloc::alloc(size_t size, const char *file, int line)
+char *AllocImpl::alloc(size_t size, const char *file, int line)
 # else
-char *Alloc::alloc(size_t size)
+char *AllocImpl::alloc(size_t size)
 # endif
 {
     MemChunk *c;
@@ -859,7 +862,7 @@ char *Alloc::alloc(size_t size)
 /*
  * free memory
  */
-void Alloc::free(char *mem)
+void AllocImpl::free(char *mem)
 {
     MemChunk *c;
 
@@ -891,9 +894,9 @@ void Alloc::free(char *mem)
  * reallocate memory
  */
 # ifdef MEMDEBUG
-char *Alloc::realloc(char *mem, size_t size1, size_t size2, const char *file, int line)
+char *AllocImpl::realloc(char *mem, size_t size1, size_t size2, const char *file, int line)
 # else
-char *Alloc::realloc(char *mem, size_t size1, size_t size2)
+char *AllocImpl::realloc(char *mem, size_t size1, size_t size2)
 # endif
 {
     MemChunk *c1, *c2;
@@ -980,7 +983,7 @@ char *Alloc::realloc(char *mem, size_t size1, size_t size2)
 /*
  * return TRUE if there is enough static memory left, or FALSE otherwise
  */
-bool Alloc::check()
+bool AllocImpl::check()
 {
     return StaticMem::check();
 }
@@ -988,7 +991,7 @@ bool Alloc::check()
 /*
  * purge dynamic memory
  */
-void Alloc::purge()
+void AllocImpl::purge()
 {
 # ifdef DEBUG
     char *p;
@@ -1031,7 +1034,7 @@ void Alloc::purge()
 /*
  * return information about memory usage
  */
-Alloc::Info *Alloc::info()
+Alloc::Info *AllocImpl::info()
 {
     static Info mstat;
 
@@ -1045,7 +1048,7 @@ Alloc::Info *Alloc::info()
 /*
  * finish up memory manager
  */
-void Alloc::finish()
+void AllocImpl::finish()
 {
     /* purge dynamic memory */
 # ifdef DEBUG

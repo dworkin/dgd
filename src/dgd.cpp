@@ -94,14 +94,14 @@ void DGD::endTask()
 # endif
     }
 
-    if (Object::swap || !Alloc::check()) {
+    if (Object::swap || !MM->check()) {
 	/*
 	 * swap out everything and possibly extend the static memory area
 	 */
 	Dataspace::swapout(1);
 	Array::freeall();
 	String::clean();
-	Alloc::purge();
+	MM->purge();
 	Object::swap = FALSE;
     }
 
@@ -136,7 +136,7 @@ void DGD::endTask()
 	Comm::finish();
 	Array::freeall();
 	String::clean();
-	Alloc::finish();
+	MM->finish();
 	std::exit(Object::boot);
     }
 }
