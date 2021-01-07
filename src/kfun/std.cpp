@@ -50,7 +50,7 @@ int kf_compile_object(Frame *f, int nargs, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     v = &f->sp[nargs - 1];
-    if (Path::string(file, v->string->text, v->string->len) == (char *) NULL) {
+    if (PM->string(file, v->string->text, v->string->len) == (char *) NULL) {
 	return 1;
     }
     obj = Object::find(file, OACC_MODIFY);
@@ -484,7 +484,7 @@ int kf_instanceof(Frame *f, int nargs, KFun *kf)
     if (f->sp->type != T_STRING) {
 	EC->error("Invalid object type");
     }
-    Path::resolve(buffer, f->sp->string->text);
+    PM->resolve(buffer, f->sp->string->text);
     if (builtin != (char *) NULL) {
 	instance = (strcmp(builtin, buffer) == 0);
     } else {
@@ -560,8 +560,8 @@ int kf_find_object(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (Path::string(path, f->sp->string->text,
-		     f->sp->string->len) == (char *) NULL) {
+    if (PM->string(path, f->sp->string->text,
+		   f->sp->string->len) == (char *) NULL) {
 	f->sp->string->del();
 	*f->sp = Value::nil;
 	return 0;

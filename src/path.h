@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,11 +19,24 @@
 
 class Path {
 public:
-    static char *resolve(char *buf, char *file);
-    static char *string(char *buf, char *file, unsigned int);
-    static char *from(char*, char *from, char *file);
-    static char *edRead(char *buf, char *file);
-    static char *edWrite(char *buf, char *file);
-    static char *include(char *buf, char *from, char *file, String ***strs,
-			 int *nstr);
+    virtual char *resolve(char *buf, char *file) = 0;
+    virtual char *string(char *buf, char *file, unsigned int) = 0;
+    virtual char *from(char*, char *from, char *file) = 0;
+    virtual char *edRead(char *buf, char *file) = 0;
+    virtual char *edWrite(char *buf, char *file) = 0;
+    virtual char *include(char *buf, char *from, char *file, String ***strs,
+			  int *nstr) = 0;
 };
+
+class PathImpl : public Path {
+public:
+    virtual char *resolve(char *buf, char *file);
+    virtual char *string(char *buf, char *file, unsigned int);
+    virtual char *from(char*, char *from, char *file);
+    virtual char *edRead(char *buf, char *file);
+    virtual char *edWrite(char *buf, char *file);
+    virtual char *include(char *buf, char *from, char *file, String ***strs,
+			  int *nstr);
+};
+
+extern Path *PM;

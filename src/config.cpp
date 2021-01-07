@@ -900,7 +900,7 @@ bool Config::config()
 	    break;
 
 	case STRING_CONST:
-	    p = (conf[m].resolv) ? Path::resolve(buf, yytext) : yytext;
+	    p = (conf[m].resolv) ? PM->resolve(buf, yytext) : yytext;
 	    l = strlen(p);
 	    if (l >= STRINGSZ) {
 		l = STRINGSZ - 1;
@@ -1167,7 +1167,7 @@ bool Config::open(char *file)
 {
     char fname[STRINGSZ];
 
-    Path::resolve(fname, file);
+    PM->resolve(fname, file);
     if ((fd=P_open(fname, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
 	EC->message("Config error: cannot create \"/%s\"\012", fname);	/* LF */
 	return FALSE;

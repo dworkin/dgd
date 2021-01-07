@@ -493,7 +493,7 @@ bool Compile::inherit(char *file, Node *label, int priv)
 	/*
 	 * the driver object can only inherit the auto object
 	 */
-	file = Path::resolve(buf, file);
+	file = PM->resolve(buf, file);
 	if (strcmp(file, auto_object) != 0) {
 	    error("illegal inherit from driver object");
 	    return FALSE;
@@ -530,7 +530,7 @@ bool Compile::inherit(char *file, Node *label, int priv)
 	} else {
 	    /* precompiling */
 	    f->sp++;
-	    file = Path::from(buf, current->file, file);
+	    file = PM->from(buf, current->file, file);
 	    obj = Object::find(file, OACC_READ);
 	    if (obj == (Object *) NULL) {
 		compile(f, file, (Object *) NULL, (String **) NULL, 0, TRUE);
@@ -753,10 +753,10 @@ String *Compile::objecttype(Node *n)
 	} else {
 	    p = f->sp->string->text;
 	}
-	Path::resolve(path, p);
+	PM->resolve(path, p);
 	(f->sp++)->del();
     } else {
-	Path::resolve(path, n->l.string->text);
+	PM->resolve(path, n->l.string->text);
     }
 
     return String::create(path, strlen(path));

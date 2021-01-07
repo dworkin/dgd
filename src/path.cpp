@@ -28,10 +28,13 @@
 # include "node.h"
 # include "compile.h"
 
+static PathImpl PMI;
+Path *PM = &PMI;
+
 /*
  * resolve a path
  */
-char *Path::resolve(char *buf, char *file)
+char *PathImpl::resolve(char *buf, char *file)
 {
     char *p, *q, *d;
 
@@ -79,7 +82,7 @@ char *Path::resolve(char *buf, char *file)
 /*
  * check and resolve a string path
  */
-char *Path::string(char *buf, char *file, unsigned int len)
+char *PathImpl::string(char *buf, char *file, unsigned int len)
 {
     if (len >= STRINGSZ || strlen(file) != len) {
 	return (char *) NULL;
@@ -90,7 +93,7 @@ char *Path::string(char *buf, char *file, unsigned int len)
 /*
  * resolve a (possibly relative) path
  */
-char *Path::from(char *buf, char *from, char *file)
+char *PathImpl::from(char *buf, char *from, char *file)
 {
     char buf2[STRINGSZ];
 
@@ -104,7 +107,7 @@ char *Path::from(char *buf, char *from, char *file)
 /*
  * resolve an editor read file path
  */
-char *Path::edRead(char *buf, char *file)
+char *PathImpl::edRead(char *buf, char *file)
 {
     Frame *f;
 
@@ -127,7 +130,7 @@ char *Path::edRead(char *buf, char *file)
 /*
  * resolve an editor write file path
  */
-char *Path::edWrite(char *buf, char *file)
+char *PathImpl::edWrite(char *buf, char *file)
 {
     Frame *f;
 
@@ -150,8 +153,8 @@ char *Path::edWrite(char *buf, char *file)
 /*
  * resolve an include path
  */
-char *Path::include(char *buf, char *from, char *file, String ***strs,
-		    int *nstr)
+char *PathImpl::include(char *buf, char *from, char *file, String ***strs,
+			int *nstr)
 {
     Frame *f;
     int i;
@@ -161,7 +164,7 @@ char *Path::include(char *buf, char *from, char *file, String ***strs,
     *strs = NULL;
     *nstr = 0;
     if (Compile::autodriver()) {
-	return Path::from(buf, from, file);
+	return PathImpl::from(buf, from, file);
     }
 
     f = cframe;
@@ -169,7 +172,7 @@ char *Path::include(char *buf, char *from, char *file, String ***strs,
     PUSH_STRVAL(f, String::create(file, strlen(file)));
     if (!DGD::callDriver(f, "include_file", 2)) {
 	f->sp++;
-	return Path::from(buf, from, file);
+	return PathImpl::from(buf, from, file);
     }
 
     if (f->sp->type == T_STRING) {
@@ -197,7 +200,7 @@ char *Path::include(char *buf, char *from, char *file, String ***strs,
 		    (f->sp++)->array->del();
 
 		    /* return the untranslated path, as well */
-		    return Path::from(buf, from, file);
+		    return PathImpl::from(buf, from, file);
 		}
 	    }
 	}

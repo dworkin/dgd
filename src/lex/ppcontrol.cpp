@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -462,7 +462,7 @@ void PP::do_include()
 	TokenBuf::skiptonl(TRUE);
 
 	/* first try the path direct */
-	include = Path::include(buf, TokenBuf::filename(), file, &strs, &nstr);
+	include = PM->include(buf, TokenBuf::filename(), file, &strs, &nstr);
 	if (TokenBuf::include(include, strs, nstr)) {
 	    include_level++;
 	    return;
@@ -480,7 +480,7 @@ void PP::do_include()
 	strcpy(path, *idir);
 	strcat(path, "/");
 	strcat(path, file);
-	include = Path::include(buf, TokenBuf::filename(), path, &strs, &nstr);
+	include = PM->include(buf, TokenBuf::filename(), path, &strs, &nstr);
 	if (TokenBuf::include(include, strs, nstr)) {
 	    include_level++;
 	    return;
