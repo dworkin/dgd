@@ -67,7 +67,7 @@ String *String::alloc(const char *text, long len)
 String *String::create(const char *text, long len)
 {
     if (len > (unsigned long) MAX_STRLEN) {
-	ec->error("String too long");
+	EC->error("String too long");
     }
     return alloc(text, len);
 }
@@ -201,7 +201,7 @@ String *String::add(String *str)
 ssizet String::index(long l)
 {
     if (l < 0 || l >= (long) len) {
-	ec->error("String index out of range");
+	EC->error("String index out of range");
     }
 
     return l;
@@ -213,7 +213,7 @@ ssizet String::index(long l)
 void String::checkRange(long l1, long l2)
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) len) {
-	ec->error("Invalid string range");
+	EC->error("Invalid string range");
     }
 }
 
@@ -223,7 +223,7 @@ void String::checkRange(long l1, long l2)
 String *String::range(long l1, long l2)
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) len) {
-	ec->error("Invalid string range");
+	EC->error("Invalid string range");
     }
 
     return create(text + l1, l2 - l1 + 1);

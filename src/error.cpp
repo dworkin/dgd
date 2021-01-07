@@ -28,8 +28,8 @@
 # include <stdarg.h>
 
 
-static ErrorContextImpl eci;		/* global error context */
-ErrorContext *ec = &eci;
+static ErrorContextImpl ECI;		/* global error context */
+ErrorContext *EC = &ECI;
 
 ErrorContextImpl::ErrorFrame::ErrorFrame(Frame *frame, Handler handler)
 {
@@ -61,7 +61,7 @@ jmp_buf *ErrorContextImpl::push(Handler handler)
     }
     e->next = eFrame;
     eFrame = e;
-    ec->env = &e->env;
+    EC->env = &e->env;
     return jump;
 }
 
@@ -85,10 +85,10 @@ void ErrorContextImpl::pop()
 	delete e;
 	MM->dynamicMode();
 	clearException();
-	ec->env = (jmp_buf *) NULL;
+	EC->env = (jmp_buf *) NULL;
     } else {
 	delete e;
-	ec->env = &eFrame->env;
+	EC->env = &eFrame->env;
     }
 }
 

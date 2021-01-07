@@ -691,20 +691,20 @@ int XConnection::port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6,
     on = 1;
     if (setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on)) < 0)
     {
-	ec->message("setsockopt() failed\n");
+	EC->message("setsockopt() failed\n");
 	return FALSE;
     }
     if (type == SOCK_STREAM) {
 	on = 1;
 	if (setsockopt(*fd, SOL_SOCKET, SO_OOBINLINE, (char *) &on, sizeof(on))
 									< 0) {
-	    ec->message("setsockopt() failed\n");
+	    EC->message("setsockopt() failed\n");
 	    return FALSE;
 	}
     }
     WSAHtons(*fd, port, &sin6->sin6_port);
     if (bind(*fd, (struct sockaddr *) sin6, sizeof(struct sockaddr_in6)) < 0) {
-	ec->message("bind() failed\n");
+	EC->message("bind() failed\n");
 	return FALSE;
     }
 
@@ -723,26 +723,26 @@ int XConnection::port4(SOCKET *fd, int type, struct sockaddr_in *sin,
     int on;
 
     if ((*fd=socket(AF_INET, type, 0)) == INVALID_SOCKET) {
-	ec->message("socket() failed\n");
+	EC->message("socket() failed\n");
 	return FALSE;
     }
     on = 1;
     if (setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on)) < 0)
     {
-	ec->message("setsockopt() failed\n");
+	EC->message("setsockopt() failed\n");
 	return FALSE;
     }
     if (type == SOCK_STREAM) {
 	on = 1;
 	if (setsockopt(*fd, SOL_SOCKET, SO_OOBINLINE, (char *) &on, sizeof(on))
 									< 0) {
-	    ec->message("setsockopt() failed\n");
+	    EC->message("setsockopt() failed\n");
 	    return FALSE;
 	}
     }
     sin->sin_port = htons(port);
     if (bind(*fd, (struct sockaddr *) sin, sizeof(struct sockaddr_in)) < 0) {
-	ec->message("bind() failed\n");
+	EC->message("bind() failed\n");
 	return FALSE;
     }
 
@@ -773,12 +773,12 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 
     /* initialize winsock */
     if (WSAStartup(MAKEWORD(2, 0), &wsadata) != 0) {
-	ec->message("WSAStartup failed (no winsock?)\n");
+	EC->message("WSAStartup failed (no winsock?)\n");
 	return FALSE;
     }
     if (LOBYTE(wsadata.wVersion) != 2 || HIBYTE(wsadata.wVersion) != 0) {
 	WSACleanup();
-	ec->message("Winsock 2.0 not supported\n");
+	EC->message("Winsock 2.0 not supported\n");
 	return FALSE;
     }
 
@@ -865,7 +865,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (!ipv6 && !ipv4) {
-	    ec->message("unknown host %s\012", thosts[n]);	/* LF */
+	    EC->message("unknown host %s\012", thosts[n]);	/* LF */
 	    return FALSE;
 	}
 
@@ -930,7 +930,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (!ipv6 && !ipv4) {
-	    ec->message("unknown host %s\012", bhosts[n]);	/* LF */
+	    EC->message("unknown host %s\012", bhosts[n]);	/* LF */
 	    return FALSE;
 	}
 
@@ -995,7 +995,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	}
 
 	if (!ipv6 && !ipv4) {
-	    ec->message("unknown host %s\012", dhosts[n]);	/* LF */
+	    EC->message("unknown host %s\012", dhosts[n]);	/* LF */
 	    return FALSE;
 	}
 
@@ -1056,18 +1056,18 @@ void Connection::listen()
 
     for (n = 0; n < ntdescs; n++) {
 	if (tdescs[n].in6 != INVALID_SOCKET && ::listen(tdescs[n].in6, 64) != 0) {
-	    ec->fatal("listen failed");
+	    EC->fatal("listen failed");
 	}
 	if (tdescs[n].in4 != INVALID_SOCKET && ::listen(tdescs[n].in4, 64) != 0) {
-	    ec->fatal("listen failed");
+	    EC->fatal("listen failed");
 	}
     }
     for (n = 0; n < nbdescs; n++) {
 	if (bdescs[n].in6 != INVALID_SOCKET && ::listen(bdescs[n].in6, 64) != 0) {
-	    ec->fatal("listen failed");
+	    EC->fatal("listen failed");
 	}
 	if (bdescs[n].in4 != INVALID_SOCKET && ::listen(bdescs[n].in4, 64) != 0) {
-	    ec->fatal("listen failed");
+	    EC->fatal("listen failed");
 	}
     }
     if (self != INVALID_SOCKET) {
@@ -1120,24 +1120,24 @@ void Connection::listen()
 	nonblock = TRUE;
 	if (tdescs[n].in6 != INVALID_SOCKET &&
 	    ioctlsocket(tdescs[n].in6, FIONBIO, &nonblock) != 0) {
-	    ec->fatal("ioctlsocket failed");
+	    EC->fatal("ioctlsocket failed");
 	}
 	nonblock = TRUE;
 	if (tdescs[n].in4 != INVALID_SOCKET &&
 	    ioctlsocket(tdescs[n].in4, FIONBIO, &nonblock) != 0) {
-	    ec->fatal("ioctlsocket failed");
+	    EC->fatal("ioctlsocket failed");
 	}
     }
     for (n = 0; n < nbdescs; n++) {
 	nonblock = TRUE;
 	if (bdescs[n].in6 != INVALID_SOCKET &&
 	    ioctlsocket(bdescs[n].in6, FIONBIO, &nonblock) != 0) {
-	    ec->fatal("ioctlsocket failed");
+	    EC->fatal("ioctlsocket failed");
 	}
 	nonblock = TRUE;
 	if (bdescs[n].in4 != INVALID_SOCKET &&
 	    ioctlsocket(bdescs[n].in4, FIONBIO, &nonblock) != 0) {
-	    ec->fatal("ioctlsocket failed");
+	    EC->fatal("ioctlsocket failed");
 	}
     }
     if (nudescs != 0) {
@@ -1772,26 +1772,26 @@ Connection *Connection::connect(void *addr, int len)
 
     sock = socket(((struct sockaddr_in *) addr)->sin_family, SOCK_STREAM, 0);
     if (sock < 0) {
-	ec->message("socket failed\n");
+	EC->message("socket failed\n");
 	return NULL;
     }
     on = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
-	ec->message("setsockopt failed\n");
+	EC->message("setsockopt failed\n");
 	closesocket(sock);
 	return NULL;
     }
     on = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
 		   sizeof(on)) < 0) {
-	ec->message("setsockopt failed\n");
+	EC->message("setsockopt failed\n");
 	closesocket(sock);
 	return NULL;
     }
     nonblock = TRUE;
     if (ioctlsocket(sock, FIONBIO, &nonblock) != 0) {
-	ec->message("ioctlsocket failed\n");
+	EC->message("ioctlsocket failed\n");
 	closesocket(sock);
 	return NULL;
     }

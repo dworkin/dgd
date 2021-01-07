@@ -41,17 +41,17 @@ int kf_editor(Frame *f, int nargs, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->lwobj != (Array *) NULL) {
-	ec->error("editor() in non-persistent object");
+	EC->error("editor() in non-persistent object");
     }
     obj = OBJW(f->oindex);
     if (obj->count == 0) {
-	ec->error("editor() in destructed object");
+	EC->error("editor() in destructed object");
     }
     if ((obj->flags & O_SPECIAL) && (obj->flags & O_SPECIAL) != O_EDITOR) {
-	ec->error("editor() in special purpose object");
+	EC->error("editor() in special purpose object");
     }
     if (f->level != 0) {
-	ec->error("editor() within atomic function");
+	EC->error("editor() within atomic function");
     }
     if (!(obj->flags & O_EDITOR)) {
 	Editor::create(obj);
@@ -388,7 +388,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
 	return 1;
     }
     if (f->level != 0) {
-	ec->error("save_object() within atomic function");
+	EC->error("save_object() within atomic function");
     }
 
     /*
@@ -402,7 +402,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
     sprintf(_tmp, "_tmp%04x", ++count);
     x.fd = P_open(tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
     if (x.fd < 0) {
-	ec->error("Cannot create temporary save file \"/%s\"", tmp);
+	EC->error("Cannot create temporary save file \"/%s\"", tmp);
     }
     x.buffer = ALLOCA(char, BUF_SIZE);
     x.bufsz = 0;
@@ -477,7 +477,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
 	P_close(x.fd);
 	AFREE(x.buffer);
 	P_unlink(tmp);
-	ec->error("Cannot write to temporary save file \"/%s\"", tmp);
+	EC->error("Cannot write to temporary save file \"/%s\"", tmp);
     }
     P_close(x.fd);
     AFREE(x.buffer);
@@ -485,7 +485,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
     P_unlink(file);
     if (P_rename(tmp, file) < 0) {
 	P_unlink(tmp);
-	ec->error("Cannot rename temporary save file to \"/%s\"", file);
+	EC->error("Cannot rename temporary save file to \"/%s\"", file);
     }
 
     f->sp->string->del();
@@ -566,7 +566,7 @@ static Value *ac_get(restcontext *x, Uint n)
  */
 static void restore_error(restcontext *x, const char *err)
 {
-    ec->error("Format error in \"/%s\", line %d: %s", x->file, x->line, err);
+    EC->error("Format error in \"/%s\", line %d: %s", x->file, x->line, err);
 }
 
 /*
@@ -723,7 +723,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
     i = a->size;
     v = a->elts;
     try {
-	ec->push();
+	EC->push();
 	/* restore the values */
 	while (i > 0) {
 	    buf = restore_value(x, buf, v);
@@ -737,11 +737,11 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 	if (*buf++ != '}' || *buf++ != ')') {
 	    restore_error(x, "'})' expected");
 	}
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	a->ref();
 	a->del();
-	ec->error((char *) NULL);	/* pass on the error */
+	EC->error((char *) NULL);	/* pass on the error */
     }
 
     PUT_ARRVAL_NOREF(val, a);
@@ -774,7 +774,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
     i = a->size;
     v = a->elts;
     try {
-	ec->push();
+	EC->push();
 	/* restore the values */
 	while (i > 0) {
 	    buf = restore_value(x, buf, v);
@@ -794,11 +794,11 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	    restore_error(x, "'])' expected");
 	}
 	a->mapSort();
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	a->ref();
 	a->del();
-	ec->error((char *) NULL);	/* pass on the error */
+	EC->error((char *) NULL);	/* pass on the error */
     }
 
     PUT_MAPVAL_NOREF(val, a);
@@ -965,7 +965,7 @@ int kf_restore_object(Frame *f, int n, KFun *kf)
     buf = buffer;
     pending = FALSE;
     try {
-	ec->push();
+	EC->push();
 	for (;;) {
 	    if (f->lwobj != (Array *) NULL) {
 		var = &f->lwobj->elts[2];
@@ -1077,7 +1077,7 @@ int kf_restore_object(Frame *f, int n, KFun *kf)
 			    FREE(buffer);
 			}
 			f->sp->number = 1;
-			ec->pop();
+			EC->pop();
 			return 0;
 		    }
 		}
@@ -1091,7 +1091,7 @@ int kf_restore_object(Frame *f, int n, KFun *kf)
 	} else {
 	    FREE(buffer);
 	}
-	ec->error((char *) NULL);	/* pass on error */
+	EC->error((char *) NULL);	/* pass on error */
     }
 
     return 0;
@@ -1123,7 +1123,7 @@ int kf_write_file(Frame *f, int nargs, KFun *kf)
 	return 1;
     }
     if (f->level != 0) {
-	ec->error("write_file() within atomic function");
+	EC->error("write_file() within atomic function");
     }
 
     i_add_ticks(f, 1000 + (Int) 2 * f->sp->string->len);
@@ -1238,7 +1238,7 @@ int kf_read_file(Frame *f, int nargs, KFun *kf)
     }
     if (size > (Uint) MAX_STRLEN) {
 	P_close(fd);
-	ec->error("String too long");
+	EC->error("String too long");
     }
     buf = (size != 0) ? ALLOC(char, size) : (char *) NULL;
     if (size > 0 && (size=P_read(fd, buf, (unsigned int) size)) < 0) {
@@ -1247,7 +1247,7 @@ int kf_read_file(Frame *f, int nargs, KFun *kf)
 	if (buf != (char *) NULL) {
 	    FREE(buf);
 	}
-	ec->error("Read failed in read_file()");
+	EC->error("Read failed in read_file()");
     }
     P_close(fd);
     i_add_ticks(f, 2 * size);
@@ -1318,7 +1318,7 @@ int kf_remove_file(Frame *f, int n, KFun *kf)
 	return 1;
     }
     if (f->level != 0) {
-	ec->error("remove_file() within atomic function");
+	EC->error("remove_file() within atomic function");
     }
 
     i_add_ticks(f, 1000);
@@ -1349,7 +1349,7 @@ int kf_make_dir(Frame *f, int n, KFun *kf)
 	return 1;
     }
     if (f->level != 0) {
-	ec->error("make_dir() within atomic function");
+	EC->error("make_dir() within atomic function");
     }
 
     i_add_ticks(f, 1000);
@@ -1381,7 +1381,7 @@ int kf_remove_dir(Frame *f, int n, KFun *kf)
 	return 1;
     }
     if (f->level != 0) {
-	ec->error("remove_dir() within atomic function");
+	EC->error("remove_dir() within atomic function");
     }
 
     i_add_ticks(f, 1000);

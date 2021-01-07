@@ -2020,7 +2020,7 @@ int kf_tostring(Frame *f, int n, KFun *kf)
     } else if (f->sp->type == T_STRING) {
 	return 0;
     } else {
-	ec->error("Value is not a string");
+	EC->error("Value is not a string");
     }
 
     PUT_STRVAL(f->sp, String::create(num, strlen(num)));
@@ -2144,11 +2144,11 @@ int kf_status_idx(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type != T_INT) {
-	ec->error("Non-numeric array index");
+	EC->error("Non-numeric array index");
     }
     i_add_ticks(f, 6);
     if (!Config::statusi(f, f->sp->number, f->sp)) {
-	ec->error("Index out of range");
+	EC->error("Index out of range");
     }
     return 0;
 }
@@ -2174,11 +2174,11 @@ int kf_statuso_idx(Frame *f, int nargs, KFun *kf)
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp[1].number != 0) {
-	    ec->error("Index on bad type");
+	    EC->error("Index on bad type");
 	}
 	i_add_ticks(f, 6);
 	if (!Config::statusi(f, f->sp->number, &f->sp[1])) {
-	    ec->error("Index out of range");
+	    EC->error("Index out of range");
 	}
 	f->sp++;
 	return 0;
@@ -2194,7 +2194,7 @@ int kf_statuso_idx(Frame *f, int nargs, KFun *kf)
 	    f->sp[1] = Value::nil;
 	} else {
 	    /* no user-visible parts within (right?) */
-	    ec->error("Index on bad type");
+	    EC->error("Index on bad type");
 	}
 	break;
 
@@ -2202,11 +2202,11 @@ int kf_statuso_idx(Frame *f, int nargs, KFun *kf)
 	kf->argError(1);
     }
     if (f->sp->type != T_INT) {
-	ec->error("Non-numeric array index");
+	EC->error("Non-numeric array index");
     }
     i_add_ticks(f, 6);
     if (!Config::objecti(f->data, OBJR(n), f->sp->number, &f->sp[1])) {
-	ec->error("Index out of range");
+	EC->error("Index out of range");
     }
     f->sp++;
     return 0;
@@ -2229,11 +2229,11 @@ int kf_calltr_idx(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type != T_INT) {
-	ec->error("Non-numeric array index");
+	EC->error("Non-numeric array index");
     }
     i_add_ticks(f, 10);
     if (!f->callTraceI(f->sp->number, f->sp)) {
-	ec->error("Index out of range");
+	EC->error("Index out of range");
     }
     return 0;
 }
@@ -3031,10 +3031,10 @@ int kf_sum(Frame *f, int nargs, KFun *kf)
 	case SUM_ALLOCATE_NIL:
 	    v++;
 	    if (v->number < 0) {
-		ec->error("Bad argument 1 for kfun allocate");
+		EC->error("Bad argument 1 for kfun allocate");
 	    }
 	    if (v->number > Config::arraySize()) {
-		ec->error("Array too large");
+		EC->error("Array too large");
 	    }
 	    size += v->number;
 	    vtype = T_ARRAY;
@@ -3043,10 +3043,10 @@ int kf_sum(Frame *f, int nargs, KFun *kf)
 	case SUM_ALLOCATE_INT:
 	    v++;
 	    if (v->number < 0) {
-		ec->error("Bad argument 1 for kfun allocate_int");
+		EC->error("Bad argument 1 for kfun allocate_int");
 	    }
 	    if (v->number > Config::arraySize()) {
-		ec->error("Array too large");
+		EC->error("Array too large");
 	    }
 	    size += v->number;
 	    vtype = T_ARRAY;
@@ -3055,10 +3055,10 @@ int kf_sum(Frame *f, int nargs, KFun *kf)
 	case SUM_ALLOCATE_FLT:
 	    v++;
 	    if (v->number < 0) {
-		ec->error("Bad argument 1 for kfun allocate_float");
+		EC->error("Bad argument 1 for kfun allocate_float");
 	    }
 	    if (v->number > Config::arraySize()) {
-		ec->error("Array too large");
+		EC->error("Array too large");
 	    }
 	    size += v->number;
 	    vtype = T_ARRAY;
@@ -3085,10 +3085,10 @@ int kf_sum(Frame *f, int nargs, KFun *kf)
 	    if (type == T_NIL && (vtype != T_ARRAY || i == nargs - 1)) {
 		type = vtype;
 	    } else if (type != vtype) {
-		ec->error("Bad argument 2 for kfun +");
+		EC->error("Bad argument 2 for kfun +");
 	    }
 	} else if (vtype != T_INT || type == T_ARRAY) {
-	    ec->error("Bad argument %d for kfun +", (i == 0) ? 1 : 2);
+	    EC->error("Bad argument %d for kfun +", (i == 0) ? 1 : 2);
 	} else {
 	    result += v->number;
 	}

@@ -521,7 +521,7 @@ bool Compile::inherit(char *file, Node *label, int priv)
 		f->sp++;
 	    } else {
 		/* returned value not an object */
-		ec->error("Cannot inherit \"%s\"", buf);
+		EC->error("Cannot inherit \"%s\"", buf);
 	    }
 
 	    if (ncomp != ncompiled) {
@@ -569,24 +569,24 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 
 	for (cc = current, n = 0; cc != (Context *) NULL; cc = cc->prev, n++) {
 	    if (strcmp(file, cc->file) == 0) {
-		ec->error("Cycle in inheritance from \"/%s.c\"", current->file);
+		EC->error("Cycle in inheritance from \"/%s.c\"", current->file);
 	    }
 	}
 	if (n >= 255) {
-	    ec->error("Compilation nesting too deep");
+	    EC->error("Compilation nesting too deep");
 	}
 
 	PP::clear();
 	Control::clear();
 	clear();
     } else if (current != (Context *) NULL) {
-	ec->error("Compilation within compilation");
+	EC->error("Compilation within compilation");
     }
 
     c.file = file;
     if (strncmp(file, BIPREFIX, BIPREFIXLEN) == 0 ||
 	strchr(file, '#') != (char *) NULL) {
-	ec->error("Illegal object name \"/%s\"", file);
+	EC->error("Illegal object name \"/%s\"", file);
     }
     strcpy(file_c, file);
     if (strs == (String **) NULL) {
@@ -598,7 +598,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
     ncompiled++;
 
     try {
-	ec->push();
+	EC->push();
 	for (;;) {
 	    if (autodriver() != 0) {
 		Control::prepare();
@@ -625,7 +625,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 		}
 		/* inherit auto object */
 		if (O_UPGRADING(aobj)) {
-		    ec->error("Upgraded auto object while compiling \"/%s\"",
+		    EC->error("Upgraded auto object while compiling \"/%s\"",
 			      file_c);
 		}
 		Control::prepare();
@@ -635,28 +635,28 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 	    if (strs != (String **) NULL) {
 		PP::init(file_c, paths, strs, nstr, 1);
 	    } else if (!PP::init(file_c, paths, (String **) NULL, 0, 1)) {
-		ec->error("Could not compile \"/%s\"", file_c);
+		EC->error("Could not compile \"/%s\"", file_c);
 	    }
 	    if (!TokenBuf::include(include, (String **) NULL, 0)) {
-		ec->error("Could not include \"/%s\"", include);
+		EC->error("Could not include \"/%s\"", include);
 	    }
 
 	    Codegen::init(c.prev != (Context *) NULL);
 	    if (yyparse() == 0 && Control::checkFuncs()) {
 		if (obj != (Object *) NULL) {
 		    if (obj->count == 0) {
-			ec->error("Object destructed during recompilation");
+			EC->error("Object destructed during recompilation");
 		    }
 		    if (O_UPGRADING(obj)) {
-			ec->error("Object recompiled during recompilation");
+			EC->error("Object recompiled during recompilation");
 		    }
 		    if (O_INHERITED(obj)) {
 			/* inherited */
-			ec->error("Object inherited during recompilation");
+			EC->error("Object inherited during recompilation");
 		    }
 		}
 		if (!Object::space()) {
-		    ec->error("Too many objects");
+		    EC->error("Too many objects");
 		}
 
 		/*
@@ -671,16 +671,16 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 		clear();
 	    } else {
 		/* compilation failed */
-		ec->error("Failed to compile \"/%s\"", file_c);
+		EC->error("Failed to compile \"/%s\"", file_c);
 	    }
 	}
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	PP::clear();
 	Control::clear();
 	clear();
 	current = c.prev;
-	ec->error((char *) NULL);
+	EC->error((char *) NULL);
     }
 
     PP::clear();
@@ -2563,7 +2563,7 @@ void Compile::error(const char *format, ...)
 	va_start(args, format);
 	vsprintf(buf + strlen(buf), format, args);
 	va_end(args);
-	ec->message("%s\012", buf);     /* LF */
+	EC->message("%s\012", buf);     /* LF */
     }
 
     nerrors++;

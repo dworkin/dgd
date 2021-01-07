@@ -36,7 +36,7 @@ Float thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
  */
 static void f_edom()
 {
-    ec->error("Math argument");
+    EC->error("Math argument");
 }
 
 /*
@@ -44,7 +44,7 @@ static void f_edom()
  */
 static void f_erange()
 {
-    ec->error("Result too large");
+    EC->error("Result too large");
 }
 
 /*
@@ -350,7 +350,7 @@ void Float::div(Float &f)
 
     a = f_get(&f);
     if (a == 0.0) {
-	ec->error("Division by zero");
+	EC->error("Division by zero");
     }
     f_put(this, f_get(this) / a);
 }

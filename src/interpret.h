@@ -281,7 +281,7 @@ extern Frame *cframe;
 	    if ((f)->rlim->noticks) {					\
 		(f)->rlim->ticks = 0x7fffffff;				\
 	    } else {							\
-		ec->error("Out of ticks");				\
+		EC->error("Out of ticks");				\
 	    }								\
 	}								\
     } while (FALSE)

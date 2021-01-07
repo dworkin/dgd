@@ -81,14 +81,14 @@ void Vars::set(Vars *v, char *option)
 		p = val;
 		i = strtoint(&p);
 		if (val == p || i < 0) {
-		    edc->error("Bad numeric value for option \"%s\"", v->name);
+		    EDC->error("Bad numeric value for option \"%s\"", v->name);
 		}
 		v->val = i;
 	    }
 	    return;
 	}
     }
-    edc->error("No such option");
+    EDC->error("No such option");
 }
 
 /*
@@ -96,7 +96,7 @@ void Vars::set(Vars *v, char *option)
  */
 void Vars::show(Vars *v)
 {
-    edc->message("%signorecase\011",   ((v++)->val) ? "" : "no");	/* HT */
-    edc->message("shiftwidth=%ld\011", (long) (v++)->val);		/* HT */
-    edc->message("window=%ld\012",     (long) (v++)->val);		/* LF */
+    EDC->message("%signorecase\011",   ((v++)->val) ? "" : "no");	/* HT */
+    EDC->message("shiftwidth=%ld\011", (long) (v++)->val);		/* HT */
+    EDC->message("window=%ld\012",     (long) (v++)->val);		/* LF */
 }

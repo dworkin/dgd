@@ -69,4 +69,4 @@ private:
     String *err;			/* current error string */
 };
 
-extern ErrorContext *ec;
+extern ErrorContext *EC;

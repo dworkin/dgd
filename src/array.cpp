@@ -490,7 +490,7 @@ Array *Array::create(Dataspace *data, long size)
     Array *a;
 
     if (size > max_size) {
-	ec->error("Array too large");
+	EC->error("Array too large");
     }
     a = alloc((unsigned short) size);
     if (size > 0) {
@@ -663,7 +663,7 @@ void Array::backup(Backup **ac)
 
 # ifdef DEBUG
     if (hashmod) {
-	ec->fatal("backing up unclean mapping");
+	EC->fatal("backing up unclean mapping");
     }
 # endif
     if (size != 0) {
@@ -1131,7 +1131,7 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
     n = v - v3;
     if ((long) size + n > max_size) {
 	AFREE(v3);
-	ec->error("Array too large");
+	EC->error("Array too large");
     }
 
     a3 = create(data, (long) size + n);
@@ -1218,7 +1218,7 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
 	AFREE(v3);
 	AFREE(v2);
 	AFREE(v1);
-	ec->error("Array too large");
+	EC->error("Array too large");
     }
 
     a3 = create(data, (long) num + n);
@@ -1238,7 +1238,7 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
 unsigned short Array::index(long l)
 {
     if (l < 0 || l >= (long) size) {
-	ec->error("Array index out of range");
+	EC->error("Array index out of range");
     }
     return l;
 }
@@ -1249,7 +1249,7 @@ unsigned short Array::index(long l)
 void Array::checkRange(long l1, long l2)
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) size) {
-	ec->error("Invalid array range");
+	EC->error("Invalid array range");
     }
 }
 
@@ -1261,7 +1261,7 @@ Array *Array::range(Dataspace *data, long l1, long l2)
     Array *range;
 
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) size) {
-	ec->error("Invalid array range");
+	EC->error("Invalid array range");
     }
 
     range = create(data, l2 - l1 + 1);
@@ -1280,7 +1280,7 @@ Array *Array::mapCreate(Dataspace *data, long size)
     Array *m;
 
     if (size > max_size << 1) {
-	ec->error("Mapping too large");
+	EC->error("Mapping too large");
     }
     m = Array::alloc((unsigned short) size);
     if (size > 0) {
@@ -1321,7 +1321,7 @@ void Array::mapSort()
 	while (--i != 0) {
 	    if (cmp((cvoid *) v, (cvoid *) &v[2]) == 0 &&
 		(!T_INDEXED(v->type) || v->array == v[2].array)) {
-		ec->error("Identical indices in mapping");
+		EC->error("Identical indices in mapping");
 	    }
 	    v += 2;
 	}
@@ -1915,7 +1915,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 					    0 : hashed->sizemod) >= max_size) {
 	    mapCompact(data);
 	    if (size >> 1 >= max_size) {
-		ec->error("Mapping too large to grow");
+		EC->error("Mapping too large to grow");
 	    }
 	}
 

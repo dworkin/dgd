@@ -1941,7 +1941,7 @@ Uint Optimize::expr(Node **m, bool pop)
     }
 
 # ifdef DEBUG
-    ec->fatal("unknown expression type %d", n->type);
+    EC->fatal("unknown expression type %d", n->type);
 # endif
     return 0;
 }

@@ -66,7 +66,7 @@ void EditBuf::add(Int ln, char *(*getline) ())
 
 	size = lines + lb.size(b);
 	if (size < 0) {
-	    edc->error("Too many lines");
+	    EDC->error("Too many lines");
 	}
 
 	if (ln == 0) {
@@ -132,7 +132,7 @@ void EditBuf::change(Int first, Int last, Block b)
     if (b != (Block) 0) {
 	size += lb.size(b);
 	if (size < 0) {
-	    edc->error("Too many lines");
+	    EDC->error("Too many lines");
 	}
     }
 
@@ -194,7 +194,7 @@ void EditBuf::put(Int ln, Block b)
 
     size = lines + lb.size(b);
     if (size < 0) {
-	edc->error("Too many lines");
+	EDC->error("Too many lines");
     }
 
     if (ln == 0) {

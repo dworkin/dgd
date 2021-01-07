@@ -431,7 +431,7 @@ String *P_encrypt_des_key(Frame *f, String *keystr)
     String *str;
 
     if (keystr->len != 8) {
-	ec->error("Wrong key length");
+	EC->error("Wrong key length");
     }
     i_add_ticks(f, 60);
 
@@ -462,7 +462,7 @@ String *P_decrypt_des_key(Frame *f, String *keystr)
     String *str;
 
     if (keystr->len != 8) {
-	ec->error("Wrong key length");
+	EC->error("Wrong key length");
     }
     i_add_ticks(f, 60);
 
@@ -500,14 +500,14 @@ String *P_encrypt_des(Frame *f, String *keystr, String *mesg)
     String *str;
 
     if (keystr->len != 32 * sizeof(Uint)) {
-	ec->error("Wrong key length");
+	EC->error("Wrong key length");
     }
     i_add_ticks(f, mesg->len * 5L);
     if (f->rlim->ticks < 0) {
 	if (f->rlim->noticks) {
 	    f->rlim->ticks = 0x7fffffffL;
 	} else {
-	    ec->error("Out of ticks");
+	    EC->error("Out of ticks");
 	}
     }
     str = String::create((char *) NULL, ((long) mesg->len + 7) & ~7);

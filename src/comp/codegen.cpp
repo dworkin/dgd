@@ -1725,7 +1725,7 @@ void Codegen::expr(Node *n, int pop)
 
 # ifdef DEBUG
     default:
-	ec->fatal("unknown expression type %d", n->type);
+	EC->fatal("unknown expression type %d", n->type);
 # endif
     }
 
@@ -1832,7 +1832,7 @@ void Codegen::switchStart(Node *n)
     }
 # ifdef DEBUG
     if (m->type != N_COMPOUND) {
-	ec->fatal("N_COMPOUND expected");
+	EC->fatal("N_COMPOUND expected");
     }
 # endif
     stmt(m->r.right);

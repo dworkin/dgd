@@ -42,7 +42,7 @@ public:
 	}
 	mem = (MemChunk *) std::malloc(size);
 	if (mem == (MemChunk *) NULL) {
-	    ec->fatal("out of memory");
+	    EC->fatal("out of memory");
 	}
 	if (list != (MemChunk **) NULL) {
 	    *((MemChunk **) mem) = *list;
@@ -128,7 +128,7 @@ public:
 	}
 	/* make a new list */
 	if (nLists == LCHUNKS) {
-	    ec->fatal("too many different large static chunks");
+	    EC->fatal("too many different large static chunks");
 	}
 	for (l = nLists++; l > m; --l) {
 	    lists[l] = lists[l - 1];
@@ -246,7 +246,7 @@ public:
 	    memSize += schunk->size = chunksz;
 	    if (schunksz != 0 && dmem) {
 		/* fragmentation matters */
-		ec->message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
+		EC->message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
 	    }
 	}
 	if (schunk->size - size <= MOFFSET) {
@@ -266,7 +266,7 @@ public:
 	}
 
 	if (c->size > SIZE_MASK) {
-	    ec->fatal("static memory chunk too large");
+	    EC->fatal("static memory chunk too large");
 	}
 	return c;
     }
@@ -690,7 +690,7 @@ public:
 	}
 
 	if (c->size > SIZE_MASK) {
-	    ec->fatal("dynamic memory chunk too large");
+	    EC->fatal("dynamic memory chunk too large");
 	}
 	return c;
     }
@@ -729,7 +729,7 @@ public:
 # ifdef DEBUG
 		if (((MemChunk *) p)->size !=
 					*(size_t *) ((char *) c - SIZETSIZE)) {
-		    ec->fatal("corrupted memory chunk");
+		    EC->fatal("corrupted memory chunk");
 		}
 # endif
 		SplayNode::del(dtree, (SplayNode *) p);
@@ -747,7 +747,7 @@ public:
 # ifdef DEBUG
 	    if (((MemChunk *) p)->size !=
 			*(size_t *) (p + ((MemChunk *) p)->size - SIZETSIZE)) {
-		ec->fatal("corrupted memory chunk");
+		EC->fatal("corrupted memory chunk");
 	    }
 # endif
 	    SplayNode::del(dtree, (SplayNode *) p);
@@ -823,7 +823,7 @@ char *AllocImpl::alloc(size_t size)
 
 # ifdef DEBUG
     if (size == 0) {
-	ec->fatal("alloc(0)");
+	EC->fatal("alloc(0)");
     }
 # endif
     size = ALGN(size + MOFFSET, STRUCT_AL);
@@ -833,7 +833,7 @@ char *AllocImpl::alloc(size_t size)
     }
 # endif
     if (size > SIZE_MASK) {
-	ec->fatal("size too big in alloc");
+	EC->fatal("size too big in alloc");
     }
     if (sLevel > 0) {
 	c = StaticMem::alloc(size);
@@ -886,7 +886,7 @@ void AllocImpl::free(char *mem)
 # endif
 	DynamicMem::free(c);
     } else {
-	ec->fatal("bad pointer in free");
+	EC->fatal("bad pointer in free");
     }
 }
 
@@ -926,7 +926,7 @@ char *AllocImpl::realloc(char *mem, size_t size1, size_t size2)
     if ((c1->size & MAGIC_MASK) == SM_MAGIC) {
 # ifdef DEBUG
 	if (size1 > (c1->size & SIZE_MASK)) {
-	    ec->fatal("bad size1 in m_realloc");
+	    EC->fatal("bad size1 in m_realloc");
 	}
 # endif
 	if ((c1->size & SIZE_MASK) < size2) {
@@ -943,7 +943,7 @@ char *AllocImpl::realloc(char *mem, size_t size1, size_t size2)
     } else if ((c1->size & MAGIC_MASK) == DM_MAGIC) {
 # ifdef DEBUG
 	if (size1 > (c1->size & SIZE_MASK)) {
-	    ec->fatal("bad size1 in m_realloc");
+	    EC->fatal("bad size1 in m_realloc");
 	}
 # endif
 	if ((c1->size & SIZE_MASK) < ((size2 < DLIMIT) ?
@@ -971,7 +971,7 @@ char *AllocImpl::realloc(char *mem, size_t size1, size_t size2)
 	    c1 = c2;
 	}
     } else {
-	ec->fatal("bad pointer in m_realloc");
+	EC->fatal("bad pointer in m_realloc");
     }
 # ifdef MEMDEBUG
     ((MemHeader *) c1)->file = file;
@@ -1022,7 +1022,7 @@ void AllocImpl::purge()
 		sprintf(buf + strlen(buf), " %02x", UCHAR(*p));
 	    }
 	}
-	ec->message("%s\012", buf);	/* LF */
+	EC->message("%s\012", buf);	/* LF */
 	MemChunk::free(hlist + 1);
     }
 # endif

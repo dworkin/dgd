@@ -124,7 +124,7 @@ const char *CmdBuf::pattern(const char *pat, int delim, char *buffer)
     }
     size = p - pat;
     if (size >= STRINGSZ) {
-	edc->error("Regular expression too large");
+	EDC->error("Regular expression too large");
     }
     if (size > 0) {
 	memcpy(buffer, pat, size);
@@ -146,14 +146,14 @@ void CmdBuf::pattern(char delim)
     cmd = pattern(cmd, delim, buffer);
     if (buffer[0] == '\0') {
 	if (!regexp.valid) {
-	    edc->error("No previous regular expression");
+	    EDC->error("No previous regular expression");
 	}
     } else {
 	const char *err;
 
 	err = regexp.comp(buffer);
 	if (err != (char *) NULL) {
-	    edc->error(err);
+	    EDC->error(err);
 	}
     }
 }
@@ -204,10 +204,10 @@ Int CmdBuf::address(Int first)
 	if (islower(*++p)) {
 	    l = mark[*p - 'a'];
 	} else {
-	    edc->error("Marks are a-z");
+	    EDC->error("Marks are a-z");
 	}
 	if (l == 0) {
-	    edc->error("Undefined mark referenced");
+	    EDC->error("Undefined mark referenced");
 	}
 	cmd += 2;
 	break;
@@ -227,7 +227,7 @@ Int CmdBuf::address(Int first)
 	}
 	l = dosearch((Int) 1, first, FALSE);
 	if (l == 0) {
-	    edc->error("Pattern not found");
+	    EDC->error("Pattern not found");
 	}
 	break;
 
@@ -244,7 +244,7 @@ Int CmdBuf::address(Int first)
 	    }
 	    l = dosearch(first, l, TRUE);
 	    if (l == 0) {
-		edc->error("Pattern not found");
+		EDC->error("Pattern not found");
 	    }
 	}
 	break;
@@ -275,7 +275,7 @@ Int CmdBuf::address(Int first)
 	cmd = skipst(p);
     }
     if (l < 0) {
-	edc->error("Negative address");
+	EDC->error("Negative address");
     }
     return l;
 }
@@ -337,7 +337,7 @@ void CmdBuf::count()
 	}
 	last = first + count - 1;
 	if (last < first || last > edbuf.lines) {
-	    edc->error("Not that many lines in buffer");
+	    EDC->error("Not that many lines in buffer");
 	}
     }
 }
@@ -348,7 +348,7 @@ void CmdBuf::count()
 void CmdBuf::not_in_global()
 {
     if (flags & CB_GLOBAL) {
-	edc->error("Command not allowed in global");
+	EDC->error("Command not allowed in global");
     }
 }
 
@@ -373,7 +373,7 @@ int CmdBuf::doundo()
 
     not_in_global();
     if (undo == (Block) -1) {
-	edc->error("Nothing to undo");
+	EDC->error("Nothing to undo");
     }
 
     b = undo;
@@ -441,7 +441,7 @@ void CmdBuf::add(Int ln, Block b, Int size)
 	if (ln < glob_next) {
 	    glob_next += size;
 	} else if (ln < glob_next + glob_size - 1) {
-	    edc->error("Illegal add in global");
+	    EDC->error("Illegal add in global");
 	}
     }
 
@@ -476,7 +476,7 @@ Block CmdBuf::dellines(Int first, Int last)
 	} else if (last >= glob_next + glob_size) {
 	    glob_size = first - glob_next;
 	} else {
-	    edc->error("Illegal delete in global");
+	    EDC->error("Illegal delete in global");
 	}
     }
 
@@ -522,7 +522,7 @@ void CmdBuf::change(Int first, Int last, Block b)
 	} else if (last >= glob_next + glob_size) {
 	    glob_size = first - glob_next;
 	} else {
-	    edc->error("Illegal change in global");
+	    EDC->error("Illegal change in global");
 	}
     }
 
@@ -626,7 +626,7 @@ int CmdBuf::global()
 	buffer[0] = '\0';
     }
     if (buffer[0] == '\0') {
-	edc->error("Missing regular expression for global");
+	EDC->error("Missing regular expression for global");
     }
 
     /* keep global undo status */
@@ -640,11 +640,11 @@ int CmdBuf::global()
      */
     glob_rx = new RxBuf();
     try {
-	edc->push();
+	EDC->push();
 	/* compile regexp */
 	p = glob_rx->comp(buffer);
 	if (p != (char *) NULL) {
-	    edc->error(p);
+	    EDC->error(p);
 	}
 
 	/* get the command to be done in global */
@@ -673,7 +673,7 @@ int CmdBuf::global()
 
 	/* pop error context */
 	aborted = FALSE;
-	edc->pop();
+	EDC->pop();
     } catch (...) {
 	aborted = TRUE;
     }
@@ -691,7 +691,7 @@ int CmdBuf::global()
     flags &= ~CB_GLOBAL;
 
     if (aborted) {
-	edc->error((char *) NULL);
+	EDC->error((char *) NULL);
     }
     return 0;
 }
@@ -819,7 +819,7 @@ bool CmdBuf::command(const char *command)
 	    /* insert mode */
 	    if (strlen(command) >= MAX_LINE_SIZE) {
 		endblock();
-		edc->error("Line too long");
+		EDC->error("Line too long");
 	    }
 	    if (strcmp(command, ".") == 0) {
 		/* finish block */
@@ -846,7 +846,7 @@ bool CmdBuf::command(const char *command)
 	    if (cmd[0] == '\0') {
 		/* no command: print next line */
 		if (cthis == edbuf.lines) {
-		    edc->error("End-of-file");
+		    EDC->error("End-of-file");
 		}
 		cm = &ed_commands['p' - 'a'];
 		first = last = cthis + 1;
@@ -914,7 +914,7 @@ bool CmdBuf::command(const char *command)
 		}
 
 		if (cm == (Cmd *) NULL) {
-		    edc->error("No such command");
+		    EDC->error("No such command");
 		}
 
 		/* CM_EXCL */
@@ -942,7 +942,7 @@ bool CmdBuf::command(const char *command)
 		if (cm->flags & CM_ADDR) {
 		    a_addr = address(cthis);
 		    if (a_addr < 0) {
-			edc->error("Command requires a trailing address");
+			EDC->error("Command requires a trailing address");
 		    }
 		    cmd = skipst(cmd);
 		}
@@ -955,10 +955,10 @@ bool CmdBuf::command(const char *command)
 	    if (ltype != CM_LN0) {
 		if ((ltype == CM_LNDOT || ltype == CM_LNRNG) &&
 		  edbuf.lines == 0) {
-		    edc->error("No lines in buffer");
+		    EDC->error("No lines in buffer");
 		}
 		if (first == 0) {
-		    edc->error("Nonzero address required on this command");
+		    EDC->error("Nonzero address required on this command");
 		}
 	    }
 	    switch (ltype) {
@@ -983,10 +983,10 @@ bool CmdBuf::command(const char *command)
 	    }
 	    if (first > edbuf.lines || last > edbuf.lines ||
 		a_addr > edbuf.lines) {
-		edc->error("Not that many lines in buffer");
+		EDC->error("Not that many lines in buffer");
 	    }
 	    if (last >= 0 && last < first) {
-		edc->error("Inverted address range");
+		EDC->error("Inverted address range");
 	    }
 
 	    ret = (*cm->ftn)(this);
@@ -1041,7 +1041,7 @@ bool CmdBuf::command(const char *command)
 	    }
 	    /* it has to be finished now */
 	    if (*p != '\0') {
-		edc->error("Illegal characters after command");
+		EDC->error("Illegal characters after command");
 	    }
 	    if (ret == RET_QUIT) {
 		return FALSE;

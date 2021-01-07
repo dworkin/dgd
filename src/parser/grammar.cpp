@@ -751,7 +751,7 @@ String *Grammar::parse(String *gram)
 
 # if MAX_STRLEN > 0xffffffL
     if (gram->len > 0xffffffL) {
-	ec->error("Grammar string too large");
+	EC->error("Grammar string too large");
     }
 # endif
 
@@ -1079,6 +1079,6 @@ err:
     delete rlchunks;
     delete strtab;
     delete ruletab;
-    ec->error(buffer);
+    EC->error(buffer);
     return NULL;
 }

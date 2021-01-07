@@ -111,11 +111,11 @@ User *User::create(Frame *f, Object *obj, Connection *conn, int flags)
     Value val;
 
     if (obj->flags & O_SPECIAL) {
-	ec->error("User object is already special purpose");
+	EC->error("User object is already special purpose");
     }
 
     if (obj->flags & O_DRIVER) {
-	ec->error("Cannot use driver object as user object");
+	EC->error("Cannot use driver object as user object");
     }
 
     usr = freeuser;
@@ -182,7 +182,7 @@ Array *User::setup(Frame *f, Object *obj)
     Value val;
 
     if (obj->flags & O_DRIVER) {
-	ec->error("Cannot use driver object as user object");
+	EC->error("Cannot use driver object as user object");
     }
 
     /* initialize dataspace before the object receives the user role */
@@ -227,17 +227,17 @@ void User::del(Frame *f, Object *obj, bool destruct)
     }
     olduser = this_user;
     try {
-	ec->push();
+	EC->push();
 	this_user = obj->index;
 	PUSH_INTVAL(f, destruct);
 	if (f->call(obj, (Array *) NULL, "close", 5, TRUE, 1)) {
 	    (f->sp++)->del();
 	}
 	this_user = olduser;
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	this_user = olduser;
-	ec->error((char *) NULL);
+	EC->error((char *) NULL);
     }
     if (destruct) {
 	/* if destructing, don't disconnect if there's an error in close() */
@@ -430,11 +430,11 @@ void Comm::connect(Frame *f, Object *obj, char *addr, unsigned short port)
     Value val;
 
     if (nusers >= maxusers)
-	ec->error("Max number of connection objects exceeded");
+	EC->error("Max number of connection objects exceeded");
 
     host = Connection::host(addr, port, &len);
     if (host == (void *) NULL) {
-	ec->error("Unknown address");
+	EC->error("Unknown address");
     }
 
     for (usr = outbound; ; usr = usr->flush) {
@@ -478,15 +478,15 @@ void Comm::connectDgram(Frame *f, Object *obj, int uport, char *addr,
     Value val;
 
     if (ndgram >= maxdgram) {
-	ec->error("Max number of connection objects exceeded");
+	EC->error("Max number of connection objects exceeded");
     }
 
     if (uport < 0 || uport >= ndport) {
-	ec->error("No such datagram port");
+	EC->error("No such datagram port");
     }
     host = Connection::host(addr, port, &len);
     if (host == (void *) NULL) {
-	ec->error("Unknown address");
+	EC->error("Unknown address");
     }
 
     for (usr = outbound; ; usr = usr->flush) {
@@ -530,10 +530,10 @@ void Comm::challenge(Object *obj, String *str)
 
     usr = &users[obj->etabi];
     if (usr->flags & CF_TELNET || !usr->conn->attach()) {
-	ec->error("Datagram channel not available");
+	EC->error("Datagram channel not available");
     }
     if (usr->flags & CF_UDPDATA) {
-	ec->error("Datagram channel already established");
+	EC->error("Datagram channel already established");
     }
     arr = Dataspace::extra(data = obj->data)->array;
     if (!(usr->flags & CF_FLUSH)) {
@@ -542,7 +542,7 @@ void Comm::challenge(Object *obj, String *str)
 
     v = arr->elts + 2;
     if ((usr->flags & CF_UDP) || v->type == T_STRING) {
-	ec->error("Datagram challenge already set");
+	EC->error("Datagram challenge already set");
     }
     usr->flags |= CF_OUTPUT;
     PUT_STRVAL_NOREF(&val, str);
@@ -618,7 +618,7 @@ int Comm::send(Object *obj, String *str)
 	}
     } else {
 	if ((usr->flags & (CF_UDP | CF_UDPDATA)) == CF_UDPDATA) {
-	    ec->error("Message channel not enabled");
+	    EC->error("Message channel not enabled");
 	}
 
 	/*
@@ -641,7 +641,7 @@ int Comm::udpsend(Object *obj, String *str)
 
     usr = &users[EINDEX(obj->etabi)];
     if ((usr->flags & (CF_TELNET | CF_UDPDATA)) != CF_UDPDATA) {
-	ec->error("Datagram channel not established");
+	EC->error("Datagram channel not established");
     }
 
     arr = Dataspace::extra(data = obj->data)->array;
@@ -741,7 +741,7 @@ void Comm::flush()
 						     arr->elts[1].string->len);
 	    }
 	    if (usr->conn == (Connection *) NULL) {
-		ec->fatal("can't connect to server");
+		EC->fatal("can't connect to server");
 	    }
 
 	    obj->data->assignElt(arr, &arr->elts[0], &Value::zeroInt);
@@ -855,19 +855,19 @@ void Comm::acceptTelnet(Frame *f, Connection *conn, int port)
     Object *obj;
 
     try {
-	ec->push();
+	EC->push();
 	PUSH_INTVAL(f, port);
 	DGD::callDriver(f, "telnet_connect", 1);
 	if (f->sp->type != T_OBJECT) {
-	    ec->fatal("driver->telnet_connect() did not return persistent object");
+	    EC->fatal("driver->telnet_connect() did not return persistent object");
 	}
 	obj = OBJ(f->sp->oindex);
 	f->sp++;
 	usr = User::create(f, obj, conn, CF_TELNET);
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	conn->del();		/* delete connection */
-	ec->error((char *) NULL);	/* pass on error */
+	EC->error((char *) NULL);	/* pass on error */
     }
 
     usr->flags |= CF_PROMPT;
@@ -888,19 +888,19 @@ void Comm::accept(Frame *f, Connection *conn, int port)
     Object *obj;
 
     try {
-	ec->push();
+	EC->push();
 	PUSH_INTVAL(f, port);
 	DGD::callDriver(f, "binary_connect", 1);
 	if (f->sp->type != T_OBJECT) {
-	    ec->fatal("driver->binary_connect() did not return persistent object");
+	    EC->fatal("driver->binary_connect() did not return persistent object");
 	}
 	obj = OBJ(f->sp->oindex);
 	f->sp++;
 	User::create(f, obj, conn, 0);
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	conn->del();		/* delete connection */
-	ec->error((char *) NULL);	/* pass on error */
+	EC->error((char *) NULL);	/* pass on error */
     }
 
     this_user = obj->index;
@@ -919,20 +919,20 @@ void Comm::acceptDgram(Frame *f, Connection *conn, int port)
     Object *obj;
 
     try {
-	ec->push();
+	EC->push();
 	PUSH_INTVAL(f, port);
 	DGD::callDriver(f, "datagram_connect", 1);
 	if (f->sp->type != T_OBJECT) {
-	    ec->fatal("driver->datagram_connect() did not return persistent object");
+	    EC->fatal("driver->datagram_connect() did not return persistent object");
 	}
 	obj = OBJ(f->sp->oindex);
 	f->sp++;
 	User::create(f, obj, conn, CF_UDPDATA);
 	ndgram++;
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	conn->del();		/* delete connection */
-	ec->error((char *) NULL);	/* pass on error */
+	EC->error((char *) NULL);	/* pass on error */
     }
 
     this_user = obj->index;
@@ -975,7 +975,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
     }
 
     try {
-	ec->push(DGD::errHandler);
+	EC->push(DGD::errHandler);
 	if (ntport != 0 && nusers < maxusers) {
 	    n = nexttport;
 	    do {
@@ -1408,7 +1408,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 	    break;
 	}
 
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	DGD::endTask();
 	this_user = OBJ_NONE;
@@ -1601,7 +1601,7 @@ bool Comm::save(int fd)
 
     /* write header */
     if (!Swap::write(fd, &dh, sizeof(CommHeader))) {
-	ec->fatal("failed to dump user header");
+	EC->fatal("failed to dump user header");
     }
 
     if (nusers != 0) {
@@ -1609,7 +1609,7 @@ bool Comm::save(int fd)
 	 * write users
 	 */
 	if (!Swap::write(fd, du, nusers * sizeof(SaveUser))) {
-	    ec->fatal("failed to dump users");
+	    EC->fatal("failed to dump users");
 	}
 
 	if (dh.tbufsz != 0) {
@@ -1642,13 +1642,13 @@ bool Comm::save(int fd)
 	 */
 	if (dh.tbufsz != 0) {
 	    if (!Swap::write(fd, tbuf, dh.tbufsz)) {
-		ec->fatal("failed to dump telnet buffers");
+		EC->fatal("failed to dump telnet buffers");
 	    }
 	    FREE(tbuf);
 	}
 	if (dh.ubufsz != 0) {
 	    if (!Swap::write(fd, ubuf, dh.ubufsz)) {
-		ec->fatal("failed to dump UDP buffers");
+		EC->fatal("failed to dump UDP buffers");
 	    }
 	    FREE(ubuf);
 	}
@@ -1677,7 +1677,7 @@ bool Comm::restore(int fd)
     /* read header */
     Config::dread(fd, (char *) &dh, dh_layout, 1);
     if (dh.nusers > maxusers) {
-	ec->fatal("too many users");
+	EC->fatal("too many users");
     }
 
     if (dh.nusers != 0) {
@@ -1687,13 +1687,13 @@ bool Comm::restore(int fd)
 	if (dh.tbufsz != 0) {
 	    tbuf = ALLOC(char, dh.tbufsz);
 	    if (P_read(fd, tbuf, dh.tbufsz) != dh.tbufsz) {
-		ec->fatal("cannot read telnet buffer");
+		EC->fatal("cannot read telnet buffer");
 	    }
 	}
 	if (dh.ubufsz != 0) {
 	    ubuf = ALLOC(char, dh.ubufsz);
 	    if (P_read(fd, ubuf, dh.ubufsz) != dh.ubufsz) {
-		ec->fatal("cannot read UDP buffer");
+		EC->fatal("cannot read UDP buffer");
 	    }
 	}
 
@@ -1713,7 +1713,7 @@ bool Comm::restore(int fd)
 		    FREE(du);
 		    return FALSE;
 		}
-		ec->fatal("cannot restore user");
+		EC->fatal("cannot restore user");
 	    }
 	    ubuf += du->ubufsz;
 

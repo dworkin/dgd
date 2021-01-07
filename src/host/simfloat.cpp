@@ -83,7 +83,7 @@ static Flt ln2c2 =	FLT_CONST(0, -20, 0x7f7d, 0x1cf79abL);
  */
 void Flt::edom()
 {
-    ec->error("Math argument");
+    EC->error("Math argument");
 }
 
 /*
@@ -91,7 +91,7 @@ void Flt::edom()
  */
 void Flt::erange()
 {
-    ec->error("Result too large");
+    EC->error("Result too large");
 }
 
 /*
@@ -333,7 +333,7 @@ void Flt::div(Flt *b)
     unsigned short divh, i;
 
     if (b->exp == 0) {
-	ec->error("Division by zero");
+	EC->error("Division by zero");
     }
     if (exp == 0) {
 	/* a is 0 */

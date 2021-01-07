@@ -430,7 +430,7 @@ PNode *Parser::parse(String *str, bool *toobig)
 			frame->rlim->ticks = 0x7fffffff;
 		    } else {
 			FREE(states);
-			ec->error("Out of ticks");
+			EC->error("Out of ticks");
 		    }
 		}
 	    }
@@ -447,7 +447,7 @@ PNode *Parser::parse(String *str, bool *toobig)
 	case DFA_REJECT:
 	    /* bad token */
 	    FREE(states);
-	    ec->error("Bad token at offset %u", str->len - size);
+	    EC->error("Bad token at offset %u", str->len - size);
 	    return (PNode *) NULL;
 
 	case DFA_TOOBIG:
@@ -589,19 +589,19 @@ Int Parser::traverse(PNode *pn, PNode *next)
 		data->parser = (Parser *) NULL;
 
 		try {
-		    ec->push();
+		    EC->push();
 		    PUSH_ARRVAL(frame, a);
 		    call = frame->call(OBJR(frame->oindex),
 				       (Array *) NULL, pn->text + 2 + n,
 				       UCHAR(pn->text[1]) - n - 1, TRUE, 1);
-		    ec->pop();
+		    EC->pop();
 		} catch (...) {
 		    /* error: restore original parser */
 		    if (data->parser != (Parser *) NULL) {
 			delete data->parser;
 		    }
 		    data->parser = this;
-		    ec->error((char *) NULL);	/* pass on error */
+		    EC->error((char *) NULL);	/* pass on error */
 		}
 
 		/* restore original parser */
@@ -869,7 +869,7 @@ Array *Parser::parse_string(Frame *f, String *source, String *str, Int maxalt)
     a = (Array *) NULL;
     ps->maxalt = maxalt;
     try {
-	ec->push();
+	EC->push();
 	/*
 	 * do the parse thing
 	 */
@@ -901,12 +901,12 @@ Array *Parser::parse_string(Frame *f, String *source, String *str, Int maxalt)
 	    /*
 	     * lexer or parser has become too big
 	     */
-	    ec->error("Grammar too large");
+	    EC->error("Grammar too large");
 	}
 	delete ps->pnc;
 	ps->pnc = (PnChunk *) NULL;
 
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	/*
 	 * error occurred; clean up
@@ -920,7 +920,7 @@ Array *Parser::parse_string(Frame *f, String *source, String *str, Int maxalt)
 	delete ps->arrc;
 	ps->arrc = (ArrPChunk *) NULL;
 
-	ec->error((char *) NULL);	/* pass on error */
+	EC->error((char *) NULL);	/* pass on error */
     }
 
     return a;

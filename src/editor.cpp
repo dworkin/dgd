@@ -60,13 +60,13 @@ public:
 
 	if (format != (char *) NULL) {
 	    internal = TRUE;
-	    ec->push((ErrorContext::Handler) ed_handler);
+	    EC->push((ErrorContext::Handler) ed_handler);
 	    va_start(args, format);
 	    vsprintf(ebuf, format, args);
 	    va_end(args);
-	    ec->error(ebuf);
+	    EC->error(ebuf);
 	} else {
-	    ec->error((char *) NULL);
+	    EC->error((char *) NULL);
 	}
     }
 
@@ -83,15 +83,15 @@ public:
 	va_end(args);
 	len = strlen(buf);
 	if (outbufsz + len > USHRT_MAX) {
-	    ec->error("Editor output string too long");
+	    EC->error("Editor output string too long");
 	}
 	memcpy(outbuf + outbufsz, buf, len);
 	outbufsz += len;
     }
 };
 
-static EditorErrorContext edec;	/* editor error context */
-ErrorContext *edc = &edec;
+static EditorErrorContext EDEC;	/* editor error context */
+ErrorContext *EDC = &EDEC;
 
 /*
  * initialize editor handling
@@ -143,7 +143,7 @@ void Editor::clear()
 void Editor::checkRecursion()
 {
     if (recursion) {
-	ec->error("Recursion in editor command");
+	EC->error("Recursion in editor command");
     }
 }
 
@@ -157,11 +157,11 @@ void Editor::create(Object *obj)
 
     checkRecursion();
     if (EINDEX(newed) != EINDEX_MAX) {
-	ec->error("Too many simultaneous editors started");
+	EC->error("Too many simultaneous editors started");
     }
     e = flist;
     if (e == (Editor *) NULL) {
-	ec->error("Too many editor instances");
+	EC->error("Too many editor instances");
     }
     flist = e->next;
     obj->etabi = newed = e - editors;
@@ -201,14 +201,14 @@ String *Editor::command(Object *obj, char *cmd)
 
     checkRecursion();
     if (strchr(cmd, LF) != (char *) NULL) {
-	ec->error("Newline in editor command");
+	EC->error("Newline in editor command");
     }
 
     e = &editors[EINDEX(obj->etabi)];
     outbufsz = 0;
     internal = FALSE;
     try {
-	ec->push();
+	EC->push();
 	recursion = TRUE;
 	if (e->ed->command(cmd)) {
 	    e->ed->edbuf.lb.inact();
@@ -217,16 +217,16 @@ String *Editor::command(Object *obj, char *cmd)
 	    recursion = FALSE;
 	    del(obj);
 	}
-	ec->pop();
+	EC->pop();
     } catch (...) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
 	e->ed->edbuf.lb.inact();
 	recursion = FALSE;
 	if (!internal) {
-	    ec->error((char *) NULL);	/* pass on error */
+	    EC->error((char *) NULL);	/* pass on error */
 	}
-	edc->message("%s\012", ec->exception()->text);	/* LF */
-	ec->pop();
+	EDC->message("%s\012", EC->exception()->text);	/* LF */
+	EC->pop();
     }
 
     if (outbufsz == 0) {

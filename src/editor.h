@@ -34,4 +34,4 @@ private:
     static void checkRecursion();
 };
 
-extern ErrorContext *edc;
+extern ErrorContext *EDC;

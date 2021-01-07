@@ -185,7 +185,7 @@ bool Ext::checkFloat(double *d)
 void Ext::constrainFloat(double *d)
 {
     if (!checkFloat(d)) {
-	ec->error("Result too large");
+	EC->error("Result too large");
     }
 }
 
@@ -267,7 +267,7 @@ static String *ext_string_new(Dataspace *data, char *text, int len)
     try {
 	return String::create(text, len);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -360,7 +360,7 @@ static Array *ext_array_new(Dataspace *data, int size)
     try {
 	return Array::createNil(data, size);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -413,7 +413,7 @@ static Value *ext_mapping_index(Array *m, Value *idx)
 	return m->mapIndex(m->primary->data, idx, (Value *) NULL,
 			   (Value *) NULL);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -426,7 +426,7 @@ static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
     try {
 	m->mapIndex(data, idx, val, (Value *) NULL);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -455,9 +455,9 @@ void ext_runtime_error(Frame *f, const char *mesg)
     UNREFERENCED_PARAMETER(f);
 
     try {
-	ec->error(mesg);
+	EC->error(mesg);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -477,7 +477,7 @@ void ext_runtime_check(Frame *f, int ticks)
     i_add_ticks(f, ticks);
     if (!f->rlim->noticks && f->rlim->ticks <= 0) {
 	f->rlim->ticks = 0;
-	ec->error("Out of ticks");
+	EC->error("Out of ticks");
     }
 }
 
@@ -597,7 +597,7 @@ static void ext_vm_index(Frame *f)
 	f->index(f->sp + 1, f->sp, &val, FALSE);
 	*++f->sp = val;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -613,7 +613,7 @@ static Int ext_vm_index_int(Frame *f)
 	f->sp += 2;
 	return val.number;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -628,7 +628,7 @@ static void ext_vm_index2(Frame *f)
 	f->index(f->sp + 1, f->sp, &val, TRUE);
 	*--f->sp = val;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -643,7 +643,7 @@ static Int ext_vm_index2_int(Frame *f)
 	f->index(f->sp + 1, f->sp, &val, TRUE);
 	return val.number;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -655,7 +655,7 @@ static void ext_vm_aggregate(Frame *f, uint16_t size)
     try {
 	f->aggregate(size);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -667,7 +667,7 @@ static void ext_vm_map_aggregate(Frame *f, uint16_t size)
     try {
 	f->mapAggregate(size);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -680,7 +680,7 @@ static void ext_vm_cast(Frame *f, uint8_t type, uint16_t inherit,
     try {
 	f->cast(f->sp, type, ((Uint) inherit << 16) + index);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -728,7 +728,7 @@ static void ext_vm_range(Frame *f)
     try {
 	kf_ckrangeft(f, 0, NULL);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -740,7 +740,7 @@ static void ext_vm_range_from(Frame *f)
     try {
 	kf_ckrangef(f, 0, NULL);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -752,7 +752,7 @@ static void ext_vm_range_to(Frame *f)
     try {
 	kf_ckranget(f, 0, NULL);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -862,7 +862,7 @@ static void ext_vm_store_index(Frame *f)
     try {
 	f->storeIndex(f->sp);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -874,7 +874,7 @@ static void ext_vm_store_param_index(Frame *f, uint8_t param)
     try {
 	f->storeParamIndex(param, f->sp);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -886,7 +886,7 @@ static void ext_vm_store_local_index(Frame *f, uint8_t local)
     try {
 	f->storeLocalIndex(local, f->sp);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -898,7 +898,7 @@ static void ext_vm_store_global_index(Frame *f, uint16_t inherit, uint8_t index)
     try {
 	f->storeGlobalIndex(inherit, index, f->sp);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -910,7 +910,7 @@ static void ext_vm_store_index_index(Frame *f)
     try {
 	f->storeIndexIndex(f->sp);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -965,7 +965,7 @@ static void ext_vm_stores_cast(Frame *f, uint8_t type,
 		    ((Uint) inherit << 16) + index);
 	}
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1061,7 +1061,7 @@ static void ext_vm_stores_index(Frame *f)
 	    f->storeSkip();
 	}
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1077,7 +1077,7 @@ static void ext_vm_stores_param_index(Frame *f, uint8_t param)
 	    f->storeSkip();
 	}
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1093,7 +1093,7 @@ static void ext_vm_stores_local_index(Frame *f, uint8_t local)
 	    f->storeSkip();
 	}
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1111,7 +1111,7 @@ static void ext_vm_stores_global_index(Frame *f, uint16_t inherit,
 	    f->storeSkip();
 	}
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1127,7 +1127,7 @@ static void ext_vm_stores_index_index(Frame *f)
 	    f->storeSkipSkip();
 	}
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1141,7 +1141,7 @@ static Int ext_vm_div_int(Frame *f, Int num, Int denom)
     try {
 	return Frame::div(num, denom);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1155,7 +1155,7 @@ static Int ext_vm_lshift_int(Frame *f, Int num, Int shift)
     try {
 	return Frame::lshift(num, shift);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1169,7 +1169,7 @@ static Int ext_vm_mod_int(Frame *f, Int num, Int denom)
     try {
 	return Frame::mod(num, denom);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1183,7 +1183,7 @@ static Int ext_vm_rshift_int(Frame *f, Int num, Int shift)
     try {
 	return Frame::rshift(num, shift);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1199,7 +1199,7 @@ static double ext_vm_tofloat(Frame *f)
 	f->toFloat(&flt);
 	return Ext::getFloat(&flt);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 # endif
@@ -1212,7 +1212,7 @@ static Int ext_vm_toint(Frame *f)
     try {
 	return f->toInt();
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1228,17 +1228,17 @@ static Int ext_vm_toint_float(Frame *f, double iflt)
 	if (iflt >= 0) {
 	    iflt = floor(iflt + 0.5);
 	    if (iflt > 2147483647.0) {
-		ec->error("Result too large");
+		EC->error("Result too large");
 	    }
 	} else {
 	    iflt = ceil(iflt - 0.5);
 	    if (iflt < -2147483648.0) {
-		ec->error("Result too large");
+		EC->error("Result too large");
 	    }
 	}
 	return (Int) iflt;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 # endif
@@ -1263,7 +1263,7 @@ static double ext_vm_add_float(Frame *f, double flt1, double flt2)
 	Ext::constrainFloat(&flt1);
 	return flt1;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1274,13 +1274,13 @@ static double ext_vm_div_float(Frame *f, double flt1, double flt2)
 {
     try {
 	if (flt2 == 0.0) {
-	    ec->error("Division by zero");
+	    EC->error("Division by zero");
 	}
 	flt1 /= flt2;
 	Ext::constrainFloat(&flt1);
 	return flt1;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1294,7 +1294,7 @@ static double ext_vm_mult_float(Frame *f, double flt1, double flt2)
 	Ext::constrainFloat(&flt1);
 	return flt1;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1308,7 +1308,7 @@ static double ext_vm_sub_float(Frame *f, double flt1, double flt2)
 	Ext::constrainFloat(&flt1);
 	return flt1;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 # endif
@@ -1321,7 +1321,7 @@ static void ext_vm_kfunc(Frame *f, uint16_t n, int nargs)
     try {
 	f->kfunc(n, nargs);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1334,7 +1334,7 @@ static Int ext_vm_kfunc_int(Frame *f, uint16_t n, int nargs)
 	f->kfunc(n, nargs);
 	return (f->sp++)->number;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1347,7 +1347,7 @@ static double ext_vm_kfunc_float(Frame *f, uint16_t n, int nargs)
 	f->kfunc(n, nargs);
 	return ext_float_getval(f->sp++);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1359,7 +1359,7 @@ static void ext_vm_kfunc_spread(Frame *f, uint16_t n, int nargs)
     try {
 	f->kfunc(n, nargs + f->spread(-1));
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1372,7 +1372,7 @@ static Int ext_vm_kfunc_spread_int(Frame *f, uint16_t n, int nargs)
 	f->kfunc(n, nargs + f->spread(-1));
 	return (f->sp++)->number;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1385,7 +1385,7 @@ static double ext_vm_kfunc_spread_float(Frame *f, uint16_t n, int nargs)
 	f->kfunc(n, nargs + f->spread(-1));
 	return ext_float_getval(f->sp++);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1398,7 +1398,7 @@ static void ext_vm_kfunc_spread_lval(Frame *f, uint16_t lval, uint16_t n,
     try {
 	f->kfunc(n, nargs + f->spread(lval));
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1410,7 +1410,7 @@ static void ext_vm_dfunc(Frame *f, uint16_t inherit, uint8_t n, int nargs)
     try {
 	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n, nargs);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1423,7 +1423,7 @@ static Int ext_vm_dfunc_int(Frame *f, uint16_t inherit, uint8_t n, int nargs)
 	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n, nargs);
 	return (f->sp++)->number;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1437,7 +1437,7 @@ static double ext_vm_dfunc_float(Frame *f, uint16_t inherit, uint8_t n,
 	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n, nargs);
 	return ext_float_getval(f->sp++);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1451,7 +1451,7 @@ static void ext_vm_dfunc_spread(Frame *f, uint16_t inherit, uint8_t n,
 	f->funcall(NULL, NULL, f->ctrl->imap[f->p_index + inherit], n,
 		   nargs + f->spread(-1));
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1466,7 +1466,7 @@ static Int ext_vm_dfunc_spread_int(Frame *f, uint16_t inherit, uint8_t n,
 		   nargs + f->spread(-1));
 	return (f->sp++)->number;
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1481,7 +1481,7 @@ static double ext_vm_dfunc_spread_float(Frame *f, uint16_t inherit,
 		   nargs + f->spread(-1));
 	return ext_float_getval(f->sp++);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1493,7 +1493,7 @@ static void ext_vm_func(Frame *f, uint16_t index, int nargs)
     try {
 	f->vfunc(index, nargs);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1505,7 +1505,7 @@ static void ext_vm_func_spread(Frame *f, uint16_t index, int nargs)
     try {
 	f->vfunc(index, nargs + f->spread(-1));
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1629,7 +1629,7 @@ static void ext_vm_rlimits(Frame *f, bool privileged)
     try {
 	f->rlimits(privileged);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1648,7 +1648,7 @@ static jmp_buf *ext_vm_catch(Frame *f)
 {
     jmp_buf *env;
 
-    env = ec->push(Frame::runtimeError);
+    env = EC->push(Frame::runtimeError);
     f->atomic = FALSE;
     return env;
 }
@@ -1659,7 +1659,7 @@ static jmp_buf *ext_vm_catch(Frame *f)
 static void ext_vm_caught(Frame *f, bool push)
 {
     if (push) {
-	PUSH_STRVAL(f, ec->exception());
+	PUSH_STRVAL(f, EC->exception());
     }
 }
 
@@ -1668,7 +1668,7 @@ static void ext_vm_caught(Frame *f, bool push)
  */
 static void ext_vm_catch_end(Frame *f, bool push)
 {
-    ec->pop();
+    EC->pop();
     if (push) {
 	*--f->sp = Value::nil;
     }
@@ -1690,7 +1690,7 @@ static void ext_vm_loop_ticks(Frame *f)
     try {
 	loop_ticks(f);
     } catch (...) {
-	longjmp(*ec->env, 1);
+	longjmp(*EC->env, 1);
     }
 }
 
@@ -1982,12 +1982,12 @@ bool Ext::execute(const Frame *f, int func)
 	return FALSE;
     }
 
-    if (!setjmp(*ec->push())) {
+    if (!setjmp(*EC->push())) {
 	result = (*jit_execute)(ctrl->oindex, ctrl->instance, ctrl->version,
 				func, (void *) f);
-	ec->pop();
+	EC->pop();
     } else {
-	ec->error((char *) NULL);
+	EC->error((char *) NULL);
     }
 
     if (result < 0) {
@@ -2107,7 +2107,7 @@ bool Ext::load(char *module, char *config, void (**fdlist)(int*, int),
     ftabs[10] = ext_runtime;	sizes[10] = 6;
 
     if (!init(EXTENSION_MAJOR, EXTENSION_MINOR, ftabs, sizes, config)) {
-	ec->fatal("incompatible runtime extension");
+	EC->fatal("incompatible runtime extension");
     }
     *fdlist = mod_fdlist;
     *finish = mod_finish;

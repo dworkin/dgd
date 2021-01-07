@@ -73,7 +73,7 @@ int kf_encrypt(Frame *f, int nargs, KFun *func)
 
     n = KFun::find(kfenc, 0, ne, f->sp[nargs - 1].string->text);
     if (n < 0) {
-	ec->error("Unknown cipher");
+	EC->error("Unknown cipher");
     }
     (kfenc[n].func)(f, nargs - 1, &kfenc[n]);
     f->sp[1].del();
@@ -133,7 +133,7 @@ int kf_decrypt(Frame *f, int nargs, KFun *func)
 
     n = KFun::find(kfdec, 0, nd, f->sp[nargs - 1].string->text);
     if (n < 0) {
-	ec->error("Unknown cipher");
+	EC->error("Unknown cipher");
     }
     (kfdec[n].func)(f, nargs - 1, &kfdec[n]);
     f->sp[1].del();
@@ -545,7 +545,7 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 		    break;
 
 		default:
-		    ec->error("Bad sscanf format string");
+		    EC->error("Bad sscanf format string");
 		}
 	    } else {
 		/*
@@ -664,7 +664,7 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 	    break;
 
 	default:
-	    ec->error("Bad sscanf format string");
+	    EC->error("Bad sscanf format string");
 	}
 	matches++;
     }
@@ -726,7 +726,7 @@ int kf_old_sscanf(Frame *f, int nargs, KFun *kf)
     pc = f->pc;
 # ifdef DEBUG
     if ((FETCH1U(pc) & I_INSTR_MASK) != I_STORES) {
-	ec->fatal("stores expected");
+	EC->fatal("stores expected");
     }
 # else
     pc++;
@@ -767,7 +767,7 @@ int kf_parse_string(Frame *f, int nargs, KFun *kf)
     }
 
     if (OBJR(f->oindex)->flags & O_SPECIAL) {
-	ec->error("parse_string() from special purpose object");
+	EC->error("parse_string() from special purpose object");
     }
 
     a = Parser::parse_string(f, f->sp[1].string, f->sp->string, maxalt);
@@ -857,7 +857,7 @@ int kf_hash_crc16(Frame *f, int nargs, KFun *kf)
     cost = 3 * nargs + (cost >> 2);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
-	ec->error("Out of ticks");
+	EC->error("Out of ticks");
     }
     i_add_ticks(f, cost);
 
@@ -969,7 +969,7 @@ int kf_hash_crc32(Frame *f, int nargs, KFun *kf)
     cost = 3 * nargs + (cost >> 2);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
-	ec->error("Out of ticks");
+	EC->error("Out of ticks");
     }
     i_add_ticks(f, cost);
 
@@ -1425,7 +1425,7 @@ int kf_hash_string(Frame *f, int nargs, KFun *func)
 
     n = KFun::find(kfhsh, 0, nh, f->sp[nargs - 1].string->text);
     if (n < 0) {
-	ec->error("Unknown hash algorithm");
+	EC->error("Unknown hash algorithm");
     }
     (kfhsh[n].func)(f, nargs - 1, &kfhsh[n]);
     f->sp[1].del();
@@ -1453,7 +1453,7 @@ int kf_crypt(Frame *f, int nargs, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (nargs > 2) {
-	ec->error("Too many arguments for kfun crypt");
+	EC->error("Too many arguments for kfun crypt");
     }
     kf_xcrypt(f, nargs, &val);
     val.ref();
