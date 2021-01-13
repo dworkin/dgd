@@ -20,8 +20,8 @@
 class Path {
 public:
     virtual char *resolve(char *buf, char *file) = 0;
-    virtual char *string(char *buf, char *file, unsigned int) = 0;
-    virtual char *from(char*, char *from, char *file) = 0;
+    virtual char *string(char *buf, char *file, unsigned int len) = 0;
+    virtual char *from(char *buf, char *from, char *file) = 0;
     virtual char *edRead(char *buf, char *file) = 0;
     virtual char *edWrite(char *buf, char *file) = 0;
     virtual char *include(char *buf, char *from, char *file, String ***strs,
@@ -31,8 +31,8 @@ public:
 class PathImpl : public Path {
 public:
     virtual char *resolve(char *buf, char *file);
-    virtual char *string(char *buf, char *file, unsigned int);
-    virtual char *from(char*, char *from, char *file);
+    virtual char *string(char *buf, char *file, unsigned int len);
+    virtual char *from(char *buf, char *from, char *file);
     virtual char *edRead(char *buf, char *file);
     virtual char *edWrite(char *buf, char *file);
     virtual char *include(char *buf, char *from, char *file, String ***strs,

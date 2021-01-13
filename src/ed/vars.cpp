@@ -79,7 +79,7 @@ void Vars::set(Vars *v, char *option)
 		char *p;
 
 		p = val;
-		i = strtoint(&p);
+		i = strtol(p, &p, 10);
 		if (val == p || i < 0) {
 		    EDC->error("Bad numeric value for option \"%s\"", v->name);
 		}
