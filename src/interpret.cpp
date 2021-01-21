@@ -1402,7 +1402,7 @@ void Frame::typecheck(Frame *f, const char *name, const char *ftype,
 				      nargs - i, name);
 			}
 		    } else if (strcmp(Object::builtinName(elts->number),
-				      className(sclass)) != 0) {
+				      f->className(sclass)) != 0) {
 			EC->error("Bad object argument %d for function %s",
 				  nargs - i, name);
 		    }
