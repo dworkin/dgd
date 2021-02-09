@@ -106,69 +106,6 @@ int kf_compile_object(Frame *f, int nargs, KFun *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("call_other", kf_call_other, pt_call_other, 0)
-# else
-char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
-			 T_MIXED, T_MIXED, T_STRING, T_MIXED };
-
-/*
- * call a function in another object
- */
-int kf_call_other(Frame *f, int nargs, KFun *kf)
-{
-    Value *val;
-    Object *obj;
-    Array *lwobj;
-
-    UNREFERENCED_PARAMETER(kf);
-
-    obj = (Object *) NULL;
-    lwobj = (Array *) NULL;
-    val = &f->sp[nargs - 1];
-    if (val->type == T_STRING) {
-	*--f->sp = *val;
-	*val = Value::nil;	/* erase old copy */
-	DGD::callDriver(f, "call_object", 1);
-	*val = *f->sp++;
-    }
-    switch (val->type) {
-    case T_OBJECT:
-	obj = OBJR(val->oindex);
-	break;
-
-    case T_LWOBJECT:
-	lwobj = val->array;
-	break;
-
-    default:
-	/* bad arg 1 */
-	return 1;
-    }
-
-    if (OBJR(f->oindex)->count == 0) {
-	/*
-	 * call from destructed object
-	 */
-	f->pop(nargs);
-	*--f->sp = Value::nil;
-	return 0;
-    }
-
-    if (f->call(obj, lwobj, val[-1].string->text, val[-1].string->len, FALSE,
-		nargs - 2)) {
-	val = f->sp++;		/* function exists */
-    } else {
-	val = &Value::nil;	/* function doesn't exist */
-    }
-    (f->sp++)->string->del();
-    f->sp->del();
-    *f->sp = *val;
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
 FUNCDEF("call_touch", kf_call_touch, pt_call_touch, 0)
 # else
 char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
@@ -307,25 +244,6 @@ int kf_previous_program(Frame *f, int nargs, KFun *kf)
     } else {
 	*f->sp = Value::nil;
     }
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("call_trace", kf_call_trace, pt_call_trace, 0)
-# else
-char pt_call_trace[] = { C_STATIC, 0, 0, 0, 6, T_MIXED | (2 << REFSHIFT) };
-
-/*
- * return the entire call_other chain
- */
-int kf_call_trace(Frame *f, int n, KFun *kf)
-{
-    UNREFERENCED_PARAMETER(n);
-    UNREFERENCED_PARAMETER(kf);
-
-    PUSH_ARRVAL(f, f->callTrace());
     return 0;
 }
 # endif
@@ -1472,58 +1390,6 @@ int kf_shutdown(Frame *f, int nargs, KFun *kf)
 # endif
 
 
-# ifdef FUNCDEF
-FUNCDEF("status", kf_status, pt_status, 0)
-# else
-char pt_status[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7,
-		     T_MIXED | (1 << REFSHIFT), T_MIXED };
-
-/*
- * return an array with status information about the gamedriver
- *		or an object
- */
-int kf_status(Frame *f, int nargs, KFun *kf)
-{
-    Array *a;
-    uindex n;
-
-    UNREFERENCED_PARAMETER(kf);
-
-    i_add_ticks(f, 100);
-    if (nargs == 0) {
-	a = Config::status(f);
-	--f->sp;
-    } else {
-	switch (f->sp->type) {
-	case T_INT:
-	    if (f->sp->number != 0) {
-		*f->sp = Value::nil;
-		return 0;
-	    }
-	    a = Config::status(f);
-	    break;
-
-	case T_OBJECT:
-	    n = f->sp->oindex;
-	    a = Config::object(f->data, OBJR(n));
-	    break;
-
-	case T_LWOBJECT:
-	    n = f->sp->array->elts[0].oindex;
-	    f->sp->array->del();
-	    a = Config::object(f->data, OBJR(n));
-	    break;
-
-	default:
-	    return 1;
-	}
-    }
-    PUT_ARRVAL(f->sp, a);
-    return 0;
-}
-# endif
-
-
 # ifdef CLOSURES
 # ifdef FUNCDEF
 FUNCDEF("new.function", kf_new_function, pt_new_function, 0)
@@ -1703,4 +1569,14 @@ int kf_call_function(Frame *f, int nargs, KFun *kf)
     return 0;
 }
 # endif
+# endif
+
+
+/*
+ * turned into builtin
+ */
+# ifdef FUNCDEF
+FUNCDEF("0.call_other", kf_call_other, pt_call_other, 0)
+FUNCDEF("0.call_trace", kf_call_trace, pt_call_trace, 0)
+FUNCDEF("0.status", kf_status, pt_status, 0)
 # endif

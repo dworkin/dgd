@@ -116,8 +116,8 @@ static Int kd_status, kd_call_trace, kd_allocate,	/* kfun descriptors */
 void Optimize::init()
 {
     /* kfuns are already initialized at this point */
-    kd_status = ((long) KFCALL << 24) | KFun::kfunc("status");
-    kd_call_trace = ((long) KFCALL << 24) | KFun::kfunc("call_trace");
+    kd_status = ((long) KFCALL << 24) | KF_STATUS;
+    kd_call_trace = ((long) KFCALL << 24) | KF_CALL_TRACE;
     kd_allocate = ((long) KFCALL << 24) | KFun::kfunc("allocate");
     kd_allocate_int = ((long) KFCALL << 24) | KFun::kfunc("allocate_int");
     kd_allocate_float = ((long) KFCALL << 24) | KFun::kfunc("allocate_float");

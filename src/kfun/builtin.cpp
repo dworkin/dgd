@@ -2126,7 +2126,65 @@ int kf_ckranget(Frame *f, int n, KFun *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("sum", kf_unused, pt_unused, 0)
+FUNCDEF("call_other", kf_call_other, pt_call_other, 0)
+# else
+char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
+			 T_MIXED, T_MIXED, T_STRING, T_MIXED };
+
+/*
+ * call a function in another object
+ */
+int kf_call_other(Frame *f, int nargs, KFun *kf)
+{
+    Value *val;
+    Object *obj;
+    Array *lwobj;
+
+    UNREFERENCED_PARAMETER(kf);
+
+    obj = (Object *) NULL;
+    lwobj = (Array *) NULL;
+    val = &f->sp[nargs - 1];
+    if (val->type == T_STRING) {
+	*--f->sp = *val;
+	*val = Value::nil;	/* erase old copy */
+	DGD::callDriver(f, "call_object", 1);
+	*val = *f->sp++;
+    }
+    switch (val->type) {
+    case T_OBJECT:
+	obj = OBJR(val->oindex);
+	break;
+
+    case T_LWOBJECT:
+	lwobj = val->array;
+	break;
+
+    default:
+	/* bad arg 1 */
+	return 1;
+    }
+
+    if (OBJR(f->oindex)->count == 0) {
+	/*
+	 * call from destructed object
+	 */
+	f->pop(nargs);
+	*--f->sp = Value::nil;
+	return 0;
+    }
+
+    if (f->call(obj, lwobj, val[-1].string->text, val[-1].string->len, FALSE,
+		nargs - 2)) {
+	val = f->sp++;		/* function exists */
+    } else {
+	val = &Value::nil;	/* function doesn't exist */
+    }
+    (f->sp++)->string->del();
+    f->sp->del();
+    *f->sp = *val;
+    return 0;
+}
 # endif
 
 
@@ -2260,8 +2318,73 @@ int kf_nil(Frame *f, int n, KFun *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("<-", kf_unused, pt_unused, 0)
-FUNCDEF("=", kf_unused, pt_unused, 0)
+FUNCDEF("status", kf_status, pt_status, 0)
+# else
+char pt_status[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7,
+		     T_MIXED | (1 << REFSHIFT), T_MIXED };
+
+/*
+ * return an array with status information about the gamedriver
+ *		or an object
+ */
+int kf_status(Frame *f, int nargs, KFun *kf)
+{
+    Array *a;
+    uindex n;
+
+    UNREFERENCED_PARAMETER(kf);
+
+    i_add_ticks(f, 100);
+    if (nargs == 0) {
+	a = Config::status(f);
+	--f->sp;
+    } else {
+	switch (f->sp->type) {
+	case T_INT:
+	    if (f->sp->number != 0) {
+		*f->sp = Value::nil;
+		return 0;
+	    }
+	    a = Config::status(f);
+	    break;
+
+	case T_OBJECT:
+	    n = f->sp->oindex;
+	    a = Config::object(f->data, OBJR(n));
+	    break;
+
+	case T_LWOBJECT:
+	    n = f->sp->array->elts[0].oindex;
+	    f->sp->array->del();
+	    a = Config::object(f->data, OBJR(n));
+	    break;
+
+	default:
+	    return 1;
+	}
+    }
+    PUT_ARRVAL(f->sp, a);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("call_trace", kf_call_trace, pt_call_trace, 0)
+# else
+char pt_call_trace[] = { C_STATIC, 0, 0, 0, 6, T_MIXED | (2 << REFSHIFT) };
+
+/*
+ * return the entire call_other chain
+ */
+int kf_call_trace(Frame *f, int n, KFun *kf)
+{
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    PUSH_ARRVAL(f, f->callTrace());
+    return 0;
+}
 # endif
 
 
@@ -3209,4 +3332,53 @@ int kf_sum(Frame *f, int nargs, KFun *kf)
 
     return 0;
 }
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("fabs", kf_fabs, alt_fabs, 0)
+FUNCDEF("floor", kf_floor, alt_floor, 0)
+FUNCDEF("ceil", kf_ceil, alt_ceil, 0)
+FUNCDEF("fmod", kf_fmod, alt_fmod, 0)
+FUNCDEF("frexp", kf_frexp, alt_frexp, 0)
+FUNCDEF("ldexp", kf_ldexp, alt_ldexp, 0)
+FUNCDEF("modf", kf_modf, alt_modf, 0)
+FUNCDEF("exp", kf_exp, alt_exp, 0)
+FUNCDEF("log", kf_log, alt_log, 0)
+FUNCDEF("log10", kf_log10, alt_log10, 0)
+FUNCDEF("pow", kf_pow, alt_pow, 0)
+FUNCDEF("sqrt", kf_sqrt, alt_sqrt, 0)
+FUNCDEF("cos", kf_cos, alt_cos, 0)
+FUNCDEF("sin", kf_sin, alt_sin, 0)
+FUNCDEF("tan", kf_tan, alt_tan, 0)
+FUNCDEF("acos", kf_acos, alt_acos, 0)
+FUNCDEF("asin", kf_asin, alt_asin, 0)
+FUNCDEF("atan", kf_atan, alt_atan, 0)
+FUNCDEF("atan2", kf_atan2, alt_atan2, 0)
+FUNCDEF("cosh", kf_cosh, alt_cosh, 0)
+FUNCDEF("sinh", kf_sinh, alt_sinh, 0)
+FUNCDEF("tanh", kf_tanh, alt_tanh, 0)
+# else
+char alt_fabs[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_floor[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_ceil[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_fmod[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+char alt_frexp[] = { C_STATIC, 1, 0, 0, 7, (1 << REFSHIFT) | T_MIXED, T_FLOAT };
+char alt_ldexp[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_INT };
+char alt_modf[] = { C_STATIC, 1, 0, 0, 7, (1 << REFSHIFT) | T_FLOAT, T_FLOAT };
+char alt_exp[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_log[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_log10[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_pow[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+char alt_sqrt[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_cos[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_sin[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_tan[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_acos[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_asin[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_atan[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_atan2[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+char alt_cosh[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_sinh[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char alt_tanh[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 # endif

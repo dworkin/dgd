@@ -860,6 +860,41 @@ void Codegen::storeargs(Node *n)
 }
 
 /*
+ * return builtin code of kfun, or 0
+ */
+int Codegen::math(const char *name)
+{
+    static const char *keyword[] = {
+	"cos", "cosh", "asin", "atan", "fabs", "tanh", "tan", "pow",
+	"log10", "log", "modf", "sinh", "sin", "acos", "ldexp", "frexp",
+	"atan2", "sqrt", "exp", "floor", "fmod", "ceil"
+    };
+    static char value[] = {
+	 8,  0, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  4,  0, 13,  0,  3, 10,  9,  1, 10,  0,  0,
+	18, 20,  2,  0, 14, 16,  1,  0,  1,  0,  0,  7,  4,  0,  0
+    };
+    static char builtin[] = {
+	KF_COS, KF_COSH, KF_ASIN, KF_ATAN, KF_FABS, KF_TANH, KF_TAN, KF_POW,
+	KF_LOG10, KF_LOG, KF_MODF, KF_SINH, KF_SIN, KF_ACOS, KF_LDEXP,
+	KF_FREXP, KF_ATAN2, KF_SQRT, KF_EXP, KF_FLOOR, KF_FMOD, KF_CEIL
+    };
+    int n;
+
+    n = strlen(name);
+    if (n >= 3) {
+	n = (value[name[1] - '0'] + value[name[n - 1] - '0']) % 22;
+	if (strcmp(keyword[n], name) == 0) {
+	    return builtin[n];
+	}
+    }
+
+    return 0;
+}
+
+/*
  * generate code for an expression
  */
 void Codegen::expr(Node *n, int pop)
@@ -1085,6 +1120,26 @@ void Codegen::expr(Node *n, int pop)
 		CodeChunk::ckfun((short) n->r.number, n->line);
 		CodeChunk::byte(i);
 	    } else {
+		i = math(KFUN((short) n->r.number).name);
+		if (i != 0) {
+		    Node *argp;
+		    char *proto;
+
+		    /*
+		     * see if math kfun can be remapped to a builtin
+		     */
+		    argp = n->l.left->r.right;
+		    proto = KFUN((short) n->r.number).proto;
+		    if (PROTO_NARGS(proto) == 2) {
+			if (PROTO_ARGS(proto)[0] == argp->l.left->mod &&
+			    PROTO_ARGS(proto)[1] == argp->r.right->mod) {
+			    n->r.number = i;
+			}
+		    } else if (PROTO_ARGS(proto)[0] == argp->mod) {
+			n->r.number = i;
+		    }
+		}
+
 		CodeChunk::kfun((short) n->r.number, n->line);
 	    }
 	    if ((n->r.number >> 24) == KFCALL_LVAL) {

@@ -1694,6 +1694,282 @@ static void ext_vm_loop_ticks(Frame *f)
     }
 }
 
+# ifndef NOFLOAT
+/*
+ * math functions
+ */
+
+static double ext_vm_fabs(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    return fabs(flt);
+}
+
+static double ext_vm_floor(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    return floor(flt);
+}
+
+static double ext_vm_ceil(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    return ceil(flt);
+}
+
+static double ext_vm_fmod(Frame *f, double flt1, double flt2)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	if (flt2 == 0.0) {
+	    EC->error("Division by zero");
+	}
+	flt1 = fmod(flt1, flt2);
+	Ext::constrainFloat(&flt1);
+	return flt1;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_ldexp(Frame *f, double flt, Int exp)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt = ldexp(flt, exp);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_exp(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt = exp(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_log(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	if (flt <= 0.0) {
+	    EC->error("Math argument");
+	}
+	flt = log(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_log10(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	if (flt <= 0.0) {
+	    EC->error("Math argument");
+	}
+	flt = log10(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_pow(Frame *f, double flt1, double flt2)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	if (flt1 < 0.0) {
+	    if (flt2 != floor(flt2)) {
+		EC->error("Math argument");
+	    }
+	} else if (flt1 == 0.0) {
+	    if (flt2 < 0.0) {
+		EC->error("Math argument");
+	    }
+	}
+
+	flt1 = pow(flt1, flt2);
+	Ext::constrainFloat(&flt1);
+	return flt1;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_sqrt(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	if (flt < 0.0) {
+	    EC->error("Math argument");
+	}
+	flt = sqrt(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_cos(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt = cos(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_sin(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt = sin(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_tan(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt = tan(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_acos(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	if (fabs(flt) > 1.0) {
+	    EC->error("Math argument");
+	}
+	flt = acos(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_asin(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	if (fabs(flt) > 1.0) {
+	    EC->error("Math argument");
+	}
+	flt = asin(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_atan(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt = atan(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_atan2(Frame *f, double flt1, double flt2)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt1 = atan2(flt1, flt2);
+	Ext::constrainFloat(&flt1);
+	return flt1;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_cosh(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt = cosh(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_sinh(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt = sinh(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+
+static double ext_vm_tanh(Frame *f, double flt)
+{
+    UNREFERENCED_PARAMETER(f);
+
+    try {
+	flt = tanh(flt);
+	Ext::constrainFloat(&flt);
+	return flt;
+    } catch (...) {
+	longjmp(*EC->env, 1);
+    }
+}
+# endif
+
 
 static void (*mod_fdlist)(int*, int);
 static void (*mod_finish)();
@@ -1746,7 +2022,7 @@ void Ext::jit(int (*init)(int, int, size_t, size_t, int, int, int, uint8_t*,
 void Ext::kfuns(char *protos, int size, int nkfun)
 {
     if (jit_compile != NULL) {
-	static voidf *vmtab[96];
+	static voidf *vmtab[116];
 
 	vmtab[ 0] = (voidf *) &ext_vm_int;
 # ifndef NOFLOAT
@@ -1899,6 +2175,49 @@ void Ext::kfuns(char *protos, int size, int nkfun)
 	vmtab[93] = (voidf *) &ext_vm_catch_end;
 	vmtab[94] = (voidf *) &ext_vm_line;
 	vmtab[95] = (voidf *) &ext_vm_loop_ticks;
+# ifndef NOFLOAT
+	vmtab[96] = (voidf *) &ext_vm_fabs;
+	vmtab[97] = (voidf *) &ext_vm_floor;
+	vmtab[98] = (voidf *) &ext_vm_ceil;
+	vmtab[99] = (voidf *) &ext_vm_fmod;
+	vmtab[100] = (voidf *) &ext_vm_ldexp;
+	vmtab[101] = (voidf *) &ext_vm_exp;
+	vmtab[102] = (voidf *) &ext_vm_log;
+	vmtab[103] = (voidf *) &ext_vm_log10;
+	vmtab[104] = (voidf *) &ext_vm_pow;
+	vmtab[105] = (voidf *) &ext_vm_sqrt;
+	vmtab[106] = (voidf *) &ext_vm_cos;
+	vmtab[107] = (voidf *) &ext_vm_sin;
+	vmtab[108] = (voidf *) &ext_vm_tan;
+	vmtab[109] = (voidf *) &ext_vm_acos;
+	vmtab[110] = (voidf *) &ext_vm_asin;
+	vmtab[111] = (voidf *) &ext_vm_atan;
+	vmtab[112] = (voidf *) &ext_vm_atan2;
+	vmtab[113] = (voidf *) &ext_vm_cosh;
+	vmtab[114] = (voidf *) &ext_vm_sinh;
+	vmtab[115] = (voidf *) &ext_vm_tanh;
+# else
+	vmtab[96] = (voidf *) NULL;
+	vmtab[97] = (voidf *) NULL;
+	vmtab[98] = (voidf *) NULL;
+	vmtab[99] = (voidf *) NULL;
+	vmtab[100] = (voidf *) NULL;
+	vmtab[101] = (voidf *) NULL;
+	vmtab[102] = (voidf *) NULL;
+	vmtab[103] = (voidf *) NULL;
+	vmtab[104] = (voidf *) NULL;
+	vmtab[105] = (voidf *) NULL;
+	vmtab[106] = (voidf *) NULL;
+	vmtab[107] = (voidf *) NULL;
+	vmtab[108] = (voidf *) NULL;
+	vmtab[109] = (voidf *) NULL;
+	vmtab[110] = (voidf *) NULL;
+	vmtab[111] = (voidf *) NULL;
+	vmtab[112] = (voidf *) NULL;
+	vmtab[113] = (voidf *) NULL;
+	vmtab[114] = (voidf *) NULL;
+	vmtab[115] = (voidf *) NULL;
+# endif
 
 	if (!(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR, sizeof(Int), 1,
 			 Config::typechecking(), KF_BUILTINS, nkfun,

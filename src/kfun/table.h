@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -122,13 +122,13 @@ extern int  kf_unused	(Frame*, int, KFun*);
 # define KF_CKRANGEFT	51
 # define KF_CKRANGEF	52
 # define KF_CKRANGET	53
-# define KF_OLD_SUM	54
+# define KF_CALL_OTHER	54
 # define KF_STATUS_IDX	55
 # define KF_STATUSO_IDX	56
 # define KF_CALLTR_IDX	57
 # define KF_NIL		58
-# define KF_INSTANCEOF	59
-# define KF_STORE_AGGR	60
+# define KF_STATUS	59
+# define KF_CALL_TRACE	60
 # define KF_ADD_FLT	61
 # define KF_ADD_FLT_STR	62
 # define KF_ADD_INT_STR	63
@@ -158,8 +158,30 @@ extern int  kf_unused	(Frame*, int, KFun*);
 # define KF_TST_STR	87
 # define KF_UMIN_FLT	88
 # define KF_SUM		89
+# define KF_FABS	90
+# define KF_FLOOR	91
+# define KF_CEIL	92
+# define KF_FMOD	93
+# define KF_FREXP	94
+# define KF_LDEXP	95
+# define KF_MODF	96
+# define KF_EXP		97
+# define KF_LOG		98
+# define KF_LOG10	99
+# define KF_POW		100
+# define KF_SQRT	101
+# define KF_COS		102
+# define KF_SIN		103
+# define KF_TAN		104
+# define KF_ACOS	105
+# define KF_ASIN	106
+# define KF_ATAN	107
+# define KF_ATAN2	108
+# define KF_COSH	109
+# define KF_SINH	110
+# define KF_TANH	111
 
-# define KF_BUILTINS	90
+# define KF_BUILTINS	112
 
 # define SUM_SIMPLE		-2
 # define SUM_ALLOCATE_NIL	-3

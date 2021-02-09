@@ -420,6 +420,18 @@ int KFun::kfunc(const char *name)
 {
     int n;
 
+    /* some kfuns are remapped to builtins */
+    n = strcmp(name, "call_trace");
+    if (n == 0) {
+	return KF_CALL_TRACE;
+    } else if (n < 0) {
+	if (strcmp(name, "call_other") == 0) {
+	    return KF_CALL_OTHER;
+	}
+    } else if (strcmp(name, "status") == 0) {
+	return KF_STATUS;
+    }
+
     n = find(kftab, KF_BUILTINS, nkfun, name);
     if (n >= 0) {
 	n = kfx[n];

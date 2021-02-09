@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -39,6 +39,7 @@ private:
     static int funargs(Node **l, int *nargs, bool *spread);
     static void storearg(Node *n);
     static void storeargs(Node *n);
+    static int math(const char *name);
     static void expr(Node *n, int pop);
     static void cond(Node *n, int jmptrue);
     static void switchStart(Node *n);
