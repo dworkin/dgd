@@ -1273,6 +1273,7 @@ static double ext_vm_add_float(Frame *f, double flt1, double flt2)
 static double ext_vm_div_float(Frame *f, double flt1, double flt2)
 {
     try {
+	i_add_ticks(f, 1);
 	if (flt2 == 0.0) {
 	    EC->error("Division by zero");
 	}
@@ -1290,6 +1291,7 @@ static double ext_vm_div_float(Frame *f, double flt1, double flt2)
 static double ext_vm_mult_float(Frame *f, double flt1, double flt2)
 {
     try {
+	i_add_ticks(f, 1);
 	flt1 *= flt2;
 	Ext::constrainFloat(&flt1);
 	return flt1;
@@ -1304,6 +1306,7 @@ static double ext_vm_mult_float(Frame *f, double flt1, double flt2)
 static double ext_vm_sub_float(Frame *f, double flt1, double flt2)
 {
     try {
+	i_add_ticks(f, 1);
 	flt1 -= flt2;
 	Ext::constrainFloat(&flt1);
 	return flt1;
