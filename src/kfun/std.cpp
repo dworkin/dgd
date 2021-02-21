@@ -952,7 +952,7 @@ int kf_send_message(Frame *f, int n, KFun *kf)
 		    num = Comm::send(OBJW(obj->index), f->sp->string);
 		}
 	    } else if ((obj->flags & O_DRIVER) && f->sp->type == T_STRING) {
-		EC->message("%s", f->sp->string->text);
+		P_message(f->sp->string->text);
 		num = f->sp->string->len;
 	    }
 	}
