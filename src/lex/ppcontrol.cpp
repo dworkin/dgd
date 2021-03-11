@@ -373,11 +373,14 @@ int PP::pptokenz(char *key, unsigned int len)
       "include", "ifdef", "ifndef", "undef", "pragma"
     };
     static char value[] = {
-      9, 0, 0, 4, 0, 3, 0, 0, 4, 0, 0, 2, 0,
-      0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 9, 0, 0, 4, 0, 3, 0, 0, 4, 0, 0,
+      2, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0
     };
 
-    len += value[key[0] - 'a'] + value[key[len - 1] - 'a'] - 3;
+    len += value[key[0] - '0'] + value[key[len - 1] - '0'] - 3;
     if (len < 1 || len > 12 || strcmp(keyword[len - 1], key) != 0) {
 	return 0;
     }
@@ -401,11 +404,14 @@ int PP::tokenz(char *key, unsigned int len)
       "default", "mixed",
     };
     static char value[] = {
-      20, 12,  1, 12,  0,  0, 13, 18, 15,  0, 17,  0, 13,
-       3,  2,  3,  0,  4,  1, 10,  0, 15, 16,  0,  0,  0
+       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0, 20, 12,  1, 12,  0,  0, 13, 18, 15,  0, 17,
+       0, 13,  3,  2,  3,  0,  4,  1, 10,  0, 15, 16,  0,  0,  0
     };
 
-    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 31;
+    len = (len + value[key[0] - '0'] + value[key[len - 1] - '0']) % 31;
     if (strcmp(keyword[len], key) == 0) {
 # ifndef CLOSURES
 	if (len == FUNCTION - FIRST_KEYWORD) {
