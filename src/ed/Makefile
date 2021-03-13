@@ -27,16 +27,19 @@ all:
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo ed/$$i; done > dgd
 
+ed:	$(OBJ) ed.o
+	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) ed.o
+
 clean:
 	rm -f dgd $(OBJ)
 
 
-$(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../editor.h
-fileio.o: ../path.h
+$(OBJ) ed.o: ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../editor.h
+fileio.o ed.o: ../path.h
 
-$(OBJ): ed.h
+$(OBJ) ed.o: ed.h
 buffer.o fileio.o edcmd.o cmdsub.o: buffer.h
-edcmd.o cmdsub.o: edcmd.h
+edcmd.o cmdsub.o ed.o: edcmd.h
 cmdsub.o fileio.o: fileio.h
 line.o buffer.o fileio.o edcmd.o cmdsub.o: line.h
 regexp.o edcmd.o cmdsub.o: regexp.h

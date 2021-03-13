@@ -207,7 +207,7 @@ void Ext::putFloat(Float *flt, double d)
 	m = (Uuint) ldexp(d, 37);
 	flt->high = (sign << 15) | ((e - 1 + 1023) << 4) |
 		    ((unsigned short) (m >> 32) & 0xf);
-	flt->low = (Uuint) m;
+	flt->low = m;
     }
 }
 
