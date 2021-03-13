@@ -31,7 +31,7 @@ ed:	$(OBJ) ed.o
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) ed.o
 
 clean:
-	rm -f dgd $(OBJ)
+	rm -f dgd ed $(OBJ) ed.o
 
 
 $(OBJ) ed.o: ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../editor.h
