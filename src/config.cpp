@@ -308,9 +308,6 @@ bool Config::restore(int fd, int fd2)
 
     secsize = rheader.restore(fd);
     conv_14 = conv_15 = conv_16 = FALSE;
-    if (rheader.version < 14) {
-	EC->error("Incompatible snapshot version");
-    }
     if (rheader.version < 15) {
 	if (!(rheader.dflags & FLAGS_COMP159)) {
 	    EC->error("Snapshot contains legacy programs");
