@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -506,7 +506,7 @@ char pt_instanceof[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT,
  * NAME:	kfun->instanceof()
  * DESCRIPTION:	check whether an object is an instance of a type
  */
-int kf_instanceof(register Frame *f, int nargs, kfunc *kf)
+int kf_instanceof(Frame *f, int nargs, kfunc *kf)
 {
     char buffer[STRINGSZ + 12];
     uindex oindex;
