@@ -1508,7 +1508,7 @@ struct fileinfo {
 static bool getinfo(const char *path, char *file, fileinfo *finf)
 {
     struct stat sbuf;
-    register int pathlen, filelen;
+    int pathlen, filelen;
     char *buf;
 
     pathlen = strlen(path);
