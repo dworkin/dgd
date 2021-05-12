@@ -21,17 +21,47 @@ class ErrorContext {
 public:
     typedef void (*Handler) (Frame*, Int);
 
-    virtual jmp_buf *push(Handler handler = NULL) = 0;
-    virtual void pop() = 0;
+    virtual jmp_buf *push(Handler handler = NULL) {
+	return (jmp_buf *) NULL;
+    }
+    virtual void pop() { }
 
-    virtual void setException(String *err) = 0;
-    virtual String *exception() = 0;
-    virtual void clearException() = 0;
+    virtual void setException(String *err) { }
+    virtual String *exception() {
+	return (String *) NULL;
+    }
+    virtual void clearException() { }
 
-    virtual void error(String *str) = 0;
-    virtual void error(const char *format, ...) = 0;
-    virtual void message(const char *format, ...) = 0;
-    virtual void fatal(const char *format, ...) = 0;
+    virtual void error(String *str) { }
+    virtual void error(const char *format, ...) {
+	va_list args;
+
+	if (format != (char *) NULL) {
+	    va_start(args, format);
+	    vprintf(format, args);
+	    va_end(args);
+	    putchar('\n');
+	}
+	throw "error";
+    }
+    virtual void message(const char *format, ...) {
+	va_list args;
+
+	va_start(args, format);
+	vprintf(format, args);
+	va_end(args);
+    }
+    virtual void fatal(const char *format, ...) {
+	va_list args;
+
+	printf("Fatal error: ");
+	va_start(args, format);
+	vprintf(format, args);
+	va_end(args);
+	putchar('\n');
+
+	std::abort();
+    }
 
     jmp_buf *env;			/* current error env */
 };

@@ -31,7 +31,6 @@
 # include "ext.h"
 # include "node.h"
 # include "compile.h"
-# include <stdarg.h>
 
 static uindex dindex;		/* driver object index */
 static Uint dcount;		/* driver object count */

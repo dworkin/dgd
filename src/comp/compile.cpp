@@ -33,7 +33,6 @@
 # include "optimize.h"
 # include "codegen.h"
 # include "compile.h"
-# include <stdarg.h>
 
 # define COND_CHUNK	16
 # define COND_BMAP	BMAP(MAX_LOCALS)

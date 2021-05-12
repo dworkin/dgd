@@ -19,151 +19,18 @@
 # include "ed.h"
 # include "path.h"
 # include "edcmd.h"
-# include <stdarg.h>
 
 /*
  * stand-alone editor
  */
 
-class EdAlloc : public Alloc {
-public:
-    virtual void init(size_t staticSize, size_t dynamicSize) { }
-
-    virtual void finish() { }
-
-# ifdef MEMDEBUG
-    virtual char *alloc(size_t size, const char *file, int line) {
-	return (char *) std::malloc(size);
-    }
-
-    virtual char *realloc(char *mem, size_t size1, size_t size2,
-			  const char *file, int line) {
-	return (char *) std::realloc(mem, size2);
-    }
-# else
-    virtual char *alloc(size_t size) {
-	return (char *) std::malloc(size);
-    }
-
-    virtual char *realloc(char *mem, size_t size1, size_t size2) {
-	return (char *) std::realloc(mem, size2);
-    }
-# endif
-    virtual void free(char *mem) {
-	std::free(mem);
-    }
-
-    virtual void dynamicMode() { }
-
-    virtual void staticMode() { }
-
-    virtual Info *info() {
-	return (Info *) NULL;
-    }
-
-    virtual bool check() {
-	return TRUE;
-    }
-
-    virtual void purge() { }
-};
-
-static EdAlloc EDMM;
+static Alloc EDMM;
 Alloc *MM = &EDMM;
 
-class EdErrorContext : public ErrorContext {
-public:
-    virtual jmp_buf *push(Handler handler) {
-	return (jmp_buf *) NULL;
-    }
-
-    virtual void pop() { }
-
-    virtual void setException(String *err) { }
-
-    virtual String *exception() {
-	return (String *) NULL;
-    }
-
-    virtual void clearException() { }
-
-    virtual void error(String *str) { }
-
-    virtual void error(const char *format, ...) {
-	va_list args;
-
-	if (format != (char *) NULL) {
-	    va_start(args, format);
-	    vprintf(format, args);
-	    va_end(args);
-	    putchar('\n');
-	}
-	throw "ed error";
-    }
-
-    virtual void message(const char *format, ...) {
-	va_list args;
-
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-    }
-
-    virtual void fatal(const char *format, ...) {
-	va_list args;
-
-	printf("Fatal error: ");
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	putchar('\n');
-
-	std::abort();
-    }
-};
-
-static EdErrorContext EDEC;
+static ErrorContext EDEC;
 ErrorContext *EDC = &EDEC;
 
-class EdPath : public Path {
-public:
-    virtual char *resolve(char *buf, char *file) {
-	strcpy(buf, file);
-	return buf;
-    }
-
-    virtual char *string(char *buf, char *file, unsigned int len) {
-	if (len >= STRINGSZ || strlen(file) != len) {
-	    return NULL;
-	}
-	return resolve(buf, file);
-    }
-
-    virtual char *from(char *buf, char *from, char *file) {
-	char buf2[STRINGSZ];
-
-	if (file[0] != '/' && strlen(from) + strlen(file) < STRINGSZ - 4) {
-	    sprintf(buf2, "%s/../%s", from, file);
-	    file = buf2;
-	}
-	return resolve(buf, file);
-    }
-
-    virtual char *edRead(char *buf, char *file) {
-	return resolve(buf, file);
-    }
-
-    virtual char *edWrite(char *buf, char *file) {
-	return resolve(buf, file);
-    }
-
-    virtual char *include(char *buf, char *from, char *file, String ***strs,
-			  int *nstr) {
-	return EdPath::from(buf, from, file);
-    }
-};
-
-static EdPath EDPM;
+static Path EDPM;
 Path *PM = &EDPM;
 
 /*

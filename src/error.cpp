@@ -25,7 +25,6 @@
 # include "interpret.h"
 # include "data.h"
 # include "comm.h"
-# include <stdarg.h>
 
 
 static ErrorContextImpl ECI;		/* global error context */

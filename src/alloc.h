@@ -26,8 +26,8 @@ public:
 	size_t dmemused;	/* dynamic memory used */
     };
 
-    virtual void init(size_t staticSize, size_t dynamicSize) = 0;
-    virtual void finish() = 0;
+    virtual void init(size_t staticSize, size_t dynamicSize) { }
+    virtual void finish() { }
 
 # ifdef MEMDEBUG
 
@@ -39,9 +39,13 @@ public:
 					     sizeof(type) * (size_t) (size1), \
 					     sizeof(type) * (size_t) (size2), \
 					     __FILE__, __LINE__)))
-    virtual char *alloc(size_t size, const char *file, int line) = 0;
+    virtual char *alloc(size_t size, const char *file, int line) {
+	return (char *) std::malloc(size);
+    }
     virtual char *realloc(char *mem, size_t size1, size_t size2,
-			  const char *file, int line) = 0;
+			  const char *file, int line) {
+	return (char *) std::realloc(mem, size2);
+    }
 
 # else
 
@@ -51,21 +55,31 @@ public:
 			((type *) (MM->realloc((char *) (mem),	 	      \
 					     sizeof(type) * (size_t) (size1), \
 					     sizeof(type) * (size_t) (size2))))
-    virtual char *alloc(size_t size) = 0;
-    virtual char *realloc(char *mem, size_t size1, size_t size2) = 0;
+    virtual char *alloc(size_t size) {
+	return (char *) std::malloc(size);
+    }
+    virtual char *realloc(char *mem, size_t size1, size_t size2) {
+	return (char *) std::realloc(mem, size2);
+    }
 
 # endif
 
 # define FREE(mem)	MM->free((char *) (mem))
 
-    virtual void free(char *mem) = 0;
+    virtual void free(char *mem) {
+	std::free(mem);
+    }
 
-    virtual void dynamicMode() = 0;
-    virtual void staticMode() = 0;
+    virtual void dynamicMode() { }
+    virtual void staticMode() { }
 
-    virtual Info *info() = 0;
-    virtual bool check() = 0;
-    virtual void purge() = 0;
+    virtual Info *info() {
+	return (Info *) NULL;
+    }
+    virtual bool check() {
+	return TRUE;
+    }
+    virtual void purge() { }
 };
 
 class AllocImpl : public Alloc {

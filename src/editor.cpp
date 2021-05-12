@@ -24,7 +24,6 @@
 # include "interpret.h"
 # include "edcmd.h"
 # include "editor.h"
-# include <stdarg.h>
 
 static Editor *editors;		/* editor table */
 static Editor *flist;		/* free list */

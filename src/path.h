@@ -19,13 +19,35 @@
 
 class Path {
 public:
-    virtual char *resolve(char *buf, char *file) = 0;
-    virtual char *string(char *buf, char *file, unsigned int len) = 0;
-    virtual char *from(char *buf, char *from, char *file) = 0;
-    virtual char *edRead(char *buf, char *file) = 0;
-    virtual char *edWrite(char *buf, char *file) = 0;
+    virtual char *resolve(char *buf, char *file) {
+	strcpy(buf, file);
+	return buf;
+    }
+    virtual char *string(char *buf, char *file, unsigned int len) {
+	if (len >= STRINGSZ || strlen(file) != len) {
+	    return NULL;
+	}
+	return resolve(buf, file);
+    }
+    virtual char *from(char *buf, char *from, char *file) {
+	char buf2[STRINGSZ];
+
+	if (file[0] != '/' && strlen(from) + strlen(file) < STRINGSZ - 4) {
+	    sprintf(buf2, "%s/../%s", from, file);
+	    file = buf2;
+	}
+	return resolve(buf, file);
+    }
+    virtual char *edRead(char *buf, char *file) {
+	return resolve(buf, file);
+    }
+    virtual char *edWrite(char *buf, char *file) {
+	return resolve(buf, file);
+    }
     virtual char *include(char *buf, char *from, char *file, String ***strs,
-			  int *nstr) = 0;
+			  int *nstr) {
+	return Path::from(buf, from, file);
+    }
 };
 
 class PathImpl : public Path {
