@@ -20,9 +20,6 @@
 # include "path.h"
 # include "edcmd.h"
 
-/*
- * stand-alone editor
- */
 
 static Alloc EDMM;
 Alloc *MM = &EDMM;
@@ -34,7 +31,7 @@ static Path EDPM;
 Path *PM = &EDPM;
 
 /*
- * minimal wrapper for editor
+ * stand-alone editor
  */
 int main(int argc, char *argv[])
 {
