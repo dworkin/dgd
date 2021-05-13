@@ -46,6 +46,8 @@ public:
     }
     virtual char *include(char *buf, char *from, char *file, String ***strs,
 			  int *nstr) {
+	UNREFERENCED_PARAMETER(strs);
+	UNREFERENCED_PARAMETER(nstr);
 	return Path::from(buf, from, file);
     }
 };

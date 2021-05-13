@@ -145,7 +145,7 @@ void Frame::pushValue(Value *v)
 }
 
 /*
- * pop a number of values (can be lvalues) from the stack
+ * pop a number of values from the stack
  */
 void Frame::pop(int n)
 {
@@ -2030,7 +2030,7 @@ void Frame::interpret(char *pc)
 	}
 
 	if (instr & I_POP_BIT) {
-	    /* pop the result of the last operation (never an lvalue) */
+	    /* pop the result of the last operation */
 	    (sp++)->del();
 	}
     }

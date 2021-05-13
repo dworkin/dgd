@@ -26,7 +26,10 @@ public:
 	size_t dmemused;	/* dynamic memory used */
     };
 
-    virtual void init(size_t staticSize, size_t dynamicSize) { }
+    virtual void init(size_t staticSize, size_t dynamicSize) {
+	UNREFERENCED_PARAMETER(staticSize);
+	UNREFERENCED_PARAMETER(dynamicSize);
+    }
     virtual void finish() { }
 
 # ifdef MEMDEBUG
@@ -40,10 +43,15 @@ public:
 					     sizeof(type) * (size_t) (size2), \
 					     __FILE__, __LINE__)))
     virtual char *alloc(size_t size, const char *file, int line) {
+	UNREFERENCED_PARAMETER(file);
+	UNREFERENCED_PARAMETER(line);
 	return (char *) std::malloc(size);
     }
     virtual char *realloc(char *mem, size_t size1, size_t size2,
 			  const char *file, int line) {
+	UNREFERENCED_PARAMETER(size1);
+	UNREFERENCED_PARAMETER(file);
+	UNREFERENCED_PARAMETER(line);
 	return (char *) std::realloc(mem, size2);
     }
 
@@ -59,6 +67,7 @@ public:
 	return (char *) std::malloc(size);
     }
     virtual char *realloc(char *mem, size_t size1, size_t size2) {
+	UNREFERENCED_PARAMETER(size1);
 	return (char *) std::realloc(mem, size2);
     }
 

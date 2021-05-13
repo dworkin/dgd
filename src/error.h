@@ -22,17 +22,22 @@ public:
     typedef void (*Handler) (Frame*, Int);
 
     virtual jmp_buf *push(Handler handler = NULL) {
+	UNREFERENCED_PARAMETER(handler);
 	return (jmp_buf *) NULL;
     }
     virtual void pop() { }
 
-    virtual void setException(String *err) { }
+    virtual void setException(String *err) {
+	UNREFERENCED_PARAMETER(err);
+    }
     virtual String *exception() {
 	return (String *) NULL;
     }
     virtual void clearException() { }
 
-    virtual void error(String *str) { }
+    virtual void error(String *str) {
+	UNREFERENCED_PARAMETER(str);
+    }
     virtual void error(const char *format, ...) {
 	va_list args;
 
