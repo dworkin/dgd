@@ -80,31 +80,6 @@ char *PathImpl::resolve(char *buf, char *file)
 }
 
 /*
- * check and resolve a string path
- */
-char *PathImpl::string(char *buf, char *file, unsigned int len)
-{
-    if (len >= STRINGSZ || strlen(file) != len) {
-	return (char *) NULL;
-    }
-    return resolve(buf, file);
-}
-
-/*
- * resolve a (possibly relative) path
- */
-char *PathImpl::from(char *buf, char *from, char *file)
-{
-    char buf2[STRINGSZ];
-
-    if (file[0] != '/' && strlen(from) + strlen(file) < STRINGSZ - 4) {
-	sprintf(buf2, "%s/../%s", from, file);
-	file = buf2;
-    }
-    return resolve(buf, file);
-}
-
-/*
  * resolve an editor read file path
  */
 char *PathImpl::edRead(char *buf, char *file)

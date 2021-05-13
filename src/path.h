@@ -55,8 +55,6 @@ public:
 class PathImpl : public Path {
 public:
     virtual char *resolve(char *buf, char *file);
-    virtual char *string(char *buf, char *file, unsigned int len);
-    virtual char *from(char *buf, char *from, char *file);
     virtual char *edRead(char *buf, char *file);
     virtual char *edWrite(char *buf, char *file);
     virtual char *include(char *buf, char *from, char *file, String ***strs,
