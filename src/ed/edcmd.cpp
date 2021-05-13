@@ -60,7 +60,7 @@ CmdBuf::CmdBuf(char *tmpfile) :
     offset = 0;
     moffset = (Int *) NULL;
     memset(mark, '\0', sizeof(mark));
-    Block buf = 0;
+    buf = 0;
     memset(zbuf, '\0', sizeof(zbuf));
     memset(fname, '\0', sizeof(fname));
     undo = (Block) -1;				/* not 0! */
