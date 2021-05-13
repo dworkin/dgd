@@ -1317,7 +1317,7 @@ static double ext_vm_sub_float(Frame *f, double flt1, double flt2)
 # endif
 
 /*
- * call kernel function
+ * call kfun
  */
 static void ext_vm_kfunc(Frame *f, uint16_t n, int nargs)
 {
@@ -1329,7 +1329,7 @@ static void ext_vm_kfunc(Frame *f, uint16_t n, int nargs)
 }
 
 /*
- * call kernel function with int result
+ * call kfun with int result
  */
 static Int ext_vm_kfunc_int(Frame *f, uint16_t n, int nargs)
 {
@@ -1341,6 +1341,7 @@ static Int ext_vm_kfunc_int(Frame *f, uint16_t n, int nargs)
     }
 }
 
+# ifndef NOFLOAT
 /*
  * call kfun with float result
  */
@@ -1353,6 +1354,7 @@ static double ext_vm_kfunc_float(Frame *f, uint16_t n, int nargs)
 	longjmp(*EC->env, 1);
     }
 }
+# endif
 
 /*
  * call kfun with spread
@@ -1379,6 +1381,7 @@ static Int ext_vm_kfunc_spread_int(Frame *f, uint16_t n, int nargs)
     }
 }
 
+# ifndef NOFLOAT
 /*
  * call kfun with spread and float result
  */
@@ -1391,6 +1394,7 @@ static double ext_vm_kfunc_spread_float(Frame *f, uint16_t n, int nargs)
 	longjmp(*EC->env, 1);
     }
 }
+# endif
 
 /*
  * call kfun with lvalue spread
@@ -1430,6 +1434,7 @@ static Int ext_vm_dfunc_int(Frame *f, uint16_t inherit, uint8_t n, int nargs)
     }
 }
 
+# ifndef NOFLOAT
 /*
  * call direct function with float result
  */
@@ -1443,6 +1448,7 @@ static double ext_vm_dfunc_float(Frame *f, uint16_t inherit, uint8_t n,
 	longjmp(*EC->env, 1);
     }
 }
+# endif
 
 /*
  * call direct function with spread
@@ -1473,6 +1479,7 @@ static Int ext_vm_dfunc_spread_int(Frame *f, uint16_t inherit, uint8_t n,
     }
 }
 
+# ifndef NOFLOAT
 /*
  * call direct function wit spread and float result
  */
@@ -1487,6 +1494,7 @@ static double ext_vm_dfunc_spread_float(Frame *f, uint16_t inherit,
 	longjmp(*EC->env, 1);
     }
 }
+# endif
 
 /*
  * call virtual function
@@ -1541,6 +1549,7 @@ static Int ext_vm_pop_int(Frame *f)
     return (f->sp++)->number;
 }
 
+# ifndef NOFLOAT
 /*
  * pop value and return float result
  */
@@ -1548,6 +1557,7 @@ static double ext_vm_pop_float(Frame *f)
 {
     return ext_float_getval(f->sp++);
 }
+# endif
 
 /*
  * is there an int on the stack?
@@ -2131,23 +2141,43 @@ void Ext::kfuns(char *protos, int size, int nkfun)
 # endif
 	vmtab[67] = (voidf *) &ext_vm_kfunc;
 	vmtab[68] = (voidf *) &ext_vm_kfunc_int;
+# ifndef NOFLOAT
 	vmtab[69] = (voidf *) &ext_vm_kfunc_float;
+# else
+	vmtab[69] = (voidf *) NULL;
+# endif
 	vmtab[70] = (voidf *) &ext_vm_kfunc_spread;
 	vmtab[71] = (voidf *) &ext_vm_kfunc_spread_int;
+# ifndef NOFLOAT
 	vmtab[72] = (voidf *) &ext_vm_kfunc_spread_float;
+# else
+	vmtab[72] = (voidf *) NULL;
+# endif
 	vmtab[73] = (voidf *) &ext_vm_kfunc_spread_lval;
 	vmtab[74] = (voidf *) &ext_vm_dfunc;
 	vmtab[75] = (voidf *) &ext_vm_dfunc_int;
+# ifndef NOFLOAT
 	vmtab[76] = (voidf *) &ext_vm_dfunc_float;
+# else
+	vmtab[76] = (voidf *) NULL;
+# endif
 	vmtab[77] = (voidf *) &ext_vm_dfunc_spread;
 	vmtab[78] = (voidf *) &ext_vm_dfunc_spread_int;
+# ifndef NOFLOAT
 	vmtab[79] = (voidf *) &ext_vm_dfunc_spread_float;
+# else
+	vmtab[79] = (voidf *) NULL;
+# endif
 	vmtab[80] = (voidf *) &ext_vm_func;
 	vmtab[81] = (voidf *) &ext_vm_func_spread;
 	vmtab[82] = (voidf *) &ext_vm_pop;
 	vmtab[83] = (voidf *) &ext_vm_pop_bool;
 	vmtab[84] = (voidf *) &ext_vm_pop_int;
+# ifndef NOFLOAT
 	vmtab[85] = (voidf *) &ext_vm_pop_float;
+# else
+	vmtab[85] = (voidf *) NULL;
+# endif
 	vmtab[86] = (voidf *) &ext_vm_switch_int;
 	vmtab[87] = (voidf *) &ext_vm_switch_range;
 	vmtab[88] = (voidf *) &ext_vm_switch_string;
