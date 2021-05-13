@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,22 +25,6 @@
 
 class Object : public Hashtab::Entry {
 public:
-    char flags;			/* object status */
-    eindex etabi;		/* index in external table */
-    uindex cref;		/* # clone references (sometimes) */
-    uindex prev;		/* previous in issue list */
-    uindex index;		/* index in object table */
-    Uint count;			/* object creation count */
-    Uint update;		/* object update count */
-    union {
-	Uint ref;		/* ref count (if master object) */
-	Uint master;		/* master (if clone) */
-    };
-    Control *ctrl;		/* control block (master object only) */
-    Dataspace *data;		/* dataspace block */
-    Sector cfirst;		/* first sector of control block */
-    Sector dfirst;		/* first sector of dataspace block */
-
     Object *clone();
     void lightWeight();
     void upgrade(Control*, Frame*);
@@ -77,6 +61,22 @@ public:
     static void swapout();
     static void dumpState(bool);
     static void finish(bool);
+
+    char flags;			/* object status */
+    eindex etabi;		/* index in external table */
+    uindex cref;		/* # clone references (sometimes) */
+    uindex prev;		/* previous in issue list */
+    uindex index;		/* index in object table */
+    Uint count;			/* object creation count */
+    Uint update;		/* object update count */
+    union {
+	Uint ref;		/* ref count (if master object) */
+	Uint master;		/* master (if clone) */
+    };
+    Control *ctrl;		/* control block (master object only) */
+    Dataspace *data;		/* dataspace block */
+    Sector cfirst;		/* first sector of control block */
+    Sector dfirst;		/* first sector of dataspace block */
 
     static Object *objTable;
     static bool swap, dump, incr, stop, boot;
