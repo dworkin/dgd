@@ -33,8 +33,6 @@ CmdBuf *ccb;		/* editor command buffer */
 CmdBuf::CmdBuf(char *tmpfile) :
     edbuf(tmpfile)
 {
-    vars = Vars::create();
-
     flags = 0;
     cmd = (char *) NULL;
     reverse = false;
@@ -75,7 +73,6 @@ CmdBuf::CmdBuf(char *tmpfile) :
  */
 CmdBuf::~CmdBuf()
 {
-    Vars::del(vars);
 }
 
 /*
@@ -378,7 +375,7 @@ int CmdBuf::doundo()
 
     b = undo;
     this->undo = edbuf.buffer;
-    edbuf.lines = (b == (Block) 0) ? 0 : edbuf.lb.size(b);
+    edbuf.lines = (b == (Block) 0) ? 0 : edbuf.size(b);
     edbuf.buffer = b;
 
     cthis = this->uthis;
@@ -409,7 +406,7 @@ void CmdBuf::dobuf(Block b)
 	 */
 	zbuf = &this->zbuf[a_buffer - 'A'];
 	if (*zbuf != (Block) 0) {
-	    *zbuf = edbuf.lb.cat(*zbuf, b);
+	    *zbuf = edbuf.cat(*zbuf, b);
 	} else {
 	    *zbuf = b;
 	}
@@ -509,7 +506,7 @@ void CmdBuf::change(Int first, Int last, Block b)
 
     offset = last - first + 1;
     if (b != (Block) 0) {
-	offset -= edbuf.lb.size(b);
+	offset -= edbuf.size(b);
     }
 
     /* global checks */
@@ -577,7 +574,7 @@ void CmdBuf::endblock()
 	}
     } else {
 	if (edbuf.flines != (Block) 0) {
-	    add(first, edbuf.flines, edbuf.lb.size(edbuf.flines));
+	    add(first, edbuf.flines, edbuf.size(edbuf.flines));
 	} else if (first == 0 && edbuf.lines != 0) {
 	    cthis = othis = 1;
 	} else {

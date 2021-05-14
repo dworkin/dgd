@@ -364,7 +364,7 @@ int CmdBuf::put()
     }
 
     dodo(first);
-    add(first, b, edbuf.lb.size(b));
+    add(first, b, edbuf.size(b));
 
     edits++;
 
@@ -1481,7 +1481,7 @@ int CmdBuf::set()
     p = cmd;
     if (*p == '\0') {
 	/* no arguments */
-	Vars::show(vars);
+	vars.show();
     } else {
 	do {
 	    /* copy argument */
@@ -1492,7 +1492,7 @@ int CmdBuf::set()
 	    }
 	    *q = '\0';
 	    /* let va_set() process it */
-	    Vars::set(vars, buffer);
+	    vars.set(buffer);
 	    p = skipst(p);
 	} while (*p != '\0');
 	cmd = p;

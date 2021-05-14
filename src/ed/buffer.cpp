@@ -28,7 +28,7 @@
  * create a new edit buffer
  */
 EditBuf::EditBuf(char *tmpfile) :
-    lb(tmpfile)
+    LineBuf(tmpfile)
 {
     buffer = (Block) 0;
     lines = 0;
@@ -46,7 +46,7 @@ EditBuf::~EditBuf()
  */
 void EditBuf::clear()
 {
-    lb.reset();
+    reset();
     buffer = (Block) 0;
     lines = 0;
 }
@@ -56,15 +56,16 @@ void EditBuf::clear()
  * If this line is 0 the block is inserted before the other lines
  * in the edit buffer.
  */
-void EditBuf::add(Int ln, char *(*getline) ())
+void EditBuf::add(Int ln, char *(*get)())
 {
     Block b;
 
-    b = lb.create(getline);
+    getLine = get;
+    b = create();
     if (b != (Block) 0) {
 	Int size;
 
-	size = lines + lb.size(b);
+	size = lines + LineBuf::size(b);
 	if (size < 0) {
 	    EDC->error("Too many lines");
 	}
@@ -73,15 +74,15 @@ void EditBuf::add(Int ln, char *(*getline) ())
 	    if (lines == 0) {
 		buffer = b;
 	    } else {
-		buffer = lb.cat(b, buffer);
+		buffer = cat(b, buffer);
 	    }
 	} else if (ln == lines) {
-	    buffer = lb.cat(buffer, b);
+	    buffer = cat(buffer, b);
 	} else {
 	    Block head, tail;
 
-	    lb.split(buffer, ln, &head, &tail);
-	    buffer = lb.cat(lb.cat(head, b), tail);
+	    split(buffer, ln, &head, &tail);
+	    buffer = cat(cat(head, b), tail);
 	}
 
 	lines = size;
@@ -99,17 +100,17 @@ Block EditBuf::del(Int first, Int last)
     size = last - first + 1;
 
     if (last < lines) {
-	lb.split(buffer, last, &mid, &tail);
+	split(buffer, last, &mid, &tail);
 	if (first > 1) {
-	    lb.split(mid, first - 1, &head, &mid);
-	    buffer = lb.cat(head, tail);
+	    split(mid, first - 1, &head, &mid);
+	    buffer = cat(head, tail);
 	} else {
 	    buffer = tail;
 	}
     } else {
 	mid = buffer;
 	if (first > 1) {
-	    lb.split(mid, first - 1, &head, &mid);
+	    split(mid, first - 1, &head, &mid);
 	    buffer = head;
 	} else {
 	    buffer = (Block) 0;
@@ -130,7 +131,7 @@ void EditBuf::change(Int first, Int last, Block b)
 
     size = lines - (last - first + 1);
     if (b != (Block) 0) {
-	size += lb.size(b);
+	size += LineBuf::size(b);
 	if (size < 0) {
 	    EDC->error("Too many lines");
 	}
@@ -138,25 +139,25 @@ void EditBuf::change(Int first, Int last, Block b)
 
     if (last < lines) {
 	if (first > 1) {
-	    lb.split(buffer, first - 1, &head, (Block *) NULL);
-	    lb.split(buffer, last, (Block *) NULL, &tail);
+	    split(buffer, first - 1, &head, (Block *) NULL);
+	    split(buffer, last, (Block *) NULL, &tail);
 	    if (b != (Block) 0) {
-		b = lb.cat(lb.cat(head, b), tail);
+		b = cat(cat(head, b), tail);
 	    } else {
-		b = lb.cat(head, tail);
+		b = cat(head, tail);
 	    }
 	} else {
-	    lb.split(buffer, last, (Block *) NULL, &tail);
+	    split(buffer, last, (Block *) NULL, &tail);
 	    if (b != (Block) 0) {
-		b = lb.cat(b, tail);
+		b = cat(b, tail);
 	    } else {
 		b = tail;
 	    }
 	}
     } else if (first > 1) {
-	lb.split(buffer, first - 1, &head, (Block *) NULL);
+	split(buffer, first - 1, &head, (Block *) NULL);
 	if (b != (Block) 0) {
-	    b = lb.cat(head, b);
+	    b = cat(head, b);
 	} else {
 	    b = head;
 	}
@@ -173,12 +174,12 @@ Block EditBuf::yank(Int first, Int last)
     Block head, mid, tail;
 
     if (last < lines) {
-	lb.split(buffer, last, &mid, &tail);
+	split(buffer, last, &mid, &tail);
     } else {
 	mid = buffer;
     }
     if (first > 1) {
-	lb.split(mid, first - 1, &head, &mid);
+	split(mid, first - 1, &head, &mid);
     }
 
     return mid;
@@ -192,7 +193,7 @@ void EditBuf::put(Int ln, Block b)
 {
     Int size;
 
-    size = lines + lb.size(b);
+    size = lines + LineBuf::size(b);
     if (size < 0) {
 	EDC->error("Too many lines");
     }
@@ -201,15 +202,15 @@ void EditBuf::put(Int ln, Block b)
 	if (lines == 0) {
 	    buffer = b;
 	} else {
-	    buffer = lb.cat(b, buffer);
+	    buffer = cat(b, buffer);
 	}
     } else if (ln == lines) {
-	buffer = lb.cat(buffer, b);
+	buffer = cat(buffer, b);
     } else {
 	Block head, tail;
 
-	lb.split(buffer, ln, &head, &tail);
-	buffer = lb.cat(lb.cat(head, b), tail);
+	split(buffer, ln, &head, &tail);
+	buffer = cat(cat(head, b), tail);
     }
 
     lines = size;
@@ -219,39 +220,40 @@ void EditBuf::put(Int ln, Block b)
  * output a subrange of the edit buffer, without first making
  * a subrange block for it
  */
-void EditBuf::range(Int first, Int last, void (*putline) (const char*),
+void EditBuf::range(Int first, Int last, void (*put)(const char*),
 		    bool reverse)
 {
-    lb.put(buffer, first - 1, last - first + 1, putline, reverse);
+    putLine = put;
+    LineBuf::put(buffer, first - 1, last - first + 1, reverse);
 }
-
-/*
- * Routines to add lines to a block in pieces. It would be nice if bk_new could
- * be used for this, but this is only possible if the editor functions as a
- * stand-alone program.
- * Lines are stored in a local buffer, which is flushed into a block when full.
- */
-
-static EditBuf *eeb;	/* editor buffer */
 
 /*
  * return the next line from the lines buffer
  */
-char *EditBuf::addLine()
+char *EditBuf::getline()
 {
-    EditBuf *eb;
+    if (getLine != (char *(*)()) NULL) {
+	return (*getLine)();
+    }
 
-    eb = eeb;
-    if (eb->szlines > 0) {
+    if (szlines > 0) {
 	char *p;
 	int len;
 
-	len = strlen(p = eb->llines) + 1;
-	eb->llines += len;
-	eb->szlines -= len;
+	len = strlen(p = llines) + 1;
+	llines += len;
+	szlines -= len;
 	return p;
     }
     return (char *) NULL;
+}
+
+/*
+ * output line of text
+ */
+void EditBuf::putline(const char *line)
+{
+    (*putLine)(line);
 }
 
 /*
@@ -262,12 +264,12 @@ void EditBuf::flushLine()
     Block b;
 
     llines = llbuf;
-    eeb = this;
-    b = lb.create(addLine);
+    getLine = (char *(*)()) NULL;
+    b = create();
     if (flines == (Block) 0) {
 	flines = b;
     } else {
-	flines = lb.cat(flines, b);
+	flines = cat(flines, b);
     }
 }
 

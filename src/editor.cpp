@@ -210,7 +210,7 @@ String *Editor::command(Object *obj, char *cmd)
 	EC->push();
 	recursion = TRUE;
 	if (e->ed->command(cmd)) {
-	    e->ed->edbuf.lb.inact();
+	    e->ed->edbuf.inact();
 	    recursion = FALSE;
 	} else {
 	    recursion = FALSE;
@@ -219,7 +219,7 @@ String *Editor::command(Object *obj, char *cmd)
 	EC->pop();
     } catch (...) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
-	e->ed->edbuf.lb.inact();
+	e->ed->edbuf.inact();
 	recursion = FALSE;
 	if (!internal) {
 	    EC->error((char *) NULL);	/* pass on error */

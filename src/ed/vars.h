@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,20 +17,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+# define NUMBER_OF_VARS	3
+
 class Vars {
 public:
-    static Vars *create();
-    static void del(Vars *v);
-    static void set(Vars *v, char *option);
-    static void show(Vars *v);
+    struct Var {
+	const char *name;	/* long variable name */
+	const char *sname;	/* short variable name */
+	Int val;		/* value */
+    };
 
-    const char *name;	/* long variable name */
-    const char *sname;	/* short variable name */
-    Int val;		/* value */
+    Vars();
+
+    void set(char *option);
+    void show();
+
+    Var v[NUMBER_OF_VARS];
 };
 
-# define IGNORECASE(v)	(v[0].val)
-# define SHIFTWIDTH(v)	(v[1].val)
-# define WINDOW(v)	(v[2].val)
-
-# define NUMBER_OF_VARS	3
+# define IGNORECASE(vars)	(vars.v[0].val)
+# define SHIFTWIDTH(vars)	(vars.v[1].val)
+# define WINDOW(vars)		(vars.v[2].val)

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,24 +19,25 @@
 
 # include "line.h"
 
-class EditBuf {
+class EditBuf : public LineBuf {
 public:
     EditBuf(char *tmpfile);
     virtual ~EditBuf();
 
+    virtual char *getline();
+    virtual void putline(const char *line);
+
     void clear();
-    void add(Int ln, char *(*getline)());
+    void add(Int ln, char *(*get)());
     Block del(Int first, Int last);
     void change(Int first, Int last, Block b);
     Block yank(Int first, Int last);
     void put(Int ln, Block b);
-    void range(Int first, Int last, void (*putline) (const char*),
-	       bool reverse);
+    void range(Int first, Int last, void (*put)(const char*), bool reverse);
     void startblock();
     void addblock(const char *text);
     void endblock();
 
-    LineBuf lb;			/* line buffer */
     Block buffer;		/* the actual edit buffer */
     Int lines;			/* # lines in edit buffer */
     Block flines;		/* block of first lines to add */
@@ -44,9 +45,9 @@ public:
 private:
     void flushLine();
 
-    static char *addLine();
-
     int szlines;		/* size of "last" insert add */
     char *llines;		/* llbuf pointer */
+    char *(*getLine)();		/* getline function */
+    void (*putLine)(const char*); /* putline function */
     char llbuf[4 * MAX_LINE_SIZE]; /* last lines buffer */
 };

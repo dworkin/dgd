@@ -363,17 +363,17 @@ LineBuf::Blk *LineBuf::putln(Blk *bp, char *text)
 }
 
 /*
- * read a block of lines from function getline. continue until
+ * read a block of lines from getline. continue until
  * getline returns 0. Return the block.
  */
-Block LineBuf::create(char *(*getline)())
+Block LineBuf::create()
 {
     Blk *bp;
     char *text;
     Blk bb;
 
     /* get first line */
-    text = (*getline)();
+    text = getline();
     if (text == (char *) NULL) {
 	return (Block) 0;
     }
@@ -386,7 +386,7 @@ Block LineBuf::create(char *(*getline)())
     bb.index2 = 0;
 
     /* append lines */
-    while ((text=(*getline)()) != (char *) NULL) {
+    while ((text=getline()) != (char *) NULL) {
 	bp = putln(bp, text);
 	bb.lines++;
     }
@@ -643,7 +643,7 @@ void LineBuf::put1(Blk *bp, Int idx, Int size)
 		size -= lines;
 
 		do {
-		    (*putline)(buf + *((short *)(bp + 1) + idx++));
+		    putline(buf + *((short *)(bp + 1) + idx++));
 		    bp = load(mid);
 		} while (--lines > 0);
 
@@ -665,7 +665,7 @@ void LineBuf::put1(Blk *bp, Int idx, Int size)
 
 		idx = bp->lines - idx;
 		do {
-		    (*putline)(buf + *((short *)(bp + 1) + --idx));
+		    putline(buf + *((short *)(bp + 1) + --idx));
 		    bp = load(mid);
 		} while (--lines > 0);
 
@@ -683,12 +683,10 @@ void LineBuf::put1(Blk *bp, Int idx, Int size)
 /*
  * output of a subrange of a block
  */
-void LineBuf::put(Block b, Int idx, Int size, void (*putline)(const char*),
-		  bool reverse)
+void LineBuf::put(Block b, Int idx, Int size, bool reverse)
 {
     Blk *bp;
 
-    this->putline = putline;
     this->reverse = reverse;
     bp = load(b);
     put1(bp, (reverse) ? bp->lines - idx - size : idx, size);

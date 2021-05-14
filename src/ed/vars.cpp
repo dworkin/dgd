@@ -27,37 +27,26 @@
 /*
  * allocate and initialize a variable buffer
  */
-Vars *Vars::create()
+Vars::Vars()
 {
-    static Vars dflt[] = {
+    static Var dflt[] = {
 	{ "ignorecase",	"ic",	FALSE },
 	{ "shiftwidth",	"sw",	4 },
 	{ "window",	"wi",	20 },
     };
-    Vars *v;
 
-    v = ALLOC(Vars, NUMBER_OF_VARS);
     memcpy(v, dflt, sizeof(dflt));
-
-    return v;
-}
-
-/*
- * delete a variable buffer
- */
-void Vars::del(Vars *v)
-{
-    FREE(v);
 }
 
 /*
  * set the value of a variable.
  */
-void Vars::set(Vars *v, char *option)
+void Vars::set(char *option)
 {
     char buffer[2];
     char *val;
     Int i;
+    Var *v;
 
     if (strncmp(option, "no", 2) == 0) {
 	option += 2;
@@ -70,7 +59,7 @@ void Vars::set(Vars *v, char *option)
 	}
     }
 
-    for (i = NUMBER_OF_VARS; i > 0; --i, v++) {
+    for (i = NUMBER_OF_VARS, v = this->v; i > 0; --i, v++) {
 	if (strcmp(v->name, option) == 0 ||
 	  strcmp(v->sname, option) == 0) {
 	    if (!val) {
@@ -94,9 +83,9 @@ void Vars::set(Vars *v, char *option)
 /*
  * show all variables
  */
-void Vars::show(Vars *v)
+void Vars::show()
 {
-    EDC->message("%signorecase\011",   ((v++)->val) ? "" : "no");	/* HT */
-    EDC->message("shiftwidth=%ld\011", (long) (v++)->val);		/* HT */
-    EDC->message("window=%ld\012",     (long) (v++)->val);		/* LF */
+    EDC->message("%signorecase\011",   (v[0].val) ? "" : "no");		/* HT */
+    EDC->message("shiftwidth=%ld\011", (long) v[1].val);		/* HT */
+    EDC->message("window=%ld\012",     (long) v[2].val);		/* LF */
 }

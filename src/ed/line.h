@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,19 +26,21 @@
  */
 typedef Int Block;
 
-class LineBuf {
+class LineBuf : public Allocated {
 public:
     LineBuf(char *filename);
     virtual ~LineBuf();
 
+    virtual char *getline() = 0;
+    virtual void putline(const char *line) = 0;
+
     void reset();
     void inact();
-    Block create(char *(*getline)());
+    Block create();
     Int size(Block b);
     void split(Block b, Int size, Block *b1, Block *b2);
     Block cat(Block b1, Block b2);
-    void put(Block b, Int idx, Int size, void(*putline)(const char*),
-	     bool reverse);
+    void put(Block b, Int idx, Int size, bool reverse);
 
 private:
     struct BTBuf {
@@ -73,7 +75,6 @@ private:
     char *buf;				/* current low-level buffer */
     int blksz;				/* block size in write buffer */
     int txtsz;				/* text size in write buffer */
-    void (*putline) (const char*);	/* output line function */
     bool reverse;			/* for bk_put() */
     BTBuf *wb;				/* write buffer */
     BTBuf bt[NR_EDBUFS];		/* read & write buffers */
