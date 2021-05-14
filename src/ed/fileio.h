@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,4 +31,13 @@ public:
     Int zero;	/* number of zeroes discarded */
     Int split;	/* number of splits of too long lines */
     bool ill;	/* incomplete last line */
+
+private:
+    int ffd;			/* read/write file descriptor */
+    char *buffer;		/* file buffer */
+    char *bufp;			/* buffer pointer */
+    unsigned int inbuf;		/* # bytes in buffer */
+    char *lbuf;			/* line buffer */
+    char *lbuflast;		/* end of line buffer */
+    char filename[STRINGSZ];	/* file name */
 };

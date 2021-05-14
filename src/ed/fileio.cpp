@@ -27,14 +27,7 @@
  * The file I/O operations of the editor.
  */
 
-static int ffd;			/* read/write file descriptor */
-static char *buffer;		/* file buffer */
-static char *bufp;		/* buffer pointer */
-static unsigned int inbuf;	/* # bytes in buffer */
-static char *lbuf;		/* line buffer */
-static char *lbuflast;		/* end of line buffer */
 static IO *iostat;		/* I/O status */
-static char filename[STRINGSZ];	/* file name */
 
 /*
  * read a line from the input, return as '\0'-terminated string
@@ -50,18 +43,19 @@ char *IO::get_line()
 	return (char *) NULL;
     }
 
-    p = lbuf;
-    bp = bufp;
-    i = inbuf;
+    p = iostat->lbuf;
+    bp = iostat->bufp;
+    i = iostat->inbuf;
     do {
 	if (i == 0) {	/* buffer empty */
-	    i = P_read(ffd, buffer, BUF_SIZE);
+	    i = P_read(iostat->ffd, iostat->buffer, BUF_SIZE);
 	    if (i <= 0) {
 		/* eof or error */
 		if (i < 0) {
-		    EDC->error("error while reading file \"/%s\"", filename);
+		    EDC->error("error while reading file \"/%s\"",
+			       iostat->filename);
 		}
-		if (p == lbuf) {
+		if (p == iostat->lbuf) {
 		    return (char *) NULL;
 		} else {
 		    p++;	/* make room for terminating '\0' */
@@ -69,14 +63,14 @@ char *IO::get_line()
 		    break;
 		}
 	    }
-	    bp = buffer;
+	    bp = iostat->buffer;
 	}
 	--i;
 	c = *bp++;
 	if (c == '\0') {
 	    iostat->zero++;	/* skip zeroes */
 	} else {
-	    if (p == lbuflast && c != LF) {
+	    if (p == iostat->lbuflast && c != LF) {
 		iostat->split++;
 		i++;
 		--bp;
@@ -87,11 +81,11 @@ char *IO::get_line()
     } while (c != LF);	/* eoln */
 
     iostat->lines++;
-    iostat->chars += p - lbuf;	/* including terminating '\0' */
-    bufp = bp;
-    inbuf = i;
+    iostat->chars += p - iostat->lbuf;	/* including terminating '\0' */
+    iostat->bufp = bp;
+    iostat->inbuf = i;
     *--p = '\0';
-    return lbuf;
+    return iostat->lbuf;
 }
 
 /*
@@ -120,12 +114,12 @@ bool IO::load(EditBuf *eb, char *fname, Int l)
     lbuflast = &b[MAX_LINE_SIZE - 1];
 
     /* initialize statistics */
+    lines = 0;
+    chars = 0;
+    zero = 0;
+    split = 0;
+    ill = FALSE;
     iostat = this;
-    iostat->lines = 0;
-    iostat->chars = 0;
-    iostat->zero = 0;
-    iostat->split = 0;
-    iostat->ill = FALSE;
 
     /* add the block to the edit buffer */
     try {
@@ -151,25 +145,25 @@ void IO::put_line(const char *text)
     len = strlen(text);
     iostat->lines += 1;
     iostat->chars += len + 1;
-    while (inbuf + len >= BUF_SIZE) {	/* flush buffer */
-	if (inbuf != BUF_SIZE) {	/* room left for a piece of line */
+    while (iostat->inbuf + len >= BUF_SIZE) {	/* flush buffer */
+	if (iostat->inbuf != BUF_SIZE) { /* room left for a piece of line */
 	    unsigned int chunk;
 
-	    chunk = BUF_SIZE - inbuf;
-	    memcpy(buffer + inbuf, text, chunk);
+	    chunk = BUF_SIZE - iostat->inbuf;
+	    memcpy(iostat->buffer + iostat->inbuf, text, chunk);
 	    text += chunk;
 	    len -= chunk;
 	}
-	if (P_write(ffd, buffer, BUF_SIZE) != BUF_SIZE) {
-	    EDC->error("error while writing file \"/%s\"", filename);
+	if (P_write(iostat->ffd, iostat->buffer, BUF_SIZE) != BUF_SIZE) {
+	    EDC->error("error while writing file \"/%s\"", iostat->filename);
 	}
-	inbuf = 0;
+	iostat->inbuf = 0;
     }
     if (len > 0) {			/* piece of line left */
-	memcpy(buffer + inbuf, text, len);
-	inbuf += len;
+	memcpy(iostat->buffer + iostat->inbuf, text, len);
+	iostat->inbuf += len;
     }
-    buffer[inbuf++] = LF;
+    iostat->buffer[iostat->inbuf++] = LF;
 }
 
 /*
@@ -199,12 +193,12 @@ bool IO::save(EditBuf *eb, char *fname, Int first, Int last, int append)
     inbuf = 0;
 
     /* initialize statistics */
+    lines = 0;
+    chars = 0;
+    zero = 0;
+    split = 0;
+    ill = FALSE;
     iostat = this;
-    iostat->lines = 0;
-    iostat->chars = 0;
-    iostat->zero = 0;
-    iostat->split = 0;
-    iostat->ill = FALSE;
 
     /* write range */
     try {
