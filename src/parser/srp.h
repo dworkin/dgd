@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -32,6 +32,12 @@ public:
     static Srp *load(char *grammar, char *str, Uint len);
 
 private:
+    Srp(char *grammar);
+
+    Int pack(unsigned short *check, unsigned short *from, unsigned short *to,
+	     unsigned short n);
+    class SrpState *expand(SrpState *state);
+
     char *grammar;		/* grammar */
     unsigned short nsstring;	/* # of source grammar strings */
     unsigned short ntoken;	/* # of tokens (regexp & string) */
@@ -68,11 +74,4 @@ private:
     Uint shhsize;		/* shift hash table size */
     char *shtab;		/* shift (from/to) table */
     class ShLink **shhtab;	/* shift hash table */
-
-private:
-    Srp(char *grammar);
-
-    Int pack(unsigned short *check, unsigned short *from, unsigned short *to,
-	     unsigned short n);
-    SrpState *expand(SrpState *state);
 };
