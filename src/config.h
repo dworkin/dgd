@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -58,7 +58,7 @@ typedef unsigned short kfindex;
 
 
 /*
- * Gamedriver configuration.  Hash table sizes should be powers of two.
+ * Gamedriver configuration.
  */
 
 /* general */
@@ -68,10 +68,10 @@ typedef unsigned short kfindex;
 # define STRMAPHASHSZ	20	/* # characters to hash of map string indices */
 # define STRMERGETABSZ	1024	/* general string merge table size */
 # define STRMERGEHASHSZ	20	/* # characters in merge strings to hash */
-# define ARRMERGETABSZ	1024	/* general array merge table size */
+# define ARRMERGETABSZ	1031	/* general array merge table size */
 # define OBJHASHSZ	256	/* # characters in object names to hash */
-# define COPATCHHTABSZ	1024	/* callout patch hash table size */
-# define OBJPATCHHTABSZ	256	/* object patch hash table size */
+# define COPATCHHTABSZ	1031	/* callout patch hash table size */
+# define OBJPATCHHTABSZ	257	/* object patch hash table size */
 # define CMPLIMIT	2048	/* compress strings if >= CMPLIMIT */
 # define SWAPCHUNKSZ	10	/* # objects reconstructed in main loop */
 
@@ -88,7 +88,7 @@ typedef unsigned short kfindex;
 # define MIN_STACK	5	/* minimal stack, # arguments in driver calls */
 # define EXTRA_STACK	32	/* extra space in stack frames */
 # define MAX_STRLEN	SSIZET_MAX	/* max string length, >= 65535 */
-# define INHASHSZ	4096	/* instanceof hashtable size */
+# define INHASHSZ	4099	/* instanceof hashtable size */
 
 /* parser */
 # define MAX_AUTOMSZ	6	/* DFA/PDA storage size, in strings */
