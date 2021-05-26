@@ -2546,14 +2546,75 @@ unsigned short Frame::line()
 }
 
 /*
+ * return part of a trace of a single function
+ */
+bool Frame::funcTraceI(Int idx, Value *val)
+{
+    char buffer[STRINGSZ + 12];
+    String *str;
+    const char *name;
+
+    switch (idx) {
+    case 0:
+	/* object name */
+	name = OBJR(oindex)->objName(buffer);
+	if (lwobj == (Array *) NULL) {
+	    PUT_STRVAL(val, str = String::create((char *) NULL,
+		       strlen(name) + 1L));
+	    str->text[0] = '/';
+	    strcpy(str->text + 1, name);
+	} else {
+	    PUT_STRVAL(val, str = String::create((char *) NULL,
+		       strlen(name) + 4L));
+	    str->text[0] = '/';
+	    strcpy(str->text + 1, name);
+	    strcpy(str->text + str->len - 3, "#-1");
+	}
+	break;
+
+    case 1:
+	/* program name */
+	name = OBJR(p_ctrl->oindex)->name;
+	PUT_STRVAL(val, str = String::create((char *) NULL, strlen(name) + 1L));
+	str->text[0] = '/';
+	strcpy(str->text + 1, name);
+	break;
+
+    case 2:
+	/* function name */
+	PUT_STRVAL(val, p_ctrl->strconst(func->inherit, func->index));
+	break;
+
+    case 3:
+	/* line number */
+	PUT_INTVAL(val, source != 0 ? source : line());
+	break;
+
+    case 4:
+	/* external flag */
+	PUT_INTVAL(val, external);
+	break;
+
+    default:
+	if (idx < 0 || idx - 4 > nargs) {
+	    return FALSE;
+	}
+
+	/* argument */
+	*val = argp[nargs - idx + 4];
+	val->ref();
+	break;
+    }
+
+    return TRUE;
+}
+
+/*
  * return the trace of a single function
  */
 Array *Frame::funcTrace(Dataspace *data)
 {
-    char buffer[STRINGSZ + 12];
     Value *v;
-    String *str;
-    const char *name;
     unsigned short n;
     Value *args;
     Array *a;
@@ -2570,39 +2631,11 @@ Array *Frame::funcTrace(Dataspace *data)
     a = Array::create(data, n + 5L);
     v = a->elts;
 
-    /* object name */
-    name = OBJR(oindex)->objName(buffer);
-    if (lwobj == (Array *) NULL) {
-	PUT_STRVAL(v, str = String::create((char *) NULL, strlen(name) + 1L));
-	v++;
-	str->text[0] = '/';
-	strcpy(str->text + 1, name);
-    } else {
-	PUT_STRVAL(v, str = String::create((char *) NULL, strlen(name) + 4L));
-	v++;
-	str->text[0] = '/';
-	strcpy(str->text + 1, name);
-	strcpy(str->text + str->len - 3, "#-1");
-    }
-
-    /* program name */
-    name = OBJR(p_ctrl->oindex)->name;
-    PUT_STRVAL(v, str = String::create((char *) NULL, strlen(name) + 1L));
-    v++;
-    str->text[0] = '/';
-    strcpy(str->text + 1, name);
-
-    /* function name */
-    PUT_STRVAL(v, p_ctrl->strconst(func->inherit, func->index));
-    v++;
-
-    /* line number */
-    PUT_INTVAL(v, source != 0 ? source : line());
-    v++;
-
-    /* external flag */
-    PUT_INTVAL(v, external);
-    v++;
+    funcTraceI(0, v++);
+    funcTraceI(1, v++);
+    funcTraceI(2, v++);
+    funcTraceI(3, v++);
+    funcTraceI(4, v++);
 
     /* arguments */
     while (n > 0) {
@@ -2616,19 +2649,34 @@ Array *Frame::funcTrace(Dataspace *data)
 }
 
 /*
- * get the trace of a single function
+ * get part of the trace of a single function
  */
-bool Frame::callTraceI(Int idx, Value *v)
+bool Frame::callTraceII(Int i, Int j, Value *v)
 {
     Frame *f;
-    unsigned short n;
 
-    for (f = this, n = 0; f->oindex != OBJ_NONE; f = f->prev, n++) ;
-    if (idx < 0 || idx >= n) {
+    if (i < 0 || i >= depth) {
 	return FALSE;
     }
 
-    for (f = this, n -= idx + 1; n != 0; f = f->prev, --n) ;
+    i_add_ticks(this, 4);
+    for (f = this, i = depth - i - 1; i != 0; f = f->prev, --i) ;
+    return f->funcTraceI(j, v);
+}
+
+/*
+ * get the trace of a single function
+ */
+bool Frame::callTraceI(Int i, Value *v)
+{
+    Frame *f;
+
+    if (i < 0 || i >= depth) {
+	return FALSE;
+    }
+
+    i_add_ticks(this, 12);
+    for (f = this, i = depth - i - 1; i != 0; f = f->prev, --i) ;
     PUT_ARRVAL(v, f->funcTrace(data));
     return TRUE;
 }
@@ -2643,7 +2691,7 @@ Array *Frame::callTrace()
     unsigned short n;
     Array *a;
 
-    for (f = this, n = 0; f->oindex != OBJ_NONE; f = f->prev, n++) ;
+    n = depth;
     a = Array::create(data, n);
     i_add_ticks(this, 10 * n);
     for (f = this, v = a->elts + n; f->oindex != OBJ_NONE; f = f->prev) {

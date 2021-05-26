@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,11 +31,13 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
+# include "control.h"
 # include "data.h"
 # include "interpret.h"
 # include "macro.h"
 # include "token.h"
 # include "ppcontrol.h"
+# include "table.h"
 # include "node.h"
 # include "compile.h"
 
@@ -1242,7 +1244,9 @@ Node *YYParser::idx(Node *n1, Node *n2)
 		Compile::error("bad index type (%s)",
 			       Value::typeName(tnbuf, n2->mod));
 	    }
-	    if (type != T_MIXED) {
+	    if (type != T_MIXED &&
+		(n1->type != N_FUNC ||
+		 n1->r.number != (((long) KFCALL << 24) | KF_CALL_TRACE))) {
 		/* you can't trust these arrays */
 		n2 = Node::createMon(N_CAST, type,
 				     Node::createBin(N_INDEX, type, n1, n2));

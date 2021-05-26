@@ -208,6 +208,7 @@ public:
     void funcall(Object *obj, Array *lwobj, int p_ctrli, int funci, int nargs);
     bool call(Object *obj, Array *lwobj, const char *func, unsigned int len,
 	      int call_static, int nargs);
+    bool callTraceII(Int i, Int j, Value *v);
     bool callTraceI(Int idx, Value *v);
     Array *callTrace();
     bool callCritical(const char *func, int narg, int flag);
@@ -261,6 +262,7 @@ private:
     unsigned short switchStr(char *pc);
     void interpret(char *pc);
     unsigned short line();
+    bool funcTraceI(Int idx, Value *val);
     Array *funcTrace(Dataspace *data);
 
     static int instanceOf(unsigned int oindex, char *prog, Uint hash);

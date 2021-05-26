@@ -2204,9 +2204,9 @@ int kf_status_idx(Frame *f, int n, KFun *kf)
     if (f->sp->type != T_INT) {
 	EC->error("Non-numeric array index");
     }
-    i_add_ticks(f, 6);
+    i_add_ticks(f, 2);
     if (!Config::statusi(f, f->sp->number, f->sp)) {
-	EC->error("Index out of range");
+	EC->error("Array index out of range");
     }
     return 0;
 }
@@ -2232,11 +2232,11 @@ int kf_statuso_idx(Frame *f, int nargs, KFun *kf)
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp[1].number != 0) {
-	    EC->error("Index on bad type");
+	    EC->error("Array index on bad type");
 	}
-	i_add_ticks(f, 6);
+	i_add_ticks(f, 2);
 	if (!Config::statusi(f, f->sp->number, &f->sp[1])) {
-	    EC->error("Index out of range");
+	    EC->error("Array index out of range");
 	}
 	f->sp++;
 	return 0;
@@ -2262,9 +2262,9 @@ int kf_statuso_idx(Frame *f, int nargs, KFun *kf)
     if (f->sp->type != T_INT) {
 	EC->error("Non-numeric array index");
     }
-    i_add_ticks(f, 6);
+    i_add_ticks(f, 2);
     if (!Config::objecti(f->data, OBJR(n), f->sp->number, &f->sp[1])) {
-	EC->error("Index out of range");
+	EC->error("Array index out of range");
     }
     f->sp++;
     return 0;
@@ -2289,9 +2289,8 @@ int kf_calltr_idx(Frame *f, int n, KFun *kf)
     if (f->sp->type != T_INT) {
 	EC->error("Non-numeric array index");
     }
-    i_add_ticks(f, 10);
     if (!f->callTraceI(f->sp->number, f->sp)) {
-	EC->error("Index out of range");
+	EC->error("Array index out of range");
     }
     return 0;
 }
@@ -3381,4 +3380,30 @@ char alt_atan2[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
 char alt_cosh[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 char alt_sinh[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 char alt_tanh[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("call_trace", kf_calltr_idx_idx, pt_calltr_idx_idx, 0)
+# else
+char pt_calltr_idx_idx[] = { C_STATIC, 2, 0, 0, 8, T_MIXED | (1 << REFSHIFT),
+			     T_INT };
+
+/*
+ * return call_trace()[i][j]
+ */
+int kf_calltr_idx_idx(Frame *f, int n, KFun *kf)
+{
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    if (f->sp[0].type != T_INT || f->sp[1].type != T_INT) {
+	EC->error("Non-numeric array index");
+    }
+    if (!f->callTraceII(f->sp[1].number, f->sp[0].number, f->sp + 1)) {
+	EC->error("Array index out of range");
+    }
+    f->sp++;
+    return 0;
+}
 # endif

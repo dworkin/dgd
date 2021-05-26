@@ -135,15 +135,14 @@ Uint Optimize::lvalue(Node *n)
     }
     switch (n->type) {
     case N_INDEX:
-	m = n->l.left;
-	if (m->type == N_CAST) {
+	m = n;
+	if (m->l.left->type == N_CAST) {
 	    m = m->l.left;
 	}
-	switch (m->type) {
+	switch (m->l.left->type) {
 	case N_INDEX:
 	    /* strarray[x][y] = 'c'; */
-	    return max3(expr(&m->l.left, FALSE),
-			expr(&m->r.right, FALSE) + 1,
+	    return max2(expr(&m->l.left, FALSE),
 			expr(&n->r.right, FALSE) + 3);
 
 	default:
@@ -1649,6 +1648,20 @@ Uint Optimize::expr(Node **m, bool pop)
 		n->r.number = ((long) KFCALL << 24) | KF_CALLTR_IDX;
 		return expr(m, pop);
 	    }
+	}
+	if (n->l.left->type == N_INDEX && n->l.left->l.left->type == N_FUNC &&
+	    n->l.left->l.left->r.number == kd_call_trace &&
+	    n->r.right->mod == T_INT && n->l.left->r.right->mod == T_INT) {
+	    /* call_trace()[i][j] */
+	    n->type = N_FUNC;
+	    n->l.left->type = N_PAIR;
+	    side = n->l.left->l.left->l.left;
+	    side->r.right = n->l.left;
+	    n->l.left->l.left = n->l.left->r.right;
+	    n->l.left->r.right = n->r.right;
+	    n->l.left = side;
+	    n->r.number = ((long) KFCALL << 24) | KF_CALLTR_IDX_IDX;
+	    return expr(m, pop);
 	}
 	return max3(expr(&n->l.left, FALSE),
 		    expr(&n->r.right, FALSE) + 1, 3);
