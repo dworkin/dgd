@@ -466,7 +466,7 @@ void ext_runtime_error(Frame *f, const char *mesg)
  */
 void ext_runtime_ticks(Frame *f, int ticks)
 {
-    i_add_ticks(f, ticks);
+    f->addTicks(ticks);
 }
 
 /*
@@ -474,7 +474,7 @@ void ext_runtime_ticks(Frame *f, int ticks)
  */
 void ext_runtime_check(Frame *f, int ticks)
 {
-    i_add_ticks(f, ticks);
+    f->addTicks(ticks);
     if (!f->rlim->noticks && f->rlim->ticks <= 0) {
 	f->rlim->ticks = 0;
 	EC->error("Out of ticks");
@@ -1258,7 +1258,7 @@ static void ext_vm_nil(Frame *f)
 static double ext_vm_add_float(Frame *f, double flt1, double flt2)
 {
     try {
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	flt1 += flt2;
 	Ext::constrainFloat(&flt1);
 	return flt1;
@@ -1273,7 +1273,7 @@ static double ext_vm_add_float(Frame *f, double flt1, double flt2)
 static double ext_vm_div_float(Frame *f, double flt1, double flt2)
 {
     try {
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	if (flt2 == 0.0) {
 	    EC->error("Division by zero");
 	}
@@ -1291,7 +1291,7 @@ static double ext_vm_div_float(Frame *f, double flt1, double flt2)
 static double ext_vm_mult_float(Frame *f, double flt1, double flt2)
 {
     try {
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	flt1 *= flt2;
 	Ext::constrainFloat(&flt1);
 	return flt1;
@@ -1306,7 +1306,7 @@ static double ext_vm_mult_float(Frame *f, double flt1, double flt2)
 static double ext_vm_sub_float(Frame *f, double flt1, double flt2)
 {
     try {
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	flt1 -= flt2;
 	Ext::constrainFloat(&flt1);
 	return flt1;
@@ -1701,7 +1701,7 @@ static void ext_vm_line(Frame *f, uint16_t line)
 static void ext_vm_loop_ticks(Frame *f)
 {
     try {
-	loop_ticks(f);
+	f->loopTicks();
     } catch (...) {
 	longjmp(*EC->env, 1);
     }
@@ -1714,25 +1714,25 @@ static void ext_vm_loop_ticks(Frame *f)
 
 static double ext_vm_fabs(Frame *f, double flt)
 {
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     return fabs(flt);
 }
 
 static double ext_vm_floor(Frame *f, double flt)
 {
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     return floor(flt);
 }
 
 static double ext_vm_ceil(Frame *f, double flt)
 {
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     return ceil(flt);
 }
 
 static double ext_vm_fmod(Frame *f, double flt1, double flt2)
 {
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     try {
 	if (flt2 == 0.0) {
 	    EC->error("Division by zero");
@@ -1747,7 +1747,7 @@ static double ext_vm_fmod(Frame *f, double flt1, double flt2)
 
 static double ext_vm_ldexp(Frame *f, double flt, Int exp)
 {
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     try {
 	flt = ldexp(flt, exp);
 	Ext::constrainFloat(&flt);
@@ -1759,7 +1759,7 @@ static double ext_vm_ldexp(Frame *f, double flt, Int exp)
 
 static double ext_vm_exp(Frame *f, double flt)
 {
-    i_add_ticks(f, 21);
+    f->addTicks(21);
     try {
 	flt = exp(flt);
 	Ext::constrainFloat(&flt);
@@ -1771,7 +1771,7 @@ static double ext_vm_exp(Frame *f, double flt)
 
 static double ext_vm_log(Frame *f, double flt)
 {
-    i_add_ticks(f, 35);
+    f->addTicks(35);
     try {
 	if (flt <= 0.0) {
 	    EC->error("Math argument");
@@ -1786,7 +1786,7 @@ static double ext_vm_log(Frame *f, double flt)
 
 static double ext_vm_log10(Frame *f, double flt)
 {
-    i_add_ticks(f, 41);
+    f->addTicks(41);
     try {
 	if (flt <= 0.0) {
 	    EC->error("Math argument");
@@ -1801,7 +1801,7 @@ static double ext_vm_log10(Frame *f, double flt)
 
 static double ext_vm_pow(Frame *f, double flt1, double flt2)
 {
-    i_add_ticks(f, 48);
+    f->addTicks(48);
     try {
 	if (flt1 < 0.0) {
 	    if (flt2 != floor(flt2)) {
@@ -1823,7 +1823,7 @@ static double ext_vm_pow(Frame *f, double flt1, double flt2)
 
 static double ext_vm_sqrt(Frame *f, double flt)
 {
-    i_add_ticks(f, 11);
+    f->addTicks(11);
     try {
 	if (flt < 0.0) {
 	    EC->error("Math argument");
@@ -1838,7 +1838,7 @@ static double ext_vm_sqrt(Frame *f, double flt)
 
 static double ext_vm_cos(Frame *f, double flt)
 {
-    i_add_ticks(f, 25);
+    f->addTicks(25);
     try {
 	flt = cos(flt);
 	Ext::constrainFloat(&flt);
@@ -1850,7 +1850,7 @@ static double ext_vm_cos(Frame *f, double flt)
 
 static double ext_vm_sin(Frame *f, double flt)
 {
-    i_add_ticks(f, 25);
+    f->addTicks(25);
     try {
 	flt = sin(flt);
 	Ext::constrainFloat(&flt);
@@ -1862,7 +1862,7 @@ static double ext_vm_sin(Frame *f, double flt)
 
 static double ext_vm_tan(Frame *f, double flt)
 {
-    i_add_ticks(f, 31);
+    f->addTicks(31);
     try {
 	flt = tan(flt);
 	Ext::constrainFloat(&flt);
@@ -1874,7 +1874,7 @@ static double ext_vm_tan(Frame *f, double flt)
 
 static double ext_vm_acos(Frame *f, double flt)
 {
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     try {
 	if (fabs(flt) > 1.0) {
 	    EC->error("Math argument");
@@ -1889,7 +1889,7 @@ static double ext_vm_acos(Frame *f, double flt)
 
 static double ext_vm_asin(Frame *f, double flt)
 {
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     try {
 	if (fabs(flt) > 1.0) {
 	    EC->error("Math argument");
@@ -1904,7 +1904,7 @@ static double ext_vm_asin(Frame *f, double flt)
 
 static double ext_vm_atan(Frame *f, double flt)
 {
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     try {
 	flt = atan(flt);
 	Ext::constrainFloat(&flt);
@@ -1916,7 +1916,7 @@ static double ext_vm_atan(Frame *f, double flt)
 
 static double ext_vm_atan2(Frame *f, double flt1, double flt2)
 {
-    i_add_ticks(f, 27);
+    f->addTicks(27);
     try {
 	flt1 = atan2(flt1, flt2);
 	Ext::constrainFloat(&flt1);
@@ -1928,7 +1928,7 @@ static double ext_vm_atan2(Frame *f, double flt1, double flt2)
 
 static double ext_vm_cosh(Frame *f, double flt)
 {
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     try {
 	flt = cosh(flt);
 	Ext::constrainFloat(&flt);
@@ -1940,7 +1940,7 @@ static double ext_vm_cosh(Frame *f, double flt)
 
 static double ext_vm_sinh(Frame *f, double flt)
 {
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     try {
 	flt = sinh(flt);
 	Ext::constrainFloat(&flt);
@@ -1952,7 +1952,7 @@ static double ext_vm_sinh(Frame *f, double flt)
 
 static double ext_vm_tanh(Frame *f, double flt)
 {
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     try {
 	flt = tanh(flt);
 	Ext::constrainFloat(&flt);

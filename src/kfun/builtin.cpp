@@ -87,7 +87,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 	    return 0;
 
 	case T_STRING:
-	    i_add_ticks(f, 2);
+	    f->addTicks(2);
 	    num = kf_itoa(f->sp[1].number, buffer);
 	    str = String::create((char *) NULL,
 				 (l=(long) strlen(num)) + f->sp->string->len);
@@ -101,7 +101,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 	break;
 
     case T_FLOAT:
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	switch (f->sp->type) {
 	case T_FLOAT:
 	    GET_FLT(f->sp, f2);
@@ -112,7 +112,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 	    return 0;
 
 	case T_STRING:
-	    i_add_ticks(f, 2);
+	    f->addTicks(2);
 	    GET_FLT(&f->sp[1], f1);
 	    f1.ftoa(buffer);
 	    str = String::create((char *) NULL,
@@ -127,7 +127,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 	break;
 
     case T_STRING:
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	switch (f->sp->type) {
 	case T_INT:
 	    num = kf_itoa(f->sp->number, buffer);
@@ -141,7 +141,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 	    return 0;
 
 	case T_FLOAT:
-	    i_add_ticks(f, 1);
+	    f->addTicks(1);
 	    GET_FLT(f->sp, f2);
 	    f2.ftoa(buffer);
 	    f->sp++;
@@ -165,7 +165,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->add(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -177,7 +177,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 
     case T_MAPPING:
 	if (f->sp->type == T_MAPPING) {
-	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->mapAdd(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -240,7 +240,7 @@ int kf_add1(Frame *f, int n, KFun *kf)
     if (f->sp->type == T_INT) {
 	PUT_INT(f->sp, f->sp->number + 1);
     } else if (f->sp->type == T_FLOAT) {
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f1);
 	f2.initOne();
 	f1.add(f2);
@@ -300,7 +300,7 @@ int kf_and(Frame *f, int n, KFun *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->intersect(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -312,7 +312,7 @@ int kf_and(Frame *f, int n, KFun *kf)
 
     case T_MAPPING:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->mapIntersect(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -384,7 +384,7 @@ int kf_div(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_FLOAT) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
@@ -461,7 +461,7 @@ int kf_eq(Frame *f, int n, KFun *kf)
 	break;
 
     case T_FLOAT:
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
@@ -469,7 +469,7 @@ int kf_eq(Frame *f, int n, KFun *kf)
 	break;
 
     case T_STRING:
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	flag = (f->sp[1].string->cmp(f->sp->string) == 0);
 	f->sp->string->del();
 	f->sp++;
@@ -546,7 +546,7 @@ int kf_ge(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_FLOAT) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
@@ -557,7 +557,7 @@ int kf_ge(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_STRING) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	flag = (f->sp[1].string->cmp(f->sp->string) >= 0);
 	f->sp->string->del();
 	f->sp++;
@@ -628,7 +628,7 @@ int kf_gt(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_FLOAT) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
@@ -639,7 +639,7 @@ int kf_gt(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_STRING) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	flag = (f->sp[1].string->cmp(f->sp->string) > 0);
 	f->sp->string->del();
 	f->sp++;
@@ -710,7 +710,7 @@ int kf_le(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_FLOAT) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
@@ -721,7 +721,7 @@ int kf_le(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_STRING) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	flag = (f->sp[1].string->cmp(f->sp->string) <= 0);
 	f->sp->string->del();
 	f->sp++;
@@ -842,7 +842,7 @@ int kf_lt(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_FLOAT) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
@@ -853,7 +853,7 @@ int kf_lt(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_STRING) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	flag = (f->sp[1].string->cmp(f->sp->string) < 0);
 	f->sp->string->del();
 	f->sp++;
@@ -973,7 +973,7 @@ int kf_mult(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_FLOAT) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
@@ -1050,7 +1050,7 @@ int kf_ne(Frame *f, int n, KFun *kf)
 	break;
 
     case T_FLOAT:
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
@@ -1058,7 +1058,7 @@ int kf_ne(Frame *f, int n, KFun *kf)
 	break;
 
     case T_STRING:
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	flag = (f->sp[1].string->cmp(f->sp->string) != 0);
 	f->sp->string->del();
 	f->sp++;
@@ -1237,7 +1237,7 @@ int kf_or(Frame *f, int n, KFun *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->setAdd(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -1302,7 +1302,7 @@ int kf_rangeft(Frame *f, int n, KFun *kf)
 	a = f->sp[2].array->mapRange(f->data, &f->sp[1], f->sp);
 	(f->sp++)->del();
 	(f->sp++)->del();
-	i_add_ticks(f, f->sp->array->size);
+	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
 	PUT_ARR(f->sp, a);
 
@@ -1329,7 +1329,7 @@ int kf_rangeft(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_INT) {
 	    kf->argError(3);
 	}
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	str = f->sp[2].string->range(f->sp[1].number, f->sp->number);
 	f->sp += 2;
 	f->sp->string->del();
@@ -1344,7 +1344,7 @@ int kf_rangeft(Frame *f, int n, KFun *kf)
 	    kf->argError(3);
 	}
 	a = f->sp[2].array->range(f->data, f->sp[1].number, f->sp->number);
-	i_add_ticks(f, a->size);
+	f->addTicks(a->size);
 	f->sp += 2;
 	f->sp->array->del();
 	PUT_ARR(f->sp, a);
@@ -1377,7 +1377,7 @@ int kf_rangef(Frame *f, int n, KFun *kf)
     if (f->sp[1].type == T_MAPPING) {
 	a = f->sp[1].array->mapRange(f->data, f->sp, (Value *) NULL);
 	(f->sp++)->del();
-	i_add_ticks(f, f->sp->array->size);
+	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
 	PUT_MAP(f->sp, a);
 
@@ -1399,7 +1399,7 @@ int kf_rangef(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_INT) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	str = f->sp[1].string->range(f->sp->number, f->sp[1].string->len - 1L);
 	f->sp++;
 	f->sp->string->del();
@@ -1412,7 +1412,7 @@ int kf_rangef(Frame *f, int n, KFun *kf)
 	}
 	a = f->sp[1].array->range(f->data, f->sp->number,
 				  f->sp[1].array->size - 1);
-	i_add_ticks(f, a->size);
+	f->addTicks(a->size);
 	f->sp++;
 	f->sp->array->del();
 	PUT_ARR(f->sp, a);
@@ -1445,7 +1445,7 @@ int kf_ranget(Frame *f, int n, KFun *kf)
     if (f->sp[1].type == T_MAPPING) {
 	a = f->sp[1].array->mapRange(f->data, (Value *) NULL, f->sp);
 	(f->sp++)->del();
-	i_add_ticks(f, f->sp->array->size);
+	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
 	PUT_MAP(f->sp, a);
 
@@ -1469,7 +1469,7 @@ int kf_ranget(Frame *f, int n, KFun *kf)
 	if (f->sp->type != T_INT) {
 	    kf->argError(2);
 	}
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	str = f->sp[1].string->range(0, f->sp->number);
 	f->sp++;
 	f->sp->string->del();
@@ -1481,7 +1481,7 @@ int kf_ranget(Frame *f, int n, KFun *kf)
 	    kf->argError(2);
 	}
 	a = f->sp[1].array->range(f->data, 0, f->sp->number);
-	i_add_ticks(f, a->size);
+	f->addTicks(a->size);
 	f->sp++;
 	f->sp->array->del();
 	PUT_ARR(f->sp, a);
@@ -1513,7 +1513,7 @@ int kf_range(Frame *f, int n, KFun *kf)
 
     if (f->sp->type == T_MAPPING) {
 	a = f->sp->array->mapRange(f->data, (Value *) NULL, (Value *) NULL);
-	i_add_ticks(f, f->sp->array->size);
+	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
 	PUT_MAP(f->sp, a);
 
@@ -1530,7 +1530,7 @@ int kf_range(Frame *f, int n, KFun *kf)
 
     switch (f->sp->type) {
     case T_STRING:
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	str = f->sp->string->range(0, f->sp->string->len - 1);
 	f->sp->string->del();
 	PUT_STR(f->sp, str);
@@ -1538,7 +1538,7 @@ int kf_range(Frame *f, int n, KFun *kf)
 
     case T_ARRAY:
 	a = f->sp->array->range(f->data, 0, f->sp->array->size - 1);
-	i_add_ticks(f, a->size);
+	f->addTicks(a->size);
 	f->sp->array->del();
 	PUT_ARR(f->sp, a);
 	break;
@@ -1628,7 +1628,7 @@ int kf_sub(Frame *f, int n, KFun *kf)
 
     case T_FLOAT:
 	if (f->sp->type == T_FLOAT) {
-	    i_add_ticks(f, 1);
+	    f->addTicks(1);
 	    GET_FLT(f->sp, f2);
 	    f->sp++;
 	    GET_FLT(f->sp, f1);
@@ -1642,7 +1642,7 @@ int kf_sub(Frame *f, int n, KFun *kf)
 	if (f->sp->type == T_ARRAY) {
 	    Array *a;
 
-	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->sub(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -1656,7 +1656,7 @@ int kf_sub(Frame *f, int n, KFun *kf)
 	if (f->sp->type == T_ARRAY) {
 	    Array *a;
 
-	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->mapSub(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -1719,7 +1719,7 @@ int kf_sub1(Frame *f, int n, KFun *kf)
     if (f->sp->type == T_INT) {
 	PUT_INT(f->sp, f->sp->number - 1);
     } else if (f->sp->type == T_FLOAT) {
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, f1);
 	f2.initOne();
 	f1.sub(f2);
@@ -1878,7 +1878,7 @@ int kf_umin(Frame *f, int n, KFun *kf)
 	return 0;
 
     case T_FLOAT:
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	if (!VFLT_ISZERO(f->sp)) {
 	    GET_FLT(f->sp, flt);
 	    flt.negate();
@@ -1944,7 +1944,7 @@ int kf_xor(Frame *f, int n, KFun *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    i_add_ticks(f, (Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->setXAdd(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -2008,13 +2008,13 @@ int kf_tostring(Frame *f, int n, KFun *kf)
 
     num = NULL;
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     if (f->sp->type == T_INT) {
 	/* from int */
 	num = kf_itoa(f->sp->number, buffer);
     } else if (f->sp->type == T_FLOAT) {
 	/* from float */
-	i_add_ticks(f, 1);
+	f->addTicks(1);
 	GET_FLT(f->sp, flt);
 	flt.ftoa(num = buffer);
     } else if (f->sp->type == T_STRING) {
@@ -2204,7 +2204,7 @@ int kf_status_idx(Frame *f, int n, KFun *kf)
     if (f->sp->type != T_INT) {
 	EC->error("Non-numeric array index");
     }
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     if (!Config::statusi(f, f->sp->number, f->sp)) {
 	EC->error("Array index out of range");
     }
@@ -2234,7 +2234,7 @@ int kf_statuso_idx(Frame *f, int nargs, KFun *kf)
 	if (f->sp[1].number != 0) {
 	    EC->error("Array index on bad type");
 	}
-	i_add_ticks(f, 2);
+	f->addTicks(2);
 	if (!Config::statusi(f, f->sp->number, &f->sp[1])) {
 	    EC->error("Array index out of range");
 	}
@@ -2262,7 +2262,7 @@ int kf_statuso_idx(Frame *f, int nargs, KFun *kf)
     if (f->sp->type != T_INT) {
 	EC->error("Non-numeric array index");
     }
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     if (!Config::objecti(f->data, OBJR(n), f->sp->number, &f->sp[1])) {
 	EC->error("Array index out of range");
     }
@@ -2333,7 +2333,7 @@ int kf_status(Frame *f, int nargs, KFun *kf)
 
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 100);
+    f->addTicks(100);
     if (nargs == 0) {
 	a = Config::status(f);
 	--f->sp;
@@ -2402,7 +2402,7 @@ int kf_add_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -2432,7 +2432,7 @@ int kf_add_float_string(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 3);
+    f->addTicks(3);
     GET_FLT(&f->sp[1], flt);
     flt.ftoa(buffer);
     str = String::create((char *) NULL,
@@ -2464,7 +2464,7 @@ int kf_add_int_string(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     num = kf_itoa(f->sp[1].number, buffer);
     str = String::create((char *) NULL, (l=strlen(num)) + f->sp->string->len);
     strcpy(str->text, num);
@@ -2492,7 +2492,7 @@ int kf_add_string(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     str = f->sp[1].string->add(f->sp->string);
     f->sp->string->del();
     f->sp++;
@@ -2521,7 +2521,7 @@ int kf_add_string_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 3);
+    f->addTicks(3);
     GET_FLT(f->sp, flt);
     flt.ftoa(buffer);
     f->sp++;
@@ -2552,7 +2552,7 @@ int kf_add_string_int(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     num = kf_itoa(f->sp->number, buffer);
     f->sp++;
     str = String::create((char *) NULL,
@@ -2581,7 +2581,7 @@ int kf_add1_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f1);
     f2.initOne();
     f1.add(f2);
@@ -2606,7 +2606,7 @@ int kf_div_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -2633,7 +2633,7 @@ int kf_eq_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -2658,7 +2658,7 @@ int kf_eq_string(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     flag = (f->sp[1].string->cmp(f->sp->string) == 0);
     f->sp->string->del();
     f->sp++;
@@ -2684,7 +2684,7 @@ int kf_ge_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -2709,7 +2709,7 @@ int kf_ge_string(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     flag = (f->sp[1].string->cmp(f->sp->string) >= 0);
     f->sp->string->del();
     f->sp++;
@@ -2735,7 +2735,7 @@ int kf_gt_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -2760,7 +2760,7 @@ int kf_gt_string(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     flag = (f->sp[1].string->cmp(f->sp->string) > 0);
     f->sp->string->del();
     f->sp++;
@@ -2786,7 +2786,7 @@ int kf_le_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -2811,7 +2811,7 @@ int kf_le_string(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     flag = (f->sp[1].string->cmp(f->sp->string) <= 0);
     f->sp->string->del();
     f->sp++;
@@ -2837,7 +2837,7 @@ int kf_lt_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -2862,7 +2862,7 @@ int kf_lt_string(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     flag = (f->sp[1].string->cmp(f->sp->string) < 0);
     f->sp->string->del();
     f->sp++;
@@ -2888,7 +2888,7 @@ int kf_mult_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -2914,7 +2914,7 @@ int kf_ne_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -2939,7 +2939,7 @@ int kf_ne_string(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     flag = (f->sp[1].string->cmp(f->sp->string) != 0);
     f->sp->string->del();
     f->sp++;
@@ -3004,7 +3004,7 @@ int kf_sub_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -3030,7 +3030,7 @@ int kf_sub1_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f1);
     f2.initOne();
     f1.sub(f2);
@@ -3094,7 +3094,7 @@ int kf_umin_float(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     if (!VFLT_ISZERO(f->sp)) {
 	GET_FLT(f->sp, flt);
 	flt.negate();
@@ -3130,7 +3130,7 @@ int kf_sum(Frame *f, int nargs, KFun *kf)
     /*
      * pass 1: check the types of everything and calculate the size
      */
-    i_add_ticks(f, nargs);
+    f->addTicks(nargs);
     type = T_NIL;
     isize = size = 0;
     nonint = nargs;

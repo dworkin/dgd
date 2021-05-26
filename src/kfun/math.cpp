@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -37,7 +37,7 @@ int kf_fabs(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, flt);
     flt.abs();
     PUT_FLT(f->sp, flt);
@@ -61,7 +61,7 @@ int kf_floor(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, flt);
     flt.floor();
     PUT_FLT(f->sp, flt);
@@ -85,7 +85,7 @@ int kf_ceil(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, flt);
     flt.ceil();
     PUT_FLT(f->sp, flt);
@@ -110,7 +110,7 @@ int kf_fmod(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -139,7 +139,7 @@ int kf_frexp(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     GET_FLT(f->sp, flt);
     num = flt.frexp();
     a = Array::create(f->data, 2);
@@ -168,7 +168,7 @@ int kf_ldexp(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     GET_FLT(f->sp + 1, flt);
     flt.ldexp(f->sp->number);
     f->sp++;
@@ -195,7 +195,7 @@ int kf_modf(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     GET_FLT(f->sp, f1);
     f1.modf(&f2);
     a = Array::create(f->data, 2);
@@ -223,7 +223,7 @@ int kf_exp(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 21);
+    f->addTicks(21);
     GET_FLT(f->sp, flt);
     flt.exp();
     PUT_FLT(f->sp, flt);
@@ -247,7 +247,7 @@ int kf_log(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 35);
+    f->addTicks(35);
     GET_FLT(f->sp, flt);
     flt.log();
     PUT_FLT(f->sp, flt);
@@ -271,7 +271,7 @@ int kf_log10(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 41);
+    f->addTicks(41);
     GET_FLT(f->sp, flt);
     flt.log10();
     PUT_FLT(f->sp, flt);
@@ -296,7 +296,7 @@ int kf_pow(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 48);
+    f->addTicks(48);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -322,7 +322,7 @@ int kf_sqrt(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 11);
+    f->addTicks(11);
     GET_FLT(f->sp, flt);
     flt.sqrt();
     PUT_FLT(f->sp, flt);
@@ -346,7 +346,7 @@ int kf_cos(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 25);
+    f->addTicks(25);
     GET_FLT(f->sp, flt);
     flt.cos();
     PUT_FLT(f->sp, flt);
@@ -370,7 +370,7 @@ int kf_sin(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 25);
+    f->addTicks(25);
     GET_FLT(f->sp, flt);
     flt.sin();
     PUT_FLT(f->sp, flt);
@@ -394,7 +394,7 @@ int kf_tan(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 31);
+    f->addTicks(31);
     GET_FLT(f->sp, flt);
     flt.tan();
     PUT_FLT(f->sp, flt);
@@ -418,7 +418,7 @@ int kf_acos(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     GET_FLT(f->sp, flt);
     flt.acos();
     PUT_FLT(f->sp, flt);
@@ -442,7 +442,7 @@ int kf_asin(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     GET_FLT(f->sp, flt);
     flt.asin();
     PUT_FLT(f->sp, flt);
@@ -466,7 +466,7 @@ int kf_atan(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     GET_FLT(f->sp, flt);
     flt.atan();
     PUT_FLT(f->sp, flt);
@@ -491,7 +491,7 @@ int kf_atan2(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 27);
+    f->addTicks(27);
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
@@ -517,7 +517,7 @@ int kf_cosh(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     GET_FLT(f->sp, flt);
     flt.cosh();
     PUT_FLT(f->sp, flt);
@@ -541,7 +541,7 @@ int kf_sinh(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     GET_FLT(f->sp, flt);
     flt.sinh();
     PUT_FLT(f->sp, flt);
@@ -565,7 +565,7 @@ int kf_tanh(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 24);
+    f->addTicks(24);
     GET_FLT(f->sp, flt);
     flt.tanh();
     PUT_FLT(f->sp, flt);

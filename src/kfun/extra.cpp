@@ -160,7 +160,7 @@ int kf_ctime(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 5);
+    f->addTicks(5);
     P_ctime(buf, f->sp->number);
     PUT_STRVAL(f->sp, String::create(buf, 24));
 
@@ -268,7 +268,7 @@ int kf_explode(Frame *f, int n, KFun *kf)
     (f->sp++)->string->del();
     f->sp->string->del();
     PUT_ARRVAL(f->sp, a);
-    i_add_ticks(f, (Int) 2 * a->size);
+    f->addTicks((Int) 2 * a->size);
 
     return 0;
 }
@@ -300,7 +300,7 @@ int kf_implode(Frame *f, int n, KFun *kf)
 
     /* first, determine the size of the imploded string */
     i = f->sp[1].array->size;
-    i_add_ticks(f, i);
+    f->addTicks(i);
     if (i != 0) {
 	len = (i - 1) * (long) slen;	/* size of all separators */
 	for (v = Dataspace::elts(f->sp[1].array); i > 0; v++, --i) {
@@ -350,7 +350,7 @@ int kf_random(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 1);
+    f->addTicks(1);
     if (f->sp->number < 0) {
 	return 1;
     }
@@ -594,7 +594,7 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 		}
 	    }
 
-	    i_add_ticks(f, 8);
+	    f->addTicks(8);
 	    if (!skip) {
 		results[nargs].type = T_STRING;
 		results[nargs].len = size;
@@ -618,7 +618,7 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 	    }
 	    slen -= (s - x);
 
-	    i_add_ticks(f, 8);
+	    f->addTicks(8);
 	    if (!skip) {
 		results[nargs].type = T_INT;
 		results[nargs].number = i;
@@ -639,7 +639,7 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 	    }
 	    slen -= (s - x);
 
-	    i_add_ticks(f, 8);
+	    f->addTicks(8);
 	    if (!skip) {
 		results[nargs].type = T_FLOAT;
 		results[nargs].fhigh = flt.high;
@@ -653,7 +653,7 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 	    if (slen == 0) {
 		goto no_match;
 	    }
-	    i_add_ticks(f, 8);
+	    f->addTicks(8);
 	    if (!skip) {
 		results[nargs].type = T_INT;
 		results[nargs].number = UCHAR(*s);
@@ -859,7 +859,7 @@ int kf_hash_crc16(Frame *f, int nargs, KFun *kf)
 	f->rlim->ticks = 0;
 	EC->error("Out of ticks");
     }
-    i_add_ticks(f, cost);
+    f->addTicks(cost);
 
     crc = 0xffff;
     for (i = nargs; --i >= 0; ) {
@@ -971,7 +971,7 @@ int kf_hash_crc32(Frame *f, int nargs, KFun *kf)
 	f->rlim->ticks = 0;
 	EC->error("Out of ticks");
     }
-    i_add_ticks(f, cost);
+    f->addTicks(cost);
 
     crc = 0xffffffff;
     for (i = nargs; --i >= 0; ) {
@@ -1027,7 +1027,7 @@ void kf_xcrypt(Frame *f, int nargs, Value *val)
     }
     s[2] = '\0';
 
-    i_add_ticks(f, 900);
+    f->addTicks(900);
     str = String::create(P_crypt(f->sp[nargs - 1].string->text, s), 13);
     PUT_STRVAL_NOREF(val, str);
 }
@@ -1380,7 +1380,7 @@ void kf_md5(Frame *f, int nargs, Value *val)
 	f->rlim->ticks = 0;
 	ext_runtime_error(f, "Out of ticks");
     }
-    i_add_ticks(f, cost);
+    f->addTicks(cost);
 
     hash_md5_start(digest);
     length = hash_blocks(f, nargs, digest, buffer, &bufsz, 64, &hash_md5_block);
@@ -1406,7 +1406,7 @@ void kf_sha1(Frame *f, int nargs, Value *val)
 	f->rlim->ticks = 0;
 	ext_runtime_error(f, "Out of ticks");
     }
-    i_add_ticks(f, cost);
+    f->addTicks(cost);
 
     length = hash_blocks(f, nargs, digest, buffer, &bufsz, 64,
 			 &hash_sha1_block);

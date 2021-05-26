@@ -484,7 +484,7 @@ int kf_find_object(Frame *f, int n, KFun *kf)
 	*f->sp = Value::nil;
 	return 0;
     }
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     obj = Object::find(path, OACC_READ);
     f->sp->string->del();
     if (obj != (Object *) NULL) {
@@ -517,7 +517,7 @@ int kf_function_object(Frame *f, int nargs, KFun *kf)
     UNREFERENCED_PARAMETER(nargs);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
 	callable = (f->oindex == obj->index && f->lwobj == (Array *) NULL);
@@ -664,7 +664,7 @@ int kf_users(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     PUSH_ARRVAL(f, Comm::listUsers(f->data));
-    i_add_ticks(f, f->sp->array->size);
+    f->addTicks(f->sp->array->size);
     return 0;
 }
 # endif
@@ -713,7 +713,7 @@ int kf_allocate(Frame *f, int n, KFun *kf)
     if (f->sp->number < 0) {
 	return 1;
     }
-    i_add_ticks(f, f->sp->number);
+    f->addTicks(f->sp->number);
     PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->number));
     for (i = f->sp->array->size, v = f->sp->array->elts; i > 0; --i, v++) {
 	*v = Value::nil;
@@ -743,7 +743,7 @@ int kf_allocate_int(Frame *f, int n, KFun *kf)
     if (f->sp->number < 0) {
 	return 1;
     }
-    i_add_ticks(f, f->sp->number);
+    f->addTicks(f->sp->number);
     PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->number));
     for (i = f->sp->array->size, v = f->sp->array->elts; i > 0; --i, v++) {
 	*v = Value::zeroInt;
@@ -773,7 +773,7 @@ int kf_allocate_float(Frame *f, int n, KFun *kf)
     if (f->sp->number < 0) {
 	return 1;
     }
-    i_add_ticks(f, f->sp->number);
+    f->addTicks(f->sp->number);
     PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->number));
     for (i = f->sp->array->size, v = f->sp->array->elts; i > 0; --i, v++) {
 	*v = Value::zeroFloat;
@@ -824,7 +824,7 @@ int kf_map_indices(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     a = f->sp->array->mapIndices(f->data);
-    i_add_ticks(f, f->sp->array->size);
+    f->addTicks(f->sp->array->size);
     f->sp->array->del();
     PUT_ARRVAL(f->sp, a);
     return 0;
@@ -849,7 +849,7 @@ int kf_map_values(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     a = f->sp->array->mapValues(f->data);
-    i_add_ticks(f, f->sp->array->size);
+    f->addTicks(f->sp->array->size);
     f->sp->array->del();
     PUT_ARRVAL(f->sp, a);
     return 0;
@@ -873,7 +873,7 @@ int kf_map_sizeof(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, f->sp->array->size);
+    f->addTicks(f->sp->array->size);
     size = f->sp->array->mapSize(f->data);
     f->sp->array->del();
     PUT_INTVAL(f->sp, size);
@@ -1088,7 +1088,7 @@ int kf_millitime(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    i_add_ticks(f, 2);
+    f->addTicks(2);
     a = Array::create(f->data, 2);
     PUT_INTVAL(&a->elts[0], P_mtime(&milli));
     Float::itof((Int) milli, &flt);
@@ -1142,7 +1142,7 @@ int kf_call_out(Frame *f, int nargs, KFun *kf)
 	EC->error("call_out() in non-persistent object");
     }
 
-    i_add_ticks(f, nargs);
+    f->addTicks(nargs);
     if (OBJR(f->oindex)->count != 0 &&
 	(handle=f->data->newCallOut(f->sp[nargs - 1].string, delay,
 				    mdelay, f, nargs - 2)) != 0) {
@@ -1182,7 +1182,7 @@ int kf_remove_call_out(Frame *f, int n, KFun *kf)
     if (f->lwobj != (Array *) NULL) {
 	EC->error("remove_call_out() in non-persistent object");
     }
-    i_add_ticks(f, 10);
+    f->addTicks(10);
     delay = f->data->delCallOut((Uint) f->sp->number, &mdelay);
     if (mdelay != TIME_INT) {
 	Float::itof(delay, &flt1);

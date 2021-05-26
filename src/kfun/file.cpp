@@ -395,7 +395,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
      * First save in a different file in the same directory, so a possibly
      * existing old instance will not be lost if something goes wrong.
      */
-    i_add_ticks(f, 2000);	/* arbitrary */
+    f->addTicks(2000);	/* arbitrary */
     strcpy(tmp, file);
     _tmp = strrchr(tmp, '/');
     _tmp = (_tmp == (char *) NULL) ? tmp : _tmp + 1;
@@ -888,7 +888,7 @@ int kf_restore_object(Frame *f, int n, KFun *kf)
 	return 1;
     }
 
-    i_add_ticks(f, 2000);	/* arbitrary */
+    f->addTicks(2000);	/* arbitrary */
     f->sp->string->del();
     PUT_INTVAL(f->sp, 0);
     fd = P_open(x.file, O_RDONLY | O_BINARY, 0);
@@ -1126,7 +1126,7 @@ int kf_write_file(Frame *f, int nargs, KFun *kf)
 	EC->error("write_file() within atomic function");
     }
 
-    i_add_ticks(f, 1000 + (Int) 2 * f->sp->string->len);
+    f->addTicks(1000 + (Int) 2 * f->sp->string->len);
     f->sp[1].string->del();
     PUT_INTVAL(&f->sp[1], 0);
 
@@ -1203,7 +1203,7 @@ int kf_read_file(Frame *f, int nargs, KFun *kf)
 	/* size has to be >= 0 */
 	return 3;
     }
-    i_add_ticks(f, 1000);
+    f->addTicks(1000);
     fd = P_open(file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	/* cannot open file */
@@ -1250,7 +1250,7 @@ int kf_read_file(Frame *f, int nargs, KFun *kf)
 	EC->error("Read failed in read_file()");
     }
     P_close(fd);
-    i_add_ticks(f, 2 * size);
+    f->addTicks(2 * size);
 
     PUT_STRVAL(f->sp, String::create((char *) buf, size));
     if (buf != (char *) NULL) {
@@ -1287,7 +1287,7 @@ int kf_rename_file(Frame *f, int n, KFun *kf)
 	return 2;
     }
 
-    i_add_ticks(f, 1000);
+    f->addTicks(1000);
     (f->sp++)->string->del();
     f->sp->string->del();
     PUT_INTVAL(f->sp, (P_access(from, W_OK) >= 0 && P_access(to, F_OK) < 0 &&
@@ -1321,7 +1321,7 @@ int kf_remove_file(Frame *f, int n, KFun *kf)
 	EC->error("remove_file() within atomic function");
     }
 
-    i_add_ticks(f, 1000);
+    f->addTicks(1000);
     f->sp->string->del();
     PUT_INTVAL(f->sp, (P_access(file, W_OK) >= 0 && P_unlink(file) >= 0));
     return 0;
@@ -1352,7 +1352,7 @@ int kf_make_dir(Frame *f, int n, KFun *kf)
 	EC->error("make_dir() within atomic function");
     }
 
-    i_add_ticks(f, 1000);
+    f->addTicks(1000);
     f->sp->string->del();
     PUT_INTVAL(f->sp, (P_mkdir(file, 0775) >= 0));
     return 0;
@@ -1384,7 +1384,7 @@ int kf_remove_dir(Frame *f, int n, KFun *kf)
 	EC->error("remove_dir() within atomic function");
     }
 
-    i_add_ticks(f, 1000);
+    f->addTicks(1000);
     f->sp->string->del();
     PUT_INTVAL(f->sp, (P_rmdir(file) >= 0));
     return 0;
@@ -1629,7 +1629,7 @@ int kf_get_dir(Frame *f, int nargs, KFun *kf)
     PUT_ARRVAL(&a->elts[1], Array::create(f->data, nfiles));
     PUT_ARRVAL(&a->elts[2], Array::create(f->data, nfiles));
 
-    i_add_ticks(f, 1000 + 5 * nfiles);
+    f->addTicks(1000 + 5 * nfiles);
 
     if (nfiles != 0) {
 	Value *n, *s, *t;

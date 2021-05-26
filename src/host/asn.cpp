@@ -1334,7 +1334,7 @@ String *Asi::numtostr(bool minus)
  */
 bool ASN::ticks(Frame *f, Uint ticks)
 {
-    i_add_ticks(f, ticks);
+    f->addTicks(ticks);
     if (f->rlim->ticks < 0) {
 	if (f->rlim->noticks) {
 	    f->rlim->ticks = 0x7fffffffL;
@@ -1364,7 +1364,7 @@ String *ASN::add(Frame *f, String *s1, String *s2, String *s3)
     minusa = a.strtonum(s1);
     Asi b(ALLOCA(Uint, (s2->len >> 2) + 4), 0);
     minusb = b.strtonum(s2);
-    i_add_ticks(f, 4 + ((a.size + b.size + mod.size) >> 1));
+    f->addTicks(4 + ((a.size + b.size + mod.size) >> 1));
 
     if (minusa != minusb) {
 	if (a.size > b.size || (a.size == b.size && a.cmp(b) >= 0)) {
@@ -1432,7 +1432,7 @@ String *ASN::sub(Frame *f, String *s1, String *s2, String *s3)
     minusa = a.strtonum(s1);
     Asi b(ALLOCA(Uint, (s2->len >> 2) + 4), 0);
     minusb = b.strtonum(s2);
-    i_add_ticks(f, 4 + ((a.size + b.size + mod.size) >> 1));
+    f->addTicks(4 + ((a.size + b.size + mod.size) >> 1));
 
     if (minusa == minusb) {
 	if (a.size > b.size || (a.size == b.size && a.cmp(b) >= 0)) {
@@ -1493,7 +1493,7 @@ int ASN::cmp(Frame *f, String *s1, String *s2)
     minusa = a.strtonum(s1);
     Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
     minusb = b.strtonum(s2);
-    i_add_ticks(f, 4 + ((a.size + b.size) >> 1));
+    f->addTicks(4 + ((a.size + b.size) >> 1));
 
     if (minusa != minusb) {
 	if (minusa) {
@@ -1597,7 +1597,7 @@ String *ASN::div(Frame *f, String *s1, String *s2, String *s3)
     }
     Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
     minusa = a.strtonum(s1);
-    i_add_ticks(f, 4 + ((a.size + b.size) >> 1));
+    f->addTicks(4 + ((a.size + b.size) >> 1));
 
     Asi c(ALLOCA(Uint, a.size + 2), 0);
     Asi t(ALLOCA(Uint, (b.size + mod.size) << 1), 0); /* more than enough */
@@ -1666,7 +1666,7 @@ String *ASN::mod(Frame *f, String *s1, String *s2)
 	}
 	c.div(a, b, t);
     } else {
-	i_add_ticks(f, 4 + a.size + (b.size >> 1));
+	f->addTicks(4 + a.size + (b.size >> 1));
 	c.copy(a);
     }
     str = c.numtostr(minusa);
@@ -1767,7 +1767,7 @@ String *ASN::lshift(Frame *f, String *s1, Int shift, String *s2)
     }
 
     size = (s1->len >> 2) + 2 + ((shift + 31) >> 5);
-    i_add_ticks(f, 4 + size + (mod.size >> 1));
+    f->addTicks(4 + size + (mod.size >> 1));
     if (size <= mod.size << 2) {
 	/*
 	 * perform actual left shift
@@ -1829,7 +1829,7 @@ String *ASN::rshift(Frame *f, String *s, Int shift)
     }
     Asi a(ALLOCA(Uint, (s->len >> 2) + 2), 0);
     minusa = a.strtonum(s);
-    i_add_ticks(f, 4 + a.size);
+    f->addTicks(4 + a.size);
     if (shift >> 5 >= a.size) {
 	a.num[0] = 0;
 	a.size = 1;
@@ -1862,7 +1862,7 @@ String *ASN::_and(Frame *f, String *s1, String *s2)
 	q = s2->text;
 	r = s1->text;
     }
-    i_add_ticks(f, 4 + ((i + j) >> 4));
+    f->addTicks(4 + ((i + j) >> 4));
     buf = p = ALLOCA(char, i + j);
     if (q[0] & 0x80) {
 	while (j != 0) {
@@ -1917,7 +1917,7 @@ String *ASN::_or(Frame *f, String *s1, String *s2)
 	q = s2->text;
 	r = s1->text;
     }
-    i_add_ticks(f, 4 + ((i + j) >> 4));
+    f->addTicks(4 + ((i + j) >> 4));
     buf = p = ALLOCA(char, i + j);
     if (q[0] & 0x80) {
 	r += j;
@@ -1972,7 +1972,7 @@ String *ASN::_xor(Frame *f, String *s1, String *s2)
 	q = s2->text;
 	r = s1->text;
     }
-    i_add_ticks(f, 4 + ((i + j) >> 4));
+    f->addTicks(4 + ((i + j) >> 4));
     buf = p = ALLOCA(char, i + j);
     if (q[0] & 0x80) {
 	while (j != 0) {

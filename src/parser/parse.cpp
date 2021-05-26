@@ -317,7 +317,7 @@ void Parser::reduce(PNode *pn, char *p)
     /*
      * see if this reduction can be merged with another
      */
-    i_add_ticks(frame, 2);
+    frame->addTicks(2);
     for (sn = states[n]; sn != (SNode *) NULL; sn = sn->slist) {
 	if (sn->pn->symbol == symb && sn->pn->next == next) {
 	    PNode **ppn;
@@ -341,7 +341,7 @@ void Parser::reduce(PNode *pn, char *p)
 	    *ppn = pn;
 	    return;
 	}
-	i_add_ticks(frame, 1);
+	frame->addTicks(1);
     }
 
     /*
@@ -434,7 +434,7 @@ PNode *Parser::parse(String *str, bool *toobig)
 		    }
 		}
 	    }
-	    i_add_ticks(frame, 1);
+	    frame->addTicks(1);
 	}
 
 	switch (n = fa->scan(str, &size, &ttext, &tlen)) {
@@ -873,7 +873,7 @@ Array *Parser::parse_string(Frame *f, String *source, String *str, Int maxalt)
 	/*
 	 * do the parse thing
 	 */
-	i_add_ticks(ps->frame, 400);
+	ps->frame->addTicks(400);
 	toobig = FALSE;
 	pn = ps->parse(str, &toobig);
 	SNode::clear(&ps->list);

@@ -171,6 +171,18 @@ struct RLInfo {
 
 class Frame {
 public:
+    void addTicks(int t) {
+	rlim->ticks -= t;
+    }
+    void loopTicks() {
+	if ((rlim->ticks -= 5) <= 0) {
+	    if (rlim->noticks) {
+		rlim->ticks = 0x7fffffff;
+	    } else {
+		EC->error("Out of ticks");
+	    }
+	}
+    }
     void growStack(int);
     void pushValue(Value *v);
     void pop(int n);
@@ -275,15 +287,3 @@ private:
 };
 
 extern Frame *cframe;
-
-# define i_add_ticks(f, t)	((f)->rlim->ticks -= (t))
-# define loop_ticks(f)							\
-    do {								\
-	if (((f)->rlim->ticks -= 5) <= 0) {				\
-	    if ((f)->rlim->noticks) {					\
-		(f)->rlim->ticks = 0x7fffffff;				\
-	    } else {							\
-		EC->error("Out of ticks");				\
-	    }								\
-	}								\
-    } while (FALSE)

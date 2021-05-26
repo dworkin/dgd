@@ -238,7 +238,7 @@ void Frame::aggregate(unsigned int size)
     } else {
 	Value *elts;
 
-	i_add_ticks(this, size);
+	addTicks(size);
 	a = Array::create(data, size);
 	elts = a->elts + size;
 	do {
@@ -261,7 +261,7 @@ void Frame::mapAggregate(unsigned int size)
     } else {
 	Value *elts;
 
-	i_add_ticks(this, size);
+	addTicks(size);
 	a = Array::mapCreate(data, size);
 	elts = a->elts + size;
 	do {
@@ -300,7 +300,7 @@ int Frame::spread(int n)
     if (n < 0) {
 	/* no lvalues */
 	n = a->size;
-	i_add_ticks(this, n);
+	addTicks(n);
 	sp++;
 	growStack(n);
 	for (i = 0, v = Dataspace::elts(a); i < n; i++, v++) {
@@ -314,7 +314,7 @@ int Frame::spread(int n)
 	if (n > a->size) {
 	    n = a->size;
 	}
-	i_add_ticks(this, n);
+	addTicks(n);
 	growStack(n);
 	sp++;
 	for (i = 0, v = Dataspace::elts(a); i < n; i++, v++) {
@@ -332,7 +332,7 @@ int Frame::spread(int n)
  */
 Value *Frame::global(int inherit, int index)
 {
-    i_add_ticks(this, 4);
+    addTicks(4);
     inherit = UCHAR(ctrl->imap[p_index + inherit]);
     inherit = ctrl->inherits[inherit].varoffset;
     if (lwobj == (Array *) NULL) {
@@ -366,7 +366,7 @@ void Frame::index(Value *aval, Value *ival, Value *val, bool keep)
 {
     int i;
 
-    i_add_ticks(this, 2);
+    addTicks(2);
     switch (aval->type) {
     case T_STRING:
 	if (ival->type != T_INT) {
@@ -590,7 +590,7 @@ void Frame::storeGlobal(int inherit, int index, Value *val)
 {
     unsigned short offset;
 
-    i_add_ticks(this, 5);
+    addTicks(5);
     inherit = ctrl->imap[p_index + inherit];
     offset = ctrl->inherits[inherit].varoffset + index;
     if (lwobj == NULL) {
@@ -609,7 +609,7 @@ bool Frame::storeIndex(Value *var, Value *aval, Value *ival, Value *val)
     String *str;
     Array *arr;
 
-    i_add_ticks(this, 3);
+    addTicks(3);
     switch (aval->type) {
     case T_STRING:
 	if (ival->type != T_INT) {
@@ -728,7 +728,7 @@ void Frame::storeGlobalIndex(int inherit, int index, Value *val)
 
     var = Value::nil;
     if (storeIndex(&var, sp + 2, sp + 1, val)) {
-	i_add_ticks(this, 5);
+	addTicks(5);
 	inherit = ctrl->imap[p_index + inherit];
 	offset = ctrl->inherits[inherit].varoffset + index;
 	if (lwobj == NULL) {
@@ -955,7 +955,7 @@ unsigned short Frame::storesSpread(int n, int offset, int type, Uint sclass)
 	nspread = sp[1].array->size - offset;
 	if (nspread >= nassign - n) {
 	    nspread = nassign - n;
-	    i_add_ticks(this, nspread * 3);
+	    addTicks(nspread * 3);
 	    while (nspread != 0) {
 		--nassign;
 		if (type != 0) {
@@ -1072,7 +1072,7 @@ Int Frame::rshift(Int num, Int shift)
  */
 void Frame::toFloat(Float *flt)
 {
-    i_add_ticks(this, 1);
+    addTicks(1);
     if (sp->type == T_INT) {
 	/* from int */
 	Float::itof(sp->number, flt);
@@ -1866,7 +1866,7 @@ void Frame::interpret(char *pc)
 	    p = prog + FETCH2U(pc, u);
 	    if (!VAL_TRUE(sp)) {
 		if (p < pc) {
-		    loop_ticks(this);
+		    loopTicks();
 		}
 		pc = p;
 	    }
@@ -1877,7 +1877,7 @@ void Frame::interpret(char *pc)
 	    p = prog + FETCH2U(pc, u);
 	    if (VAL_TRUE(sp)) {
 		if (p < pc) {
-		    loop_ticks(this);
+		    loopTicks();
 		}
 		pc = p;
 	    }
@@ -1887,7 +1887,7 @@ void Frame::interpret(char *pc)
 	case I_JUMP:
 	    p = prog + FETCH2U(pc, u);
 	    if (p < pc) {
-		loop_ticks(this);
+		loopTicks();
 	    }
 	    pc = p;
 	    continue;
@@ -1907,7 +1907,7 @@ void Frame::interpret(char *pc)
 		break;
 	    }
 	    if (p < pc) {
-		loop_ticks(this);
+		loopTicks();
 	    }
 	    pc = p;
 	    (sp++)->del();
@@ -2005,7 +2005,7 @@ void Frame::interpret(char *pc)
 		/* error */
 		this->pc = p;
 		if (p < pc) {
-		    loop_ticks(this);
+		    loopTicks();
 		}
 		pc = p;
 		PUSH_STRVAL(this, EC->exception());
@@ -2222,7 +2222,7 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
 	f.atomic = atomic;
     }
 
-    i_add_ticks(&f, 10);
+    f.addTicks(10);
 
     /* create new local stack */
     f.argp = f.sp;
@@ -2659,7 +2659,7 @@ bool Frame::callTraceII(Int i, Int j, Value *v)
 	return FALSE;
     }
 
-    i_add_ticks(this, 4);
+    addTicks(4);
     for (f = this, i = depth - i - 1; i != 0; f = f->prev, --i) ;
     return f->funcTraceI(j, v);
 }
@@ -2675,7 +2675,7 @@ bool Frame::callTraceI(Int i, Value *v)
 	return FALSE;
     }
 
-    i_add_ticks(this, 12);
+    addTicks(12);
     for (f = this, i = depth - i - 1; i != 0; f = f->prev, --i) ;
     PUT_ARRVAL(v, f->funcTrace(data));
     return TRUE;
@@ -2693,7 +2693,7 @@ Array *Frame::callTrace()
 
     n = depth;
     a = Array::create(data, n);
-    i_add_ticks(this, 10 * n);
+    addTicks(10 * n);
     for (f = this, v = a->elts + n; f->oindex != OBJ_NONE; f = f->prev) {
 	--v;
 	PUT_ARRVAL(v, f->funcTrace(data));
