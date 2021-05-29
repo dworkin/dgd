@@ -341,9 +341,6 @@
     <Filter Include="Source Files\lex">
       <UniqueIdentifier>{2fe8ca7e-0690-44f0-97f0-26574d1fe28d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\lpc">
-      <UniqueIdentifier>{a6dac377-60cc-4382-81c9-9ef985817d91}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\parser">
       <UniqueIdentifier>{2404bbd8-2fec-4471-a525-071891cafaec}</UniqueIdentifier>
     </Filter>

@@ -181,21 +181,21 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
-    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\lpc;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
-    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\lpc;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\lpc;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
     <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\lpc;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
     <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
