@@ -1967,6 +1967,8 @@ void Control::makeFunCalls()
     fchunk.makeTable(fc + 2L * nfcalls);
 }
 
+# define SYMBHASH	10	/* keep unchanged for snapshot compatibility */
+
 /*
  * make the symbol table for the control block
  */
@@ -2036,7 +2038,7 @@ void Control::makeSymbols()
 		/*
 		 * all non-private functions are put into the hash table
 		 */
-		x = Hashtab::hashstr(name, VFMERGEHASHSZ) % nsymbs;
+		x = Hashtab::hashstr(name, SYMBHASH) % nsymbs;
 		if (symtab[x].next == x) {
 		    /*
 		     * new entry
@@ -3275,7 +3277,7 @@ Symbol *Control::symb(const char *func, unsigned int len)
 	return (Symbol *) NULL;
     }
 
-    i = Hashtab::hashstr(func, VFMERGEHASHSZ) % i;
+    i = Hashtab::hashstr(func, SYMBHASH) % i;
     symb1 = symb = &symbs()[i];
     ctrl = OBJR(inherits[UCHAR(symb->inherit)].oindex)->control();
     f = ctrl->funcs() + UCHAR(symb->index);
