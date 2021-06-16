@@ -195,7 +195,7 @@
     <ClInclude Include="..\..\comp\optimize.h">
       <Filter>Header Files\comp</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\comp\parser.h">
+    <ClInclude Include="..\..\comp\dparser.h">
       <Filter>Header Files\comp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\config.h">

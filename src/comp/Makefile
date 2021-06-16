@@ -27,10 +27,10 @@ all:
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo comp/$$i; done > dgd
 
-parser.cpp parser.h: parser.y
+parser.cpp dparser.h: parser.y
 	$(YACC) -d parser.y
 	mv y.tab.c parser.cpp
-	mv y.tab.h parser.h
+	mv y.tab.h dparser.h
 
 clean:
 	rm -f dgd a.out $(OBJ)

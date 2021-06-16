@@ -37,7 +37,7 @@
 # include "token.h"
 # include "ppcontrol.h"
 # include "node.h"
-# include "parser.h"
+# include "dparser.h"
 # include "compile.h"
 # include "table.h"
 
