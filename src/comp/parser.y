@@ -31,7 +31,7 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "control.h"
+# include "dcontrol.h"
 # include "data.h"
 # include "interpret.h"
 # include "macro.h"

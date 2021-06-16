@@ -186,7 +186,7 @@
     <ClInclude Include="..\..\comp\compile.h">
       <Filter>Header Files\comp</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\comp\control.h">
+    <ClInclude Include="..\..\comp\dcontrol.h">
       <Filter>Header Files\comp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\comp\node.h">
