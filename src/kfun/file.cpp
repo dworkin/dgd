@@ -1304,6 +1304,9 @@ int kf_rename_file(Frame *f, int n, kfunc *kf)
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 2;
     }
+    if (f->level != 0) {
+	error("rename_file() within atomic function");
+    }
 
     i_add_ticks(f, 1000);
     str_del((f->sp++)->u.string);
