@@ -1286,6 +1286,9 @@ int kf_rename_file(Frame *f, int n, KFun *kf)
 		   f->sp->string->len) == (char *) NULL) {
 	return 2;
     }
+    if (f->level != 0) {
+	EC->error("rename_file() within atomic function");
+    }
 
     f->addTicks(1000);
     (f->sp++)->string->del();
