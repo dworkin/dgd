@@ -292,11 +292,11 @@ void Flt::mult(Flt *b)
     m >>= 15;
     m += albl + ambm + (Int) (al - am) * (bm - bl);
     m >>= 15;
-    m += albl + ambm + ahbh + (Int) (al - high) * (bh - bl);
+    m += albl + ambm + ahbh + (Int) (al - (short) high) * (bh - bl);
     m >>= 13;
     low = m & 0x03;
     m >>= 2;
-    m += ambm + ahbh + (Int) (am - high) * (bh - bm);
+    m += ambm + ahbh + (Int) (am - (short) high) * (bh - bm);
     low |= (m & 0x7fff) << 2;
     m >>= 15;
     m += ahbh;
@@ -305,8 +305,8 @@ void Flt::mult(Flt *b)
 
     sign ^= b->sign;
     exp += b->exp - BIAS;
-    if (high < 0) {
-	high = (unsigned short) high >> 1;
+    if ((short) high < 0) {
+	high >>= 1;
 	low >>= 1;
 	exp++;
     }
@@ -315,8 +315,8 @@ void Flt::mult(Flt *b)
     /*
      * rounding
      */
-    if ((Int) (low += 2) < 0 && ++high < 0) {
-	high = (unsigned short) high >> 1;
+    if ((Int) (low += 2) < 0 && (short) ++high < 0) {
+	high >>= 1;
 	exp++;
     }
     low &= 0x7ffffffcL;
