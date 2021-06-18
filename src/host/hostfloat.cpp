@@ -98,7 +98,7 @@ bool Float::atof(char **s, Float *f)
     double a, b;
     const double *t;
     unsigned short e;
-    char *p;
+    char *p, *q;
     bool negative;
 
     p = *s;
@@ -132,6 +132,9 @@ bool Float::atof(char **s, Float *f)
 
     /* exponent */
     if (*p == 'e' || *p == 'E') {
+	/* in case of no exponent */
+	q = p;
+
 	/* sign of exponent */
 	if (*++p == '-') {
 	    t = tenths;
@@ -143,23 +146,28 @@ bool Float::atof(char **s, Float *f)
 	    }
 	}
 
-	/* get exponent */
-	e = 0;
-	do {
-	    e *= 10;
-	    e += *p++ - '0';
-	    if (e >= 1024) {
-		return FALSE;
-	    }
-	} while (isdigit(*p));
+	if (isdigit(*p)) {
+	    /* get exponent */
+	    e = 0;
+	    do {
+		e *= 10;
+		e += *p++ - '0';
+		if (e >= 1024) {
+		    return FALSE;
+		}
+	    } while (isdigit(*p));
 
-	/* adjust number */
-	while (e != 0) {
-	    if ((e & 1) != 0) {
-		a *= *t;
+	    /* adjust number */
+	    while (e != 0) {
+		if ((e & 1) != 0) {
+		    a *= *t;
+		}
+		e >>= 1;
+		t++;
 	    }
-	    e >>= 1;
-	    t++;
+	} else {
+	    /* roll back before exponent */
+	    p = q;
 	}
     }
 

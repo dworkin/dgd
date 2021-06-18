@@ -943,7 +943,7 @@ bool Float::atof(char **s, Float *f)
     Flt a = { 0 };
     Flt b, c, *t;
     unsigned short e, h;
-    char *p;
+    char *p, *q;
 
     p = *s;
 
@@ -1002,6 +1002,9 @@ bool Float::atof(char **s, Float *f)
 
     /* exponent */
     if (*p == 'e' || *p == 'E') {
+	/* in case of no exponent */
+	q = p;
+
 	/* sign of exponent */
 	if (*++p == '-') {
 	    t = tenths;
@@ -1013,26 +1016,31 @@ bool Float::atof(char **s, Float *f)
 	    }
 	}
 
-	/* get exponent */
-	e = 0;
-	do {
-	    e *= 10;
-	    e += *p++ - '0';
-	    if (e >= 1024) {
-		return FALSE;
-	    }
-	} while (isdigit(*p));
-
-	/* adjust number */
-	while (e != 0) {
-	    if ((e & 1) != 0) {
-		a.mult(t);
-		if (a.exp < 0x1000 || a.exp > 0xf000) {
-		    break;
+	if (isdigit(*p)) {
+	    /* get exponent */
+	    e = 0;
+	    do {
+		e *= 10;
+		e += *p++ - '0';
+		if (e >= 1024) {
+		    return FALSE;
 		}
+	    } while (isdigit(*p));
+
+	    /* adjust number */
+	    while (e != 0) {
+		if ((e & 1) != 0) {
+		    a.mult(t);
+		    if (a.exp < 0x1000 || a.exp > 0xf000) {
+			break;
+		    }
+		}
+		e >>= 1;
+		t++;
 	    }
-	    e >>= 1;
-	    t++;
+	} else {
+	    /* roll back before exponent */
+	    p = q;
 	}
     }
     if (a.exp >= BIAS + 1023 &&
