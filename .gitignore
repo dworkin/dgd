@@ -1,11 +1,12 @@
 *.o
+.vs
 bin/dgd
 bin/dgd.old
 src/a.out
 src/*/dgd
 src/comp/parser.cpp
-src/comp/parser.h
-src/comp/a.out
+src/comp/dparser.h
+src/ed/a.out
 src/host/local.cpp
 src/host/random.cpp
 src/host/lrand48.cpp
