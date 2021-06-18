@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -665,7 +665,7 @@ bool Float::atof(char **s, Float *f)
     flt a = { 0 };
     flt b, c, *t;
     unsigned short e, h;
-    char *p;
+    char *p, *q;
 
     p = *s;
 
@@ -724,6 +724,9 @@ bool Float::atof(char **s, Float *f)
 
     /* exponent */
     if (*p == 'e' || *p == 'E') {
+	/* in case of no exponent */
+	q = p;
+
 	/* sign of exponent */
 	if (*++p == '-') {
 	    t = tenths;
@@ -735,26 +738,31 @@ bool Float::atof(char **s, Float *f)
 	    }
 	}
 
-	/* get exponent */
-	e = 0;
-	do {
-	    e *= 10;
-	    e += *p++ - '0';
-	    if (e >= 1024) {
-		return FALSE;
-	    }
-	} while (isdigit(*p));
-
-	/* adjust number */
-	while (e != 0) {
-	    if ((e & 1) != 0) {
-		f_mult(&a, t);
-		if (a.exp < 0x1000 || a.exp > 0xf000) {
-		    break;
+	if (isdigit(*p)) {
+	    /* get exponent */
+	    e = 0;
+	    do {
+		e *= 10;
+		e += *p++ - '0';
+		if (e >= 1024) {
+		    return FALSE;
 		}
+	    } while (isdigit(*p));
+
+	    /* adjust number */
+	    while (e != 0) {
+		if ((e & 1) != 0) {
+		    f_mult(&a, t);
+		    if (a.exp < 0x1000 || a.exp > 0xf000) {
+			break;
+		    }
+		}
+		e >>= 1;
+		t++;
 	    }
-	    e >>= 1;
-	    t++;
+	} else {
+	    /* roll back before exponent */
+	    p = q;
 	}
     }
     if (a.exp >= BIAS + 1023 &&
