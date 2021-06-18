@@ -535,7 +535,10 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 			if (slen == 0) {
 			    goto no_match;
 			}
-			if ((x[0] == '-' || x[0] == '.') && isdigit(x[1])) {
+			if ((x[0] == '.' && isdigit(x[1])) ||
+			    (x[0] == '-' &&
+			     (isdigit(x[1]) || (x[1] == '.' && isdigit(x[2])))))
+			{
 			    break;
 			}
 			x++;
