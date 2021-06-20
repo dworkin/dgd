@@ -715,7 +715,7 @@ void Object::del(Frame *f)
 	/* remove from object name hash table */
 	*oplane->htab->lookup(name, FALSE) = next;
 
-	if (--ref == 0 && !O_UPGRADING(this)) {
+	if (--ref == 0) {
 	    remove(f);
 	}
     } else {
@@ -723,7 +723,7 @@ void Object::del(Frame *f)
 
 	master = OBJW(this->master);
 	master->cref--;
-	if (--(master->ref) == 0 && !O_UPGRADING(master)) {
+	if (--(master->ref) == 0) {
 	    master->remove(f);
 	}
     }
