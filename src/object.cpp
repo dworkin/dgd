@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -757,7 +757,7 @@ void o_del(Object *obj, Frame *f)
 	/* remove from object name hash table */
 	*oplane->htab->lookup(obj->name, FALSE) = obj->next;
 
-	if (--(obj->u_ref) == 0 && !O_UPGRADING(obj)) {
+	if (--(obj->u_ref) == 0) {
 	    o_delete(obj, f);
 	}
     } else {
@@ -765,7 +765,7 @@ void o_del(Object *obj, Frame *f)
 
 	master = OBJW(obj->u_master);
 	master->cref--;
-	if (--(master->u_ref) == 0 && !O_UPGRADING(master)) {
+	if (--(master->u_ref) == 0) {
 	    o_delete(master, f);
 	}
     }
