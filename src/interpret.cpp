@@ -1645,12 +1645,11 @@ void Frame::kfunc(int n, int nargs)
     KFun *kf;
 
     kf = &KFUN(n);
-    if (PROTO_VARGS(kf->proto) == 0 && nargs != PROTO_NARGS(kf->proto)) {
-	if (nargs < PROTO_NARGS(kf->proto)) {
-	    EC->error("Too few arguments for kfun %s", kf->name);
-	} else {
-	    EC->error("Too many arguments for kfun %s", kf->name);
-	}
+    if (nargs < PROTO_NARGS(kf->proto)) {
+	EC->error("Too few arguments for kfun %s", kf->name);
+    } else if (!(PROTO_CLASS(kf->proto) & C_ELLIPSIS) &&
+	       nargs > PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto)) {
+	EC->error("Too many arguments for kfun %s", kf->name);
     }
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
 	typecheck((Frame *) NULL, kf->name, "kfun", kf->proto, nargs, TRUE);
