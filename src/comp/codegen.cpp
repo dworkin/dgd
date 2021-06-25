@@ -1116,11 +1116,14 @@ void Codegen::expr(Node *n, int pop)
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:
-	    if (PROTO_VARGS(KFUN((short) n->r.number).proto) != 0) {
-		CodeChunk::kfun((short) n->r.number, n->line);
-		CodeChunk::byte(i);
-	    } else if (spread) {
+	    if (spread &&
+		(i < PROTO_NARGS(KFUN((short) n->r.number).proto) ||
+	         !(PROTO_CLASS(KFUN((short) n->r.number).proto) & C_ELLIPSIS)))
+	    {
 		CodeChunk::ckfun((short) n->r.number, n->line);
+		CodeChunk::byte(i);
+	    } else if (PROTO_VARGS(KFUN((short) n->r.number).proto) != 0) {
+		CodeChunk::kfun((short) n->r.number, n->line);
 		CodeChunk::byte(i);
 	    } else {
 		i = math(KFUN((short) n->r.number).name);
