@@ -736,7 +736,7 @@ int kf_old_sscanf(Frame *f, int nargs, KFun *kf)
 # endif
     n = FETCH1U(pc);
     f->pc = pc;
-    f->lvalues(n);
+    f->lvalues(n, 1);
 
     return 0;
 }

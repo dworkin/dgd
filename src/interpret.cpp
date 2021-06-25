@@ -797,7 +797,7 @@ void Frame::storeSkipSkip()
 /*
  * perform a sequence of special stores
  */
-void Frame::stores(int skip, int assign)
+void Frame::stores(int skip, int assign, int keep)
 {
     unsigned short u, instr;
     Uint sclass;
@@ -939,8 +939,10 @@ void Frame::stores(int skip, int assign)
 	--assign;
     }
 
-    sp->array->del();
-    sp++;
+    if (!keep) {
+	sp->array->del();
+	sp++;
+    }
 }
 
 /*
@@ -979,7 +981,7 @@ unsigned short Frame::storesSpread(int n, int offset, int type, Uint sclass)
 /*
  * perform assignments for lvalue arguments
  */
-void Frame::lvalues(int n)
+void Frame::lvalues(int n, int pop)
 {
     char *pc;
     int offset, type;
@@ -1012,7 +1014,7 @@ void Frame::lvalues(int n)
 	}
     }
 
-    stores(n - nassign, nassign);
+    stores(n - nassign, nassign, pop);
 }
 
 /*
@@ -1793,10 +1795,13 @@ void Frame::interpret(char *pc)
 	case I_STORES:
 	case I_STORES | I_POP_BIT:
 	    u = FETCH1U(pc);
+
+	    u2 = u & I_STORES_KEEP;
+	    u = u & ~I_STORES_KEEP;
 	    this->pc = pc;
 	    if (kflv) {
 		kflv = FALSE;
-		lvalues(u);
+		lvalues(u, u2);
 	    } else {
 		if (sp->type != T_ARRAY) {
 		    EC->error("Value is not an array");
@@ -1805,7 +1810,7 @@ void Frame::interpret(char *pc)
 		    EC->error("Wrong number of lvalues");
 		}
 		Dataspace::elts(sp->array);
-		stores(0, u);
+		stores(0, u, u2);
 	    }
 	    pc = this->pc;
 	    break;

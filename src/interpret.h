@@ -65,6 +65,8 @@
 # define I_POP_BIT		0x20	/* pop 1 after instruction */
 # define I_LINE_SHIFT		6
 
+# define I_STORES_KEEP		0x80
+
 # define VERSION_VM_MAJOR	2
 # define VERSION_VM_MINOR	1
 
@@ -190,7 +192,7 @@ public:
     void aggregate(unsigned int size);
     void mapAggregate(unsigned int size);
     int spread(int n);
-    void lvalues(int n);
+    void lvalues(int n, int pop);
     Int getDepth();
     Int getTicks();
     void setRlimits(RLInfo *rlim);
@@ -264,7 +266,7 @@ private:
     char *className(Uint sclass);
     int instanceOf(unsigned int oindex, Uint sclass);
     bool storeIndex(Value *var, Value *aval, Value *ival, Value *val);
-    void stores(int skip, int assign);
+    void stores(int skip, int assign, int pop);
     void checkRlimits();
     void newRlimits(Int depth, Int t);
     void typecheck(Frame *f, const char *name, const char *ftype, char *proto,

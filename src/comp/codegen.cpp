@@ -654,7 +654,9 @@ int Codegen::lvalAggr(Node **l)
     if (n->type == N_PAIR) {
 	for (m = n->l.left; ; m = n->l.left->r.right) {
 	    lvalue(m, FALSE);
-	    i++;
+	    if (++i > 127) {
+		Compile::error("too many aggregate lvalues");
+	    }
 	    m = n->r.right;
 	    if (m->type != N_PAIR) {
 		break;
@@ -1022,6 +1024,7 @@ void Codegen::expr(Node *n, int pop)
     case N_ASSIGN:
 	if (n->l.left->type == N_AGGR) {
 	    l = lvalAggr(&n->l.left->l.left);
+	    l = pop ? l : l | I_STORES_KEEP;
 	    expr(n->r.right, FALSE);
 	    CodeChunk::instr(I_STORES, n->line);
 	    CodeChunk::byte(l);
