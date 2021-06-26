@@ -1791,7 +1791,11 @@ void Frame::interpret(char *pc)
 
 	case I_STORES:
 	case I_STORES | I_POP_BIT:
-	    u = FETCH1U(pc);
+	    if (p_ctrl->version >= 2) {
+		FETCH2U(pc, u);
+	    } else {
+		u = FETCH1U(pc);
+	    }
 	    this->pc = pc;
 	    if (kflv) {
 		kflv = FALSE;
@@ -2435,6 +2439,12 @@ unsigned short Frame::line()
 	    }
 	    break;
 
+	case I_STORES:
+	case I_STORES | I_POP_BIT:
+	    if (p_ctrl->version >= 2) {
+		pc++;
+	    }
+	    /* fall through */
 	case I_PUSH_INT1:
 	case I_PUSH_STRING:
 	case I_PUSH_LOCAL:
@@ -2443,8 +2453,6 @@ unsigned short Frame::line()
 	case I_STORE_LOCAL | I_POP_BIT:
 	case I_STORE_GLOBAL:
 	case I_STORE_GLOBAL | I_POP_BIT:
-	case I_STORES:
-	case I_STORES | I_POP_BIT:
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
 	case I_STORE_GLOBAL_INDEX:

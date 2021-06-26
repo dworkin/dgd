@@ -1024,7 +1024,7 @@ void Codegen::expr(Node *n, int pop)
 	    l = lvalAggr(&n->l.left->l.left);
 	    expr(n->r.right, FALSE);
 	    CodeChunk::instr(I_STORES, n->line);
-	    CodeChunk::byte(l);
+	    CodeChunk::word(l);
 	    storeAggr(n->l.left->l.left);
 	    return;
 	}
@@ -1148,7 +1148,7 @@ void Codegen::expr(Node *n, int pop)
 	    if ((n->r.number >> 24) == KFCALL_LVAL) {
 		/* generate stores */
 		CodeChunk::instr(I_STORES, n->line);
-		CodeChunk::byte(nargs);
+		CodeChunk::word(nargs);
 		if (args != (Node *) NULL) {
 		    char *instr;
 
