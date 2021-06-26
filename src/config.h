@@ -152,7 +152,7 @@ public:
 
 class Config {
 public:
-    static void modFinish();
+    static void modFinish(bool wait);
     static bool init(char *configfile, char *snapshot, char *snapshot2,
 		     char *module, Sector *fragment);
     static char *baseDir();

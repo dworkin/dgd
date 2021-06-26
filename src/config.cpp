@@ -788,7 +788,7 @@ void Config::dread(int fd, char *buf, const char *layout, Uint n)
 static char *hotboot[MAX_STRINGS], *dirs[MAX_STRINGS];
 static char *modules[MAX_STRINGS + 1], *modconf[MAX_STRINGS + 1];
 static void (*mfdlist[MAX_STRINGS + 1])(int*, int);
-static void (*mfinish[MAX_STRINGS + 1])();
+static void (*mfinish[MAX_STRINGS + 1])(int);
 static char *bhosts[MAX_PORTS], *dhosts[MAX_PORTS], *thosts[MAX_PORTS];
 static unsigned short bports[MAX_PORTS], dports[MAX_PORTS], tports[MAX_PORTS];
 static bool attached[MAX_PORTS];
@@ -1142,13 +1142,13 @@ void Config::fdlist()
 /*
  * call finish for loaded modules
  */
-void Config::modFinish()
+void Config::modFinish(bool wait)
 {
     int i;
 
     for (i = 0; modules[i] != NULL; i++) {
 	if (mfinish[i] != NULL) {
-	    (*mfinish[i])();
+	    (*mfinish[i])(wait);
 	}
     }
 }
@@ -1469,7 +1469,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     KFun::clear();
 
     memset(mfdlist, '\0', MAX_STRINGS * sizeof(void (*)(int*, int)));
-    memset(mfinish, '\0', MAX_STRINGS * sizeof(void (*)()));
+    memset(mfinish, '\0', MAX_STRINGS * sizeof(void (*)(int)));
     for (i = 0; modules[i] != NULL; i++) {
 	if (!Ext::load(modules[i], modconf[i], &mfdlist[i], &mfinish[i])) {
 	    EC->message("Config error: cannot load runtime extension \"%s\"\012",
@@ -1480,7 +1480,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    if (snapshot != (char *) NULL) {
 		P_close(fd);
 	    }
-	    modFinish();
+	    modFinish(TRUE);
 	    Ext::finish();
 	    MM->finish();
 	    return FALSE;
@@ -1496,7 +1496,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	modFinish();
+	modFinish(TRUE);
 	Ext::finish();
 	MM->finish();
 	return FALSE;
@@ -1515,7 +1515,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	modFinish();
+	modFinish(TRUE);
 	Ext::finish();
 	MM->finish();
 	return FALSE;
@@ -1535,7 +1535,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	modFinish();
+	modFinish(TRUE);
 	Ext::finish();
 	MM->finish();
 	return FALSE;
@@ -1573,7 +1573,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	modFinish();
+	modFinish(TRUE);
 	Ext::finish();
 	MM->finish();
 	return FALSE;
@@ -1607,7 +1607,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
-	modFinish();
+	modFinish(TRUE);
 	Ext::finish();
 	MM->finish();
 	return FALSE;
@@ -1683,7 +1683,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	}
 	Array::freeall();
 	String::clean();
-	modFinish();
+	modFinish(TRUE);
 	Ext::finish();
 	MM->finish();
 	return FALSE;

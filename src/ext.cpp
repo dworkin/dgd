@@ -32,7 +32,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	1
-# define EXTENSION_MINOR	2
+# define EXTENSION_MINOR	3
 
 
 /*
@@ -1965,19 +1965,24 @@ static double ext_vm_tanh(Frame *f, double flt)
 
 
 static void (*mod_fdlist)(int*, int);
-static void (*mod_finish)();
+static void (*mod_finish)(int);
 
 /*
  * supply function to pass open descriptors to, after a subprocess has been
  * spawned
  */
-void Ext::spawn(void (*fdlist)(int*, int), void (*finish)())
+void Ext::spawn(void (*fdlist)(int*, int), void (*finish)(int))
 {
-    /* close channels with other modules */
-    Config::modFinish();
-
     mod_fdlist = fdlist;
     mod_finish = finish;
+}
+
+/*
+ * close channels with other modules
+ */
+void Ext::cleanup()
+{
+    Config::modFinish(FALSE);
 }
 
 static int (*jit_init)(int, int, size_t, size_t, int, int, int, uint8_t*,
@@ -2345,9 +2350,9 @@ void Ext::release(uint64_t index, uint64_t instance)
  * initialize extension interface
  */
 bool Ext::load(char *module, char *config, void (**fdlist)(int*, int),
-	       void (**finish)())
+	       void (**finish)(int))
 {
-    voidf *ext_ext[5];
+    voidf *ext_ext[6];
     voidf *ext_frame[4];
     voidf *ext_data[2];
     voidf *ext_value[4];
@@ -2376,6 +2381,7 @@ bool Ext::load(char *module, char *config, void (**fdlist)(int*, int),
     ext_ext[2] = (voidf *) &spawn;
     ext_ext[3] = (voidf *) &Connection::fdclose;
     ext_ext[4] = (voidf *) &jit;
+    ext_ext[5] = (voidf *) &cleanup;
     ext_frame[0] = (voidf *) &ext_frame_object;
     ext_frame[1] = (voidf *) &ext_frame_dataspace;
     ext_frame[2] = (voidf *) &ext_frame_arg;
@@ -2426,7 +2432,7 @@ bool Ext::load(char *module, char *config, void (**fdlist)(int*, int),
     ext_runtime[4] = (voidf *) &ext_runtime_ticks;
     ext_runtime[5] = (voidf *) &ext_runtime_check;
 
-    ftabs[ 0] = ext_ext;	sizes[ 0] = 5;
+    ftabs[ 0] = ext_ext;	sizes[ 0] = 6;
     ftabs[ 1] = ext_frame;	sizes[ 1] = 4;
     ftabs[ 2] = ext_data;	sizes[ 2] = 2;
     ftabs[ 3] = ext_value;	sizes[ 3] = 4;

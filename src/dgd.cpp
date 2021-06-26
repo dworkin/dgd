@@ -118,7 +118,7 @@ void DGD::endTask()
 
     if (Object::stop) {
 	Swap::finish();
-	Config::modFinish();
+	Config::modFinish(TRUE);
 	Ext::finish();
 
 	if (Object::boot) {

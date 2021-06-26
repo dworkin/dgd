@@ -1,6 +1,6 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
- * Copyright (C) 2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2020-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -28,11 +28,12 @@ public:
     static bool execute(const Frame *f, int func);
     static void release(uint64_t index, uint64_t instance);
     static bool load(char *module, char *config, void (**fdlist)(int*, int),
-		     void (**finish)());
+		     void (**finish)(int));
     static void finish();
 
 private:
-    static void spawn(void (*fdlist)(int*, int), void (*finish)());
+    static void spawn(void (*fdlist)(int*, int), void (*finish)(int));
+    static void cleanup();
     static void jit(int (*init)(int, int, size_t, size_t, int, int, int,
 				uint8_t*, size_t, void**),
 		    void (*finish)(),
