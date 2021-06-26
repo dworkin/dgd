@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2013,12 +2013,7 @@ static node *assign(node *n1, node *n2)
 		}
 	    }
 	}
-	n1 = node_bin(N_ASSIGN, n2->mod, n1, n2);
-	n1->sclass = n2->sclass;
-	if (n1->sclass != (String *) NULL) {
-	    str_ref(n1->sclass);
-	}
-	return n1;
+	return node_bin(N_ASSIGN, T_VOID, n1, n2);
     } else {
 	if (typechecking && (!c_nil(n2) || !T_POINTER(n1->mod))) {
 	    /*
