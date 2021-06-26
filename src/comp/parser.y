@@ -2032,12 +2032,7 @@ Node *YYParser::assign(Node *n1, Node *n2)
 		}
 	    }
 	}
-	n1 = Node::createBin(N_ASSIGN, n2->mod, n1, n2);
-	n1->sclass = n2->sclass;
-	if (n1->sclass != (String *) NULL) {
-	    n1->sclass->ref();
-	}
-	return n1;
+	return Node::createBin(N_ASSIGN, T_VOID, n1, n2);
     } else {
 	if (typechecking && (!Compile::nil(n2) || !T_POINTER(n1->mod))) {
 	    /*
