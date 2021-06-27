@@ -917,7 +917,7 @@ static void ext_vm_store_index_index(Frame *f)
 /*
  * prepare for a number of stores
  */
-static void ext_vm_stores(Frame *f, uint8_t n)
+static void ext_vm_stores(Frame *f, uint16_t n)
 {
     if (f->sp->type != T_ARRAY) {
 	ext_runtime_error(f, "Value is not an array");
@@ -932,7 +932,7 @@ static void ext_vm_stores(Frame *f, uint8_t n)
 /*
  * prepare for a number of stores
  */
-static void ext_vm_stores_lval(Frame *f, uint8_t n)
+static void ext_vm_stores_lval(Frame *f, uint16_t n)
 {
     if (n < f->sp->array->size) {
 	ext_runtime_error(f, "Missing lvalue");
@@ -943,7 +943,7 @@ static void ext_vm_stores_lval(Frame *f, uint8_t n)
 /*
  * prepare for a number of stores
  */
-static void ext_vm_stores_spread(Frame *f, uint8_t n, uint8_t offset,
+static void ext_vm_stores_spread(Frame *f, uint16_t n, uint8_t offset,
 				 uint8_t type, uint16_t inherit, uint16_t index)
 {
     --n;
