@@ -149,8 +149,8 @@ void PP::clear()
 	ifs->pop();
     }
     ichunk.clean();
-    Macro::clear();
     TokenBuf::clear();
+    Macro::clear();
 }
 
 /*
