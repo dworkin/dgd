@@ -37,7 +37,7 @@
 # define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
 # define I_CAST			0x0a	/* 1+3 unsigned */
 # define I_INSTANCEOF		0x0b	/* 1 unsigned, 2 unsigned */
-# define I_STORES		0x0c	/* 1 unsigned */
+# define I_STORES		0x0c	/* 2 unsigned */
 # define I_STORE_GLOBAL_INDEX	0x0d	/* 1 unsigned */
 # define I_CALL_EFUNC		0x0e	/* 2 unsigned (+ 1 unsigned) */
 # define I_CALL_CEFUNC		0x0f	/* 2 unsigned, 1 unsigned */
