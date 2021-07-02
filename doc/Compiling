@@ -2,7 +2,8 @@ A few useful notes for compiling DGD
 
 DGD's build process is very simple, and doesn't have
 a configure script.  Platforms are detected in
-src/Makefile.
+src/Makefile.  You will need a C++ compiler and yacc or
+a yacc-compatible parser generator.
 
 DGD can be compiled on Unix-like systems and on Windows.  See
 src/host/win32/README for additional information regarding
