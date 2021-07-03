@@ -2220,6 +2220,19 @@ Connection *Connection::import(int fd, char *addr, unsigned short port,
     conn->at = -1;
 
     if (fd >= 0) {
+# ifdef INET6
+	struct sockaddr_in6 sin;
+# else
+	struct sockaddr_in sin;
+# endif
+	socklen_t len;
+
+	len = sizeof(sin);
+	if (getpeername(fd, (struct sockaddr *) &sin, &len) < 0 &&
+	    errno != ENOTCONN) {
+	    return NULL;
+	}
+
 	FD_SET(fd, &infds);
 	FD_SET(fd, &outfds);
 	if (flags & CONN_READF) {
