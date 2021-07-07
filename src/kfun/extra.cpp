@@ -176,12 +176,61 @@ char pt_explode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8,
 		      T_STRING | (1 << REFSHIFT), T_STRING, T_STRING };
 
 /*
+ * internal version of memmem()
+ */
+static char *memxmem(char *mem, unsigned int mlen, char *str,
+		     unsigned int slen)
+{
+    register unsigned int i, checksum, mult, accu;
+    char *p;
+
+    if (mlen < slen) {
+	return (char *) NULL;
+    }
+    p = (char *) memchr(mem, UCHAR(*str), mlen - slen + 1);
+    if (p == (char *) NULL) {
+	return (char *) NULL;
+    }
+    mlen -= p - mem;
+    mem = p;
+
+    /* compute checksum */
+    checksum = 0;
+    for (i = 0; i < slen; i++) {
+	checksum = checksum * 0x14b + UCHAR(str[i]);
+    }
+
+    /* initialize accumulator and multiplicator */
+    accu = 0;
+    mult = 0xbfce8063;
+    for (i = 0; i < slen; i++) {
+	accu = accu * 0x14b + UCHAR(mem[i]);
+	mult *= 0x14b;
+    }
+
+    for (;;) {
+	if (accu == checksum && memcmp(mem, str, slen) == 0) {
+	    return mem;
+	}
+	if (--mlen < slen) {
+	    return (char *) NULL;
+	}
+
+	/* remove head byte from accumulator, add new tail byte */
+	accu -= mult * UCHAR(*mem++);
+	accu = accu * 0x14b + UCHAR(mem[slen - 1]);
+    }
+
+    return (char *) NULL;
+}
+
+/*
  * explode a string
  */
 int kf_explode(Frame *f, int n, KFun *kf)
 {
     unsigned int len, slen, size;
-    char *p, *s;
+    char *p, *q, *s;
     Value *v;
     Array *a;
 
@@ -217,16 +266,13 @@ int kf_explode(Frame *f, int n, KFun *kf)
 	    p += slen;
 	    len -= slen;
 	}
-	while (len > slen) {
-	    if (memcmp(p, s, slen) == 0) {
-		/* separator found */
-		p += slen;
-		len -= slen;
+	if (len > slen) {
+	    --len;
+	    while ((q=memxmem(p, len, s, slen)) != (char *) NULL) {
+		q += slen;
+		len -= q - p;
+		p = q;
 		size++;
-	    } else {
-		/* next char */
-		p++;
-		--len;
 	    }
 	}
 
@@ -235,34 +281,24 @@ int kf_explode(Frame *f, int n, KFun *kf)
 
 	p = f->sp[1].string->text;
 	len = f->sp[1].string->len;
-	size = 0;
 	if (len > slen && memcmp(p, s, slen) == 0) {
 	    /* skip leading separator */
 	    p += slen;
 	    len -= slen;
 	}
-	while (len > slen) {
-	    if (memcmp(p, s, slen) == 0) {
-		/* separator found */
-		PUT_STRVAL(v, String::create(p - size, size));
-		v++;
-		p += slen;
-		len -= slen;
-		size = 0;
-	    } else {
-		/* next char */
-		p++;
-		--len;
-		size++;
-	    }
+	while ((q=memxmem(p, len, s, slen)) != (char *) NULL) {
+	    /* separator found */
+	    PUT_STRVAL(v, String::create(p, q - p));
+	    v++;
+	    q += slen;
+	    len -= q - p;
+	    p = q;
+	    --size;
 	}
-	if (len != slen || memcmp(p, s, slen) != 0) {
-	    /* remainder isn't a sepatator */
-	    size += len;
-	    p += len;
+	if (size != 0) {
+	    /* final array element */
+	    PUT_STRVAL(v, String::create(p, len));
 	}
-	/* final array element */
-	PUT_STRVAL(v, String::create(p - size, size));
     }
 
     (f->sp++)->string->del();
@@ -369,54 +405,30 @@ char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
 		     T_STRING, T_LVALUE };
 
 /*
- * match a string possibly including %%, up to the next %[sdfc] or
- * the end of the string
+ * obtain a string to match from the format string
  */
-static bool match(char *f, char *s, unsigned int *flenp, unsigned int *slenp)
+unsigned int scan(char *f, unsigned int *flenp, char *buf)
 {
     char *p;
-    unsigned int flen, slen;
+    unsigned int flen, buflen;
 
+    p = buf;
     flen = *flenp;
-    slen = *slenp;
-
-    while (flen > 0) {
-	/* look for first % */
-	p = (char *) memchr(f, '%', flen);
-
-	if (p == (char *) NULL) {
-	    /* no remaining % */
-	    if (memcmp(f, s, flen) == 0) {
-		*slenp -= slen - flen;
-		return TRUE;
-	    } else {
-		return FALSE;	/* no match */
-	    }
-	}
-
-	if (p[1] == '%') {
-	    /* %% */
-	    if (memcmp(f, s, ++p - f) == 0) {
-		/* matched up to and including the first % */
-		s += p - f;
-		slen -= p - f;
-		flen -= ++p - f;
-		f = p;
-	    } else {
-		return FALSE;	/* no match */
-	    }
-	} else if (memcmp(f, s, p - f) == 0) {
-	    /* matched up to the first % */
-	    *flenp -= flen - (p - f);
-	    *slenp -= slen - (p - f);
-	    return TRUE;
+    while (flen != 0) {
+	if (*f != '%') {
+	    *p++ = *f++;
+	    --flen;
+	} else if (flen > 1 && f[1] == '%') {
+	    *p++ = '%';
+	    f += 2;
+	    flen -= 2;
 	} else {
-	    return FALSE;	/* no match */
+	    break;
 	}
     }
+    *flenp -= flen;
 
-    *slenp -= slen;
-    return TRUE;
+    return p - buf;
 }
 
 /*
@@ -438,9 +450,9 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
     } results[MAX_LOCALS];
     unsigned int flen, slen, size;
     char *format, *x;
-    unsigned int fl, sl;
+    unsigned int fl;
     int matches;
-    char *s;
+    char *s, *buffer, *match;
     Int i;
     Float flt;
     bool skip;
@@ -467,21 +479,25 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
     format = top[0].string->text;
     flen = top[0].string->len;
 
+    buffer = ALLOCA(char, flen);
     matches = 0;
     nargs = 0;
 
     while (flen > 0) {
-	if (format[0] != '%' || format[1] == '%') {
-	    /* match initial part */
-	    fl = flen;
-	    sl = slen;
-	    if (!match(format, s, &fl, &sl) || fl == flen) {
+	fl = flen;
+	size = scan(format, &fl, buffer);
+	if (size != 0) {
+	    if (size > slen || memcmp(buffer, s, size) != 0) {
 		goto no_match;
 	    }
+
+	    s += size;
+	    slen -= size;
 	    format += fl;
 	    flen -= fl;
-	    s += sl;
-	    slen -= sl;
+	    if (flen == 0) {
+		break;
+	    }
 	}
 
 	/* skip first % */
@@ -548,6 +564,7 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 		    break;
 
 		default:
+		    AFREE(buffer);
 		    EC->error("Bad sscanf format string");
 		}
 	    } else {
@@ -560,40 +577,18 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 		    x = s + slen;
 		    slen = 0;
 		} else {
-		    /* get # of chars to match after string */
-		    for (x = format, size = 0; x - format != flen;
-			 x++, size++) {
-			x = (char *) memchr(x, '%', flen - (x - format));
-			if (x == (char *) NULL) {
-			    x = format + flen;
-			    break;
-			} else if (x[1] != '%') {
-			    break;
-			}
+		    fl = flen;
+		    size = scan(format, &fl, buffer);
+		    x = s + size;
+		    match = memxmem(s, slen, buffer, size);
+		    if (match == NULL) {
+			goto no_match;
 		    }
-		    size = (x - format) - size;
-
-		    x = s;
-		    for (;;) {
-			sl = slen - (x - s);
-			if (sl < size) {
-			    goto no_match;
-			}
-			x = (char *) memchr(x, format[0], sl - size + 1);
-			if (x == (char *) NULL) {
-			    goto no_match;
-			}
-			fl = flen;
-			if (match(format, x, &fl, &sl)) {
-			    format += fl;
-			    flen -= fl;
-			    size = x - s;
-			    x += sl;
-			    slen -= size + sl;
-			    break;
-			}
-			x++;
-		    }
+		    format += fl;
+		    flen -= fl;
+		    size = match - s;
+		    x += size;
+		    slen -= x - s;
 		}
 	    }
 
@@ -667,12 +662,14 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 	    break;
 
 	default:
+	    AFREE(buffer);
 	    EC->error("Bad sscanf format string");
 	}
 	matches++;
     }
 
 no_match:
+    AFREE(buffer);
     a = Array::create(f->data, nargs);
     for (elts = a->elts, size = 0; size < nargs; elts++, size++) {
 	switch (results[size].type) {
