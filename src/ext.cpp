@@ -434,7 +434,7 @@ static void ext_mapping_assign(Dataspace *data, Mapping *m, Value *idx,
  */
 static Value *ext_mapping_enum(Mapping *m, unsigned int i)
 {
-    if (i >= (m->msize(m->primary->data) >> 1)) {
+    if (i >= m->msize(m->primary->data)) {
 	return (Value *) NULL;
     }
     return &Dataspace::elts(m)[i << 1];
