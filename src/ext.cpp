@@ -432,9 +432,11 @@ static void ext_mapping_assign(Dataspace *data, Mapping *m, Value *idx,
 /*
  * return the nth enumerated index
  */
-static Value *ext_mapping_enum(Mapping *m, int i)
+static Value *ext_mapping_enum(Mapping *m, unsigned int i)
 {
-    m->msize(m->primary->data);
+    if (i >= (m->msize(m->primary->data) >> 1)) {
+	return (Value *) NULL;
+    }
     return &Dataspace::elts(m)[i << 1];
 }
 
