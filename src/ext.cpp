@@ -434,8 +434,8 @@ static void ext_mapping_assign(Dataspace *data, Mapping *m, Value *idx,
  */
 static Value *ext_mapping_enum(Mapping *m, int i)
 {
-    m->canonicalize();
-    return &Dataspace::elts(m)[i];
+    m->msize(m->primary->data);
+    return &Dataspace::elts(m)[i << 1];
 }
 
 /*
