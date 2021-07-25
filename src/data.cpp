@@ -383,9 +383,7 @@ void Dataplane::commitValues(Value *v, unsigned int n, Int level)
 		arr = v->array;
 		if (arr->primary->arr == (Array *) NULL &&
 		    arr->primary->plane->level > level) {
-		    if (arr->hashmod) {
-			arr->mapCompact(arr->primary->data);
-		    }
+		    arr->canonicalize();
 		    arr->primary = &arr->primary->plane->prev->alocal;
 		    if (arr->size != 0) {
 			arr->prev->next = arr->next;
@@ -797,9 +795,7 @@ void Dataplane::discard(Int level)
 Array::Backup **Dataplane::commitArray(Array *arr, Dataplane *old)
 {
     if (arr->primary->plane != this) {
-	if (arr->hashmod) {
-	    arr->mapCompact(arr->primary->data);
-	}
+	arr->canonicalize();
 
 	if (arr->primary->arr == (Array *) NULL) {
 	    arr->primary = &alocal;
@@ -1571,7 +1567,7 @@ void Dataspace::loadArrays(void (*readv) (char*, Sector*, Uint, Uint))
 /*
  * get an array from the dataspace
  */
-Array *Dataspace::array(Uint idx)
+Array *Dataspace::array(Uint idx, int type)
 {
     if (plane->arrays == (ArrRef *) NULL ||
 	plane->arrays[idx].arr == (Array *) NULL) {
@@ -1585,7 +1581,19 @@ Array *Dataspace::array(Uint idx)
 	    loadArrays(Swap::readv);
 	}
 
-	arr = Array::alloc(sarrays[idx].size);
+	switch (type) {
+	case T_ARRAY:
+	    arr = Array::alloc(sarrays[idx].size);
+	    break;
+
+	case T_MAPPING:
+	    arr = Mapping::alloc(sarrays[idx].size);
+	    break;
+
+	case T_LWOBJECT:
+	    arr = LWO::alloc(sarrays[idx].size);
+	    break;
+	}
 	arr->tag = sarrays[idx].tag;
 	p = plane;
 
@@ -1647,7 +1655,7 @@ void Dataspace::loadValues(SValue *sv, Value *v, int n)
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
-	    v->array = array(sv->array);
+	    v->array = array(sv->array, v->type);
 	    v->array->ref();
 	    break;
 	}
@@ -1843,9 +1851,7 @@ public:
 
 	    case T_MAPPING:
 		if (v->array->put(narr) == narr) {
-		    if (v->array->hashmod) {
-			v->array->mapCompact(v->array->primary->data);
-		    }
+		    v->array->canonicalize();
 		    arrCount(v->array);
 		}
 		break;
@@ -3418,9 +3424,7 @@ void Dataspace::import(ArrImport *imp, Value *val, unsigned short n)
 			 */
 			imp->narr++;
 
-			if (a->hashed != (MapHash *) NULL) {
-			    a->mapRemoveHash();
-			}
+			a->trim();
 
 			if (a->refCount == 2) {	/* + 1 for array merge table */
 			    /*
@@ -3497,13 +3501,7 @@ void Dataspace::import(ArrImport *imp, Value *val, unsigned short n)
 		     * not previously encountered mapping or array
 		     */
 		    imp->narr++;
-		    if (a->hashed != (MapHash *) NULL) {
-			a->mapRemoveHash();
-			a->prev->next = a->next;
-			a->next->prev = a->prev;
-			a->next = import;
-			import = a;
-		    } else if (a->elts != (Value *) NULL) {
+		    if (a->trim() || a->elts != (Value *) NULL) {
 			a->prev->next = a->next;
 			a->next->prev = a->prev;
 			a->next = import;
@@ -3561,11 +3559,8 @@ void Dataspace::xport()
 		    for (n = data->narrays, a = data->base.arrays; n > 0;
 			 --n, a++) {
 			if (a->arr != (Array *) NULL) {
-			    if (a->arr->hashed != (MapHash *) NULL) {
-				/* mapping */
-				a->arr->mapRemoveHash();
-				data->import(&imp, a->arr->elts, a->arr->size);
-			    } else if (a->arr->elts != (Value *) NULL) {
+			    if (a->arr->trim() ||
+				a->arr->elts != (Value *) NULL) {
 				data->import(&imp, a->arr->elts, a->arr->size);
 			    }
 			}

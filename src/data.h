@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -199,7 +199,7 @@ private:
     void loadStrings(void (*readv) (char*, Sector*, Uint, Uint));
     String *string(Uint idx);
     void loadArrays(void (*readv) (char*, Sector*, Uint, Uint));
-    Array *array(Uint idx);
+    Array *array(Uint idx, int type);
     void loadValues(struct SValue *sv, Value *v, int n);
     void loadVars(void (*readv) (char*, Sector*, Uint, Uint));
     void loadElts(void (*readv) (char*, Sector*, Uint, Uint));

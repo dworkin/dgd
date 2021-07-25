@@ -3321,7 +3321,7 @@ Array *Control::undefined(Dataspace *data)
     Value *v;
     Object *obj;
     long size;
-    Array *m;
+    Mapping *m;
 
     list = ALLOCA(ulist, ninherits);
     memset(list, '\0', ninherits * sizeof(ulist));
@@ -3340,10 +3340,10 @@ Array *Control::undefined(Dataspace *data)
 	}
     }
 
-    m = (Array *) NULL;
+    m = (Mapping *) NULL;
     try {
 	EC->push();
-	m = Array::mapCreate(data, size);
+	m = Mapping::create(data, size);
 	memset(m->elts, '\0', size * sizeof(Value));
 	for (i = nsymbols, symb = symbols; i != 0; --i, symb++) {
 	    obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
@@ -3380,7 +3380,7 @@ Array *Control::undefined(Dataspace *data)
     }
     AFREE(list);
 
-    m->mapSort();
+    m->sort();
     return m;
 }
 

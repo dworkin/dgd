@@ -158,7 +158,7 @@ public:
     MapElt *next;		/* next in hash table */
 };
 
-static Chunk<MapElt, MELT_CHUNK> echunk;
+static Chunk<MapElt, MELT_CHUNK> mechunk;
 
 # define MTABLE_SIZE	16	/* most mappings are quite small */
 
@@ -210,7 +210,6 @@ public:
 	    }
 	}
 	size = 0;
-	delete this;
     }
 
     /*
@@ -249,13 +248,13 @@ public:
 
 	size++;
 	i = hashval % tablesize;
-	return table[i] = chunknew (echunk) MapElt(hashval, table[i]);
+	return table[i] = chunknew (mechunk) MapElt(hashval, table[i]);
     }
 
     /*
      * remove MapElt
      */
-    void remove(MapElt **p, Dataspace *data, Array *m) {
+    void remove(MapElt **p, Dataspace *data, Mapping *m) {
 	MapElt *e;
 
 	e = *p;
@@ -320,7 +319,7 @@ public:
     MapElt **table;		/* hash table */
 };
 
-static Chunk<MapHash, ARR_CHUNK> mchunk;
+static Chunk<MapHash, ARR_CHUNK> mhchunk;
 
 # define ABCHUNKSZ	32
 
@@ -353,22 +352,7 @@ public:
      * discard changes and restore backup
      */
     void discard() {
-	unsigned short i;
-	Value *v;
-
-	if (arr->elts != (Value *) NULL) {
-	    for (v = arr->elts, i = arr->size; i != 0; v++, --i) {
-		v->del();
-	    }
-	    FREE(arr->elts);
-	}
-
-	if (arr->hashed != (MapHash *) NULL) {
-	    delete arr->hashed;
-	    arr->hashed = (MapHash *) NULL;
-	    arr->hashmod = FALSE;
-	}
-
+	arr->deepDelete();
 	arr->elts = original;
 	arr->size = size;
 	arr->del();
@@ -447,8 +431,10 @@ private:
 };
 
 static Chunk<Array, ARR_CHUNK> achunk;
-unsigned long Array::max_size;		/* max. size of array and mapping */
-Uint Array::atag;			/* current array tag */
+static Chunk<Mapping, ARR_CHUNK> mchunk;
+static Chunk<LWO, ARR_CHUNK> ochunk;
+static unsigned long max_size;		/* max. size of array and mapping */
+static Uint atag;			/* current array tag */
 static ArrHash *aht[ARRMERGETABSZ];	/* array merge table */
 
 /*
@@ -463,21 +449,53 @@ void Array::init(unsigned int size)
 Array::Array(unsigned short size)
 {
     this->size = size;
-    hashmod = FALSE;
     elts = (Value *) NULL;
     refCount = 0;
     objDestrCount = 0;		/* if swapped in, check objects */
-    hashed = (MapHash *) NULL;	/* only used for mappings */
-}
-
-Array::~Array()
-{
 }
 
 /*
- * create a new array
+ * delete everything contained in an array
  */
-Array *Array::alloc(unsigned int size)
+void Array::deepDelete()
+{
+    Value *v;
+    unsigned short i;
+    Array *list;
+
+    if ((v=elts) != (Value *) NULL) {
+	for (i = size; i > 0; --i) {
+	    (v++)->del();
+	}
+	FREE(elts);
+	elts = (Value *) NULL;
+    }
+}
+
+/*
+ * delete strings in an array
+ */
+void Array::shallowDelete()
+{
+    Value *v;
+    unsigned short i;
+
+    if ((v=elts) != (Value *) NULL) {
+	for (i = size; i > 0; --i) {
+	    if (v->type == T_STRING) {
+		v->string->del();
+	    }
+	    v++;
+	}
+	FREE(elts);
+	elts = (Value *) NULL;
+    }
+}
+
+/*
+ * allocate a new array
+ */
+Array *Array::alloc(unsigned short size)
 {
     return chunknew (achunk) Array(size);
 }
@@ -530,7 +548,7 @@ void Array::del()
 {
     if (--refCount == 0) {
 	static Array *dlist;
-	Array *a;
+	Array *a, *list;
 
 	prev->next = next;
 	next->prev = prev;
@@ -543,21 +561,7 @@ void Array::del()
 
 	dlist = a = this;
 	do {
-	    Value *v;
-	    unsigned short i;
-	    Array *list;
-
-	    if ((v=a->elts) != (Value *) NULL) {
-		for (i = a->size; i > 0; --i) {
-		    (v++)->del();
-		}
-		FREE(a->elts);
-	    }
-
-	    if (a->hashed != (MapHash *) NULL) {
-		delete a->hashed;
-	    }
-
+	    a->deepDelete();
 	    list = a->prev;
 	    delete a;
 	    a = list;
@@ -571,37 +575,30 @@ void Array::del()
  */
 void Array::freelist()
 {
-    Array *a;
-    Value *v;
-    unsigned short i;
+    Array *a, *prev;
 
     a = this;
     do {
-	Array *prev;
-
-	if ((v=a->elts) != (Value *) NULL) {
-	    for (i = a->size; i > 0; --i) {
-		if (v->type == T_STRING) {
-		    v->string->del();
-		}
-		v++;
-	    }
-	    FREE(a->elts);
-	    a->elts = (Value *) NULL;
-	}
-
-	if (a->hashed != (MapHash *) NULL) {
-	    /*
-	     * delete the hashtable of a mapping
-	     */
-	    a->hashed->shallowDelete();
-	    a->hashed = (MapHash *) NULL;
-	}
-
+	a->shallowDelete();
 	prev = a->prev;
 	delete a;
 	a = prev;
     } while (a != this);
+}
+
+/*
+ * nothing to trim
+ */
+bool Array::trim()
+{
+    return FALSE;
+}
+
+/*
+ * already canonical
+ */
+void Array::canonicalize()
+{
 }
 
 /*
@@ -610,8 +607,10 @@ void Array::freelist()
 void Array::freeall()
 {
     achunk.clean();
-    echunk.clean();
     mchunk.clean();
+    ochunk.clean();
+    mechunk.clean();
+    mhchunk.clean();
 }
 
 /*
@@ -661,11 +660,6 @@ void Array::backup(Backup **ac)
     Value *v;
     unsigned short i;
 
-# ifdef DEBUG
-    if (hashmod) {
-	EC->fatal("backing up unclean mapping");
-    }
-# endif
     if (size != 0) {
 	memcpy(v = ALLOC(Value, size), elts, size * sizeof(Value));
 	for (i = size; i != 0; --i) {
@@ -1272,17 +1266,59 @@ Array *Array::range(Dataspace *data, long l1, long l2)
 }
 
 
+Mapping::Mapping(unsigned short size)
+    : Array(size)
+{
+    hashmod = FALSE;
+    hashed = (MapHash *) NULL;
+}
+
+/*
+ * delete everything contained in a mapping
+ */
+void Mapping::deepDelete()
+{
+    Array::deepDelete();
+
+    if (hashed != (MapHash *) NULL) {
+	delete hashed;
+	hashed = (MapHash *) NULL;
+    }
+}
+
+/*
+ * delete strings in a mapping
+ */
+void Mapping::shallowDelete()
+{
+    Array::shallowDelete();
+
+    if (hashed != (MapHash *) NULL) {
+	hashed->shallowDelete();
+	delete hashed;
+	hashed = (MapHash *) NULL;
+    }
+}
+
+/*
+ * allocate a new mapping
+ */
+Mapping *Mapping::alloc(unsigned short size)
+{
+    return chunknew (mchunk) Mapping(size);
+}
+
 /*
  * create a new mapping
  */
-Array *Array::mapCreate(Dataspace *data, long size)
+Mapping *Mapping::create(Dataspace *data, long size)
 {
-    Array *m;
+    Mapping *m;
 
     if (size > max_size << 1) {
 	EC->error("Mapping too large");
     }
-    m = Array::alloc((unsigned short) size);
+    m = alloc((unsigned short) size);
     if (size > 0) {
 	m->elts = ALLOC(Value, size);
     }
@@ -1299,7 +1335,7 @@ Array *Array::mapCreate(Dataspace *data, long size)
 /*
  * prune and sort a mapping
  */
-void Array::mapSort()
+void Mapping::sort()
 {
     unsigned short i, sz;
     Value *v, *w;
@@ -1335,7 +1371,7 @@ void Array::mapSort()
 /*
  * commit changes from the hash table to the array part
  */
-void Array::mapDehash(Dataspace *data, bool clean)
+void Mapping::dehash(Dataspace *data, bool clean)
 {
     unsigned short sz, i, j;
     Value *v1, *v2, *v3;
@@ -1468,56 +1504,69 @@ void Array::mapDehash(Dataspace *data, bool clean)
 /*
  * delete hash table of mapping
  */
-void Array::mapRemoveHash()
+bool Mapping::trim()
 {
     if (hashed != (MapHash *) NULL) {
 	if (hashmod) {
-	    mapDehash(primary->data, FALSE);
+	    dehash(primary->data, FALSE);
 	}
 	delete hashed;
 	hashed = (MapHash *) NULL;
+	return TRUE;
     }
+    return FALSE;
 }
 
 /*
  * compact a mapping: copy new elements from the hash table into the array,
  * and remove destructed objects
  */
-void Array::mapCompact(Dataspace *data)
+void Mapping::compact(Dataspace *data)
 {
     if (hashmod || objDestrCount != Object::objDestrCount) {
 	if (hashmod && (!THISPLANE(primary) || !SAMEPLANE(data, primary->data)))
 	{
-	    mapDehash(data, FALSE);
+	    dehash(data, FALSE);
 	}
 
-	mapDehash(data, TRUE);
+	dehash(data, TRUE);
 	objDestrCount = Object::objDestrCount;
+    }
+}
+
+/*
+ * put mapping in canonical form
+ */
+void Mapping::canonicalize()
+{
+    if (hashmod) {
+	compact(primary->data);
     }
 }
 
 /*
  * return the size of a mapping
  */
-unsigned short Array::mapSize(Dataspace *data)
+unsigned short Mapping::msize(Dataspace *data)
 {
-    mapCompact(data);
+    compact(data);
     return size >> 1;
 }
 
 /*
  * add two mappings
  */
-Array *Array::mapAdd(Dataspace *data, Array *m2)
+Array *Mapping::add(Dataspace *data, Array *a2)
 {
     Value *v1, *v2, *v3;
     unsigned short n1, n2;
     Int c;
-    Array *m3;
+    Mapping *m2, *m3;
 
-    mapCompact(data);
-    m2->mapCompact(data);
-    m3 = mapCreate(data, (long) size + m2->size);
+    compact(data);
+    m2 = (Mapping *) a2;
+    m2->compact(data);
+    m3 = create(data, (long) size + m2->size);
     if (m3->size == 0) {
 	/* add two empty mappings */
 	return m3;
@@ -1590,15 +1639,15 @@ Array *Array::mapAdd(Dataspace *data, Array *m2)
 /*
  * subtract an array from a mapping
  */
-Array *Array::mapSub(Dataspace *data, Array *a2)
+Array *Mapping::sub(Dataspace *data, Array *a2)
 {
     Value *v1, *v2, *v3;
     unsigned short n1, n2;
     Int c;
-    Array *m3;
+    Mapping *m3;
 
-    mapCompact(data);
-    m3 = mapCreate(data, size);
+    compact(data);
+    m3 = create(data, size);
     if (size == 0) {
 	/* subtract from empty mapping */
 	return m3;
@@ -1675,19 +1724,19 @@ Array *Array::mapSub(Dataspace *data, Array *a2)
 /*
  * intersect a mapping with an array
  */
-Array *Array::mapIntersect(Dataspace *data, Array *a2)
+Array *Mapping::intersect(Dataspace *data, Array *a2)
 {
     Value *v1, *v2, *v3;
     unsigned short n1, n2;
     Int c;
-    Array *m3;
+    Mapping *m3;
 
-    mapCompact(data);
+    compact(data);
     if (a2->size == 0) {
 	/* intersect with empty array */
-	return mapCreate(data, 0);
+	return create(data, 0);
     }
-    m3 = mapCreate(data, size);
+    m3 = create(data, size);
     if (size == 0) {
 	/* intersect with empty mapping */
 	return m3;
@@ -1757,7 +1806,7 @@ Array *Array::mapIntersect(Dataspace *data, Array *a2)
  * Index a mapping with a value. If a third argument is supplied, perform an
  * assignment; otherwise return the indexed value.
  */
-Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
+Value *Mapping::index(Dataspace *data, Value *val, Value *elt, Value *verify)
 {
     Uint i;
     MapElt *e, **p;
@@ -1773,7 +1822,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
     }
 
     if (hashmod && (!THISPLANE(primary) || !SAMEPLANE(data, primary->data))) {
-	mapDehash(data, FALSE);
+	dehash(data, FALSE);
     }
 
     switch (val->type) {
@@ -1913,7 +1962,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 	if (add &&
 	    (size >> 1) + ((hashed == (MapHash *) NULL) ?
 					    0 : hashed->sizemod) >= max_size) {
-	    mapCompact(data);
+	    compact(data);
 	    if (size >> 1 >= max_size) {
 		EC->error("Mapping too large to grow");
 	    }
@@ -1923,7 +1972,7 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 	    /*
 	     * add hash table to this mapping
 	     */
-	    hashed = chunknew (mchunk) MapHash;
+	    hashed = chunknew (mhchunk) MapHash;
 	} else if (size << 2 >= hashed->tablesize * 3) {
 	    /*
 	     * extend hash table for this mapping
@@ -1951,12 +2000,12 @@ Value *Array::mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify)
 /*
  * return a mapping value subrange
  */
-Array *Array::mapRange(Dataspace *data, Value *v1, Value *v2)
+Mapping *Mapping::range(Dataspace *data, Value *v1, Value *v2)
 {
     unsigned short from, to;
-    Array *range;
+    Mapping *range;
 
-    mapCompact(data);
+    compact(data);
 
     /* determine subrange */
     from = (v1 == (Value *) NULL) ? 0 : search(v1, elts, size, 2, TRUE);
@@ -1973,11 +2022,11 @@ Array *Array::mapRange(Dataspace *data, Value *v1, Value *v2)
 	}
     }
     if (from >= to) {
-	return mapCreate(data, 0);	/* empty subrange */
+	return create(data, 0);	/* empty subrange */
     }
 
     /* copy subrange */
-    range = mapCreate(data, to -= from);
+    range = create(data, to -= from);
     Value::copy(range->elts, elts + from, to);
 
     Dataspace::refImports(range);
@@ -1987,14 +2036,14 @@ Array *Array::mapRange(Dataspace *data, Value *v1, Value *v2)
 /*
  * return the indices of a mapping
  */
-Array *Array::mapIndices(Dataspace *data)
+Array *Mapping::indices(Dataspace *data)
 {
     Array *indices;
     Value *v1, *v2;
     unsigned short n;
 
-    mapCompact(data);
-    indices = create(data, n = size >> 1);
+    compact(data);
+    indices = Array::create(data, n = size >> 1);
     v1 = indices->elts;
     for (v2 = elts; n > 0; v2 += 2, --n) {
 	v2->ref();
@@ -2008,14 +2057,14 @@ Array *Array::mapIndices(Dataspace *data)
 /*
  * return the values of a mapping
  */
-Array *Array::mapValues(Dataspace *data)
+Array *Mapping::values(Dataspace *data)
 {
     Array *values;
     Value *v1, *v2;
     unsigned short n;
 
-    mapCompact(data);
-    values = create(data, n = size >> 1);
+    compact(data);
+    values = Array::create(data, n = size >> 1);
     v1 = values->elts;
     for (v2 = elts + 1; n > 0; v2 += 2, --n) {
 	v2->ref();
@@ -2028,12 +2077,20 @@ Array *Array::mapValues(Dataspace *data)
 
 
 /*
+ * allocate a new light-weight object
+ */
+LWO *LWO::alloc(unsigned short size)
+{
+    return chunknew (ochunk) LWO(size);
+}
+
+/*
  * create a new light-weight object
  */
-Array *Array::lwoCreate(Dataspace *data, Object *obj)
+LWO *LWO::create(Dataspace *data, Object *obj)
 {
     Control *ctrl;
-    Array *a;
+    LWO *a;
     Float flt;
 
     obj->lightWeight();
@@ -2058,9 +2115,9 @@ Array *Array::lwoCreate(Dataspace *data, Object *obj)
 /*
  * copy a light-weight object
  */
-Array *Array::lwoCopy(Dataspace *data)
+LWO *LWO::copy(Dataspace *data)
 {
-    Array *copy;
+    LWO *copy;
 
     copy = alloc(size);
     Value::copy(copy->elts = ALLOC(Value, size), elts, size);

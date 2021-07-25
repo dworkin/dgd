@@ -269,7 +269,7 @@ static void save_mapping(savecontext *x, Array *a)
 	return;
     }
     x->narrays++;
-    a->mapCompact(a->primary->data);
+    a->canonicalize();
 
     /*
      * skip index/value pairs of which either is an object
@@ -755,7 +755,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 {
     unsigned short i;
     Value *v;
-    Array *a;
+    Mapping *a;
 
     /* match ([ */
     if (*buf++ != '(' || *buf++ != '[') {
@@ -767,7 +767,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	restore_error(x, "'|' expected");
     }
 
-    ac_put(x, T_MAPPING, a = Array::mapCreate(x->f->data, val->number << 1));
+    ac_put(x, T_MAPPING, a = Mapping::create(x->f->data, val->number << 1));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	*v++ = Value::nil;
     }
@@ -793,7 +793,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	if (*buf++ != ']' || *buf++ != ')') {
 	    restore_error(x, "'])' expected");
 	}
-	a->mapSort();
+	a->sort();
 	EC->pop();
     } catch (...) {
 	a->ref();

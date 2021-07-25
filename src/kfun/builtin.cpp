@@ -178,7 +178,7 @@ int kf_add(Frame *f, int n, KFun *kf)
     case T_MAPPING:
 	if (f->sp->type == T_MAPPING) {
 	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
-	    a = f->sp[1].array->mapAdd(f->data, f->sp->array);
+	    a = f->sp[1].array->add(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
 	    f->sp->array->del();
@@ -313,7 +313,7 @@ int kf_and(Frame *f, int n, KFun *kf)
     case T_MAPPING:
 	if (f->sp->type == T_ARRAY) {
 	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
-	    a = f->sp[1].array->mapIntersect(f->data, f->sp->array);
+	    a = f->sp[1].array->intersect(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
 	    PUT_MAP(f->sp, a);
@@ -1299,7 +1299,7 @@ int kf_rangeft(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
 
     if (f->sp[2].type == T_MAPPING) {
-	a = f->sp[2].array->mapRange(f->data, &f->sp[1], f->sp);
+	a = ((Mapping *) f->sp[2].array)->range(f->data, &f->sp[1], f->sp);
 	(f->sp++)->del();
 	(f->sp++)->del();
 	f->addTicks(f->sp->array->size);
@@ -1375,7 +1375,7 @@ int kf_rangef(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
 
     if (f->sp[1].type == T_MAPPING) {
-	a = f->sp[1].array->mapRange(f->data, f->sp, (Value *) NULL);
+	a = ((Mapping *) f->sp[1].array)->range(f->data, f->sp, (Value *) NULL);
 	(f->sp++)->del();
 	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
@@ -1443,7 +1443,7 @@ int kf_ranget(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
 
     if (f->sp[1].type == T_MAPPING) {
-	a = f->sp[1].array->mapRange(f->data, (Value *) NULL, f->sp);
+	a = ((Mapping *) f->sp[1].array)->range(f->data, (Value *) NULL, f->sp);
 	(f->sp++)->del();
 	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
@@ -1512,7 +1512,8 @@ int kf_range(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
 
     if (f->sp->type == T_MAPPING) {
-	a = f->sp->array->mapRange(f->data, (Value *) NULL, (Value *) NULL);
+	a = ((Mapping *) f->sp->array)->range(f->data, (Value *) NULL,
+					      (Value *) NULL);
 	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
 	PUT_MAP(f->sp, a);
@@ -1657,7 +1658,7 @@ int kf_sub(Frame *f, int n, KFun *kf)
 	    Array *a;
 
 	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
-	    a = f->sp[1].array->mapSub(f->data, f->sp->array);
+	    a = f->sp[1].array->sub(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
 	    f->sp->array->del();

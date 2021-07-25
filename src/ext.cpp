@@ -391,7 +391,7 @@ static int ext_array_size(Array *a)
 /*
  * store a mapping in a value
  */
-static void ext_mapping_putval(Value *val, Array *m)
+static void ext_mapping_putval(Value *val, Mapping *m)
 {
     PUT_MAPVAL_NOREF(val, m);
 }
@@ -399,19 +399,18 @@ static void ext_mapping_putval(Value *val, Array *m)
 /*
  * create a new mapping
  */
-static Array *ext_mapping_new(Dataspace *data)
+static Mapping *ext_mapping_new(Dataspace *data)
 {
-    return Array::mapCreate(data, 0);
+    return Mapping::create(data, 0);
 }
 
 /*
  * return a value from a mapping
  */
-static Value *ext_mapping_index(Array *m, Value *idx)
+static Value *ext_mapping_index(Mapping *m, Value *idx)
 {
     try {
-	return m->mapIndex(m->primary->data, idx, (Value *) NULL,
-			   (Value *) NULL);
+	return m->index(m->primary->data, idx, (Value *) NULL, (Value *) NULL);
     } catch (...) {
 	longjmp(*EC->env, 1);
     }
@@ -420,11 +419,11 @@ static Value *ext_mapping_index(Array *m, Value *idx)
 /*
  * assign to a mapping value
  */
-static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
+static void ext_mapping_assign(Dataspace *data, Mapping *m, Value *idx,
 			       Value *val)
 {
     try {
-	m->mapIndex(data, idx, val, (Value *) NULL);
+	m->index(data, idx, val, (Value *) NULL);
     } catch (...) {
 	longjmp(*EC->env, 1);
     }
@@ -433,18 +432,18 @@ static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
 /*
  * return the nth enumerated index
  */
-static Value *ext_mapping_enum(Array *m, int i)
+static Value *ext_mapping_enum(Mapping *m, int i)
 {
-    m->mapCompact(m->primary->data);
+    m->canonicalize();
     return &Dataspace::elts(m)[i];
 }
 
 /*
  * return the size of a mapping
  */
-static int ext_mapping_size(Array *m)
+static int ext_mapping_size(Mapping *m)
 {
-    return m->mapSize(m->primary->data);
+    return m->msize(m->primary->data);
 }
 
 /*

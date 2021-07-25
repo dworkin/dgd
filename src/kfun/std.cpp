@@ -332,7 +332,7 @@ char pt_new_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
 int kf_new_object(Frame *f, int n, KFun *kf)
 {
     Object *obj;
-    Array *a;
+    LWO *a;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -342,12 +342,13 @@ int kf_new_object(Frame *f, int n, KFun *kf)
 	    EC->error("Creating new instance from a non-master object");
 	}
 
-	PUT_LWOVAL(f->sp, Array::lwoCreate(f->data, obj));
+	PUT_LWOVAL(f->sp, LWO::create(f->data, obj));
 	if (f->call((Object *) NULL, f->sp->array, (char *) NULL, 0, TRUE, 0)) {
 	    (f->sp++)->del();
 	}
     } else {
-	a = f->sp->array->lwoCopy(f->data);
+	a = (LWO *) f->sp->array;
+	a = a->copy(f->data);
 	f->sp->array->del();
 	PUT_LWOVAL(f->sp, a);
     }
@@ -823,7 +824,7 @@ int kf_map_indices(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    a = f->sp->array->mapIndices(f->data);
+    a = ((Mapping *) f->sp->array)->indices(f->data);
     f->addTicks(f->sp->array->size);
     f->sp->array->del();
     PUT_ARRVAL(f->sp, a);
@@ -848,7 +849,7 @@ int kf_map_values(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    a = f->sp->array->mapValues(f->data);
+    a = ((Mapping *) f->sp->array)->values(f->data);
     f->addTicks(f->sp->array->size);
     f->sp->array->del();
     PUT_ARRVAL(f->sp, a);
@@ -874,7 +875,7 @@ int kf_map_sizeof(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     f->addTicks(f->sp->array->size);
-    size = f->sp->array->mapSize(f->data);
+    size = ((Mapping *) f->sp->array)->msize(f->data);
     f->sp->array->del();
     PUT_INTVAL(f->sp, size);
     return 0;

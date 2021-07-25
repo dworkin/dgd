@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,40 +25,27 @@ public:
     Array() {
 	prev = next = this;		/* alist sentinel */
     }
-    ~Array();
 
     void ref() {
 	refCount++;
     }
     void del();
     void freelist();
+    virtual bool trim();
+    virtual void canonicalize();
     Uint put(Uint idx);
     void backup(Backup **ac);
-    Array *add(Dataspace *data, Array *a2);
-    Array *sub(Dataspace *data, Array *a2);
-    Array *intersect(Dataspace *data, Array *a2);
+    virtual Array *add(Dataspace *data, Array *a2);
+    virtual Array *sub(Dataspace *data, Array *a2);
+    virtual Array *intersect(Dataspace *data, Array *a2);
     Array *setAdd(Dataspace *data, Array *a2);
     Array *setXAdd(Dataspace *data, Array *a2);
     unsigned short index(long l);
     void checkRange(long l1, long l2);
     Array *range(Dataspace *data, long l1, long l2);
 
-    void mapSort();
-    void mapRemoveHash();
-    void mapCompact(Dataspace *data);
-    unsigned short mapSize(Dataspace *data);
-    Array *mapAdd(Dataspace *data, Array *m2);
-    Array *mapSub(Dataspace *data, Array *a2);
-    Array *mapIntersect(Dataspace *data, Array *a2);
-    Value *mapIndex(Dataspace *data, Value *val, Value *elt, Value *verify);
-    Array *mapRange(Dataspace *data, Value *v1, Value *v2);
-    Array *mapIndices(Dataspace *data);
-    Array *mapValues(Dataspace *data);
-
-    Array *lwoCopy(Dataspace *data);
-
     static void init(unsigned int size);
-    static Array *alloc(unsigned int size);
+    static Array *alloc(unsigned short size);
     static Array *create(Dataspace *data, long size);
     static Array *createNil(Dataspace *data, long size);
     static void freeall();
@@ -67,23 +54,60 @@ public:
     static void commit(Backup **ac, Dataplane *plane, bool merge);
     static void discard(Backup **ac);
 
-    static Array *mapCreate(Dataspace *data, long size);
-
-    static Array *lwoCreate(Dataspace *data, Object *obj);
-
     unsigned short size;		/* number of elements */
-    bool hashmod;			/* hashed part contains new elements */
     Uint refCount;			/* number of references */
     Uint tag;				/* used in sorting */
     Uint objDestrCount;			/* last destructed object count */
     Value *elts;			/* elements */
-    class MapHash *hashed;		/* hashed mapping elements */
     struct ArrRef *primary;		/* primary reference */
     Array *prev, *next;			/* per-object linked list */
 
-private:
-    void mapDehash(Dataspace *data, bool clean);
+protected:
+    virtual void deepDelete();
+    virtual void shallowDelete();
 
-    static unsigned long max_size;	/* max. size of array and mapping */
-    static Uint atag;			/* current array tag */
+    friend class ArrBak;
+};
+
+class Mapping : public Array {
+public:
+    Mapping(unsigned short size);
+
+    void sort();
+    virtual bool trim();
+    virtual void canonicalize();
+    unsigned short msize(Dataspace *data);
+    virtual Array *add(Dataspace *data, Array *a2);
+    virtual Array *sub(Dataspace *data, Array *a2);
+    virtual Array *intersect(Dataspace *data, Array *a2);
+    Value *index(Dataspace *data, Value *val, Value *elt, Value *verify);
+    Mapping *range(Dataspace *data, Value *v1, Value *v2);
+    Array *indices(Dataspace *data);
+    Array *values(Dataspace *data);
+
+    static Mapping *alloc(unsigned short size);
+    static Mapping *create(Dataspace *data, long size);
+
+protected:
+    virtual void deepDelete();
+    virtual void shallowDelete();
+
+private:
+    void dehash(Dataspace *data, bool clean);
+    void compact(Dataspace *data);
+
+    bool hashmod;			/* hashed part contains new elements */
+    class MapHash *hashed;		/* hashed mapping elements */
+
+    friend class MapHash;
+};
+
+class LWO : public Array {
+public:
+    LWO(unsigned short size) : Array(size) { }
+
+    LWO *copy(Dataspace *data);
+
+    static LWO *alloc(unsigned short size);
+    static LWO *create(Dataspace *data, Object *obj);
 };

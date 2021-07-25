@@ -254,22 +254,22 @@ void Frame::aggregate(unsigned int size)
  */
 void Frame::mapAggregate(unsigned int size)
 {
-    Array *a;
+    Mapping *a;
 
     if (size == 0) {
-	a = Array::mapCreate(data, 0);
+	a = Mapping::create(data, 0);
     } else {
 	Value *elts;
 
 	addTicks(size);
-	a = Array::mapCreate(data, size);
+	a = Mapping::create(data, size);
 	elts = a->elts + size;
 	do {
 	    *--elts = *sp++;
 	} while (--size != 0);
 	try {
 	    EC->push();
-	    a->mapSort();
+	    a->sort();
 	    EC->pop();
 	} catch (...) {
 	    /* error in sorting, delete mapping and pass on error */
@@ -387,7 +387,7 @@ void Frame::index(Value *aval, Value *ival, Value *val, bool keep)
 	break;
 
     case T_MAPPING:
-	*val = *aval->array->mapIndex(data, ival, NULL, NULL);
+	*val = *((Mapping *) aval->array)->index(data, ival, NULL, NULL);
 	if (!keep) {
 	    ival->del();
 	}
@@ -642,7 +642,7 @@ bool Frame::storeIndex(Value *var, Value *aval, Value *ival, Value *val)
 	if (var->type != T_STRING) {
 	    var = NULL;
 	}
-	arr->mapIndex(data, ival, val, var);
+	((Mapping *) arr)->index(data, ival, val, var);
 	ival->del();
 	arr->del();
 	break;
