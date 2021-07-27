@@ -182,7 +182,7 @@ static void save_string(savecontext *x, String *str)
     put(x, buf, size + 1);
 }
 
-static void save_mapping (savecontext*, Array*);
+static void save_mapping (savecontext*, Mapping*);
 
 /*
  * save an array
@@ -242,7 +242,7 @@ static void save_array(savecontext *x, Array *a)
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(x, v->array);
+	    save_mapping(x, (Mapping *) v->array);
 	    break;
 	}
 	put(x, ",", 1);
@@ -253,7 +253,7 @@ static void save_array(savecontext *x, Array *a)
 /*
  * save a mapping
  */
-static void save_mapping(savecontext *x, Array *a)
+static void save_mapping(savecontext *x, Mapping *a)
 {
     char buf[18];
     Uint i;
@@ -269,12 +269,12 @@ static void save_mapping(savecontext *x, Array *a)
 	return;
     }
     x->narrays++;
-    a->canonicalize();
 
     /*
      * skip index/value pairs of which either is an object
      */
-    for (i = n = a->size >> 1, v = Dataspace::elts(a); i > 0; --i) {
+    for (i = n = a->msize(a->primary->data), v = Dataspace::elts(a); i > 0; --i)
+    {
 	if (v->type == T_OBJECT || v->type == T_LWOBJECT) {
 	    /* skip object index */
 	    --n;
@@ -324,7 +324,7 @@ static void save_mapping(savecontext *x, Array *a)
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(x, v->array);
+	    save_mapping(x, (Mapping *) v->array);
 	    break;
 	}
 	put(x, ":", 1);
@@ -352,7 +352,7 @@ static void save_mapping(savecontext *x, Array *a)
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(x, v->array);
+	    save_mapping(x, (Mapping *) v->array);
 	    break;
 	}
 	put(x, ",", 1);
@@ -461,7 +461,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
 			break;
 
 		    case T_MAPPING:
-			save_mapping(&x, var->array);
+			save_mapping(&x, (Mapping *) var->array);
 			break;
 		    }
 		    put(&x, "\012", 1);	/* LF */
