@@ -622,6 +622,8 @@ case_list
 		      if ($1 != (Node *) NULL) {
 			  $$->l.left = $1;
 			  $$->r.right = $1->r.right;
+		      } else {
+			  $$->r.right = $$;
 		      }
 		  } else {
 		      $$ = $1;
