@@ -461,7 +461,6 @@ void Array::deepDelete()
 {
     Value *v;
     unsigned short i;
-    Array *list;
 
     if ((v=elts) != (Value *) NULL) {
 	for (i = size; i > 0; --i) {
