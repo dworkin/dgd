@@ -1280,6 +1280,7 @@ void Mapping::deepDelete()
 {
     Array::deepDelete();
 
+    hashmod = FALSE;
     if (hashed != (MapHash *) NULL) {
 	delete hashed;
 	hashed = (MapHash *) NULL;
@@ -1293,6 +1294,7 @@ void Mapping::shallowDelete()
 {
     Array::shallowDelete();
 
+    hashmod = FALSE;
     if (hashed != (MapHash *) NULL) {
 	hashed->shallowDelete();
 	delete hashed;
