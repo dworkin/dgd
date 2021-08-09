@@ -50,7 +50,7 @@ Int CmdBuf::dosearch(Int first, Int last, bool reverse)
 	edbuf.range(first, last, find, reverse);
 	/* not found */
 	return 0;
-    } catch (...) {
+    } catch (const char*) {
 	/* found */
 	return (reverse) ? last - lineno : first + lineno;
     }

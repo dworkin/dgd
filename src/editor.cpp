@@ -217,7 +217,7 @@ String *Editor::command(Object *obj, char *cmd)
 	    del(obj);
 	}
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
 	e->ed->edbuf.inact();
 	recursion = FALSE;

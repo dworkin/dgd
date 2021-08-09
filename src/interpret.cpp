@@ -271,7 +271,7 @@ void Frame::mapAggregate(unsigned int size)
 	    EC->push();
 	    a->sort();
 	    EC->pop();
-	} catch (...) {
+	} catch (const char*) {
 	    /* error in sorting, delete mapping and pass on error */
 	    a->ref();
 	    a->del();
@@ -2005,7 +2005,7 @@ void Frame::interpret(char *pc)
 		EC->pop();
 		pc = this->pc;
 		*--sp = Value::nil;
-	    } catch (...) {
+	    } catch (const char*) {
 		/* error */
 		this->pc = p;
 		if (p < pc) {
@@ -2735,7 +2735,7 @@ bool Frame::callCritical(const char *func, int narg, int flag)
 	DGD::callDriver(this, func, narg);
 	ok = TRUE;
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	ok = FALSE;
     }
     setRlimits(rlim->next);

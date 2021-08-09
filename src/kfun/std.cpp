@@ -87,7 +87,7 @@ int kf_compile_object(Frame *f, int nargs, KFun *kf)
 	}
 	obj = Compile::compile(f, file, obj, strs, nargs, iflag);
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	if (nargs != 0) {
 	    AFREE(strs - nargs);
 	}

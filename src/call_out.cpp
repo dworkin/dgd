@@ -664,7 +664,7 @@ void CallOut::call(Frame *f)
 		}
 		(f->sp++)->string->del();
 		EC->pop();
-	    } catch (...) { }
+	    } catch (const char*) { }
 	    DGD::endTask();
 	}
     }

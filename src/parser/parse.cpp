@@ -595,7 +595,7 @@ Int Parser::traverse(PNode *pn, PNode *next)
 				       (Array *) NULL, pn->text + 2 + n,
 				       UCHAR(pn->text[1]) - n - 1, TRUE, 1);
 		    EC->pop();
-		} catch (...) {
+		} catch (const char*) {
 		    /* error: restore original parser */
 		    if (data->parser != (Parser *) NULL) {
 			delete data->parser;
@@ -907,7 +907,7 @@ Array *Parser::parse_string(Frame *f, String *source, String *str, Int maxalt)
 	ps->pnc = (PnChunk *) NULL;
 
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	/*
 	 * error occurred; clean up
 	 */

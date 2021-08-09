@@ -215,7 +215,7 @@ int DGD::main(int argc, char **argv)
 		callDriver(cframe, "interrupt", 0);
 		(cframe->sp++)->del();
 		EC->pop();
-	    } catch (...) { }
+	    } catch (const char*) { }
 	    endTask();
 	}
 

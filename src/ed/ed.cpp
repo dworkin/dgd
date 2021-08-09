@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 	sprintf(line, "e %s", argv[1]);
 	try {
 	    ed->command(line);
-	} catch (...) { }
+	} catch (const char*) { }
     }
 
     for (;;) {
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	    if (!ed->command(line)) {
 		break;
 	    }
-	} catch (...) { }
+	} catch (const char*) { }
     }
 
     delete ed;

@@ -126,7 +126,7 @@ bool IO::load(EditBuf *eb, char *fname, Int l)
 	EDC->push();
 	eb->add(l, get_line);
 	EDC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	P_close(ffd);
 	EDC->error((char *) NULL);	/* pass on error */
     }
@@ -208,7 +208,7 @@ bool IO::save(EditBuf *eb, char *fname, Int first, Int last, int append)
 	    EDC->error("error while writing file \"/%s\"", filename);
 	}
 	EDC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	P_close(ffd);
 	EDC->error((char *) NULL);	/* pass on error */
     }

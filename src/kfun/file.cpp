@@ -738,7 +738,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 	    restore_error(x, "'})' expected");
 	}
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	a->ref();
 	a->del();
 	EC->error((char *) NULL);	/* pass on the error */
@@ -795,7 +795,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	}
 	a->sort();
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	a->ref();
 	a->del();
 	EC->error((char *) NULL);	/* pass on the error */
@@ -1083,7 +1083,7 @@ int kf_restore_object(Frame *f, int n, KFun *kf)
 		}
 	    }
 	}
-    } catch (...) {
+    } catch (const char*) {
 	/* error; clean up */
 	x.alist.clean();
 	if (onstack) {

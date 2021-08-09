@@ -3369,7 +3369,7 @@ Array *Control::undefined(Dataspace *data)
 	    }
 	}
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	if (m != (Array *) NULL) {
 	    /* discard mapping */
 	    m->ref();

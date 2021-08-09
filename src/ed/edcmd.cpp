@@ -661,7 +661,7 @@ int CmdBuf::global()
 		/* search */
 		edbuf.range(glob_next, glob_next + glob_size - 1, globfind,
 			    FALSE);
-	    } catch (...) {
+	    } catch (const char*) {
 		/* found: do the commands */
 		cthis = glob_next - 1;
 		command(p);
@@ -671,7 +671,7 @@ int CmdBuf::global()
 	/* pop error context */
 	aborted = FALSE;
 	EDC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	aborted = TRUE;
     }
     /* come here if global is finished or in case of an error */

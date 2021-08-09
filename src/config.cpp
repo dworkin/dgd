@@ -1635,7 +1635,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 		EC->push(DGD::errHandler);
 		DGD::callDriver(cframe, "initialize", 0);
 		EC->pop();
-	    } catch (...) {
+	    } catch (const char*) {
 		EC->error((char *) NULL);
 	    }
 	} else {
@@ -1660,12 +1660,12 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 		    DGD::callDriver(cframe, "restored", 0);
 		}
 		EC->pop();
-	    } catch (...) {
+	    } catch (const char*) {
 		EC->error((char *) NULL);
 	    }
 	}
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	EC->message((char *) NULL);
 	DGD::endTask();
 	EC->message("Config error: initialization failed\012");	/* LF */
@@ -1925,7 +1925,7 @@ Array *Config::status(Frame *f)
 	    statusi(f, i, v);
 	}
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	a->ref();
 	a->del();
 	EC->error((char *) NULL);
@@ -2015,7 +2015,7 @@ Array *Config::object(Dataspace *data, Object *obj)
 	    objecti(data, obj, i, v);
 	}
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	a->ref();
 	a->del();
 	EC->error((char *) NULL);

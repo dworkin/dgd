@@ -235,7 +235,7 @@ void User::del(Frame *f, Object *obj, bool destruct)
 	}
 	this_user = olduser;
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	this_user = olduser;
 	EC->error((char *) NULL);
     }
@@ -865,7 +865,7 @@ void Comm::acceptTelnet(Frame *f, Connection *conn, int port)
 	f->sp++;
 	usr = User::create(f, obj, conn, CF_TELNET);
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	conn->del();		/* delete connection */
 	EC->error((char *) NULL);	/* pass on error */
     }
@@ -898,7 +898,7 @@ void Comm::accept(Frame *f, Connection *conn, int port)
 	f->sp++;
 	User::create(f, obj, conn, 0);
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	conn->del();		/* delete connection */
 	EC->error((char *) NULL);	/* pass on error */
     }
@@ -930,7 +930,7 @@ void Comm::acceptDgram(Frame *f, Connection *conn, int port)
 	User::create(f, obj, conn, CF_UDPDATA);
 	ndgram++;
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	conn->del();		/* delete connection */
 	EC->error((char *) NULL);	/* pass on error */
     }
@@ -1409,7 +1409,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 	}
 
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	DGD::endTask();
 	this_user = OBJ_NONE;
 	return;

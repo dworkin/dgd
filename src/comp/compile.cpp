@@ -674,7 +674,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 	    }
 	}
 	EC->pop();
-    } catch (...) {
+    } catch (const char*) {
 	PP::clear();
 	Control::clear();
 	clear();
