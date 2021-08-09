@@ -242,7 +242,7 @@ static void save_array(savecontext *x, Array *a)
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(x, (Mapping *) v->array);
+	    save_mapping(x, dynamic_cast<Mapping *> (v->array));
 	    break;
 	}
 	put(x, ",", 1);
@@ -324,7 +324,7 @@ static void save_mapping(savecontext *x, Mapping *a)
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(x, (Mapping *) v->array);
+	    save_mapping(x, dynamic_cast<Mapping *> (v->array));
 	    break;
 	}
 	put(x, ":", 1);
@@ -352,7 +352,7 @@ static void save_mapping(savecontext *x, Mapping *a)
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(x, (Mapping *) v->array);
+	    save_mapping(x, dynamic_cast<Mapping *> (v->array));
 	    break;
 	}
 	put(x, ",", 1);
@@ -461,7 +461,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
 			break;
 
 		    case T_MAPPING:
-			save_mapping(&x, (Mapping *) var->array);
+			save_mapping(&x, dynamic_cast<Mapping *> (var->array));
 			break;
 		    }
 		    put(&x, "\012", 1);	/* LF */

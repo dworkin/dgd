@@ -347,7 +347,7 @@ int kf_new_object(Frame *f, int n, KFun *kf)
 	    (f->sp++)->del();
 	}
     } else {
-	a = (LWO *) f->sp->array;
+	a = dynamic_cast<LWO *> (f->sp->array);
 	a = a->copy(f->data);
 	f->sp->array->del();
 	PUT_LWOVAL(f->sp, a);
@@ -824,7 +824,7 @@ int kf_map_indices(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    a = ((Mapping *) f->sp->array)->indices(f->data);
+    a = dynamic_cast<Mapping *> (f->sp->array)->indices(f->data);
     f->addTicks(f->sp->array->size);
     f->sp->array->del();
     PUT_ARRVAL(f->sp, a);
@@ -849,7 +849,7 @@ int kf_map_values(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    a = ((Mapping *) f->sp->array)->values(f->data);
+    a = dynamic_cast<Mapping *> (f->sp->array)->values(f->data);
     f->addTicks(f->sp->array->size);
     f->sp->array->del();
     PUT_ARRVAL(f->sp, a);
@@ -875,7 +875,7 @@ int kf_map_sizeof(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     f->addTicks(f->sp->array->size);
-    size = ((Mapping *) f->sp->array)->msize(f->data);
+    size = dynamic_cast<Mapping *> (f->sp->array)->msize(f->data);
     f->sp->array->del();
     PUT_INTVAL(f->sp, size);
     return 0;

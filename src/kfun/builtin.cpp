@@ -1299,7 +1299,8 @@ int kf_rangeft(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
 
     if (f->sp[2].type == T_MAPPING) {
-	a = ((Mapping *) f->sp[2].array)->range(f->data, &f->sp[1], f->sp);
+	a = dynamic_cast<Mapping *> (f->sp[2].array)->range(f->data, &f->sp[1],
+							    f->sp);
 	(f->sp++)->del();
 	(f->sp++)->del();
 	f->addTicks(f->sp->array->size);
@@ -1375,7 +1376,8 @@ int kf_rangef(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
 
     if (f->sp[1].type == T_MAPPING) {
-	a = ((Mapping *) f->sp[1].array)->range(f->data, f->sp, (Value *) NULL);
+	a = dynamic_cast<Mapping *> (f->sp[1].array)->range(f->data, f->sp,
+							    (Value *) NULL);
 	(f->sp++)->del();
 	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
@@ -1443,7 +1445,9 @@ int kf_ranget(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
 
     if (f->sp[1].type == T_MAPPING) {
-	a = ((Mapping *) f->sp[1].array)->range(f->data, (Value *) NULL, f->sp);
+	a = dynamic_cast<Mapping *> (f->sp[1].array)->range(f->data,
+							    (Value *) NULL,
+							    f->sp);
 	(f->sp++)->del();
 	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
@@ -1512,8 +1516,9 @@ int kf_range(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
 
     if (f->sp->type == T_MAPPING) {
-	a = ((Mapping *) f->sp->array)->range(f->data, (Value *) NULL,
-					      (Value *) NULL);
+	a = dynamic_cast<Mapping *> (f->sp->array)->range(f->data,
+							  (Value *) NULL,
+							  (Value *) NULL);
 	f->addTicks(f->sp->array->size);
 	f->sp->array->del();
 	PUT_MAP(f->sp, a);

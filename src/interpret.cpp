@@ -387,7 +387,8 @@ void Frame::index(Value *aval, Value *ival, Value *val, bool keep)
 	break;
 
     case T_MAPPING:
-	*val = *((Mapping *) aval->array)->index(data, ival, NULL, NULL);
+	*val = *dynamic_cast<Mapping *> (aval->array)->index(data, ival, NULL,
+							     NULL);
 	if (!keep) {
 	    ival->del();
 	}
@@ -642,7 +643,7 @@ bool Frame::storeIndex(Value *var, Value *aval, Value *ival, Value *val)
 	if (var->type != T_STRING) {
 	    var = NULL;
 	}
-	((Mapping *) arr)->index(data, ival, val, var);
+	dynamic_cast<Mapping *> (arr)->index(data, ival, val, var);
 	ival->del();
 	arr->del();
 	break;
