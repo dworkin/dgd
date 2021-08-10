@@ -3434,9 +3434,21 @@ void Dataspace::import(ArrImport *imp, Value *val, unsigned short n)
 			    a->next->prev = a->prev;
 			} else {
 			    /*
-			     * make new array
+			     * make copy
 			     */
-			    a = Array::alloc(a->size);
+			    switch (val->type) {
+			    case T_ARRAY:
+				a = Array::alloc(a->size);
+				break;
+
+			    case T_MAPPING:
+				a = Mapping::alloc(a->size);
+				break;
+
+			    case T_LWOBJECT:
+				a = LWO::alloc(a->size);
+				break;
+			    }
 			    a->tag = val->array->tag;
 			    a->objDestrCount = val->array->objDestrCount;
 
