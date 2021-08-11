@@ -1021,12 +1021,16 @@ void Codegen::expr(Node *n, int pop)
 
     case N_ASSIGN:
 	if (n->l.left->type == N_AGGR) {
+	    char *instr;
+
 	    l = lvalAggr(&n->l.left->l.left);
 	    expr(n->r.right, FALSE);
 	    CodeChunk::instr(I_STORES, n->line);
 	    CodeChunk::word(l);
+	    instr = last_instruction;
 	    storeAggr(n->l.left->l.left);
-	    return;
+	    last_instruction = instr;
+	    break;
 	}
 
 	lvalue(n->l.left, FALSE);
@@ -1043,6 +1047,9 @@ void Codegen::expr(Node *n, int pop)
 	jlist = JmpList::jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH,
 			      (JmpList *) NULL);
 	expr(n->l.left, TRUE);
+	if (!pop) {
+	    CodeChunk::kfun(KF_NIL, 0);
+	}
 	CodeChunk::instr(I_RETURN, 0);
 	JmpList::resolve(jlist, here);
 	return;

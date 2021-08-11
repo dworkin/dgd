@@ -32,7 +32,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	1
-# define EXTENSION_MINOR	3
+# define EXTENSION_MINOR	4
 
 
 /*
@@ -1680,12 +1680,9 @@ static void ext_vm_caught(Frame *f, bool push)
 /*
  * end catch
  */
-static void ext_vm_catch_end(Frame *f, bool push)
+static void ext_vm_catch_end(Frame *f)
 {
     EC->pop();
-    if (push) {
-	*--f->sp = Value::nil;
-    }
 }
 
 /*

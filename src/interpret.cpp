@@ -939,9 +939,6 @@ void Frame::stores(int skip, int assign)
 	}
 	--assign;
     }
-
-    sp->array->del();
-    sp++;
 }
 
 /*
@@ -1801,6 +1798,9 @@ void Frame::interpret(char *pc)
 	    if (kflv) {
 		kflv = FALSE;
 		lvalues(u);
+
+		sp->array->del();
+		sp++;
 	    } else {
 		if (sp->type != T_ARRAY) {
 		    EC->error("Value is not an array");
@@ -1810,6 +1810,11 @@ void Frame::interpret(char *pc)
 		}
 		Dataspace::elts(sp->array);
 		stores(0, u);
+
+		if (p_ctrl->version < 3) {
+		    sp->array->del();
+		    sp++;
+		}
 	    }
 	    pc = this->pc;
 	    break;
@@ -2004,7 +2009,9 @@ void Frame::interpret(char *pc)
 		interpret(pc);
 		EC->pop();
 		pc = this->pc;
-		*--sp = Value::nil;
+		if (p_ctrl->version < 3 || (instr & I_POP_BIT)) {
+		    *--sp = Value::nil;
+		}
 	    } catch (const char*) {
 		/* error */
 		this->pc = p;
