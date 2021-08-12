@@ -2313,7 +2313,7 @@ bool Ext::execute(const Frame *f, int func)
 	return FALSE;
     }
     ctrl = f->p_ctrl;
-    if (ctrl->instance == 0) {
+    if (ctrl->version != VERSION_VM_MINOR || ctrl->instance == 0) {
 	return FALSE;
     }
 
