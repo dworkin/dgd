@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,9 +45,10 @@ extern node	*c_while	(node*, node*);
 extern node	*c_for		(node*, node*, node*, node*);
 extern void	 c_startrlimits	();
 extern node	*c_endrlimits	(node*, node*, node*);
+extern node	*c_exception	(node*);
 extern void	 c_startcatch	();
 extern void	 c_endcatch	();
-extern node	*c_donecatch	(node*, node*);
+extern node	*c_donecatch	(node*, node*, bool);
 extern void	 c_startswitch	(node*, int);
 extern node	*c_endswitch	(node*, node*);
 extern node	*c_case		(node*, node*);

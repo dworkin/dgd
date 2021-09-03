@@ -80,9 +80,9 @@ static node *comma	(node*, node*);
 /*
  * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token VOID INHERIT MAPPING BREAK ELSE CASE NIL FOR STATIC CONTINUE PRIVATE
-       FUNCTION RLIMITS RETURN OPERATOR FLOAT DO IF OBJECT GOTO STRING WHILE
-       NEW VARARGS CATCH SWITCH NOMASK ATOMIC INT DEFAULT MIXED
+%token NOMASK BREAK DO MAPPING ELSE CASE OBJECT DEFAULT FLOAT CONTINUE STATIC
+       INT FOR IF OPERATOR INHERIT RLIMITS GOTO FUNCTION RETURN MIXED WHILE
+       STRING TRY PRIVATE VOID NEW CATCH ATOMIC NIL SWITCH VARARGS
 
 /*
  * composite tokens
@@ -125,7 +125,7 @@ static node *comma	(node*, node*);
 	     bitand_oper_exp bitxor_oper_exp bitor_oper_exp and_oper_exp
 	     or_oper_exp cond_exp exp list_exp opt_list_exp f_list_exp
 	     f_opt_list_exp arg_list opt_arg_list opt_arg_list_comma assoc_exp
-	     assoc_arg_list opt_assoc_arg_list_comma ident
+	     assoc_arg_list opt_assoc_arg_list_comma ident exception
 
 %%
 
@@ -181,6 +181,12 @@ opt_inherit_label
 ident
 	: IDENTIFIER
 		{ $$ = node_str(str_new(yytext, (long) yyleng)); }
+	;
+
+exception
+	: ident
+	| ELLIPSIS
+		{ $$ = (node *) NULL; }
 	;
 
 composite_string
@@ -530,6 +536,42 @@ nocase_stmt
 		}
 	  compound_stmt
 		{ $$ = c_endrlimits($3, $5, $8); }
+	| TRY	{
+		  c_startcatch();
+		  c_startcond();
+		}
+	  compound_stmt
+		{
+		  c_endcond();
+		  c_endcatch();
+		  c_startcond();
+		}
+	  CATCH '(' exception ')' '{'
+		{
+		  nstatements = 0;
+		  c_startcompound();
+		  if ($7 != (node *) NULL) {
+		      $<node>9 = c_exp_stmt(c_exception($7));
+		  }
+		}
+	  dcltr_or_stmt_list '}'
+		{
+		  nstatements++;
+		  if ($7 != (node *) NULL && $11 != (node *) NULL) {
+		      $<node>8 = c_exp_stmt(c_exception($7));
+		      $$ = c_endcompound(c_concat($11,
+						  node_mon(N_NIL, 0,
+							   (node *) NULL)));
+		      c_endcond();
+		      $$ = c_concat(c_donecatch($3, c_concat($<node>9, $$),
+						FALSE),
+				    $<node>8);
+		  } else {
+		      $$ = c_endcompound($11);
+		      c_endcond();
+		      $$ = c_donecatch($3, $$, TRUE);
+		  }
+		}
 	| CATCH	{
 		  c_startcatch();
 		  c_startcond();
@@ -543,7 +585,7 @@ nocase_stmt
 	  opt_caught_stmt
 		{
 		  c_endcond();
-		  $$ = c_donecatch($3, $5);
+		  $$ = c_donecatch($3, $5, TRUE);
 		}
 	| SWITCH '(' f_list_exp ')'
 		{

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1073,6 +1073,10 @@ static void cg_expr(node *n, int pop)
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_EQ_FLT, n->line);
+	break;
+
+    case N_EXCEPTION:
+	cg_store(n->l.left);
 	break;
 
     case N_FLOAT:
@@ -2214,7 +2218,8 @@ static void cg_stmt(node *n)
 	    break;
 
 	case N_CATCH:
-	    jlist = jump(I_CATCH | I_POP_BIT, (jmplist *) NULL);
+	    jlist = jump((m->mod) ? I_CATCH | I_POP_BIT : I_CATCH,
+			 (jmplist *) NULL);
 	    cg_stmt(m->l.left);
 	    if (m->l.left->flags & F_END) {
 		jump_resolve(jlist, here);
@@ -2284,6 +2289,10 @@ static void cg_stmt(node *n)
 		jump_resolve(false_list, here);
 		false_list = jlist;
 	    }
+	    break;
+
+	case N_NIL:
+	    cg_expr(m, FALSE);
 	    break;
 
 	case N_PAIR:

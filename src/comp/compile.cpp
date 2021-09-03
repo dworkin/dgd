@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -56,6 +56,7 @@ struct block {
 struct var {
     const char *name;		/* variable name */
     short type;			/* variable type */
+    bool rdonly;		/* read-only */
     short unset;		/* used before set? */
     String *cvstr;		/* class name */
 };
@@ -235,6 +236,7 @@ static void block_pdef(char *name, short type, String *cvstr)
 	/* "too many parameters" is checked for elsewhere */
 	variables[nparams].name = name;
 	variables[nparams].type = type;
+	variables[nparams].rdonly = FALSE;
 	variables[nparams].unset = 0;
 	variables[nparams++].cvstr = cvstr;
 	vindex++;
@@ -257,11 +259,37 @@ static void block_vdef(char *name, short type, String *cvstr)
 	thisblock->nvars++;
 	variables[vindex].name = name;
 	variables[vindex].type = type;
+	variables[vindex].rdonly = FALSE;
 	variables[vindex].unset = 0;
 	variables[vindex++].cvstr = cvstr;
 	if (vindex > nvars) {
 	    nvars++;
 	}
+    }
+}
+
+/*
+ * NAME:	block->edef()
+ * DESCRIPTION:	declare an exception
+ */
+int block_edef(char *name)
+{
+    if (vindex == MAX_LOCALS) {
+	c_error("too many local variables");
+	return 0;
+    } else {
+	BCLR(thiscond->init, ::vindex);
+	thisblock->nvars++;
+	variables[vindex].name = name;
+	variables[vindex].type = T_STRING;
+	variables[vindex].rdonly = TRUE;
+	variables[vindex].unset = 0;
+	variables[vindex].cvstr = (String *) NULL;
+	if (vindex >= nvars) {
+	    nvars++;
+	}
+
+	return vindex++;
     }
 }
 
@@ -1235,6 +1263,21 @@ node *c_endrlimits(node *n1, node *n2, node *n3)
 }
 
 /*
+ * NAME:	compile->exception()
+ * DESCRIPTION:	preserve an exception
+ */
+node *c_exception(node *n)
+{
+    int exception;
+
+    exception = block_edef(n->l.string->text);
+    BSET(thiscond->init, exception);
+    n = node_mon(N_LOCAL, T_STRING, n);
+    n->r.number = exception;
+    return node_mon(N_EXCEPTION, T_STRING, n);
+}
+
+/*
  * NAME:	compile->startcatch()
  * DESCRIPTION:	begin catch handling
  */
@@ -1256,12 +1299,12 @@ void c_endcatch()
  * NAME:	compile->donecatch()
  * DESCRIPTION:	handle statements within catch
  */
-node *c_donecatch(node *n1, node *n2)
+node *c_donecatch(node *n1, node *n2, bool pop)
 {
     node *n;
     int flags1, flags2;
 
-    n = node_bin(N_CATCH, 0, n1, n2);
+    n = node_bin(N_CATCH, pop, n1, n2);
     if (n1 != (node *) NULL) {
 	flags1 = n1->flags & F_END;
     } else {
@@ -1978,6 +2021,10 @@ static bool lvalue(node *n)
     }
     switch (n->type) {
     case N_LOCAL:
+	if (variables[n->r.number].rdonly) {
+	    return FALSE;
+	}
+	/* fall through */
     case N_GLOBAL:
     case N_INDEX:
     case N_FAKE:
