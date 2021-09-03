@@ -387,31 +387,31 @@ int PP::pptokenz(char *key, unsigned int len)
     return len;
 }
 
-# define FIRST_KEYWORD	VOID
+# define FIRST_KEYWORD	NOMASK
 
 /*
- * return a number in the range 1..31 specifying which keyword
+ * return a number in the range 1..32 specifying which keyword
  * the argument is, or 0 if it isn't. Note that the keywords must
  * be given in the same order here as in parser.y.
  */
 int PP::tokenz(char *key, unsigned int len)
 {
     static const char *keyword[] = {
-      "void", "inherit", "mapping", "break", "else", "case", "nil", "for",
-      "static", "continue", "private", "function", "rlimits", "return",
-      "operator", "float", "do", "if", "object", "goto", "string", "while",
-      "new", "varargs", "catch", "switch", "nomask", "atomic", "int",
-      "default", "mixed",
+      "nomask", "break", "do", "mapping", "else", "case", "object", "default",
+      "float", "continue", "static", "int", "for", "if", "operator", "inherit",
+      "rlimits", "goto", "function", "return", "mixed", "while", "string",
+      "try", "private", "void", "new", "catch", "atomic", "nil", "switch",
+      "varargs"
     };
     static char value[] = {
        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0, 20, 12,  1, 12,  0,  0, 13, 18, 15,  0, 17,
-       0, 13,  3,  2,  3,  0,  4,  1, 10,  0, 15, 16,  0,  0,  0
+       0,  0,  0,  0, 21,  9,  1,  0,  0,  3, 13, 21,  8,  0, 19,
+      19, 15,  7,  0, 17,  0,  6,  3,  0,  0, 21, 16,  0, 20,  0
     };
 
-    len = (len + value[key[0] - '0'] + value[key[len - 1] - '0']) % 31;
+    len = (len + value[key[0] - '0'] + value[key[len - 1] - '0']) % 32;
     if (strcmp(keyword[len], key) == 0) {
 # ifndef CLOSURES
 	if (len == FUNCTION - FIRST_KEYWORD) {

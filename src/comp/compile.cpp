@@ -116,6 +116,7 @@ public:
     static int var(char *name);
     static void pdef(char *name, short type, String *cvstr);
     static void vdef(char *name, short type, String *cvstr);
+    static int edef(char *name);
     static void clear();
 
     int vindex;			/* variable index */
@@ -136,6 +137,7 @@ static int nparams;		/* number of parameters */
 static struct {
     const char *name;		/* variable name */
     short type;			/* variable type */
+    bool rdonly;		/* read-only */
     short unset;		/* used before set? */
     String *cvstr;		/* class name */
 } variables[MAX_LOCALS];	/* variables */
@@ -242,6 +244,7 @@ void CodeBlock::pdef(char *name, short type, String *cvstr)
 	/* "too many parameters" is checked for elsewhere */
 	variables[nparams].name = name;
 	variables[nparams].type = type;
+	variables[nparams].rdonly = FALSE;
 	variables[nparams].unset = 0;
 	variables[nparams++].cvstr = cvstr;
 	::vindex++;
@@ -263,11 +266,36 @@ void CodeBlock::vdef(char *name, short type, String *cvstr)
 	thisblock->nvars++;
 	variables[::vindex].name = name;
 	variables[::vindex].type = type;
+	variables[::vindex].rdonly = FALSE;
 	variables[::vindex].unset = 0;
 	variables[::vindex++].cvstr = cvstr;
 	if (::vindex > ::nvars) {
 	    ::nvars++;
 	}
+    }
+}
+
+/*
+ * declare an exception
+ */
+int CodeBlock::edef(char *name)
+{
+    if (::vindex == MAX_LOCALS) {
+	Compile::error("too many local variables");
+	return 0;
+    } else {
+	BCLR(thiscond->init, ::vindex);
+	thisblock->nvars++;
+	variables[::vindex].name = name;
+	variables[::vindex].type = T_STRING;
+	variables[::vindex].rdonly = TRUE;
+	variables[::vindex].unset = 0;
+	variables[::vindex].cvstr = (String *) NULL;
+	if (::vindex >= ::nvars) {
+	    ::nvars++;
+	}
+
+	return ::vindex++;
     }
 }
 
@@ -1252,6 +1280,20 @@ Node *Compile::endRlimits(Node *n1, Node *n2, Node *n3)
 }
 
 /*
+ * preserve an exception
+ */
+Node *Compile::exception(Node *n)
+{
+    int exception;
+
+    exception = CodeBlock::edef(n->l.string->text);
+    BSET(thiscond->init, exception);
+    n = Node::createMon(N_LOCAL, T_STRING, n);
+    n->r.number = exception;
+    return Node::createMon(N_EXCEPTION, T_STRING, n);
+}
+
+/*
  * begin catch handling
  */
 void Compile::startCatch()
@@ -1270,12 +1312,12 @@ void Compile::endCatch()
 /*
  * handle statements within catch
  */
-Node *Compile::doneCatch(Node *n1, Node *n2)
+Node *Compile::doneCatch(Node *n1, Node *n2, bool pop)
 {
     Node *n;
     int flags1, flags2;
 
-    n = Node::createBin(N_CATCH, 0, n1, n2);
+    n = Node::createBin(N_CATCH, pop, n1, n2);
     if (n1 != (Node *) NULL) {
 	flags1 = n1->flags & F_END;
     } else {
@@ -1976,6 +2018,10 @@ bool Compile::lvalue(Node *n)
     }
     switch (n->type) {
     case N_LOCAL:
+	if (variables[n->r.number].rdonly) {
+	    return FALSE;
+	}
+	/* fall through */
     case N_GLOBAL:
     case N_INDEX:
     case N_FAKE:

@@ -1107,6 +1107,10 @@ void Codegen::expr(Node *n, int pop)
 	CodeChunk::kfun(KF_EQ_FLT, n->line);
 	break;
 
+    case N_EXCEPTION:
+	store(n->l.left);
+	break;
+
     case N_FLOAT:
 	CodeChunk::instr(I_PUSH_FLOAT6, n->line);
 	CodeChunk::word(n->l.fhigh);
@@ -2265,7 +2269,8 @@ void Codegen::stmt(Node *n)
 	    break;
 
 	case N_CATCH:
-	    jlist = JmpList::jump(I_CATCH | I_POP_BIT, (JmpList *) NULL);
+	    jlist = JmpList::jump((m->mod) ? I_CATCH | I_POP_BIT : I_CATCH,
+				  (JmpList *) NULL);
 	    stmt(m->l.left);
 	    if (m->l.left->flags & F_END) {
 		JmpList::resolve(jlist, here);

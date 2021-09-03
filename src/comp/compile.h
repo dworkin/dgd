@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,9 +45,10 @@ public:
     static Node *forStmt(Node *n1, Node *n2, Node *n3, Node *n4);
     static void startRlimits();
     static Node *endRlimits(Node *n1, Node *n2, Node *n3);
+    static Node *exception(Node *n);
     static void startCatch();
     static void endCatch();
-    static Node *doneCatch(Node *n1, Node *n2);
+    static Node *doneCatch(Node *n1, Node *n2, bool pop);
     static void startSwitch(Node *n, int typechecked);
     static Node *endSwitch(Node *expr, Node *stmt);
     static Node *caseLabel(Node *n1, Node *n2);

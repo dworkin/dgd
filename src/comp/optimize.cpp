@@ -1708,6 +1708,9 @@ Uint Optimize::expr(Node **m, bool pop)
 	    return max2(d1, ((d1 < 4) ? d1 : 4) + expr(&n->r.right, FALSE));
 	}
 
+    case N_EXCEPTION:
+	return 1;
+
     case N_COMMA:
 	sideAdd(m, expr(&n->l.left, TRUE));
 	return expr(m, pop);
