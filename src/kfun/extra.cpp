@@ -1652,6 +1652,32 @@ int kf_asn_pow(Frame *f, int n, KFun *kf)
 
 
 # ifdef FUNCDEF
+FUNCDEF("asn_modinv", kf_asn_modinv, pt_asn_modinv, 0)
+# else
+char pt_asn_modinv[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
+			 T_STRING, T_STRING };
+
+/*
+ * modular inverse of arbitrary precision number
+ */
+int kf_asn_modinv(Frame *f, int n, KFun *kf)
+{
+    String *str;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    str = ASN::modinv(f, f->sp[1].string, f->sp[0].string);
+    (f->sp++)->string->del();
+    f->sp->string->del();
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("asn_lshift", kf_asn_lshift, pt_asn_lshift, 0)
 # else
 char pt_asn_lshift[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING,

@@ -1748,6 +1748,42 @@ String *ASN::pow(Frame *f, String *s1, String *s2, String *s3)
 }
 
 /*
+ * modular inverse of an ASN
+ */
+String *ASN::modinv(Frame *f, String *s1, String *s2)
+{
+    bool minusa;
+    String *str;
+
+    Asi mod(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
+    if (mod.strtonum(s2) || (mod.size == 1 && mod.num[0] == 0)) {
+	AFREE(mod.num);
+	EC->error("Invalid modulus");
+    }
+
+    Asi a(ALLOCA(Uint, (s1->len >> 2) + 2), 0);
+    minusa = a.strtonum(s1);
+    if (ticks(f, 4 + a.size * mod.size)) {
+	AFREE(a.num);
+	AFREE(mod.num);
+	EC->error("Out of ticks");
+    }
+    Asi b(ALLOCA(Uint, (s2->len >> 2) + 2), 0);
+    if (!b.modinv(a, mod)) {
+	AFREE(b.num);
+	AFREE(a.num);
+	AFREE(mod.num);
+	EC->error("No inverse");
+    }
+
+    str = b.numtostr(minusa);
+    AFREE(b.num);
+    AFREE(a.num);
+    AFREE(mod.num);
+    return str;
+}
+
+/*
  * left shift an ASN
  */
 String *ASN::lshift(Frame *f, String *s1, Int shift, String *s2)
