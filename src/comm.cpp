@@ -72,7 +72,7 @@ public:
 # define  CF_UDPDATA	0x0004	/* UDP data received */
 # define CF_TELNET	0x0001	/* telnet connection */
 # define  CF_ECHO	0x0002	/* client echoes input */
-# define  CF_SGA	0x0004	/* send GA after prompt */
+# define  CF_SGA	0x0004	/* suppress sending GA after prompt */
 # define  CF_PROMPT	0x0008	/* prompt in telnet output */
 # define CF_BLOCKED	0x0010	/* input blocked */
 # define CF_FLUSH	0x0020	/* in flush list */
