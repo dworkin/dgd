@@ -72,7 +72,7 @@ public:
 # define  CF_UDPDATA	0x0004	/* UDP data received */
 # define CF_TELNET	0x0001	/* telnet connection */
 # define  CF_ECHO	0x0002	/* client echoes input */
-# define  CF_GA		0x0004	/* send GA after prompt */
+# define  CF_SGA	0x0004	/* send GA after prompt */
 # define  CF_PROMPT	0x0008	/* prompt in telnet output */
 # define CF_BLOCKED	0x0010	/* input blocked */
 # define CF_FLUSH	0x0020	/* in flush list */
@@ -779,7 +779,7 @@ void Comm::flush()
 	    }
 	    if (usr->flags & CF_PROMPT) {
 		usr->flags &= ~CF_PROMPT;
-		if ((usr->flags & CF_GA) && v[1].type == T_STRING &&
+		if (!(usr->flags & CF_SGA) && v[1].type == T_STRING &&
 		    usr->outbuf != v[1].string) {
 		    static char ga[] = { (char) IAC, (char) GA };
 
@@ -1271,7 +1271,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 				usr->write(obj, (String *) NULL, tm,
 					   sizeof(tm));
 			    } else if (UCHAR(*p) == TELOPT_SGA) {
-				usr->flags &= ~CF_GA;
+				usr->flags |= CF_SGA;
 				usr->write(obj, (String *) NULL, will_sga,
 					   sizeof(will_sga));
 			    }
@@ -1280,7 +1280,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 
 			case TS_DONT:
 			    if (UCHAR(*p) == TELOPT_SGA) {
-				usr->flags |= CF_GA;
+				usr->flags &= ~CF_SGA;
 				usr->write(obj, (String *) NULL, wont_sga,
 					   sizeof(wont_sga));
 			    }
