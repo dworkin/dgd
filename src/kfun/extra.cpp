@@ -181,7 +181,7 @@ char pt_explode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8,
 static char *memxmem(char *mem, unsigned int mlen, char *str,
 		     unsigned int slen)
 {
-    register unsigned int i, checksum, mult, accu;
+    unsigned int i, checksum, mult, accu;
     char *p;
 
     if (mlen < slen) {
