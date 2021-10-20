@@ -410,7 +410,7 @@ char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
 unsigned int scan(char *f, unsigned int *flenp, char *buf)
 {
     char *p;
-    unsigned int flen, buflen;
+    unsigned int flen;
 
     p = buf;
     flen = *flenp;
