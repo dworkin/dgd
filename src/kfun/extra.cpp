@@ -461,7 +461,6 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 
     UNREFERENCED_PARAMETER(kf);
 
-    size = 0;
     x = NULL;
 
     if (nargs < 2) {

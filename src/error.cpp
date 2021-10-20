@@ -137,7 +137,6 @@ void ErrorContextImpl::clearException()
 void ErrorContextImpl::error(String *str)
 {
     ErrorFrame *e;
-    int offset;
     Handler handler;
 
     if (str != (String *) NULL) {
@@ -149,7 +148,6 @@ void ErrorContextImpl::error(String *str)
     }
 
     e = eFrame;
-    offset = e->offset;
 
     if (atomicFrame == (ErrorFrame *) NULL || atomicFrame == e) {
 	do {

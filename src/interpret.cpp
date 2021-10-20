@@ -803,8 +803,6 @@ void Frame::stores(int skip, int assign)
     unsigned short u, instr;
     Uint sclass;
 
-    instr = 0;
-
     /*
      * stores to skip
      */
