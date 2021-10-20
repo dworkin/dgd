@@ -1023,7 +1023,7 @@ void AllocImpl::purge()
 	    }
 	}
 	EC->message("%s\012", buf);	/* LF */
-	MemChunk::free(hlist + 1);
+	free((char *) (hlist + 1));
     }
 # endif
 
