@@ -1549,7 +1549,8 @@ char *Control::iFunCall(String *str, const char *label, String **cfstr,
 	Compile::error("undefined function %s::%s", label, str->text);
 	return (char *) NULL;
     }
-    *call = ((long) DFCALL << 24) | ((long) ohash->index << 8) | index;
+    *call = ((long) DFCALL << 24) | ((unsigned short) ohash->index << 8) |
+	    index;
     proto = ctrl->prog + ctrl->funcdefs[index].offset;
 
     if ((PROTO_FTYPE(proto) & T_TYPE) == T_CLASS) {
@@ -1639,11 +1640,13 @@ char *Control::funCall(String *str, String **cfstr, long *call,
 	if (h->ohash->index == 0) {
 	    *call = ((long) DFCALL << 24) | h->index;
 	} else {
-	    *call = ((long) DFCALL << 24) | ((long) h->ohash->index << 8) | h->index;
+	    *call = ((long) DFCALL << 24) |
+		    ((unsigned short) h->ohash->index << 8) | h->index;
 	}
     } else {
 	/* ordinary function call */
-	*call = ((long) FCALL << 24) | ((long) h->ohash->index << 8) | h->index;
+	*call = ((long) FCALL << 24) | ((unsigned short) h->ohash->index << 8) |
+		h->index;
     }
     return proto;
 }
@@ -1706,7 +1709,7 @@ unsigned short Control::var(String *str, long *ref, String **cvstr)
     if (h->ohash->index == 0 && ::ninherits != 0) {
 	*ref = h->index;
     } else {
-	*ref = ((long) h->ohash->index << 8) | h->index;
+	*ref = ((unsigned short) h->ohash->index << 8) | h->index;
     }
     *cvstr = h->cvstr;
     return h->ct;	/* the variable type */
@@ -3370,7 +3373,7 @@ Array *Control::undefined(Dataspace *data)
 	}
 	EC->pop();
     } catch (const char*) {
-	if (m != (Array *) NULL) {
+	if (m != (Mapping *) NULL) {
 	    /* discard mapping */
 	    m->ref();
 	    m->del();
