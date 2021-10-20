@@ -1383,7 +1383,7 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 		    this_user = OBJ_NONE;
 		}
 
-		n = usr->conn->read(p = buffer, BINBUF_SIZE);
+		n = usr->conn->read(buffer, BINBUF_SIZE);
 		if (n <= 0) {
 		    if (n < 0 && !(usr->flags & CF_OUTPUT)) {
 			/*
