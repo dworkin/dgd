@@ -1968,7 +1968,7 @@ bool Config::objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 
     case 4:	/* O_CALLOUTS */
 	if (O_HASDATA(obj)) {
-	    a = data->listCallouts(obj->dataspace());
+	    a = obj->dataspace()->listCallouts(data);
 	    if (a != (Array *) NULL) {
 		PUT_ARRVAL(v, a);
 	    } else {
