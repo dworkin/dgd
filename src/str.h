@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,13 +24,13 @@ public:
     void del();
     int cmp(String *str);
     String *add(String *str);
-    ssizet index(long idx);
-    void checkRange(long from, long to);
-    String *range(long from, long to);
+    ssizet index(LPCint idx);
+    void checkRange(LPCint from, LPCint to);
+    String *range(LPCint from, LPCint to);
     Uint put(Uint n);
 
     static String *alloc(const char *text, long length);
-    static String *create(const char *text, long length);
+    static String *create(const char *text, LPCint length);
     static void clean();
     static void merge();
     static void clear();

@@ -44,7 +44,7 @@ public:
     bool modified;		/* dirty bit */
     uindex oindex;		/* index in object table */
     union {
-	Int number;		/* number */
+	LPCint number;		/* number */
 	Uint objcnt;		/* object creation count */
 	String *string;		/* string */
 	Array *array;		/* array or mapping */
@@ -96,15 +96,15 @@ struct DCallOut {
 class Dataplane : public Allocated {
 public:
     Dataplane(Dataspace *data);
-    Dataplane(Dataspace *data, Int level);
+    Dataplane(Dataspace *data, LPCint level);
 
     Array::Backup **commitArray(Array *arr, Dataplane *old);
     void discardArray(Array *arr);
 
-    static void commit(Int level, Value *retval);
-    static void discard(Int level);
+    static void commit(LPCint level, Value *retval);
+    static void discard(LPCint level);
 
-    Int level;			/* dataplane level */
+    LPCint level;		/* dataplane level */
 
     short flags;		/* modification flags */
     long schange;		/* # string changes */
@@ -124,7 +124,7 @@ private:
     void commitCallouts(bool merge);
     void discardCallouts();
 
-    static void commitValues(Value *v, unsigned int n, Int level);
+    static void commitValues(Value *v, unsigned int n, LPCint level);
 
     Dataplane *plist;		/* next in per-level linked list */
 };
@@ -141,9 +141,9 @@ public:
     uindex allocCallOut(uindex handle, Uint time, unsigned short mtime,
 			int nargs, Value *v);
     void freeCallOut(unsigned int handle);
-    uindex newCallOut(String *func, Int delay, unsigned int mdelay, Frame *f,
+    uindex newCallOut(String *func, LPCint delay, unsigned int mdelay, Frame *f,
 		      int nargs);
-    Int delCallOut(Uint handle, unsigned short *mtime);
+    LPCint delCallOut(Uint handle, unsigned short *mtime);
     String *callOut(unsigned int handle, Frame *f, int *nargs);
     Array *listCallouts(Dataspace *data);
     void upgrade(unsigned int nvar, unsigned short *vmap, Object *tmpl);

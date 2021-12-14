@@ -1092,7 +1092,7 @@ int kf_millitime(Frame *f, int n, KFun *kf)
     f->addTicks(2);
     a = Array::create(f->data, 2);
     PUT_INTVAL(&a->elts[0], P_mtime(&milli));
-    Float::itof((Int) milli, &flt);
+    Float::itof(milli, &flt);
     flt.mult(thousandth);
     PUT_FLTVAL(&a->elts[1], flt);
     PUSH_ARRVAL(f, a);
@@ -1112,7 +1112,7 @@ char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT,
  */
 int kf_call_out(Frame *f, int nargs, KFun *kf)
 {
-    Int delay;
+    LPCint delay;
     Uint mdelay;
     Float flt1, flt2;
     uindex handle;
@@ -1173,7 +1173,7 @@ char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_MIXED,
  */
 int kf_remove_call_out(Frame *f, int n, KFun *kf)
 {
-    Int delay;
+    LPCint delay;
     unsigned short mdelay;
     Float flt1, flt2;
 

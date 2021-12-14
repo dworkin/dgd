@@ -767,7 +767,7 @@ const char *Object::objName(char *name)
 /*
  * return the base name of a builtin type
  */
-const char *Object::builtinName(Int type)
+const char *Object::builtinName(LPCint type)
 {
     /*
      * builtin types have names like: /builtin/type#-1

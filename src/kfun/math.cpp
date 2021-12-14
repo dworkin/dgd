@@ -133,7 +133,7 @@ char pt_frexp[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 int kf_frexp(Frame *f, int n, KFun *kf)
 {
     Float flt;
-    Int num;
+    LPCint num;
     Array *a;
 
     UNREFERENCED_PARAMETER(n);

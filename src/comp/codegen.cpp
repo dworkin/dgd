@@ -451,7 +451,7 @@ void JmpList::clear()
 }
 
 
-static Int kd_allocate, kd_allocate_int, kd_allocate_float;
+static LPCint kd_allocate, kd_allocate_int, kd_allocate_float;
 static int nparams;		/* number of parameters */
 
 /*
@@ -1943,7 +1943,7 @@ void Codegen::switchInt(Node *n)
     switch_table[0].jump = JmpList::addr((JmpList *) NULL);
     i = 1;
     do {
-	Int l;
+	LPCint l;
 
 	l = m->l.left->l.number;
 	switch (sz) {
@@ -2015,7 +2015,7 @@ void Codegen::switchRange(Node *n)
     switch_table[0].jump = JmpList::addr((JmpList *) NULL);
     i = 1;
     do {
-	Int l;
+	LPCint l;
 
 	l = m->l.left->l.number;
 	switch (sz) {
@@ -2383,9 +2383,9 @@ static int nfuncs;		/* # functions generated */
 void Codegen::init(int inherited)
 {
     UNREFERENCED_PARAMETER(inherited);
-    kd_allocate = ((Int) KFCALL << 24) | KFun::kfunc("allocate");
-    kd_allocate_int = ((Int) KFCALL << 24) | KFun::kfunc("allocate_int");
-    kd_allocate_float = ((Int) KFCALL << 24) | KFun::kfunc("allocate_float");
+    kd_allocate = ((LPCint) KFCALL << 24) | KFun::kfunc("allocate");
+    kd_allocate_int = ((LPCint) KFCALL << 24) | KFun::kfunc("allocate_int");
+    kd_allocate_float = ((LPCint) KFCALL << 24) | KFun::kfunc("allocate_float");
     ::nfuncs = 0;
 }
 

@@ -74,20 +74,20 @@
 # define FETCH2S(pc, v)	((short) (v = *(pc)++ << 8, v |= UCHAR(*(pc)++)))
 # define FETCH2U(pc, v)	((unsigned short) (v = *(pc)++ << 8, \
 					   v |= UCHAR(*(pc)++)))
-# define FETCH3S(pc, v)	((Int) (v = *(pc)++ << 8, \
-				v |= UCHAR(*(pc)++), v <<= 8, \
-				v |= UCHAR(*(pc)++)))
-# define FETCH3U(pc, v)	((Uint) (v = UCHAR(*(pc)++) << 8, \
-				 v |= UCHAR(*(pc)++), v <<= 8, \
-				 v |= UCHAR(*(pc)++)))
-# define FETCH4S(pc, v)	((Int) (v = *(pc)++ << 8, \
-				v |= UCHAR(*(pc)++), v <<= 8, \
-				v |= UCHAR(*(pc)++), v <<= 8, \
-				v |= UCHAR(*(pc)++)))
-# define FETCH4U(pc, v)	((Uint) (v = *(pc)++ << 8, \
-				 v |= UCHAR(*(pc)++), v <<= 8, \
-				 v |= UCHAR(*(pc)++), v <<= 8, \
-				 v |= UCHAR(*(pc)++)))
+# define FETCH3S(pc, v)	((LPCint) (v = *(pc)++ << 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++)))
+# define FETCH3U(pc, v)	((LPCuint) (v = UCHAR(*(pc)++) << 8, \
+				    v |= UCHAR(*(pc)++), v <<= 8, \
+				    v |= UCHAR(*(pc)++)))
+# define FETCH4S(pc, v)	((LPCint) (v = *(pc)++ << 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++)))
+# define FETCH4U(pc, v)	((LPCuint) (v = *(pc)++ << 8, \
+				    v |= UCHAR(*(pc)++), v <<= 8, \
+				    v |= UCHAR(*(pc)++), v <<= 8, \
+				    v |= UCHAR(*(pc)++)))
 
 # define PUSH_INTVAL(f, i)	((--(f)->sp)->number = (i),		\
 				 (f)->sp->type = T_INT)
@@ -162,8 +162,8 @@
 
 
 struct RLInfo {
-    Int maxdepth;		/* max stack depth */
-    Int ticks;			/* ticks left */
+    LPCint maxdepth;		/* max stack depth */
+    LPCint ticks;		/* ticks left */
     bool nodepth;		/* no stack depth checking */
     bool noticks;		/* no ticks checking */
     RLInfo *next;		/* next in linked list */
@@ -177,7 +177,7 @@ public:
     void loopTicks() {
 	if ((rlim->ticks -= 5) <= 0) {
 	    if (rlim->noticks) {
-		rlim->ticks = 0x7fffffff;
+		rlim->ticks = LPCINT_MAX;
 	    } else {
 		EC->error("Out of ticks");
 	    }
@@ -191,8 +191,8 @@ public:
     void mapAggregate(unsigned int size);
     int spread(int n);
     void lvalues(int n);
-    Int getDepth();
-    Int getTicks();
+    LPCint getDepth();
+    LPCint getTicks();
     void setRlimits(RLInfo *rlim);
     Frame *setSp(Value *sp);
     Frame *prevObject(int n);
@@ -213,27 +213,27 @@ public:
     void storeSkipSkip();
     unsigned short storesSpread(int n, int offset, int type, Uint sclass);
     void toFloat(class Float *flt);
-    Int toInt();
+    LPCint toInt();
     void kfunc(int n, int nargs);
     void vfunc(int n, int nargs);
     void rlimits(bool privileged);
     void funcall(Object *obj, Array *lwobj, int p_ctrli, int funci, int nargs);
     bool call(Object *obj, Array *lwobj, const char *func, unsigned int len,
 	      int call_static, int nargs);
-    bool callTraceII(Int i, Int j, Value *v);
-    bool callTraceI(Int idx, Value *v);
+    bool callTraceII(LPCint i, LPCint j, Value *v);
+    bool callTraceI(LPCint idx, Value *v);
     Array *callTrace();
     bool callCritical(const char *func, int narg, int flag);
-    void atomicError(Int level);
-    Frame *restore(Int level);
+    void atomicError(LPCint level);
+    Frame *restore(LPCint level);
 
     static void init(char *create, bool flag);
     static int instanceOf(unsigned int oindex, char *prog);
-    static Int div(Int num, Int denom);
-    static Int lshift(Int num, Int shift);
-    static Int mod(Int num, Int denom);
-    static Int rshift(Int num, Int shift);
-    static void runtimeError(Frame *f, Int depth);
+    static LPCint div(LPCint num, LPCint denom);
+    static LPCint lshift(LPCint num, LPCint shift);
+    static LPCint mod(LPCint num, LPCint denom);
+    static LPCint rshift(LPCint num, LPCint shift);
+    static void runtimeError(Frame *f, LPCint depth);
     static void clear();
 
     Frame *prev;		/* previous stack frame */
@@ -249,10 +249,10 @@ public:
     Value *argp;		/* argument pointer (previous sp) */
     Value *sp;			/* stack pointer */
     Value *fp;			/* frame pointer (at end of local stack) */
-    Int depth;			/* stack depth */
+    LPCint depth;		/* stack depth */
     RLInfo *rlim;		/* rlimits info */
     int nStores;		/* number of scheduled stores */
-    Int level;			/* plane level */
+    LPCint level;		/* plane level */
     unsigned short source;	/* source code line number */
     bool atomic;		/* within uncaught atomic code */
     bool kflv;			/* kfun with lvalue parameters */
@@ -266,7 +266,7 @@ private:
     bool storeIndex(Value *var, Value *aval, Value *ival, Value *val);
     void stores(int skip, int assign);
     void checkRlimits();
-    void newRlimits(Int depth, Int t);
+    void newRlimits(LPCint depth, LPCint t);
     void typecheck(Frame *f, const char *name, const char *ftype, char *proto,
 		   int nargs, bool strict);
     unsigned short switchInt(char *pc);
@@ -274,7 +274,7 @@ private:
     unsigned short switchStr(char *pc);
     void interpret(char *pc);
     unsigned short line();
-    bool funcTraceI(Int idx, Value *val);
+    bool funcTraceI(LPCint idx, Value *val);
     Array *funcTrace(Dataspace *data);
 
     static int instanceOf(unsigned int oindex, char *prog, Uint hash);

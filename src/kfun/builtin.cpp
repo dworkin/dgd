@@ -22,11 +22,11 @@
 # include "kfun.h"
 
 /*
- * convert an Int to a string
+ * convert a LPCint to a string
  */
-static char *kf_itoa(Int i, char *buffer)
+static char *kf_itoa(LPCint i, char *buffer)
 {
-    Uint u;
+    LPCuint u;
     char *p;
 
     u = (i >= 0) ? i : -i;
@@ -165,7 +165,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((LPCint) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->add(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -177,7 +177,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 
     case T_MAPPING:
 	if (f->sp->type == T_MAPPING) {
-	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((LPCint) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->add(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -300,7 +300,7 @@ int kf_and(Frame *f, int n, KFun *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((LPCint) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->intersect(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -312,7 +312,7 @@ int kf_and(Frame *f, int n, KFun *kf)
 
     case T_MAPPING:
 	if (f->sp->type == T_ARRAY) {
-	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((LPCint) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->intersect(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -1237,7 +1237,7 @@ int kf_or(Frame *f, int n, KFun *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((LPCint) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->setAdd(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -1648,7 +1648,7 @@ int kf_sub(Frame *f, int n, KFun *kf)
 	if (f->sp->type == T_ARRAY) {
 	    Array *a;
 
-	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((LPCint) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->sub(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -1662,7 +1662,7 @@ int kf_sub(Frame *f, int n, KFun *kf)
 	if (f->sp->type == T_ARRAY) {
 	    Array *a;
 
-	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((LPCint) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->sub(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -1792,7 +1792,7 @@ char pt_toint[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  */
 int kf_toint(Frame *f, int n, KFun *kf)
 {
-    Int num;
+    LPCint num;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1950,7 +1950,7 @@ int kf_xor(Frame *f, int n, KFun *kf)
 
     case T_ARRAY:
 	if (f->sp->type == T_ARRAY) {
-	    f->addTicks((Int) f->sp[1].array->size + f->sp->array->size);
+	    f->addTicks((LPCint) f->sp[1].array->size + f->sp->array->size);
 	    a = f->sp[1].array->setXAdd(f->data, f->sp->array);
 	    f->sp->array->del();
 	    f->sp++;
@@ -2085,11 +2085,11 @@ int kf_ckrangef(Frame *f, int n, KFun *kf)
     }
     if (f->sp[1].type == T_STRING) {
 	(--f->sp)->type = T_INT;
-	f->sp->number = (Int) f->sp[2].string->len - 1;
+	f->sp->number = (LPCint) f->sp[2].string->len - 1;
 	f->sp[2].string->checkRange(f->sp[1].number, f->sp->number);
     } else if (f->sp[1].type == T_ARRAY) {
 	(--f->sp)->type = T_INT;
-	f->sp->number = (Int) f->sp[2].array->size - 1;
+	f->sp->number = (LPCint) f->sp[2].array->size - 1;
 	f->sp[2].array->checkRange(f->sp[1].number, f->sp->number);
     } else {
 	kf->argError(1);
@@ -3128,7 +3128,7 @@ int kf_sum(Frame *f, int nargs, KFun *kf)
     int i, type, vtype, nonint;
     long size;
     ssizet len;
-    Int result;
+    LPCint result;
     long isize;
 
     UNREFERENCED_PARAMETER(kf);

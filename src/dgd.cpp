@@ -143,10 +143,10 @@ void DGD::endTask()
 /*
  * default error handler
  */
-void DGD::errHandler(Frame *f, Int depth)
+void DGD::errHandler(Frame *f, LPCint depth)
 {
     UNREFERENCED_PARAMETER(depth);
-    Frame::runtimeError(f, (Int) 0);
+    Frame::runtimeError(f, 0);
 }
 
 /*

@@ -505,7 +505,7 @@ String *P_encrypt_des(Frame *f, String *keystr, String *mesg)
     f->addTicks(mesg->len * 5L);
     if (f->rlim->ticks < 0) {
 	if (f->rlim->noticks) {
-	    f->rlim->ticks = 0x7fffffffL;
+	    f->rlim->ticks = LPCINT_MAX;
 	} else {
 	    EC->error("Out of ticks");
 	}

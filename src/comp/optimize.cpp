@@ -107,8 +107,8 @@ Uint Optimize::sideEnd(Node **n, Node *side, Node **oldside, Uint olddepth)
 }
 
 
-static Int kd_status, kd_call_trace, kd_allocate,	/* kfun descriptors */
-	   kd_allocate_int, kd_allocate_float;
+static LPCint kd_status, kd_call_trace, kd_allocate,	/* kfun descriptors */
+	      kd_allocate_int, kd_allocate_float;
 
 /*
  * initialize optimizer
@@ -116,11 +116,11 @@ static Int kd_status, kd_call_trace, kd_allocate,	/* kfun descriptors */
 void Optimize::init()
 {
     /* kfuns are already initialized at this point */
-    kd_status = ((long) KFCALL << 24) | KF_STATUS;
-    kd_call_trace = ((long) KFCALL << 24) | KF_CALL_TRACE;
-    kd_allocate = ((long) KFCALL << 24) | KFun::kfunc("allocate");
-    kd_allocate_int = ((long) KFCALL << 24) | KFun::kfunc("allocate_int");
-    kd_allocate_float = ((long) KFCALL << 24) | KFun::kfunc("allocate_float");
+    kd_status = ((LPCint) KFCALL << 24) | KF_STATUS;
+    kd_call_trace = ((LPCint) KFCALL << 24) | KF_CALL_TRACE;
+    kd_allocate = ((LPCint) KFCALL << 24) | KFun::kfunc("allocate");
+    kd_allocate_int = ((LPCint) KFCALL << 24) | KFun::kfunc("allocate_int");
+    kd_allocate_float = ((LPCint) KFCALL << 24) | KFun::kfunc("allocate_float");
 }
 
 /*
@@ -167,9 +167,9 @@ Uint Optimize::binconst(Node **m)
     n = *m;
     if (n->l.left->type != n->r.right->type) {
 	if (n->type == N_EQ) {
-	    n->toint((Int) FALSE);
+	    n->toint(FALSE);
 	} else if (n->type == N_NE) {
-	    n->toint((Int) TRUE);
+	    n->toint(TRUE);
 	} else {
 	    return 2;	/* runtime error expected */
 	}
@@ -218,7 +218,7 @@ Uint Optimize::binconst(Node **m)
 		    n->l.left->l.number = 0;
 		}
 	    } else {
-		n->l.left->l.number = (Uint) n->l.left->l.number <<
+		n->l.left->l.number = (LPCuint) n->l.left->l.number <<
 				      n->r.right->l.number;
 	    }
 	    break;
@@ -253,7 +253,7 @@ Uint Optimize::binconst(Node **m)
 		}
 		n->l.left->l.number = 0;
 	    } else {
-		n->l.left->l.number = (Uint) n->l.left->l.number >>
+		n->l.left->l.number = (LPCuint) n->l.left->l.number >>
 				      n->r.right->l.number;
 	    }
 	    break;
@@ -294,27 +294,27 @@ Uint Optimize::binconst(Node **m)
 
 	case N_EQ:
 	case N_EQ_FLOAT:
-	    n->l.left->toint((Int) (f1.cmp(f2) == 0));
+	    n->l.left->toint((f1.cmp(f2) == 0));
 	    break;
 
 	case N_GE:
 	case N_GE_FLOAT:
-	    n->l.left->toint((Int) (f1.cmp(f2) >= 0));
+	    n->l.left->toint((f1.cmp(f2) >= 0));
 	    break;
 
 	case N_GT:
 	case N_GT_FLOAT:
-	    n->l.left->toint((Int) (f1.cmp(f2) > 0));
+	    n->l.left->toint((f1.cmp(f2) > 0));
 	    break;
 
 	case N_LE:
 	case N_LE_FLOAT:
-	    n->l.left->toint((Int) (f1.cmp(f2) <= 0));
+	    n->l.left->toint((f1.cmp(f2) <= 0));
 	    break;
 
 	case N_LT:
 	case N_LT_FLOAT:
-	    n->l.left->toint((Int) (f1.cmp(f2) < 0));
+	    n->l.left->toint((f1.cmp(f2) < 0));
 	    break;
 
 	case N_MULT:
@@ -324,7 +324,7 @@ Uint Optimize::binconst(Node **m)
 
 	case N_NE:
 	case N_NE_FLOAT:
-	    n->l.left->toint((Int) (f1.cmp(f2) != 0));
+	    n->l.left->toint((f1.cmp(f2) != 0));
 	    break;
 
 	case N_SUB:
@@ -375,7 +375,7 @@ Uint Optimize::binconst(Node **m)
 	    return 2;	/* runtime error expected */
 	}
 
-	n->toint((Int) flag);
+	n->toint(flag);
 	return 1;
 
     case N_NIL:
@@ -392,7 +392,7 @@ Uint Optimize::binconst(Node **m)
 	    return 2;	/* runtime error expected */
 	}
 
-	n->toint((Int) flag);
+	n->toint(flag);
 	return 1;
     }
 
@@ -412,15 +412,15 @@ Node *Optimize::tst(Node *n)
 	return n;
 
     case N_FLOAT:
-	n->toint((Int) !NFLT_ISZERO(n));
+	n->toint(!NFLT_ISZERO(n));
 	return n;
 
     case N_STR:
-	n->toint((Int) TRUE);
+	n->toint(TRUE);
 	return n;
 
     case N_NIL:
-	n->toint((Int) FALSE);
+	n->toint(FALSE);
 	return n;
 
     case N_TST:
@@ -469,19 +469,19 @@ Node *Optimize::_not(Node *n)
 
     switch (n->type) {
     case N_INT:
-	n->toint((Int) (n->l.number == 0));
+	n->toint((LPCint) (n->l.number == 0));
 	return n;
 
     case N_FLOAT:
-	n->toint((Int) NFLT_ISZERO(n));
+	n->toint((LPCint) NFLT_ISZERO(n));
 	return n;
 
     case N_STR:
-	n->toint((Int) FALSE);
+	n->toint((LPCint) FALSE);
 	return n;
 
     case N_NIL:
-	n->toint((Int) TRUE);
+	n->toint((LPCint) TRUE);
 	return n;
 
     case N_LAND:
@@ -1356,8 +1356,7 @@ Uint Optimize::assignExpr(Node **m, bool pop)
 bool Optimize::ctest(Node *n)
 {
     if (n->type != N_INT) {
-	n->toint((Int) (n->type != N_NIL &&
-			(n->type != T_FLOAT || !NFLT_ISZERO(n))));
+	n->toint((n->type != N_NIL && (n->type != T_FLOAT || !NFLT_ISZERO(n))));
     }
     return (n->l.number != 0);
 }
@@ -1615,7 +1614,7 @@ Uint Optimize::expr(Node **m, bool pop)
 		n->r.right->l.number >= (long) n->l.left->l.string->len) {
 		return 2;
 	    }
-	    n->toint((Int) n->l.left->l.string->index(n->r.right->l.number));
+	    n->toint(n->l.left->l.string->index(n->r.right->l.number));
 	    return !pop;
 	}
 	if (n->l.left->type == N_FUNC && n->r.right->mod == T_INT) {
@@ -1631,12 +1630,12 @@ Uint Optimize::expr(Node **m, bool pop)
 		    n->type = N_PAIR;
 		    n->l.left = n->r.right;
 		    n->r.right = (*m)->r.right;
-		    (*m)->r.number = ((long) KFCALL << 24) | KF_STATUSO_IDX;
+		    (*m)->r.number = ((LPCint) KFCALL << 24) | KF_STATUSO_IDX;
 		} else {
 		    /* status()[i] */
 		    n->l.left = n->l.left->l.left;
 		    n->l.left->r.right = n->r.right;
-		    n->r.number = ((long) KFCALL << 24) | KF_STATUS_IDX;
+		    n->r.number = ((LPCint) KFCALL << 24) | KF_STATUS_IDX;
 		}
 		return expr(m, pop);
 	    }
@@ -1645,7 +1644,7 @@ Uint Optimize::expr(Node **m, bool pop)
 		n->type = N_FUNC;
 		n->l.left = n->l.left->l.left;
 		n->l.left->r.right = n->r.right;
-		n->r.number = ((long) KFCALL << 24) | KF_CALLTR_IDX;
+		n->r.number = ((LPCint) KFCALL << 24) | KF_CALLTR_IDX;
 		return expr(m, pop);
 	    }
 	}
@@ -1660,7 +1659,7 @@ Uint Optimize::expr(Node **m, bool pop)
 	    n->l.left->l.left = n->l.left->r.right;
 	    n->l.left->r.right = n->r.right;
 	    n->l.left = side;
-	    n->r.number = ((long) KFCALL << 24) | KF_CALLTR_IDX_IDX;
+	    n->r.number = ((LPCint) KFCALL << 24) | KF_CALLTR_IDX_IDX;
 	    return expr(m, pop);
 	}
 	return max3(expr(&n->l.left, FALSE),
@@ -2039,7 +2038,7 @@ Node *Optimize::skip(Node *n)
 	    m->r.right->r.right = skip(m->r.right->r.right);
 	    if (m->r.right->l.left != (Node *) NULL) {
 		if (m->r.right->r.right != (Node *) NULL) {
-		    m->l.left->toint((Int) TRUE);
+		    m->l.left->toint(TRUE);
 		} else {
 		    *m = *(m->r.right->l.left);
 		}

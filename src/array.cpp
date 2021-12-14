@@ -433,7 +433,7 @@ private:
 static Chunk<Array, ARR_CHUNK> achunk;
 static Chunk<Mapping, ARR_CHUNK> mchunk;
 static Chunk<LWO, ARR_CHUNK> ochunk;
-static unsigned long max_size;		/* max. size of array and mapping */
+static LPCint max_size;			/* max. size of array and mapping */
 static Uint atag;			/* current array tag */
 static ArrHash *aht[ARRMERGETABSZ];	/* array merge table */
 
@@ -502,7 +502,7 @@ Array *Array::alloc(unsigned short size)
 /*
  * create a new array
  */
-Array *Array::create(Dataspace *data, long size)
+Array *Array::create(Dataspace *data, LPCint size)
 {
     Array *a;
 
@@ -526,7 +526,7 @@ Array *Array::create(Dataspace *data, long size)
 /*
  * return an initialized array
  */
-Array *Array::createNil(Dataspace *data, long size)
+Array *Array::createNil(Dataspace *data, LPCint size)
 {
     int i;
     Value *v;
@@ -756,7 +756,7 @@ Array *Array::add(Dataspace *data, Array *a2)
 {
     Array *a;
 
-    a = create(data, (long) size + a2->size);
+    a = create(data, (LPCint) size + a2->size);
     Value::copy(a->elts, Dataspace::elts(this), size);
     Value::copy(a->elts + size, Dataspace::elts(a2), a2->size);
     Dataspace::refImports(a);
@@ -819,7 +819,7 @@ static int cmp(cvoid *cv1, cvoid *cv2)
 static int search(Value *v1, Value *v2, unsigned short h, int step, bool place)
 {
     unsigned short l, m;
-    Int c;
+    int c;
     Value *v3;
     unsigned short mask;
 
@@ -1122,12 +1122,12 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
     AFREE(v1);	/* free copy of values of 1st array */
 
     n = v - v3;
-    if ((long) size + n > max_size) {
+    if ((LPCint) size + n > max_size) {
 	AFREE(v3);
 	EC->error("Array too large");
     }
 
-    a3 = create(data, (long) size + n);
+    a3 = create(data, (LPCint) size + n);
     Value::copy(a3->elts, elts, size);
     Value::copy(a3->elts + size, v3, n);
     AFREE(v3);
@@ -1207,14 +1207,14 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
     }
 
     n = v - v2;
-    if ((long) num + n > max_size) {
+    if ((LPCint) num + n > max_size) {
 	AFREE(v3);
 	AFREE(v2);
 	AFREE(v1);
 	EC->error("Array too large");
     }
 
-    a3 = create(data, (long) num + n);
+    a3 = create(data, (LPCint) num + n);
     Value::copy(a3->elts, v3, num);
     Value::copy(a3->elts + num, v2, n);
     AFREE(v3);
@@ -1228,9 +1228,9 @@ Array *Array::setXAdd(Dataspace *data, Array *a2)
 /*
  * index an array
  */
-unsigned short Array::index(long l)
+unsigned short Array::index(LPCint l)
 {
-    if (l < 0 || l >= (long) size) {
+    if (l < 0 || l >= (LPCint) size) {
 	EC->error("Array index out of range");
     }
     return l;
@@ -1239,9 +1239,9 @@ unsigned short Array::index(long l)
 /*
  * check an array subrange
  */
-void Array::checkRange(long l1, long l2)
+void Array::checkRange(LPCint l1, LPCint l2)
 {
-    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) size) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (LPCint) size) {
 	EC->error("Invalid array range");
     }
 }
@@ -1249,11 +1249,11 @@ void Array::checkRange(long l1, long l2)
 /*
  * return a subrange of an array
  */
-Array *Array::range(Dataspace *data, long l1, long l2)
+Array *Array::range(Dataspace *data, LPCint l1, LPCint l2)
 {
     Array *range;
 
-    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) size) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (LPCint) size) {
 	EC->error("Invalid array range");
     }
 
@@ -1312,7 +1312,7 @@ Mapping *Mapping::alloc(unsigned short size)
 /*
  * create a new mapping
  */
-Mapping *Mapping::create(Dataspace *data, long size)
+Mapping *Mapping::create(Dataspace *data, LPCint size)
 {
     Mapping *m;
 
@@ -1561,13 +1561,13 @@ Array *Mapping::add(Dataspace *data, Array *a2)
 {
     Value *v1, *v2, *v3;
     unsigned short n1, n2;
-    Int c;
+    int c;
     Mapping *m2, *m3;
 
     compact(data);
     m2 = (Mapping *) a2;
     m2->compact(data);
-    m3 = create(data, (long) size + m2->size);
+    m3 = create(data, (LPCint) size + m2->size);
     if (m3->size == 0) {
 	/* add two empty mappings */
 	return m3;
@@ -1644,7 +1644,7 @@ Array *Mapping::sub(Dataspace *data, Array *a2)
 {
     Value *v1, *v2, *v3;
     unsigned short n1, n2;
-    Int c;
+    int c;
     Mapping *m3;
 
     compact(data);
@@ -1729,7 +1729,7 @@ Array *Mapping::intersect(Dataspace *data, Array *a2)
 {
     Value *v1, *v2, *v3;
     unsigned short n1, n2;
-    Int c;
+    int c;
     Mapping *m3;
 
     compact(data);

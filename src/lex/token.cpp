@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -39,7 +39,7 @@ char *yytext;			/* for strings and identifiers */
 static char *yytext1, *yytext2;	/* internal buffers */
 static char *yyend;		/* end of current buffer */
 int yyleng;			/* length of token */
-long yynumber;			/* integer constant */
+LPCint yynumber;		/* integer constant */
 Float yyfloat;			/* floating point constant */
 
 static TokenBuf *tbuffer;	/* current token buffer */
@@ -536,7 +536,7 @@ int TokenBuf::string(char quote)
 int TokenBuf::gettok()
 {
     int c;
-    long result;
+    LPCint result;
     char *p;
     bool overflow;
     bool is_float, badoctal;
@@ -835,7 +835,7 @@ int TokenBuf::gettok()
 		    if (p < yyend) {
 			*p++ = c;
 		    }
-		    if (result > 0x0fffffffL) {
+		    if (result > ((LPCuint) LPCUINT_MAX >> 4)) {
 			overflow = TRUE;
 		    }
 		    if (isdigit(c)) {
@@ -861,7 +861,7 @@ int TokenBuf::gettok()
 		if (p < yyend) {
 		    *p++ = c;
 		}
-		if (result > 0x1fffffffL) {
+		if (result > ((LPCuint) LPCUINT_MAX >> 3)) {
 		    overflow = TRUE;
 		}
 		result <<= 3;
@@ -899,7 +899,8 @@ int TokenBuf::gettok()
     case '1': case '2': case '3': case '4': case '5':
     case '6': case '7': case '8': case '9':
 	for (;;) {
-	    if (result >= 214748364L && (result > 214748364L || c >= '8')) {
+	    if (result >= LPCINT_MAX / 10 &&
+		(result > LPCINT_MAX / 10 || c >= '8')) {
 		overflow = TRUE;
 	    }
 	    result *= 10;

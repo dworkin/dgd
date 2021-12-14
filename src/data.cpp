@@ -311,7 +311,7 @@ Dataplane::Dataplane(Dataspace *data)
 /*
  * create a new dataplane
  */
-Dataplane::Dataplane(Dataspace *data, Int level) : level(level)
+Dataplane::Dataplane(Dataspace *data, LPCint level) : level(level)
 {
     Uint i;
 
@@ -372,7 +372,7 @@ Dataplane::Dataplane(Dataspace *data, Int level) : level(level)
 /*
  * commit non-swapped arrays among the values
  */
-void Dataplane::commitValues(Value *v, unsigned int n, Int level)
+void Dataplane::commitValues(Value *v, unsigned int n, LPCint level)
 {
     Array *list, *arr;
 
@@ -541,7 +541,7 @@ void Dataplane::commitCallouts(bool merge)
 /*
  * commit the current data planes
  */
-void Dataplane::commit(Int level, Value *retval)
+void Dataplane::commit(LPCint level, Value *retval)
 {
     Dataplane *p, *commit, **r, **cr;
     Dataspace *data;
@@ -710,7 +710,7 @@ void Dataplane::discardCallouts()
 /*
  * discard the current data plane without committing it
  */
-void Dataplane::discard(Int level)
+void Dataplane::discard(LPCint level)
 {
     Dataplane *p;
     Dataspace *data;
@@ -1167,14 +1167,14 @@ struct SValue {
     char pad;			/* 0 */
     uindex oindex;		/* index in object table */
     union {
-	Int number;		/* number */
-	Uint string;		/* string */
-	Uint objcnt;		/* object creation count */
-	Uint array;		/* array */
+	LPCint number;		/* number */
+	LPCuint string;		/* string */
+	LPCuint objcnt;		/* object creation count */
+	LPCuint array;		/* array */
     };
 };
 
-static char sv_layout[] = "ccui";
+static char sv_layout[] = "ccuI";
 
 struct SArray {
     Uint tag;			/* unique value for each array */
@@ -2858,7 +2858,7 @@ void Dataspace::freeCallOut(unsigned int handle)
 /*
  * add a new callout
  */
-uindex Dataspace::newCallOut(String *func, Int delay, unsigned int mdelay,
+uindex Dataspace::newCallOut(String *func, LPCint delay, unsigned int mdelay,
 			     Frame *f, int nargs)
 {
     Uint ct, t;
@@ -2939,10 +2939,10 @@ uindex Dataspace::newCallOut(String *func, Int delay, unsigned int mdelay,
 /*
  * remove a callout
  */
-Int Dataspace::delCallOut(Uint handle, unsigned short *mtime)
+LPCint Dataspace::delCallOut(Uint handle, unsigned short *mtime)
 {
     DCallOut *co;
-    Int t;
+    LPCint t;
 
     *mtime = TIME_INT;
     if (handle == 0 || handle > ncallouts) {

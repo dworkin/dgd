@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,11 +20,11 @@
 class CallOut {
 public:
     static bool init(unsigned int max);
-    static Uint check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
-		      unsigned short *mp, uindex **qp);
+    static Uint check(unsigned int n, LPCint delay, unsigned int mdelay,
+		      Uint *tp, unsigned short *mp, uindex **qp);
     static void create(unsigned int oindex, unsigned int handle, Uint t,
 		       unsigned int m, uindex *q);
-    static Int remaining(Uint t, unsigned short *m);
+    static LPCint remaining(Uint t, unsigned short *m);
     static void del(unsigned int oindex, unsigned int handle, Uint t,
 		    unsigned int m);
     static void list(Array *a);

@@ -64,9 +64,9 @@ String *String::alloc(const char *text, long len)
 /*
  * create a new string with size check
  */
-String *String::create(const char *text, long len)
+String *String::create(const char *text, LPCint len)
 {
-    if (len > (unsigned long) MAX_STRLEN) {
+    if (len > (LPCint) MAX_STRLEN) {
 	EC->error("String too long");
     }
     return alloc(text, len);
@@ -188,7 +188,7 @@ String *String::add(String *str)
 {
     String *s;
 
-    s = create((char *) NULL, (long) len + str->len);
+    s = create((char *) NULL, (LPCint) len + str->len);
     memcpy(s->text, text, len);
     memcpy(s->text + len, str->text, str->len);
 
@@ -198,9 +198,9 @@ String *String::add(String *str)
 /*
  * index a string
  */
-ssizet String::index(long l)
+ssizet String::index(LPCint l)
 {
-    if (l < 0 || l >= (long) len) {
+    if (l < 0 || l >= (LPCint) len) {
 	EC->error("String index out of range");
     }
 
@@ -210,9 +210,9 @@ ssizet String::index(long l)
 /*
  * check a string subrange
  */
-void String::checkRange(long l1, long l2)
+void String::checkRange(LPCint l1, LPCint l2)
 {
-    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) len) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (LPCint) len) {
 	EC->error("Invalid string range");
     }
 }
@@ -220,9 +220,9 @@ void String::checkRange(long l1, long l2)
 /*
  * return a subrange of a string
  */
-String *String::range(long l1, long l2)
+String *String::range(LPCint l1, LPCint l2)
 {
-    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) len) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (LPCint) len) {
 	EC->error("Invalid string range");
     }
 

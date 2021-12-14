@@ -1014,7 +1014,7 @@ void Frame::lvalues(int n)
 /*
  * integer division
  */
-Int Frame::div(Int num, Int denom)
+LPCint Frame::div(LPCint num, LPCint denom)
 {
     if (denom == 0) {
 	EC->error("Division by zero");
@@ -1025,7 +1025,7 @@ Int Frame::div(Int num, Int denom)
 /*
  * left shift
  */
-Int Frame::lshift(Int num, Int shift)
+LPCint Frame::lshift(LPCint num, LPCint shift)
 {
     if ((shift & ~31) != 0) {
 	if (shift < 0) {
@@ -1033,14 +1033,14 @@ Int Frame::lshift(Int num, Int shift)
 	}
 	return 0;
     } else {
-	return (Uint) num << shift;
+	return (LPCuint) num << shift;
     }
 }
 
 /*
  * integer modulus
  */
-Int Frame::mod(Int num, Int denom)
+LPCint Frame::mod(LPCint num, LPCint denom)
 {
     if (denom == 0) {
 	EC->error("Modulus by zero");
@@ -1051,7 +1051,7 @@ Int Frame::mod(Int num, Int denom)
 /*
  * right shift
  */
-Int Frame::rshift(Int num, Int shift)
+LPCint Frame::rshift(LPCint num, LPCint shift)
 {
     if ((shift & ~31) != 0) {
 	if (shift < 0) {
@@ -1059,7 +1059,7 @@ Int Frame::rshift(Int num, Int shift)
 	}
 	return 0;
     } else {
-	return (Uint) num >> shift;
+	return (LPCuint) num >> shift;
     }
 }
 
@@ -1094,7 +1094,7 @@ void Frame::toFloat(Float *flt)
 /*
  * convert to integer
  */
-Int Frame::toInt()
+LPCint Frame::toInt()
 {
     Float flt;
 
@@ -1105,7 +1105,7 @@ Int Frame::toInt()
 	return flt.ftoi();
     } else if (sp->type == T_STRING) {
 	char *p;
-	Int i;
+	LPCint i;
 
 	/* from string */
 	p = sp->string->text;
@@ -1126,7 +1126,7 @@ Int Frame::toInt()
 /*
  * get the remaining stack depth (-1: infinite)
  */
-Int Frame::getDepth()
+LPCint Frame::getDepth()
 {
     RLInfo *rlim;
 
@@ -1140,7 +1140,7 @@ Int Frame::getDepth()
 /*
  * get the remaining ticks (-1: infinite)
  */
-Int Frame::getTicks()
+LPCint Frame::getTicks()
 {
     RLInfo *rlim;
 
@@ -1184,7 +1184,7 @@ void Frame::checkRlimits()
 /*
  * create new rlimits scope
  */
-void Frame::newRlimits(Int depth, Int t)
+void Frame::newRlimits(LPCint depth, LPCint t)
 {
     RLInfo *rlim;
 
@@ -1225,7 +1225,7 @@ void Frame::newRlimits(Int depth, Int t)
  */
 void Frame::rlimits(bool privileged)
 {
-    Int newdepth, newticks;
+    LPCint newdepth, newticks;
 
     if (sp[1].type != T_INT) {
 	EC->error("Bad rlimits depth type");
@@ -1426,7 +1426,7 @@ void Frame::typecheck(Frame *f, const char *name, const char *ftype,
 unsigned short Frame::switchInt(char *pc)
 {
     unsigned short h, l, m, sz, dflt;
-    Int num;
+    LPCint num;
     char *p;
 
     FETCH2U(pc, h);
@@ -1509,7 +1509,7 @@ unsigned short Frame::switchInt(char *pc)
 unsigned short Frame::switchRange(char *pc)
 {
     unsigned short h, l, m, sz, dflt;
-    Int num;
+    LPCint num;
     char *p;
 
     FETCH2U(pc, h);
@@ -1679,7 +1679,7 @@ void Frame::vfunc(int n, int nargs)
 void Frame::interpret(char *pc)
 {
     unsigned short instr, u, u2;
-    Uint l;
+    LPCuint l;
     char *p;
     KFun *kf;
     int size, instance;
@@ -2102,7 +2102,7 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
     }
     if (f.rlim->ticks < 100) {
 	if (f.rlim->noticks) {
-	    f.rlim->ticks = 0x7fffffff;
+	    f.rlim->ticks = LPCINT_MAX;
 	} else {
 	    EC->error("Out of ticks");
 	}
@@ -2561,7 +2561,7 @@ unsigned short Frame::line()
 /*
  * return part of a trace of a single function
  */
-bool Frame::funcTraceI(Int idx, Value *val)
+bool Frame::funcTraceI(LPCint idx, Value *val)
 {
     char buffer[STRINGSZ + 12];
     String *str;
@@ -2664,7 +2664,7 @@ Array *Frame::funcTrace(Dataspace *data)
 /*
  * get part of the trace of a single function
  */
-bool Frame::callTraceII(Int i, Int j, Value *v)
+bool Frame::callTraceII(LPCint i, LPCint j, Value *v)
 {
     Frame *f;
 
@@ -2680,7 +2680,7 @@ bool Frame::callTraceII(Int i, Int j, Value *v)
 /*
  * get the trace of a single function
  */
-bool Frame::callTraceI(Int i, Value *v)
+bool Frame::callTraceI(LPCint i, Value *v)
 {
     Frame *f;
 
@@ -2718,7 +2718,7 @@ Array *Frame::callTrace()
 /*
  * fake error handler
  */
-static void emptyhandler(Frame *f, Int depth)
+static void emptyhandler(Frame *f, LPCint depth)
 {
     UNREFERENCED_PARAMETER(f);
     UNREFERENCED_PARAMETER(depth);
@@ -2751,7 +2751,7 @@ bool Frame::callCritical(const char *func, int narg, int flag)
 /*
  * handle a runtime error
  */
-void Frame::runtimeError(Frame *f, Int depth)
+void Frame::runtimeError(Frame *f, LPCint depth)
 {
     PUSH_STRVAL(f, EC->exception());
     PUSH_INTVAL(f, depth);
@@ -2770,7 +2770,7 @@ void Frame::runtimeError(Frame *f, Int depth)
 /*
  * handle error in atomic code
  */
-void Frame::atomicError(Int level)
+void Frame::atomicError(LPCint level)
 {
     Frame *f;
 
@@ -2793,7 +2793,7 @@ void Frame::atomicError(Int level)
 /*
  * restore state to given level
  */
-Frame *Frame::restore(Int level)
+Frame *Frame::restore(LPCint level)
 {
     Frame *f;
 

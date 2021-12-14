@@ -63,5 +63,5 @@ private:
 
 extern char *yytext;
 extern int yyleng;
-extern long yynumber;
+extern LPCint yynumber;
 extern Float yyfloat;

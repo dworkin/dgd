@@ -38,7 +38,7 @@ static bool internal;		/* flag editor internal error */
 /*
  * fake error handler
  */
-static void ed_handler(Frame *f, Int depth)
+static void ed_handler(Frame *f, LPCint depth)
 {
     /*
      * This function just exists to prevent the higher level error handler

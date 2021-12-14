@@ -784,7 +784,7 @@ void Parser::save()
 
 	/* grammar */
 	v = val.array->elts;
-	PUT_INTVAL(v, ((Int) fasize << 16) + lrsize);
+	PUT_INTVAL(v, ((LPCint) fasize << 16) + lrsize);
 	v++;
 	PUT_STRVAL(v, source);
 	v++;
@@ -824,7 +824,7 @@ void Parser::save()
 /*
  * parse a string
  */
-Array *Parser::parse_string(Frame *f, String *source, String *str, Int maxalt)
+Array *Parser::parse_string(Frame *f, String *source, String *str, LPCint maxalt)
 {
     Dataspace *data;
     Parser *ps;

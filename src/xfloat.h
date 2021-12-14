@@ -20,7 +20,7 @@
 class Float {
 public:
     static bool atof(char **buf, Float *f);
-    static void itof(Int i, Float *f);
+    static void itof(LPCint i, Float *f);
 
     void initZero() {
 	high = 0;
@@ -32,7 +32,7 @@ public:
     }
 
     void ftoa(char *buffer);
-    Int ftoi();
+    LPCint ftoi();
 
     void abs() {
 	high &= ~0x8000;
@@ -52,8 +52,8 @@ public:
     void floor();
     void ceil();
     void fmod(Float &f);
-    Int frexp();
-    void ldexp(Int exp);
+    LPCint frexp();
+    void ldexp(LPCint exp);
     void modf(Float *f);
 
     void exp();

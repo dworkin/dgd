@@ -94,7 +94,7 @@ void ErrorContextImpl::pop()
 /*
  * dummy handler for previously handled error
  */
-static void dummyHandler(Frame *f, Int depth)
+static void dummyHandler(Frame *f, LPCint depth)
 {
     UNREFERENCED_PARAMETER(f);
     UNREFERENCED_PARAMETER(depth);

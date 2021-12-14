@@ -100,7 +100,7 @@ private:
        XOR_EQ OR_EQ COLON_COLON DOT_DOT ELLIPSIS STRING_CONST IDENTIFIER
 
 %union {
-    Int number;			/* lex input */
+    LPCint number;		/* lex input */
     Float real;			/* lex input */
     unsigned short type;	/* internal */
     class Node *node;		/* internal */
@@ -806,8 +806,7 @@ prefix_exp
 		  $$ = $2;
 		  YYParser::_void($$);
 		  if ($$->mod == T_INT) {
-		      $$ = YYParser::_xor(N_XOR, $$, Node::createInt((Int) -1),
-					  "^");
+		      $$ = YYParser::_xor(N_XOR, $$, Node::createInt(-1), "^");
 		  } else if ($$->mod == T_OBJECT || $$->mod == T_CLASS) {
 		      $$ = Node::createMon(N_NEG, T_OBJECT, $$);
 		  } else {
@@ -1116,7 +1115,7 @@ Node *YYParser::prefix(int op, Node *n, const char *name)
 Node *YYParser::cast(Node *n, Node *type)
 {
     Float flt;
-    Int i;
+    LPCint i;
     char *p, buffer[18];
 
     if (type->mod != n->mod) {
@@ -1263,7 +1262,7 @@ Node *YYParser::idx(Node *n1, Node *n2)
 
     if (n1->type == N_STR && n2->type == N_INT) {
 	/* str [ int ] */
-	if (n2->l.number < 0 || n2->l.number >= (Int) n1->l.string->len) {
+	if (n2->l.number < 0 || n2->l.number >= (LPCint) n1->l.string->len) {
 	    Compile::error("string index out of range");
 	} else {
 	    n2->l.number =
@@ -1284,7 +1283,7 @@ Node *YYParser::idx(Node *n1, Node *n2)
 	    }
 	    if (type != T_MIXED &&
 		(n1->type != N_FUNC ||
-		 n1->r.number != (((long) KFCALL << 24) | KF_CALL_TRACE))) {
+		 n1->r.number != (((LPCint) KFCALL << 24) | KF_CALL_TRACE))) {
 		/* you can't trust these arrays */
 		n2 = Node::createMon(N_CAST, type,
 				     Node::createBin(N_INDEX, type, n1, n2));
@@ -1325,7 +1324,7 @@ Node *YYParser::range(Node *n1, Node *n2, Node *n3)
 
     if (n1->type == N_STR && (n2 == (Node *) NULL || n2->type == N_INT) &&
 	(n3 == (Node *) NULL || n3->type == N_INT)) {
-	Int from, to;
+	LPCint from, to;
 
 	/* str [ int .. int ] */
 	from = (n2 == (Node *) NULL) ? 0 : n2->l.number;
@@ -1459,7 +1458,7 @@ Node *YYParser::mdiv(int op, Node *n1, Node *n2, const char *name)
     Float f1, f2;
 
     if (n1->type == N_INT && n2->type == N_INT) {
-	Int i, d;
+	LPCint i, d;
 
 	/* i / i */
 	i = n1->l.number;
@@ -1494,7 +1493,7 @@ Node *YYParser::mdiv(int op, Node *n1, Node *n2, const char *name)
 Node *YYParser::mod(int op, Node *n1, Node *n2, const char *name)
 {
     if (n1->type == N_INT && n2->type == N_INT) {
-	Int i, d;
+	LPCint i, d;
 
 	/* i % i */
 	i = n1->l.number;
@@ -1643,7 +1642,7 @@ Node *YYParser::umin(Node *n)
 	    flt.initZero();
 	    n = sub(N_SUB, Node::createFloat(&flt), n, "-");
 	} else {
-	    n = sub(N_SUB, Node::createInt((Int) 0), n, "-");
+	    n = sub(N_SUB, Node::createInt(0), n, "-");
 	}
     }
     return n;
@@ -1662,7 +1661,7 @@ Node *YYParser::lshift(int op, Node *n1, Node *n2, const char *name)
 	if (n1->type == N_INT) {
 	    /* i << i */
 	    n1->l.number = (n2->l.number < 32) ?
-			    (Uint) n1->l.number << n2->l.number : 0;
+			    (LPCuint) n1->l.number << n2->l.number : 0;
 	    return n1;
 	}
     }
@@ -1683,7 +1682,7 @@ Node *YYParser::rshift(int op, Node *n1, Node *n2, const char *name)
 	if (n1->type == N_INT) {
 	    /* i >> i */
 	    n1->l.number = (n2->l.number < 32) ?
-			    (Uint) n1->l.number >> n2->l.number : 0;
+			    (LPCuint) n1->l.number >> n2->l.number : 0;
 	    return n1;
 	}
     }
@@ -1731,16 +1730,16 @@ Node *YYParser::rel(int op, Node *n1, Node *n2, const char *name)
 
 	switch (op) {
 	case N_GE:
-	    return Node::createInt((Int) (f1.cmp(f2) >= 0));
+	    return Node::createInt((f1.cmp(f2) >= 0));
 
 	case N_GT:
-	    return Node::createInt((Int) (f1.cmp(f2) > 0));
+	    return Node::createInt((f1.cmp(f2) > 0));
 
 	case N_LE:
-	    return Node::createInt((Int) (f1.cmp(f2) <= 0));
+	    return Node::createInt((f1.cmp(f2) <= 0));
 
 	case N_LT:
-	    return Node::createInt((Int) (f1.cmp(f2) < 0));
+	    return Node::createInt((f1.cmp(f2) < 0));
 	}
 	return n1;
     }
@@ -1748,16 +1747,16 @@ Node *YYParser::rel(int op, Node *n1, Node *n2, const char *name)
 	/* s . s */
 	switch (op) {
 	case N_GE:
-	    return Node::createInt((Int)(n1->l.string->cmp(n2->l.string) >= 0));
+	    return Node::createInt((n1->l.string->cmp(n2->l.string) >= 0));
 
 	case N_GT:
-	    return Node::createInt((Int) (n1->l.string->cmp(n2->l.string) > 0));
+	    return Node::createInt((n1->l.string->cmp(n2->l.string) > 0));
 
 	case N_LE:
-	    return Node::createInt((Int)(n1->l.string->cmp(n2->l.string) <= 0));
+	    return Node::createInt((n1->l.string->cmp(n2->l.string) <= 0));
 
 	case N_LT:
-	    return Node::createInt((Int) (n1->l.string->cmp(n2->l.string) < 0));
+	    return Node::createInt((n1->l.string->cmp(n2->l.string) < 0));
 	}
     }
 
@@ -1795,7 +1794,7 @@ Node *YYParser::eq(Node *n1, Node *n2)
 	}
 	if (nil_node == N_INT && n1->l.number == 0 && n2->type == N_STR) {
 	    /* nil == str */
-	    return Node::createInt((Int) FALSE);
+	    return Node::createInt(FALSE);
 	}
 	break;
 
@@ -1804,29 +1803,29 @@ Node *YYParser::eq(Node *n1, Node *n2)
 	    /* f == f */
 	    NFLT_GET(n1, f1);
 	    NFLT_GET(n2, f2);
-	    return Node::createInt((Int) (f1.cmp(f2) == 0));
+	    return Node::createInt((f1.cmp(f2) == 0));
 	}
 	break;
 
     case N_STR:
 	if (n2->type == N_STR) {
 	    /* s == s */
-	    return Node::createInt((Int)(n1->l.string->cmp(n2->l.string) == 0));
+	    return Node::createInt((n1->l.string->cmp(n2->l.string) == 0));
 	}
 	if (n2->type == nil_node && n2->l.number == 0) {
 	    /* s == nil */
-	    return Node::createInt((Int) FALSE);
+	    return Node::createInt(FALSE);
 	}
 	break;
 
     case N_NIL:
 	if (n2->type == N_NIL) {
 	    /* nil == nil */
-	    return Node::createInt((Int) TRUE);
+	    return Node::createInt(TRUE);
 	}
 	if (n2->type == N_STR) {
 	    /* nil == str */
-	    return Node::createInt((Int) FALSE);
+	    return Node::createInt(FALSE);
 	}
 	break;
     }

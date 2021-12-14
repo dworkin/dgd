@@ -304,7 +304,7 @@ int kf_explode(Frame *f, int n, KFun *kf)
     (f->sp++)->string->del();
     f->sp->string->del();
     PUT_ARRVAL(f->sp, a);
-    f->addTicks((Int) 2 * a->size);
+    f->addTicks((LPCint) 2 * a->size);
 
     return 0;
 }
@@ -443,7 +443,7 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
 	    ssizet len;			/* length of string */
 	};
 	union {
-	    Int number;			/* number */
+	    LPCint number;		/* number */
 	    Uint flow;			/* low longword of float */
 	    char *text;			/* text of string */
 	};
@@ -453,7 +453,7 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
     unsigned int fl;
     int matches;
     char *s, *buffer, *match;
-    Int i;
+    LPCint i;
     Float flt;
     bool skip;
     Value *top, *elts;
@@ -751,7 +751,7 @@ char pt_parse_string[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9,
  */
 int kf_parse_string(Frame *f, int nargs, KFun *kf)
 {
-    Int maxalt;
+    LPCint maxalt;
     Array *a;
 
     UNREFERENCED_PARAMETER(kf);
@@ -845,7 +845,7 @@ int kf_hash_crc16(Frame *f, int nargs, KFun *kf)
     int i;
     ssizet len;
     char *p;
-    Int cost;
+    LPCint cost;
 
     UNREFERENCED_PARAMETER(kf);
 
@@ -957,7 +957,7 @@ int kf_hash_crc32(Frame *f, int nargs, KFun *kf)
     int i;
     ssizet len;
     char *p;
-    Int cost;
+    LPCint cost;
 
     UNREFERENCED_PARAMETER(kf);
 
@@ -1185,9 +1185,9 @@ void hash_md5_end(char *hash, Uint *digest, char *buffer, unsigned int bufsz,
 /*
  * SHA-1 message digest.  See FIPS 180-2.
  */
-static Int hash_sha1_start(Frame *f, int nargs, Uint *digest)
+static LPCint hash_sha1_start(Frame *f, int nargs, Uint *digest)
 {
-    Int cost;
+    LPCint cost;
 
     digest[0] = 0x67452301L;
     digest[1] = 0xefcdab89L;
@@ -1365,7 +1365,7 @@ void kf_md5(Frame *f, int nargs, Value *val)
 {
     char buffer[64];
     Uint digest[5];
-    Int cost;
+    LPCint cost;
     int i;
     Uint length;
     unsigned short bufsz;
@@ -1395,7 +1395,7 @@ void kf_sha1(Frame *f, int nargs, Value *val)
 {
     char buffer[64];
     Uint digest[5];
-    Int cost;
+    LPCint cost;
     Uint length;
     unsigned short bufsz;
     String *str;

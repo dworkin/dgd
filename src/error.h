@@ -19,7 +19,7 @@
 
 class ErrorContext {
 public:
-    typedef void (*Handler) (Frame*, Int);
+    typedef void (*Handler) (Frame*, LPCint);
 
     virtual jmp_buf *push(Handler handler = NULL) {
 	UNREFERENCED_PARAMETER(handler);

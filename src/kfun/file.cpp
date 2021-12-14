@@ -831,7 +831,7 @@ static char *restore_value(restcontext *x, char *buf, Value *val)
 
     case '#':
 	buf = restore_int(x, buf + 1, val);
-	if ((Uint) val->number >= x->narrays) {
+	if ((LPCuint) val->number >= x->narrays) {
 	    restore_error(x, "bad array reference");
 	}
 	*val = *ac_get(x, (Uint) val->number);
@@ -842,7 +842,7 @@ static char *restore_value(restcontext *x, char *buf, Value *val)
 
     case '@':
 	buf = restore_int(x, buf + 1, val);
-	if ((Uint) val->number >= x->narrays) {
+	if ((LPCuint) val->number >= x->narrays) {
 	    restore_error(x, "bad mapping reference");
 	}
 	*val = *ac_get(x, (Uint) val->number);
@@ -1126,7 +1126,7 @@ int kf_write_file(Frame *f, int nargs, KFun *kf)
 	EC->error("write_file() within atomic function");
     }
 
-    f->addTicks(1000 + (Int) 2 * f->sp->string->len);
+    f->addTicks(1000 + (LPCint) 2 * f->sp->string->len);
     f->sp[1].string->del();
     PUT_INTVAL(&f->sp[1], 0);
 
@@ -1177,7 +1177,7 @@ int kf_read_file(Frame *f, int nargs, KFun *kf)
     char file[STRINGSZ], *buf;
     struct stat sbuf;
     off_t l;
-    Int size;
+    LPCint size;
     static int fd;
 
     UNREFERENCED_PARAMETER(kf);
@@ -1236,7 +1236,7 @@ int kf_read_file(Frame *f, int nargs, KFun *kf)
     if (size == 0 || size > sbuf.st_size) {
 	size = sbuf.st_size;
     }
-    if (size > (Uint) MAX_STRLEN) {
+    if (size > (LPCuint) MAX_STRLEN) {
 	P_close(fd);
 	EC->error("String too long");
     }
@@ -1501,8 +1501,8 @@ static int match(char *pat, char *text)
 
 struct fileinfo {
     String *name;		/* file name */
-    Int size;			/* file size */
-    Int time;			/* file time */
+    LPCint size;		/* file size */
+    LPCint time;		/* file time */
 };
 
 /*

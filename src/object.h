@@ -47,7 +47,7 @@ public:
 	return (!base) ? access(index, OACC_MODIFY) : &objTable[index];
     }
     static Object *create(char*, Control*);
-    static const char *builtinName(Int);
+    static const char *builtinName(LPCint);
     static Object *find(char*, int);
 
     static bool space();

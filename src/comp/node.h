@@ -19,7 +19,7 @@
 
 class Node : public ChunkAllocated {
 public:
-    void toint(Int i);
+    void toint(LPCint i);
     void tostr(String *str);
     Node *revert();
 
@@ -27,13 +27,13 @@ public:
     static void clear();
 
     static Node *create(unsigned short line);
-    static Node *createInt(Int num);
+    static Node *createInt(LPCint num);
     static Node *createFloat(Float *flt);
     static Node *createNil();
     static Node *createStr(String *str);
     static Node *createVar(unsigned int type, int idx);
     static Node *createType(int, String*);
-    static Node *createFcall(int mod, String *tclass, char *func, Int call);
+    static Node *createFcall(int mod, String *tclass, char *func, LPCint call);
     static Node *createOp(const char *op);
     static Node *createMon(int type, int mod, Node *left);
     static Node *createBin(int type, int mod, Node *left, Node *right);
@@ -45,14 +45,14 @@ public:
     unsigned short line;	/* line number */
     String *sclass;		/* object class */
     union {
-	Int number;		/* numeric value */
+	LPCint number;		/* numeric value */
 	unsigned short fhigh;	/* high word of float */
 	String *string;		/* string value */
 	char *ptr;		/* character pointer */
 	Node *left;		/* left child */
     } l;
     union {
-	Int number;		/* numeric value */
+	LPCint number;		/* numeric value */
 	Uint flow;		/* low longword of float */
 	Node *right;		/* right child */
     } r;

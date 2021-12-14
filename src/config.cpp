@@ -362,7 +362,7 @@ bool Config::restore(int fd, int fd2)
 	EC->error("Cannot restore arrsize > 2");
     }
     if ((rheader.salign >> 4) != 0) {
-	EC->error("Cannot restore Int size > 4");
+	EC->error("Cannot restore LPCint size > 4");
     }
     rialign = rheader.ilalign & 0xf;
     rlalign = UCHAR(rheader.ilalign) >> 4;
@@ -456,6 +456,7 @@ Uint Config::dsize(const char *layout)
 	    break;
 
 	case 'i':	/* Int */
+	case 'I':	/* LPCint */
 	    sz = rsz = sizeof(Int);
 	    al = ialign;
 	    ral = rialign;
@@ -1752,7 +1753,7 @@ void Config::putval(Value *v, size_t n)
 {
     Float f1, f2;
 
-    if (n <= 0x7fffffffL) {
+    if (n <= LPCINT_MAX) {
 	PUT_INTVAL(v, n);
     } else {
 	Float::itof(n >> 31, &f1);
@@ -1766,7 +1767,7 @@ void Config::putval(Value *v, size_t n)
 /*
  * return resource usage information
  */
-bool Config::statusi(Frame *f, Int idx, Value *v)
+bool Config::statusi(Frame *f, LPCint idx, Value *v)
 {
     const char *version;
     uindex ncoshort, ncolong;
@@ -1915,7 +1916,7 @@ bool Config::statusi(Frame *f, Int idx, Value *v)
 Array *Config::status(Frame *f)
 {
     Value *v;
-    Int i;
+    LPCint i;
     Array *a;
 
     try {
@@ -1937,7 +1938,7 @@ Array *Config::status(Frame *f)
 /*
  * return object resource usage information
  */
-bool Config::objecti(Dataspace *data, Object *obj, Int idx, Value *v)
+bool Config::objecti(Dataspace *data, Object *obj, LPCint idx, Value *v)
 {
     Control *ctrl;
     Object *prog;
@@ -2005,7 +2006,7 @@ bool Config::objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 Array *Config::object(Dataspace *data, Object *obj)
 {
     Value *v;
-    Int i;
+    LPCint i;
     Array *a;
 
     a = Array::createNil(data, 7);
@@ -2026,13 +2027,13 @@ Array *Config::object(Dataspace *data, Object *obj)
 
 
 /*
- * retrieve an Int from a string (utility function)
+ * retrieve an LPCint from a string (utility function)
  */
-Int strtoint(char **str)
+LPCint strtoint(char **str)
 {
     char *p;
-    Int i;
-    Int sign;
+    LPCint i;
+    LPCint sign;
 
     p = *str;
     if (*p == '-') {
@@ -2044,11 +2045,11 @@ Int strtoint(char **str)
 
     i = 0;
     while (isdigit(*p)) {
-	if ((Uint) i > (Uint) 214748364L) {
+	if ((LPCuint) i > (LPCuint) (LPCINT_MAX / 10)) {
 	    return 0;
 	}
 	i = i * 10 + *p++ - '0';
-	if (i < 0 && ((Uint) i != (Uint) 0x80000000L || sign > 0)) {
+	if (i < 0 && ((LPCuint) i != (LPCuint) LPCINT_MIN || sign > 0)) {
 	    return 0;
 	}
     }

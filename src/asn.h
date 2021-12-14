@@ -27,12 +27,12 @@ public:
     static String *mod(Frame *f, String *s1, String *s2);
     static String *pow(Frame *f, String *s1, String *s2, String *s3);
     static String *modinv(Frame *f, String *s1, String *s2);
-    static String *lshift(Frame *f, String *s1, Int shift, String *s2);
-    static String *rshift(Frame *f, String *s, Int shift);
+    static String *lshift(Frame *f, String *s1, LPCint shift, String *s2);
+    static String *rshift(Frame *f, String *s, LPCint shift);
     static String *_and(Frame *f, String *s1, String *s2);
     static String *_or(Frame *f, String *s1, String *s2);
     static String *_xor(Frame *f, String *s1, String *s2);
 
 private:
-    static bool ticks(Frame *f, Uint ticks);
+    static bool ticks(Frame *f, LPCuint ticks);
 };

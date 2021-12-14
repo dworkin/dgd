@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -81,7 +81,7 @@ Node *Node::create(unsigned short line)
 /*
  * create an integer node
  */
-Node *Node::createInt(Int num)
+Node *Node::createInt(LPCint num)
 {
     Node *n;
 
@@ -180,7 +180,7 @@ Node *Node::createType(int type, String *tclass)
 /*
  * create a function call node
  */
-Node *Node::createFcall(int mod, String *tclass, char *func, Int call)
+Node *Node::createFcall(int mod, String *tclass, char *func, LPCint call)
 {
     Node *n;
 
@@ -240,7 +240,7 @@ Node *Node::createBin(int type, int mod, Node *left, Node *right)
 /*
  * convert node type to integer constant
  */
-void Node::toint(Int i)
+void Node::toint(LPCint i)
 {
     if (type == N_STR) {
 	l.string->del();

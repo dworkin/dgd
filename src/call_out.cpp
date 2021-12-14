@@ -311,7 +311,7 @@ Uint CallOut::cotime(unsigned short *mtime)
 /*
  * check if, and how, a new callout can be added
  */
-Uint CallOut::check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
+Uint CallOut::check(unsigned int n, LPCint delay, unsigned int mdelay, Uint *tp,
 		    unsigned short *mp, uindex **qp)
 {
     Uint t;
@@ -433,7 +433,7 @@ bool CallOut::rmshort(uindex *cyc, uindex i, uindex handle, Uint t)
 /*
  * return the time remaining before a callout expires
  */
-Int CallOut::remaining(Uint t, unsigned short *m)
+LPCint CallOut::remaining(Uint t, unsigned short *m)
 {
     Uint time;
     unsigned short mtime;

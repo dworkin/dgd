@@ -1304,8 +1304,7 @@ String *Asi::numtostr(bool minus)
     }
     len = (len >> 3) + 1;
 
-    str = String::create((char *) NULL,
-			 (long) sz * sizeof(Uint) + len + prefix);
+    str = String::create((char *) NULL, sz * sizeof(Uint) + len + prefix);
     text = str->text;
     if (prefix) {
 	/* extra sign indicator */
@@ -1332,12 +1331,12 @@ String *Asi::numtostr(bool minus)
 /*
  * count ticks for operation, return TRUE if out of ticks
  */
-bool ASN::ticks(Frame *f, Uint ticks)
+bool ASN::ticks(Frame *f, LPCuint ticks)
 {
     f->addTicks(ticks);
     if (f->rlim->ticks < 0) {
 	if (f->rlim->noticks) {
-	    f->rlim->ticks = 0x7fffffffL;
+	    f->rlim->ticks = LPCINT_MAX;
 	} else {
 	    return TRUE;
 	}
@@ -1683,7 +1682,7 @@ String *ASN::mod(Frame *f, String *s1, String *s2)
  */
 String *ASN::pow(Frame *f, String *s1, String *s2, String *s3)
 {
-    Uint ticks1, ticks2;
+    LPCuint ticks1, ticks2;
     bool minusa, minusb;
     String *str;
 
@@ -1706,7 +1705,7 @@ String *ASN::pow(Frame *f, String *s1, String *s2, String *s3)
 	EC->error("Out of ticks");
     }
     ticks1 = ticks2 << 5;
-    if (ticks1 >> 5 != ticks2 || (Int) ticks1 < 0 || ticks(f, ticks1)) {
+    if (ticks1 >> 5 != ticks2 || (LPCint) ticks1 < 0 || ticks(f, ticks1)) {
 	AFREE(b.num);
 	AFREE(a.num);
 	AFREE(mod.num);
@@ -1786,7 +1785,7 @@ String *ASN::modinv(Frame *f, String *s1, String *s2)
 /*
  * left shift an ASN
  */
-String *ASN::lshift(Frame *f, String *s1, Int shift, String *s2)
+String *ASN::lshift(Frame *f, String *s1, LPCint shift, String *s2)
 {
     Uint size;
     Asi a, t;
@@ -1855,7 +1854,7 @@ String *ASN::lshift(Frame *f, String *s1, Int shift, String *s2)
 /*
  * right shift the ASN
  */
-String *ASN::rshift(Frame *f, String *s, Int shift)
+String *ASN::rshift(Frame *f, String *s, LPCint shift)
 {
     bool minusa;
     String *str;

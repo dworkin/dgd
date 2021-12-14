@@ -1013,7 +1013,7 @@ void Compile::funcbody(Node *n)
     flt.initZero();
     switch (ftype) {
     case T_INT:
-	n = concat(n, Node::createMon(N_RETURN, 0, Node::createInt((Int) 0)));
+	n = concat(n, Node::createMon(N_RETURN, 0, Node::createInt(0)));
 	break;
 
     case T_FLOAT:
@@ -1384,8 +1384,8 @@ Node *Compile::endSwitch(Node *expr, Node *stmt)
     char tnbuf[TNBUFSIZE];
     Node **v, **w, *n;
     unsigned short i, size;
-    long l;
-    unsigned long cnt;
+    LPCint l;
+    LPCuint cnt;
     short type, sz;
 
     n = stmt;
@@ -1505,7 +1505,7 @@ Node *Compile::endSwitch(Node *expr, Node *stmt)
 		}
 
 		if (i == 0 && cnt > size) {
-		    if (cnt > 0xffffffffL / 6 ||
+		    if (cnt > LPCUINT_MAX / 6 ||
 			(sz + 2L) * cnt > (2 * sz + 2L) * size) {
 			/*
 			 * no point in changing the type of switch
@@ -1527,8 +1527,7 @@ Node *Compile::endSwitch(Node *expr, Node *stmt)
 				v[0]->r.right->l.left = n;
 				l++;
 				*w++ = Node::createBin(N_PAIR, 0,
-						       Node::createInt((Int)l),
-						       n);
+						       Node::createInt(l), n);
 			    }
 			    v++;
 			}
@@ -1926,8 +1925,7 @@ Node *Compile::flookup(Node *n, int typechecked)
 
     proto = Control::funCall(n->l.string, &sclass, &call, typechecked);
     n->r.right = (proto == (char *) NULL) ? (Node *) NULL :
-		  Node::createFcall(PROTO_FTYPE(proto), sclass, proto,
-				    (Int) call);
+		  Node::createFcall(PROTO_FTYPE(proto), sclass, proto, call);
     return n;
 }
 
@@ -1944,8 +1942,7 @@ Node *Compile::iflookup(Node *n, Node *label)
 				     label->l.string->text : (char *) NULL,
 			      &sclass, &call);
     n->r.right = (proto == (char *) NULL) ? (Node *) NULL :
-		  Node::createFcall(PROTO_FTYPE(proto), sclass, proto,
-				    (Int) call);
+		  Node::createFcall(PROTO_FTYPE(proto), sclass, proto, call);
     return n;
 }
 
@@ -2347,13 +2344,13 @@ Node *Compile::tst(Node *n)
 	return n;
 
     case N_FLOAT:
-	return Node::createInt((Int) !NFLT_ISZERO(n));
+	return Node::createInt(!NFLT_ISZERO(n));
 
     case N_STR:
-	return Node::createInt((Int) TRUE);
+	return Node::createInt(TRUE);
 
     case N_NIL:
-	return Node::createInt((Int) FALSE);
+	return Node::createInt(FALSE);
 
     case N_TST:
     case N_NOT:
@@ -2392,13 +2389,13 @@ Node *Compile::_not(Node *n)
 	return n;
 
     case N_FLOAT:
-	return Node::createInt((Int) NFLT_ISZERO(n));
+	return Node::createInt(NFLT_ISZERO(n));
 
     case N_STR:
-	return Node::createInt((Int) FALSE);
+	return Node::createInt(FALSE);
 
     case N_NIL:
-	return Node::createInt((Int) TRUE);
+	return Node::createInt(TRUE);
 
     case N_LAND:
 	n->type = N_LOR;

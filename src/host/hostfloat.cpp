@@ -298,7 +298,7 @@ void Float::ftoa(char *buffer)
 /*
  * convert an integer to a float
  */
-void Float::itof(Int i, Float *f)
+void Float::itof(LPCint i, Float *f)
 {
     f_put(f, (double) i);
 }
@@ -306,23 +306,23 @@ void Float::itof(Int i, Float *f)
 /*
  * convert a float to an integer
  */
-Int Float::ftoi()
+LPCint Float::ftoi()
 {
     double a;
 
     a = f_get(this);
     if (a >= 0) {
 	a = ::floor(a + 0.5);
-	if (a > (double) (Int) INT_MAX) {
+	if (a > (double) LPCINT_MAX) {
 	    f_erange();
 	}
     } else {
 	a = ::ceil(a - 0.5);
-	if (a < (double) (Int) INT_MIN) {
+	if (a < (double) LPCINT_MIN) {
 	    f_erange();
 	}
     }
-    return (Int) a;
+    return (LPCint) a;
 }
 
 /*
@@ -414,7 +414,7 @@ void Float::fmod(Float &f)
 /*
  * split a float into a fraction and an exponent
  */
-Int Float::frexp()
+LPCint Float::frexp()
 {
     short e;
 
@@ -429,7 +429,7 @@ Int Float::frexp()
 /*
  * make a float from a fraction and an exponent
  */
-void Float::ldexp(Int exp)
+void Float::ldexp(LPCint exp)
 {
     if (high == 0) {
 	return;
