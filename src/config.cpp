@@ -621,6 +621,7 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		break;
 
 	    case 'i':
+	    case 'I':
 		i = ALGN(i, ialign);
 		ri = ALGN(ri, rialign);
 		buf[i + header.i[0]] = rbuf[ri + rheader.i[0]];
