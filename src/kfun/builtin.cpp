@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,7 +31,7 @@ static char *kf_itoa(LPCint i, char *buffer)
 
     u = (i >= 0) ? i : -i;
 
-    p = buffer + 11;
+    p = buffer + LPCINT_BUFFER - 1;
     *p = '\0';
     do {
 	*--p = '0' + u % 10;
@@ -2463,7 +2463,7 @@ char pt_add_int_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_INT, T_STRING };
  */
 int kf_add_int_string(Frame *f, int n, KFun *kf)
 {
-    char buffer[12], *num;
+    char buffer[LPCINT_BUFFER], *num;
     String *str;
     long l;
 
@@ -2552,7 +2552,7 @@ char pt_add_string_int[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING, T_INT };
  */
 int kf_add_string_int(Frame *f, int n, KFun *kf)
 {
-    char buffer[12], *num;
+    char buffer[LPCINT_BUFFER], *num;
     String *str;
 
     UNREFERENCED_PARAMETER(n);
@@ -3121,7 +3121,7 @@ char pt_sum[] = { C_STATIC | C_ELLIPSIS, 0, 1, 0, 7, T_MIXED, T_MIXED };
  */
 int kf_sum(Frame *f, int nargs, KFun *kf)
 {
-    char buffer[12], *num;
+    char buffer[LPCINT_BUFFER], *num;
     String *s;
     Array *a;
     Value *v, *e1, *e2;

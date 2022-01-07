@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1660,7 +1660,7 @@ Node *YYParser::lshift(int op, Node *n1, Node *n2, const char *name)
 	}
 	if (n1->type == N_INT) {
 	    /* i << i */
-	    n1->l.number = (n2->l.number < 32) ?
+	    n1->l.number = (n2->l.number < LPCINT_BITS) ?
 			    (LPCuint) n1->l.number << n2->l.number : 0;
 	    return n1;
 	}
@@ -1681,7 +1681,7 @@ Node *YYParser::rshift(int op, Node *n1, Node *n2, const char *name)
 	}
 	if (n1->type == N_INT) {
 	    /* i >> i */
-	    n1->l.number = (n2->l.number < 32) ?
+	    n1->l.number = (n2->l.number < LPCINT_BITS) ?
 			    (LPCuint) n1->l.number >> n2->l.number : 0;
 	    return n1;
 	}

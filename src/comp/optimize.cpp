@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -211,7 +211,7 @@ Uint Optimize::binconst(Node **m)
 	    break;
 
 	case N_LSHIFT_INT:
-	    if (n->r.right->l.number & ~31) {
+	    if (n->r.right->l.number & ~(LPCINT_BITS - 1)) {
 		if (n->r.right->l.number < 0) {
 		    return 2;
 		} else {
@@ -247,7 +247,7 @@ Uint Optimize::binconst(Node **m)
 	    break;
 
 	case N_RSHIFT_INT:
-	    if (n->r.right->l.number & ~31) {
+	    if (n->r.right->l.number & ~(LPCINT_BITS - 1)) {
 		if (n->r.right->l.number < 0) {
 		    return 2;
 		}
