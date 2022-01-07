@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -951,6 +951,9 @@ bool Float::atof(char **s, Float *f)
     if (*p == '-') {
 	a.sign = b.sign = 0x8000;
 	p++;
+	if (!isdigit(*p)) {
+	    return FALSE;
+	}
     } else {
 	a.sign = b.sign = 0;
     }
