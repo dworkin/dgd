@@ -944,6 +944,7 @@ bool Float::atof(char **s, Float *f)
     Flt b, c, *t;
     unsigned short e, h;
     char *p, *q;
+    bool digits;
 
     p = *s;
 
@@ -951,15 +952,13 @@ bool Float::atof(char **s, Float *f)
     if (*p == '-') {
 	a.sign = b.sign = 0x8000;
 	p++;
-	if (!isdigit(*p)) {
-	    return FALSE;
-	}
     } else {
 	a.sign = b.sign = 0;
     }
 
     a.exp = 0;
     b.low = 0;
+    digits = FALSE;
 
     /* digits before . */
     while (isdigit(*p)) {
@@ -978,6 +977,7 @@ bool Float::atof(char **s, Float *f)
 	if (a.exp > 0xffff - 10) {
 	    return FALSE;
 	}
+	digits = TRUE;
     }
 
     /* digits after . */
@@ -1000,7 +1000,11 @@ bool Float::atof(char **s, Float *f)
 		}
 		c.mult(&tenths[0]);
 	    }
+	    digits = TRUE;
 	}
+    }
+    if (!digits) {
+	return FALSE;
     }
 
     /* exponent */

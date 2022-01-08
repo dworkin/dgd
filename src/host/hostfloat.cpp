@@ -99,7 +99,7 @@ bool Float::atof(char **s, Float *f)
     const double *t;
     unsigned short e;
     char *p, *q;
-    bool negative;
+    bool negative, digits;
 
     p = *s;
 
@@ -107,14 +107,12 @@ bool Float::atof(char **s, Float *f)
     if (*p == '-') {
 	negative = TRUE;
 	p++;
-	if (!isdigit(*p)) {
-	    return FALSE;
-	}
     } else {
 	negative = FALSE;
     }
 
     a = 0.0;
+    digits = FALSE;
 
     /* digits before . */
     while (isdigit(*p)) {
@@ -122,6 +120,7 @@ bool Float::atof(char **s, Float *f)
 	if (!isfinite(a)) {
 	    return FALSE;
 	}
+	digits = TRUE;
     }
 
     /* digits after . */
@@ -130,7 +129,11 @@ bool Float::atof(char **s, Float *f)
 	while (isdigit(*++p)) {
 	    a += b * (*p - '0');
 	    b *= tenths[0];
+	    digits = TRUE;
 	}
+    }
+    if (!digits) {
+	return FALSE;
     }
 
     /* exponent */
