@@ -951,7 +951,7 @@ bool Float::atof(char **s, Float *f)
     if (*p == '-') {
 	a.sign = b.sign = 0x8000;
 	p++;
-	if (!isdigit(*p)) {
+	if (!isdigit(*p) && *p != '.') {
 	    return FALSE;
 	}
     } else {
@@ -982,8 +982,11 @@ bool Float::atof(char **s, Float *f)
 
     /* digits after . */
     if (*p == '.') {
+	if (!isdigit(*++p)) {
+	    return FALSE;
+	}
 	c = tenths[0];
-	while (isdigit(*++p)) {
+	do {
 	    if (c.exp > 10) {
 		h = (*p - '0') << 12;
 		if (h != 0) {
@@ -1000,7 +1003,7 @@ bool Float::atof(char **s, Float *f)
 		}
 		c.mult(&tenths[0]);
 	    }
-	}
+	} while (isdigit(*++p));
     }
 
     /* exponent */

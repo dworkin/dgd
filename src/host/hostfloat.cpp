@@ -107,7 +107,7 @@ bool Float::atof(char **s, Float *f)
     if (*p == '-') {
 	negative = TRUE;
 	p++;
-	if (!isdigit(*p)) {
+	if (!isdigit(*p) && *p != '.') {
 	    return FALSE;
 	}
     } else {
@@ -126,11 +126,14 @@ bool Float::atof(char **s, Float *f)
 
     /* digits after . */
     if (*p == '.') {
+	if (!isdigit(*++p)) {
+	    return FALSE;
+	}
 	b = tenths[0];
-	while (isdigit(*++p)) {
+	do {
 	    a += b * (*p - '0');
 	    b *= tenths[0];
-	}
+	} while (isdigit(*++p));
     }
 
     /* exponent */
