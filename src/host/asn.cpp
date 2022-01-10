@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1882,7 +1882,7 @@ String *ASN::rshift(Frame *f, String *s, LPCint shift)
  */
 String *ASN::_and(Frame *f, String *s1, String *s2)
 {
-    char *p, *q, *r, *buf;
+    char *p, *q, *r;
     ssizet i, j;
     String *str;
 
@@ -1898,7 +1898,8 @@ String *ASN::_and(Frame *f, String *s1, String *s2)
 	r = s1->text;
     }
     f->addTicks(4 + ((i + j) >> 4));
-    buf = p = ALLOCA(char, i + j);
+    str = String::create((char *) NULL, (long) i + j);
+    p = str->text;
     if (q[0] & 0x80) {
 	while (j != 0) {
 	    *p++ = *r++;
@@ -1916,19 +1917,6 @@ String *ASN::_and(Frame *f, String *s1, String *s2)
 	--i;
     }
 
-    i = p - buf;
-    p = buf;
-    while (i != 0 && *p == '\0') {
-	p++;
-	--i;
-    }
-    if (p != buf && (i == 0 || (*p & 0x80))) {
-	--p;
-	i++;
-    }
-    str = String::create(p, i);
-    AFREE(buf);
-
     return str;
 }
 
@@ -1937,7 +1925,7 @@ String *ASN::_and(Frame *f, String *s1, String *s2)
  */
 String *ASN::_or(Frame *f, String *s1, String *s2)
 {
-    char *p, *q, *r, *buf;
+    char *p, *q, *r;
     ssizet i, j;
     String *str;
 
@@ -1953,7 +1941,8 @@ String *ASN::_or(Frame *f, String *s1, String *s2)
 	r = s1->text;
     }
     f->addTicks(4 + ((i + j) >> 4));
-    buf = p = ALLOCA(char, i + j);
+    str = String::create((char *) NULL, (long) i + j);
+    p = str->text;
     if (q[0] & 0x80) {
 	r += j;
 	while (j != 0) {
@@ -1971,19 +1960,6 @@ String *ASN::_or(Frame *f, String *s1, String *s2)
 	--i;
     }
 
-    i = p - buf;
-    p = buf;
-    while (i != 0 && *p == '\0') {
-	p++;
-	--i;
-    }
-    if (p != buf && (i == 0 || (*p & 0x80))) {
-	--p;
-	i++;
-    }
-    str = String::create(p, i);
-    AFREE(buf);
-
     return str;
 }
 
@@ -1992,7 +1968,7 @@ String *ASN::_or(Frame *f, String *s1, String *s2)
  */
 String *ASN::_xor(Frame *f, String *s1, String *s2)
 {
-    char *p, *q, *r, *buf;
+    char *p, *q, *r;
     ssizet i, j;
     String *str;
 
@@ -2008,7 +1984,8 @@ String *ASN::_xor(Frame *f, String *s1, String *s2)
 	r = s1->text;
     }
     f->addTicks(4 + ((i + j) >> 4));
-    buf = p = ALLOCA(char, i + j);
+    str = String::create((char *) NULL, (long) i + j);
+    p = str->text;
     if (q[0] & 0x80) {
 	while (j != 0) {
 	    *p++ = ~*r++;
@@ -2024,19 +2001,6 @@ String *ASN::_xor(Frame *f, String *s1, String *s2)
 	*p++ = *q++ ^ *r++;
 	--i;
     }
-
-    i = p - buf;
-    p = buf;
-    while (i != 0 && *p == '\0') {
-	p++;
-	--i;
-    }
-    if (p != buf && (i == 0 || (*p & 0x80))) {
-	--p;
-	i++;
-    }
-    str = String::create(p, i);
-    AFREE(buf);
 
     return str;
 }
