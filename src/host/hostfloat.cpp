@@ -319,12 +319,12 @@ LPCint Float::ftoi()
     a = f_get(this);
     if (a >= 0) {
 	a = ::floor(a + 0.5);
-	if (a > (double) LPCINT_MAX) {
+	if (a > (double) (LPCint) LPCINT_MAX) {
 	    f_erange();
 	}
     } else {
 	a = ::ceil(a - 0.5);
-	if (a < (double) LPCINT_MIN) {
+	if (a < (double) (LPCint) LPCINT_MIN) {
 	    f_erange();
 	}
     }

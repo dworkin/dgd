@@ -1228,12 +1228,12 @@ static LPCint ext_vm_toint_float(Frame *f, double iflt)
     try {
 	if (iflt >= 0) {
 	    iflt = floor(iflt + 0.5);
-	    if (iflt > (double) LPCINT_MAX) {
+	    if (iflt > (double) (LPCint) LPCINT_MAX) {
 		EC->error("Result too large");
 	    }
 	} else {
 	    iflt = ceil(iflt - 0.5);
-	    if (iflt < (double) LPCINT_MIN) {
+	    if (iflt < (double) (LPCint) LPCINT_MIN) {
 		EC->error("Result too large");
 	    }
 	}
