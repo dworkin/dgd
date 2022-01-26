@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -317,7 +317,7 @@ void CodeChunk::clear()
 class JmpList : public ChunkAllocated {
 public:
     static JmpList *addr(JmpList *list);
-    static JmpList *jump(int i, JmpList *list);
+    static JmpList *jump(int i, unsigned short line, JmpList *list);
     static void resolve(JmpList *list, Uint to);
     static void make(char *code);
     static void clear();
@@ -385,9 +385,9 @@ JmpList *JmpList::addr(JmpList *list)
 /*
  * create a jump
  */
-JmpList *JmpList::jump(int i, JmpList *list)
+JmpList *JmpList::jump(int i, unsigned short line, JmpList *list)
 {
-    CodeChunk::instr(i, 0);
+    CodeChunk::instr(i, line);
     return JmpList::addr(list);
 }
 
@@ -1044,7 +1044,7 @@ void Codegen::expr(Node *n, int pop)
 	break;
 
     case N_CATCH:
-	jlist = JmpList::jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH,
+	jlist = JmpList::jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH, n->line,
 			      (JmpList *) NULL);
 	expr(n->l.left, TRUE);
 	if (!pop) {
@@ -1268,7 +1268,7 @@ void Codegen::expr(Node *n, int pop)
 	    cond(n, TRUE);
 	    CodeChunk::instr(I_PUSH_INT1, 0);
 	    CodeChunk::byte(0);
-	    j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+	    j2list = JmpList::jump(I_JUMP, n->line, (JmpList *) NULL);
 	    JmpList::resolve(true_list, here);
 	    true_list = jlist;
 	    CodeChunk::instr(I_PUSH_INT1, 0);
@@ -1314,7 +1314,7 @@ void Codegen::expr(Node *n, int pop)
 	    cond(n, FALSE);
 	    CodeChunk::instr(I_PUSH_INT1, 0);
 	    CodeChunk::byte(1);
-	    j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+	    j2list = JmpList::jump(I_JUMP, n->line, (JmpList *) NULL);
 	    JmpList::resolve(false_list, here);
 	    false_list = jlist;
 	    CodeChunk::instr(I_PUSH_INT1, 0);
@@ -1478,7 +1478,7 @@ void Codegen::expr(Node *n, int pop)
 	    cond(n->l.left, FALSE);
 	    expr(n->r.right->l.left, pop);
 	    if (n->r.right->r.right != (Node *) NULL) {
-		j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+		j2list = JmpList::jump(I_JUMP, n->line, (JmpList *) NULL);
 		JmpList::resolve(false_list, here);
 		false_list = jlist;
 		expr(n->r.right->r.right, pop);
@@ -1815,10 +1815,10 @@ void Codegen::cond(Node *n, int jmptrue)
 	case N_INT:
 	    if (jmptrue) {
 		if (n->l.number != 0) {
-		    true_list = JmpList::jump(I_JUMP, true_list);
+		    true_list = JmpList::jump(I_JUMP, n->line, true_list);
 		}
 	    } else if (n->l.number == 0) {
-		false_list = JmpList::jump(I_JUMP, false_list);
+		false_list = JmpList::jump(I_JUMP, n->line, false_list);
 	    }
 	    break;
 
@@ -1868,9 +1868,9 @@ void Codegen::cond(Node *n, int jmptrue)
 	default:
 	    expr(n, FALSE);
 	    if (jmptrue) {
-		true_list = JmpList::jump(I_JUMP_NONZERO, true_list);
+		true_list = JmpList::jump(I_JUMP_NONZERO, n->line, true_list);
 	    } else {
-		false_list = JmpList::jump(I_JUMP_ZERO, false_list);
+		false_list = JmpList::jump(I_JUMP_ZERO, n->line, false_list);
 	    }
 	    break;
 	}
@@ -2185,7 +2185,7 @@ void Codegen::stmt(Node *n)
 		CodeChunk::instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    break_list = JmpList::jump(I_JUMP, break_list);
+	    break_list = JmpList::jump(I_JUMP, m->line, break_list);
 	    break;
 
 	case N_CASE:
@@ -2205,7 +2205,7 @@ void Codegen::stmt(Node *n)
 		CodeChunk::instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    continue_list = JmpList::jump(I_JUMP, continue_list);
+	    continue_list = JmpList::jump(I_JUMP, m->line, continue_list);
 	    break;
 
 	case N_DO:
@@ -2220,7 +2220,7 @@ void Codegen::stmt(Node *n)
 
 	case N_FOR:
 	    if (m->r.right != (Node *) NULL) {
-		jlist = JmpList::jump(I_JUMP, (JmpList *) NULL);
+		jlist = JmpList::jump(I_JUMP, m->line, (JmpList *) NULL);
 		where = here;
 		stmt(m->r.right);
 		JmpList::resolve(jlist, here);
@@ -2241,7 +2241,8 @@ void Codegen::stmt(Node *n)
 		expr(m->l.left, TRUE);
 	    }
 	    stmt(m->r.right);
-	    JmpList::resolve(JmpList::jump(I_JUMP, (JmpList *) NULL), where);
+	    JmpList::resolve(JmpList::jump(I_JUMP, m->line, (JmpList *) NULL),
+			     where);
 	    break;
 
 	case N_GOTO:
@@ -2249,7 +2250,7 @@ void Codegen::stmt(Node *n)
 		CodeChunk::instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    goto_list = JmpList::jump(I_JUMP, goto_list);
+	    goto_list = JmpList::jump(I_JUMP, m->line, goto_list);
 	    goto_list->label = m->r.right;
 	    break;
 
@@ -2270,7 +2271,7 @@ void Codegen::stmt(Node *n)
 
 	case N_CATCH:
 	    jlist = JmpList::jump((m->mod) ? I_CATCH | I_POP_BIT : I_CATCH,
-				  (JmpList *) NULL);
+				  m->line, (JmpList *) NULL);
 	    stmt(m->l.left);
 	    if (m->l.left->flags & F_END) {
 		JmpList::resolve(jlist, here);
@@ -2280,7 +2281,7 @@ void Codegen::stmt(Node *n)
 	    } else {
 		CodeChunk::instr(I_RETURN, 0);
 		if (m->r.right != (Node *) NULL) {
-		    j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+		    j2list = JmpList::jump(I_JUMP, m->line, (JmpList *) NULL);
 		    JmpList::resolve(jlist, here);
 		    stmt(m->r.right);
 		    JmpList::resolve(j2list, here);
@@ -2329,7 +2330,7 @@ void Codegen::stmt(Node *n)
 		    false_list = jlist;
 		    stmt(m->r.right->r.right);
 		} else {
-		    j2list = JmpList::jump(I_JUMP, (JmpList *) NULL);
+		    j2list = JmpList::jump(I_JUMP, m->line, (JmpList *) NULL);
 		    JmpList::resolve(false_list, here);
 		    false_list = jlist;
 		    stmt(m->r.right->r.right);
