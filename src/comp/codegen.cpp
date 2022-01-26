@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -376,7 +376,7 @@ static jmplist *jump_addr(jmplist *list)
  * NAME:	jump()
  * DESCRIPTION:	create a jump
  */
-static jmplist *jump(int i, jmplist *list)
+static jmplist *jump(int i, unsigned short line, jmplist *list)
 {
     code_instr(i, 0);
     return jump_addr(list);
@@ -1016,7 +1016,8 @@ static void cg_expr(node *n, int pop)
 	break;
 
     case N_CATCH:
-	jlist = jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH, (jmplist *) NULL);
+	jlist = jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH, n->line,
+		     (jmplist *) NULL);
 	cg_expr(n->l.left, TRUE);
 	code_instr(I_RETURN, 0);
 	jump_resolve(jlist, here);
@@ -1212,7 +1213,7 @@ static void cg_expr(node *n, int pop)
 	    cg_cond(n, TRUE);
 	    code_instr(I_PUSH_INT1, 0);
 	    code_byte(0);
-	    j2list = jump(I_JUMP, (jmplist *) NULL);
+	    j2list = jump(I_JUMP, n->line, (jmplist *) NULL);
 	    jump_resolve(true_list, here);
 	    true_list = jlist;
 	    code_instr(I_PUSH_INT1, 0);
@@ -1258,7 +1259,7 @@ static void cg_expr(node *n, int pop)
 	    cg_cond(n, FALSE);
 	    code_instr(I_PUSH_INT1, 0);
 	    code_byte(1);
-	    j2list = jump(I_JUMP, (jmplist *) NULL);
+	    j2list = jump(I_JUMP, n->line, (jmplist *) NULL);
 	    jump_resolve(false_list, here);
 	    false_list = jlist;
 	    code_instr(I_PUSH_INT1, 0);
@@ -1421,7 +1422,7 @@ static void cg_expr(node *n, int pop)
 	    cg_cond(n->l.left, FALSE);
 	    cg_expr(n->r.right->l.left, pop);
 	    if (n->r.right->r.right != (node *) NULL) {
-		j2list = jump(I_JUMP, (jmplist *) NULL);
+		j2list = jump(I_JUMP, n->line, (jmplist *) NULL);
 		jump_resolve(false_list, here);
 		false_list = jlist;
 		cg_expr(n->r.right->r.right, pop);
@@ -1759,10 +1760,10 @@ static void cg_cond(node *n, int jmptrue)
 	case N_INT:
 	    if (jmptrue) {
 		if (n->l.number != 0) {
-		    true_list = jump(I_JUMP, true_list);
+		    true_list = jump(I_JUMP, n->line, true_list);
 		}
 	    } else if (n->l.number == 0) {
-		false_list = jump(I_JUMP, false_list);
+		false_list = jump(I_JUMP, n->line, false_list);
 	    }
 	    break;
 
@@ -1812,9 +1813,9 @@ static void cg_cond(node *n, int jmptrue)
 	default:
 	    cg_expr(n, FALSE);
 	    if (jmptrue) {
-		true_list = jump(I_JUMP_NONZERO, true_list);
+		true_list = jump(I_JUMP_NONZERO, n->line, true_list);
 	    } else {
-		false_list = jump(I_JUMP_ZERO, false_list);
+		false_list = jump(I_JUMP_ZERO, n->line, false_list);
 	    }
 	    break;
 	}
@@ -2134,7 +2135,7 @@ static void cg_stmt(node *n)
 		code_instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    break_list = jump(I_JUMP, break_list);
+	    break_list = jump(I_JUMP, m->line, break_list);
 	    break;
 
 	case N_CASE:
@@ -2154,7 +2155,7 @@ static void cg_stmt(node *n)
 		code_instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    continue_list = jump(I_JUMP, continue_list);
+	    continue_list = jump(I_JUMP, m->line, continue_list);
 	    break;
 
 	case N_DO:
@@ -2169,7 +2170,7 @@ static void cg_stmt(node *n)
 
 	case N_FOR:
 	    if (m->r.right != (node *) NULL) {
-		jlist = jump(I_JUMP, (jmplist *) NULL);
+		jlist = jump(I_JUMP, m->line, (jmplist *) NULL);
 		where = here;
 		cg_stmt(m->r.right);
 		jump_resolve(jlist, here);
@@ -2190,7 +2191,7 @@ static void cg_stmt(node *n)
 		cg_expr(m->l.left, TRUE);
 	    }
 	    cg_stmt(m->r.right);
-	    jump_resolve(jump(I_JUMP, (jmplist *) NULL), where);
+	    jump_resolve(jump(I_JUMP, m->line, (jmplist *) NULL), where);
 	    break;
 
 	case N_GOTO:
@@ -2198,7 +2199,7 @@ static void cg_stmt(node *n)
 		code_instr(I_RETURN, 0);
 		m->mod--;
 	    }
-	    goto_list = jump(I_JUMP, goto_list);
+	    goto_list = jump(I_JUMP, m->line, goto_list);
 	    goto_list->label = m->r.right;
 	    break;
 
@@ -2218,7 +2219,7 @@ static void cg_stmt(node *n)
 	    break;
 
 	case N_CATCH:
-	    jlist = jump((m->mod) ? I_CATCH | I_POP_BIT : I_CATCH,
+	    jlist = jump((m->mod) ? I_CATCH | I_POP_BIT : I_CATCH, m->line,
 			 (jmplist *) NULL);
 	    cg_stmt(m->l.left);
 	    if (m->l.left->flags & F_END) {
@@ -2229,7 +2230,7 @@ static void cg_stmt(node *n)
 	    } else {
 		code_instr(I_RETURN, 0);
 		if (m->r.right != (node *) NULL) {
-		    j2list = jump(I_JUMP, (jmplist *) NULL);
+		    j2list = jump(I_JUMP, m->line, (jmplist *) NULL);
 		    jump_resolve(jlist, here);
 		    cg_stmt(m->r.right);
 		    jump_resolve(j2list, here);
@@ -2278,7 +2279,7 @@ static void cg_stmt(node *n)
 		    false_list = jlist;
 		    cg_stmt(m->r.right->r.right);
 		} else {
-		    j2list = jump(I_JUMP, (jmplist *) NULL);
+		    j2list = jump(I_JUMP, m->line, (jmplist *) NULL);
 		    jump_resolve(false_list, here);
 		    false_list = jlist;
 		    cg_stmt(m->r.right->r.right);
