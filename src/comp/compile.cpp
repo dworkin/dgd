@@ -2508,7 +2508,7 @@ void Compile::lvalAggr(Node **n)
 	      error("bad lvalue in aggregate");
 	      *m = Node::createMon(N_FAKE, T_MIXED, *m);
 	  }
-	  if ((*m)->type == N_LOCAL && !BTST(thiscond->init, (*m)->r.number)) {
+	  if ((*m)->type == N_LOCAL && !BTST(thiscond->init, (*m)->r.number) && switch_list == (Switch *) NULL) {
 	      BSET(thiscond->init, (*m)->r.number);
 	      --variables[(*m)->r.number].unset;
 	  }
@@ -2525,7 +2525,7 @@ Node *Compile::assign(Node *n)
 	lvalAggr(&n->l.left);
     } else {
 	n = lvalue(n, "assignment");
-	if (n->type == N_LOCAL && !BTST(thiscond->init, n->r.number)) {
+	if (n->type == N_LOCAL && !BTST(thiscond->init, n->r.number) && switch_list == (Switch *) NULL) {
 	    BSET(thiscond->init, n->r.number);
 	    --variables[n->r.number].unset;
 	}
