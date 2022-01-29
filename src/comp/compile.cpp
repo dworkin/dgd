@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -39,7 +39,9 @@
 
 class Cond : public ChunkAllocated {
 public:
-    void match(Cond *c1, Cond *c2);
+    void fill();
+    void save(Cond *c2);
+    void match(Cond *c2);
 
     static void create(Cond *c2);
     static void del();
@@ -62,7 +64,7 @@ void Cond::create(Cond *c2)
     c = chunknew (cchunk) Cond;
     c->prev = thiscond;
     if (c2 != (Cond *) NULL) {
-	memcpy(c->init, c2->init, COND_BMAP * sizeof(Uint));
+	c->save(c2);
     } else {
 	memset(c->init, '\0', COND_BMAP * sizeof(Uint));
     }
@@ -82,18 +84,33 @@ void Cond::del()
 }
 
 /*
- * match two init bitmaps
+ * set all conditions
  */
-void Cond::match(Cond *c1, Cond *c2)
+void Cond::fill()
 {
-    Uint *p, *q, *r;
+    memset(init, '\xff', COND_BMAP * sizeof(Uint));
+}
+
+/*
+ * save a condition
+ */
+void Cond::save(Cond *c2)
+{
+    memcpy(init, c2->init, COND_BMAP * sizeof(Uint));
+}
+
+/*
+ * match two conditions
+ */
+void Cond::match(Cond *c2)
+{
+    Uint *p, *q;
     int i;
 
     p = init;
-    q = c1->init;
-    r = c2->init;
+    q = c2->init;
     for (i = COND_BMAP; i > 0; --i) {
-	*p++ = *q++ & *r++;
+	*p++ &= *q++;
     }
 }
 
@@ -1073,12 +1090,19 @@ void Compile::endCond()
 }
 
 /*
- * match and end two conditions
+ * save condition
+ */
+void Compile::saveCond()
+{
+    thiscond->prev->save(thiscond);
+}
+
+/*
+ * match conditions
  */
 void Compile::matchCond()
 {
-    thiscond->prev->prev->match(thiscond->prev, thiscond);
-    Cond::del();
+    thiscond->prev->match(thiscond);
     Cond::del();
 }
 
@@ -1350,6 +1374,10 @@ void Compile::startSwitch(Node *n, int typechecked)
 	      Value::typeName(tnbuf, n->mod));
 	switch_list->type = T_NIL;
     }
+
+    Cond::create((Cond *) NULL);
+    thiscond->fill();
+    Cond::create(thiscond->prev);
 }
 
 static int cmp(cvoid*, cvoid*);
@@ -1395,7 +1423,17 @@ Node *Compile::endSwitch(Node *expr, Node *stmt)
 	    switch_list->prev->vlist = concat(n->r.right,
 					      switch_list->prev->vlist);
 	}
+
+	if (switch_list->dflt) {
+	    if (!(n->flags & F_BREAK)) {
+		thiscond->prev->match(thiscond);
+	    }
+	    thiscond->prev->prev->save(thiscond->prev);
+	}
     }
+
+    thiscond->del();
+    thiscond->del();
 
     if (switch_list->type != T_NIL) {
 	if (stmt == (Node *) NULL) {
@@ -1644,6 +1682,8 @@ Node *Compile::caseLabel(Node *n1, Node *n2)
 	}
     }
 
+    thiscond->save(thiscond->prev->prev);
+
     switch_list->ncase++;
     n2 = Node::createMon(N_CASE, 0, (Node *) NULL);
     n2->flags |= F_ENTRY | F_CASE;
@@ -1668,6 +1708,8 @@ Node *Compile::defaultLabel()
     } else if (switch_list->nesting != nesting) {
 	error("illegal jump into rlimits or catch");
     } else {
+	thiscond->save(thiscond->prev->prev);
+
 	switch_list->ncase++;
 	switch_list->dflt = TRUE;
 	n = Node::createMon(N_CASE, 0, (Node *) NULL);
@@ -1730,6 +1772,8 @@ Node *Compile::breakStmt()
     if (l == (Loop *) NULL || switch_list->env != thisloop) {
 	/* no switch, or loop inside switch */
 	l = thisloop;
+    } else {
+	thiscond->prev->match(thiscond);
     }
     if (l == (Loop *) NULL) {
 	error("break statement not inside loop or switch");

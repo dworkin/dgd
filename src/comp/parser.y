@@ -507,7 +507,25 @@ nocase_stmt
 		{ Compile::startCond2(); }
 	  stmt
 		{
-		  Compile::matchCond();
+		  if ($1 != (Node *) NULL && $4 != (Node *) NULL) {
+		      if (!(($1->flags | $4->flags) & F_END)) {
+			  Compile::matchCond();
+			  Compile::saveCond();
+		      } else if (!($4->flags & F_END)) {
+			  Compile::saveCond();
+			  Compile::saveCond();
+		      } else {
+			  Compile::endCond();
+			  if (!($1->flags & F_END)) {
+			      Compile::saveCond();
+			  } else {
+			      Compile::endCond();
+			  }
+		      }
+		  } else {
+		      Compile::endCond();
+		      Compile::endCond();
+		  }
 		  $$ = Compile::endIfStmt($1, $4);
 		}
 	| DO	{ Compile::loop(); }
@@ -522,15 +540,18 @@ nocase_stmt
 		  Compile::endCond();
 		  $$ = Compile::whileStmt($3, $6);
 		}
-	| FOR '(' opt_list_exp ';' f_opt_list_exp ';' opt_list_exp ')'
+	| FOR '(' opt_list_exp ';' f_opt_list_exp ';'
+		{ Compile::startCond(); }
+	  opt_list_exp ')'
 		{
+		  Compile::endCond();
 		  Compile::loop();
 		  Compile::startCond();
 		}
 	  stmt	{
 		  Compile::endCond();
 		  $$ = Compile::forStmt(Compile::exprStmt($3), $5,
-					Compile::exprStmt($7), $10);
+					Compile::exprStmt($8), $11);
 		}
 	| RLIMITS '(' f_list_exp ';' f_list_exp ')'
 		{
@@ -596,15 +617,9 @@ nocase_stmt
 		  $$ = Compile::doneCatch($3, $5, TRUE);
 		}
 	| SWITCH '(' f_list_exp ')'
-		{
-		  Compile::startSwitch($3, typechecking);
-		  Compile::startCond();
-		}
+		{ Compile::startSwitch($3, typechecking); }
 	  compound_stmt
-		{
-		  Compile::endCond();
-		  $$ = Compile::endSwitch($3, $6);
-		}
+		{ $$ = Compile::endSwitch($3, $6); }
 	| ident ':'
 		{ $<node>2 = Compile::label($1); }
 	  stmt	{ $$ = Compile::concat($<node>2, $4); }
@@ -896,14 +911,24 @@ bitor_oper_exp
 
 and_oper_exp
 	: bitor_oper_exp
-	| and_oper_exp LAND bitor_oper_exp
-		{ $$ = YYParser::land($1, $3); }
+	| and_oper_exp LAND
+		{ Compile::startCond(); }
+	  bitor_oper_exp
+		{
+		  Compile::endCond();
+		  $$ = YYParser::land($1, $4);
+		}
 	;
 
 or_oper_exp
 	: and_oper_exp
-	| or_oper_exp LOR and_oper_exp
-		{ $$ = YYParser::lor($1, $3); }
+	| or_oper_exp LOR
+		{ Compile::startCond(); }
+	  and_oper_exp
+		{
+		  Compile::endCond();
+		  $$ = YYParser::lor($1, $4);
+		}
 	;
 
 cond_exp
@@ -915,6 +940,7 @@ cond_exp
 	  cond_exp
 		{
 		  Compile::matchCond();
+		  Compile::saveCond();
 		  $$ = YYParser::quest($1, $4, $7);
 		}
 	;
