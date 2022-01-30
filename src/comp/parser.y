@@ -528,9 +528,20 @@ nocase_stmt
 		  }
 		  $$ = Compile::endIfStmt($1, $4);
 		}
-	| DO	{ Compile::loop(); }
-	  stmt WHILE '(' f_list_exp ')' ';'
-		{ $$ = Compile::doStmt($6, $3); }
+	| DO	{
+		  Compile::loop();
+		  Compile::startCond();
+		}
+	  stmt WHILE '('
+		{
+		  Compile::endCond();
+		  Compile::startCond();
+		}
+	  f_list_exp ')' ';'
+		{
+		  Compile::endCond();
+		  $$ = Compile::doStmt($7, $3);
+		}
 	| WHILE '(' f_list_exp ')'
 		{
 		  Compile::loop();
