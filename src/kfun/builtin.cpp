@@ -2144,12 +2144,12 @@ int kf_call_other(Frame *f, int nargs, KFun *kf)
 {
     Value *val;
     Object *obj;
-    Array *lwobj;
+    LWO *lwobj;
 
     UNREFERENCED_PARAMETER(kf);
 
     obj = (Object *) NULL;
-    lwobj = (Array *) NULL;
+    lwobj = (LWO *) NULL;
     val = &f->sp[nargs - 1];
     if (val->type == T_STRING) {
 	*--f->sp = *val;
@@ -2163,7 +2163,7 @@ int kf_call_other(Frame *f, int nargs, KFun *kf)
 	break;
 
     case T_LWOBJECT:
-	lwobj = val->array;
+	lwobj = dynamic_cast<LWO *> (val->array);
 	break;
 
     default:

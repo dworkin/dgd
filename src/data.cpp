@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1869,7 +1869,8 @@ public:
 		    if (v->array->put(narr) == narr) {
 			if (elts->objcnt == count &&
 			    elts[1].objcnt != obj->update) {
-			    Dataspace::upgradeLWO(v->array, obj);
+			    Dataspace::upgradeLWO(dynamic_cast<LWO *>(v->array),
+						  obj);
 			}
 			arrCount(v->array);
 		    }
@@ -2715,7 +2716,7 @@ void Dataspace::assignElt(Array *arr, Value *elt, Value *val)
 /*
  * mark a mapping as changed in size
  */
-void Dataspace::changeMap(Array *map)
+void Dataspace::changeMap(Mapping *map)
 {
     ArrRef *a;
 
@@ -3308,7 +3309,7 @@ void Dataspace::upgradeClone()
 /*
  * upgrade a non-persistent object
  */
-Object *Dataspace::upgradeLWO(Array *lwobj, Object *obj)
+Object *Dataspace::upgradeLWO(LWO *lwobj, Object *obj)
 {
     ArrRef *a;
     unsigned short n;

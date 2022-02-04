@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -159,7 +159,7 @@ int kf_this_object(Frame *f, int n, KFun *kf)
     --f->sp;
     obj = OBJR(f->oindex);
     if (obj->count != 0) {
-	if (f->lwobj == (Array *) NULL) {
+	if (f->lwobj == (LWO *) NULL) {
 	    PUT_OBJVAL(f->sp, obj);
 	} else {
 	    PUT_LWOVAL(f->sp, f->lwobj);
@@ -198,7 +198,7 @@ int kf_previous_object(Frame *f, int nargs, KFun *kf)
     if (prev != (Frame *) NULL) {
 	obj = OBJR(prev->oindex);
 	if (obj->count != 0) {
-	    if (prev->lwobj == (Array *) NULL) {
+	    if (prev->lwobj == (LWO *) NULL) {
 		PUT_OBJVAL(f->sp, obj);
 	    } else {
 		PUT_LWOVAL(f->sp, prev->lwobj);
@@ -274,7 +274,7 @@ int kf_clone_object(Frame *f, int n, KFun *kf)
     }
     obj = obj->clone();
     PUT_OBJ(f->sp, obj);
-    if (f->call(obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
+    if (f->call(obj, (LWO *) NULL, (char *) NULL, 0, TRUE, 0)) {
 	(f->sp++)->del();
     }
     return 0;
@@ -343,7 +343,8 @@ int kf_new_object(Frame *f, int n, KFun *kf)
 	}
 
 	PUT_LWOVAL(f->sp, LWO::create(f->data, obj));
-	if (f->call((Object *) NULL, f->sp->array, (char *) NULL, 0, TRUE, 0)) {
+	if (f->call((Object *) NULL, dynamic_cast<LWO *> (f->sp->array),
+		    (char *) NULL, 0, TRUE, 0)) {
 	    (f->sp++)->del();
 	}
     } else {
@@ -386,7 +387,7 @@ int kf_instanceof(Frame *f, int nargs, KFun *kf)
 	oindex = f->sp[1].array->elts[0].oindex;
 	f->sp[1].array->del();
     }
-    if (f->lwobj == (Array *) NULL) {
+    if (f->lwobj == (LWO *) NULL) {
 	name = OBJR(f->oindex)->objName(buffer);
 	PUT_STRVAL(f->sp + 1,
 		   str = String::create((char *) NULL, strlen(name) + 1L));
@@ -521,7 +522,7 @@ int kf_function_object(Frame *f, int nargs, KFun *kf)
     f->addTicks(2);
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
-	callable = (f->oindex == obj->index && f->lwobj == (Array *) NULL);
+	callable = (f->oindex == obj->index && f->lwobj == (LWO *) NULL);
     } else if (f->sp->array->elts[0].type == T_OBJECT) {
 	n = f->sp->array->elts[0].oindex;
 	callable = (f->lwobj == f->sp->array);
@@ -943,7 +944,7 @@ int kf_send_message(Frame *f, int n, KFun *kf)
     }
 
     num = 0;
-    if (f->lwobj == (Array *) NULL) {
+    if (f->lwobj == (LWO *) NULL) {
 	obj = OBJR(f->oindex);
 	if (obj->count != 0) {
 	    if ((obj->flags & O_SPECIAL) == O_USER) {
@@ -984,7 +985,7 @@ int kf_send_datagram(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     num = 0;
-    if (f->lwobj == (Array *) NULL) {
+    if (f->lwobj == (LWO *) NULL) {
 	obj = OBJW(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	    num = Comm::udpsend(obj, f->sp->string);
@@ -1013,7 +1014,7 @@ int kf_datagram_challenge(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (f->lwobj == (Array *) NULL) {
+    if (f->lwobj == (LWO *) NULL) {
 	obj = OBJW(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	    Comm::challenge(obj, f->sp->string);
@@ -1041,7 +1042,7 @@ int kf_block_input(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (f->lwobj == (Array *) NULL) {
+    if (f->lwobj == (LWO *) NULL) {
 	obj = OBJR(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	    Comm::block(obj, f->sp->number != 0);
@@ -1139,7 +1140,7 @@ int kf_call_out(Frame *f, int nargs, KFun *kf)
     } else {
 	return 2;
     }
-    if (f->lwobj != (Array *) NULL) {
+    if (f->lwobj != (LWO *) NULL) {
 	EC->error("call_out() in non-persistent object");
     }
 
@@ -1180,7 +1181,7 @@ int kf_remove_call_out(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    if (f->lwobj != (Array *) NULL) {
+    if (f->lwobj != (LWO *) NULL) {
 	EC->error("remove_call_out() in non-persistent object");
     }
     f->addTicks(10);
@@ -1271,7 +1272,7 @@ int kf_connect(Frame *f, int nargs, KFun *kf)
 	f->sp->string->del();
 	f->sp++;
     }
-    if (f->lwobj != (Array *) NULL) {
+    if (f->lwobj != (LWO *) NULL) {
 	EC->error("connect() in non-persistent object");
     }
     obj = OBJW(f->oindex);
@@ -1333,7 +1334,7 @@ int kf_connect_datagram(Frame *f, int nargs, KFun *kf)
     if (nargs > 3) {
 	(f->sp++)->string->del();
     }
-    if (f->lwobj != (Array *) NULL) {
+    if (f->lwobj != (LWO *) NULL) {
 	EC->error("connect_datagram() in non-persistent object");
     }
     obj = OBJW(f->oindex);
@@ -1425,7 +1426,7 @@ int kf_new_function(Frame *f, int nargs, KFun *kf)
     /* object, function name, arg1, ..., argn */
     obj = OBJR(f->oindex);
     if (obj->count != 0) {
-	if (f->lwobj == (Array *) NULL) {
+	if (f->lwobj == (LWO *) NULL) {
 	    PUT_OBJVAL(&elts[3], obj);
 	} else {
 	    PUT_LWOVAL(&elts[3], f->lwobj);
@@ -1506,9 +1507,10 @@ char pt_call_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_MIXED,
  */
 int kf_call_function(Frame *f, int nargs, KFun *kf)
 {
-    Array *a, *lwobj;
+    Array *a;
     Value *elts, *v, *w;
     Object *obj;
+    LWO *lwobj;
     int n;
 
     UNREFERENCED_PARAMETER(kf);
@@ -1531,7 +1533,7 @@ int kf_call_function(Frame *f, int nargs, KFun *kf)
 
     case T_LWOBJECT:
 	obj = NULL;
-	lwobj = elts[3].array;
+	lwobj = dynamic_cast<LWO *> (elts[3].array);
 	v = Dataspace::elts(lwobj);
 	if (v->type == T_OBJECT && DESTRUCTED(v)) {
 	    EC->error("Function in destructed object");

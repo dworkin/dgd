@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -217,8 +217,8 @@ public:
     void kfunc(int n, int nargs);
     void vfunc(int n, int nargs);
     void rlimits(bool privileged);
-    void funcall(Object *obj, Array *lwobj, int p_ctrli, int funci, int nargs);
-    bool call(Object *obj, Array *lwobj, const char *func, unsigned int len,
+    void funcall(Object *obj, LWO *lwobj, int p_ctrli, int funci, int nargs);
+    bool call(Object *obj, LWO *lwobj, const char *func, unsigned int len,
 	      int call_static, int nargs);
     bool callTraceII(LPCint i, LPCint j, Value *v);
     bool callTraceI(LPCint idx, Value *v);
@@ -238,7 +238,7 @@ public:
 
     Frame *prev;		/* previous stack frame */
     uindex oindex;		/* current object index */
-    Array *lwobj;		/* lightweight object */
+    LWO *lwobj;			/* lightweight object */
     Control *ctrl;		/* object control block */
     Dataspace *data;		/* dataspace of current object */
     Control *p_ctrl;		/* program control block */
@@ -259,7 +259,7 @@ public:
 
 private:
     void string(int inherit, unsigned int index);
-    void oper(Array *lwobj, const char *op, int nargs, Value *var, Value *idx,
+    void oper(LWO *lwobj, const char *op, int nargs, Value *var, Value *idx,
 	      Value *val);
     char *className(Uint sclass);
     int instanceOf(unsigned int oindex, Uint sclass);

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,7 +40,7 @@ int kf_editor(Frame *f, int nargs, KFun *kf)
 
     UNREFERENCED_PARAMETER(kf);
 
-    if (f->lwobj != (Array *) NULL) {
+    if (f->lwobj != (LWO *) NULL) {
 	EC->error("editor() in non-persistent object");
     }
     obj = OBJW(f->oindex);
@@ -410,7 +410,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
     ctrl = f->ctrl;
     Array::merge();
     x.narrays = 0;
-    if (f->lwobj != (Array *) NULL) {
+    if (f->lwobj != (LWO *) NULL) {
 	var = &f->lwobj->elts[2];
     } else {
 	var = f->data->variable(0);
@@ -927,7 +927,7 @@ int kf_restore_object(Frame *f, int n, KFun *kf)
      */
     ctrl = obj->control();
     data = f->data;
-    if (f->lwobj != (Array *) NULL) {
+    if (f->lwobj != (LWO *) NULL) {
 	var = &f->lwobj->elts[2];
     } else {
 	var = data->variable(0);
@@ -967,7 +967,7 @@ int kf_restore_object(Frame *f, int n, KFun *kf)
     try {
 	EC->push();
 	for (;;) {
-	    if (f->lwobj != (Array *) NULL) {
+	    if (f->lwobj != (LWO *) NULL) {
 		var = &f->lwobj->elts[2];
 	    } else {
 		var = data->variables;
@@ -1052,7 +1052,7 @@ int kf_restore_object(Frame *f, int n, KFun *kf)
 				tmp.del();
 				restore_error(&x, "value has wrong type");
 			    }
-			    if (f->lwobj != (Array *) NULL) {
+			    if (f->lwobj != (LWO *) NULL) {
 				data->assignElt(f->lwobj, var, &tmp);
 			    } else {
 				data->assignVar(var, &tmp);

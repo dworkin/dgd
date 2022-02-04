@@ -335,7 +335,7 @@ Value *Frame::global(int inherit, int index)
     addTicks(4);
     inherit = UCHAR(ctrl->imap[p_index + inherit]);
     inherit = ctrl->inherits[inherit].varoffset;
-    if (lwobj == (Array *) NULL) {
+    if (lwobj == (LWO *) NULL) {
 	return data->variable(inherit + index);
     } else {
 	return &lwobj->elts[2 + inherit + index];
@@ -345,8 +345,8 @@ Value *Frame::global(int inherit, int index)
 /*
  * index or indexed assignment
  */
-void Frame::oper(Array *lwobj, const char *op, int nargs, Value *var,
-		 Value *idx, Value *val)
+void Frame::oper(LWO *lwobj, const char *op, int nargs, Value *var, Value *idx,
+		 Value *val)
 {
     pushValue(idx);
     if (nargs > 1) {
@@ -395,7 +395,8 @@ void Frame::index(Value *aval, Value *ival, Value *val, bool keep)
 	break;
 
     case T_LWOBJECT:
-	oper(aval->array, "[]", 1, val, ival, (Value *) NULL);
+	oper(dynamic_cast<LWO *> (aval->array), "[]", 1, val, ival,
+	     (Value *) NULL);
 	if (!keep) {
 	    ival->del();
 	    aval->array->del();
@@ -650,7 +651,7 @@ bool Frame::storeIndex(Value *var, Value *aval, Value *ival, Value *val)
 
     case T_LWOBJECT:
 	arr = aval->array;
-	oper(arr, "[]=", 2, var, ival, val);
+	oper(dynamic_cast<LWO *> (arr), "[]=", 2, var, ival, val);
 	var->del();
 	ival->del();
 	arr->del();
@@ -1166,7 +1167,7 @@ void Frame::checkRlimits()
     --sp;
     sp[0] = sp[1];
     sp[1] = sp[2];
-    if (lwobj == (Array *) NULL) {
+    if (lwobj == (LWO *) NULL) {
 	PUT_OBJVAL(&sp[2], obj);
     } else {
 	PUT_LWOVAL(&sp[2], lwobj);
@@ -1288,7 +1289,7 @@ Frame *Frame::setSp(Value *sp)
 	    (v++)->del();
 	}
 
-	if (f->lwobj != (Array *) NULL) {
+	if (f->lwobj != (LWO *) NULL) {
 	    f->lwobj->del();
 	}
 	if (f->sos) {
@@ -1670,7 +1671,7 @@ void Frame::vfunc(int n, int nargs)
     char *p;
 
     p = &ctrl->funcalls[2L * (foffset + n)];
-    funcall((Object *) NULL, (Array *) NULL, UCHAR(p[0]), UCHAR(p[1]), nargs);
+    funcall((Object *) NULL, (LWO *) NULL, UCHAR(p[0]), UCHAR(p[1]), nargs);
 }
 
 /*
@@ -1977,7 +1978,7 @@ void Frame::interpret(char *pc)
 	case I_CALL_AFUNC:
 	case I_CALL_AFUNC | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    funcall((Object *) NULL, (Array *) NULL, 0, u, FETCH1U(pc) + size);
+	    funcall((Object *) NULL, (LWO *) NULL, 0, u, FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
@@ -1985,7 +1986,7 @@ void Frame::interpret(char *pc)
 	case I_CALL_DFUNC | I_POP_BIT:
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    funcall((Object *) NULL, (Array *) NULL,
+	    funcall((Object *) NULL, (LWO *) NULL,
 		    UCHAR(ctrl->imap[p_index + u]), u2, FETCH1U(pc) + size);
 	    size = 0;
 	    break;
@@ -2048,8 +2049,7 @@ void Frame::interpret(char *pc)
 /*
  * Call a function in an object. The arguments must be on the stack already.
  */
-void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
-		    int nargs)
+void Frame::funcall(Object *obj, LWO *lwobj, int p_ctrli, int funci, int nargs)
 {
     char *pc;
     unsigned short n;
@@ -2063,11 +2063,11 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
 	 * top level call
 	 */
 	f.oindex = obj->index;
-	f.lwobj = (Array *) NULL;
+	f.lwobj = (LWO *) NULL;
 	f.ctrl = obj->ctrl;
 	f.data = obj->dataspace();
 	f.external = TRUE;
-    } else if (lwobj != (Array *) NULL) {
+    } else if (lwobj != (LWO *) NULL) {
 	/*
 	 * call_other to lightweight object
 	 */
@@ -2081,7 +2081,7 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
 	 * call_other to persistent object
 	 */
 	f.oindex = obj->index;
-	f.lwobj = (Array *) NULL;
+	f.lwobj = (LWO *) NULL;
 	f.ctrl = obj->ctrl;
 	f.data = obj->dataspace();
 	f.external = TRUE;
@@ -2211,7 +2211,7 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
     f.sp = sp;
     f.nargs = nargs;
     cframe = &f;
-    if (f.lwobj != (Array *) NULL) {
+    if (f.lwobj != (LWO *) NULL) {
 	f.lwobj->ref();
     }
 
@@ -2276,7 +2276,7 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
 	FREE(f.stack);
     }
 
-    if (f.lwobj != (Array *) NULL) {
+    if (f.lwobj != (LWO *) NULL) {
 	f.lwobj->del();
     }
     cframe = this;
@@ -2295,14 +2295,14 @@ void Frame::funcall(Object *obj, Array *lwobj, int p_ctrli, int funci,
 /*
  * Attempt to call a function in an object. Return TRUE if the call succeeded.
  */
-bool Frame::call(Object *obj, Array *lwobj, const char *func, unsigned int len,
+bool Frame::call(Object *obj, LWO *lwobj, const char *func, unsigned int len,
 		 int call_static, int nargs)
 {
     Symbol *symb;
     FuncDef *fdef;
     Control *ctrl;
 
-    if (lwobj != (Array *) NULL) {
+    if (lwobj != (LWO *) NULL) {
 	uindex oindex;
 	Float flt;
 	Value val;
@@ -2358,7 +2358,7 @@ bool Frame::call(Object *obj, Array *lwobj, const char *func, unsigned int len,
 	} else {
 	    obj->data = Dataspace::create(obj);
 	    if (func != (char *) NULL &&
-		call(obj, (Array *) NULL, creator, clen, TRUE, 0)) {
+		call(obj, (LWO *) NULL, creator, clen, TRUE, 0)) {
 		(sp++)->del();
 	    }
 	}
@@ -2571,7 +2571,7 @@ bool Frame::funcTraceI(LPCint idx, Value *val)
     case 0:
 	/* object name */
 	name = OBJR(oindex)->objName(buffer);
-	if (lwobj == (Array *) NULL) {
+	if (lwobj == (LWO *) NULL) {
 	    PUT_STRVAL(val, str = String::create((char *) NULL,
 		       strlen(name) + 1L));
 	    str->text[0] = '/';
