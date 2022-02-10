@@ -1,4 +1,4 @@
-FROM alpine:3.13.7
+FROM alpine:3.13
 ARG USER=1000
 
 RUN apk add g++ clang byacc make git zlib-dev openssl-dev
