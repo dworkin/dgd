@@ -13,4 +13,5 @@ then
     snapshot2=
 fi
 
-exec su dgd -c "/container/dgd/bin/dgd $* $snapshot $snapshot2"
+ulimit -c 0
+exec su dgd -c "/container/dgd/bin/dgd $* $snapshot $snapshot2" # 2> /container/src/log/runtime

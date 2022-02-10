@@ -1,5 +1,3 @@
-			*** EXPERIMENTAL ***
-
 The files in this directory can be used to run DGD inside a docker
 container, which will contain the DGD binary and JIT object cache, but not
 the LPC source tree or the snapshot files.
