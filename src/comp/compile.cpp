@@ -1095,6 +1095,7 @@ void Compile::endCond()
 void Compile::saveCond()
 {
     thiscond->prev->save(thiscond);
+    Cond::del();
 }
 
 /*
