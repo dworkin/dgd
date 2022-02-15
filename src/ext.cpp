@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -402,60 +402,28 @@ static void ext_runtime_error(Frame *f, char *mesg)
     error(mesg);
 }
 
-static int (*jit)(int, int, size_t, size_t, uint16_t*, int, uint8_t*, int);
-static void (*compile)(uint64_t, uint64_t, int, uint8_t*, int, uint8_t*,
-                       uint8_t*);
-
 /*
  * NAME:        ext->jit()
- * DESCRIPTION: initialize JIT extension
+ * DESCRIPTION: don't initialize JIT extension
  */
 static void ext_jit(int (*jit_init)(int, int, size_t, size_t, uint16_t*, int,
                                     uint8_t*, int),
                     void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, int,
                                         uint8_t*, uint8_t*))
 {
-    jit = jit_init;
-    compile = jit_compile;
+    UNREFERENCED_PARAMETER(jit_init);
+    UNREFERENCED_PARAMETER(jit_compile);
 }
 
 /*
  * NAME:        ext->kfuns()
- * DESCRIPTION: pass kernel function prototypes to the JIT extension
+ * DESCRIPTION: don't pass kernel function prototypes to the JIT extension
  */
 void ext_kfuns(kfindex *map, char *protos, int nkfun)
 {
-    if (compile != NULL && !(*jit)(VERSION_VM_MAJOR, VERSION_VM_MINOR,
-                                   sizeof(Int), sizeof(char),
-                                   (uint16_t *) map, nkfun + 128 - KF_BUILTINS,
-                                   (uint8_t *) protos, nkfun))
-    {
-        compile = NULL;
-    }
-}
-
-/*
- * NAME:        ext->compile()
- * DESCRIPTION: JIT compile an object
- */
-void ext_compile(Object *obj, char *ftypes, char *vtypes)
-{
-    if (compile != NULL) {
-        Control *ctrl;
-
-        ctrl = obj->ctrl;
-        (*compile)(obj->index, obj->count, ctrl->ninherits,
-		   (uint8_t *) ctrl->prog, ctrl->nfuncdefs, (uint8_t *) ftypes,
-		   (uint8_t *) vtypes);
-    }
-}
-
-/*
- * NAME:        ext->compiled()
- * DESCRIPTION: object was JIT compiled
- */
-static void ext_compiled(uint64_t oindex, uint64_t ocount, char *shared)
-{
+    UNREFERENCED_PARAMETER(map);
+    UNREFERENCED_PARAMETER(protos);
+    UNREFERENCED_PARAMETER(nkfun);
 }
 
 /*
@@ -488,7 +456,7 @@ bool ext_dgd(char *module, char *config)
     ext_ext[0] = (voidf *) &kf_ext_kfun;
     ext_ext[1] = (voidf *) NULL;
     ext_ext[2] = (voidf *) &ext_jit;
-    ext_ext[3] = (voidf *) &ext_compiled;
+    ext_ext[3] = (voidf *) NULL;
     ext_frame[0] = (voidf *) &ext_frame_object;
     ext_frame[1] = (voidf *) &ext_frame_dataspace;
     ext_frame[2] = (voidf *) &ext_frame_arg;
