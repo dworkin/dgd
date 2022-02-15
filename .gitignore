@@ -5,7 +5,7 @@ bin/dgd.old
 src/a.out
 src/*/dgd
 src/comp/parser.cpp
-src/comp/dparser.h
+src/comp/parser.h
 src/ed/a.out
 src/host/local.cpp
 src/host/random.cpp
