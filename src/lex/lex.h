@@ -22,7 +22,7 @@
 # include "xfloat.h"
 # include "node.h"
 # include "compile.h"
-# include "dparser.h"
+# include "parser.h"
 
 # define error		Compile::error
 # define warning	error

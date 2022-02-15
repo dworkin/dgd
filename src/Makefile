@@ -102,8 +102,8 @@ $(BIN)/dgd: a.out
 
 install: $(BIN)/dgd
 
-comp/dparser.h: comp/parser.y
-	$(MAKE) -C comp 'YACC=$(YACC)' dparser.h
+comp/parser.h: comp/parser.y
+	$(MAKE) -C comp 'YACC=$(YACC)' parser.h
 
 ed/ed::
 	$(MAKE) -C ed 'CXX=$(CXX)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
@@ -120,7 +120,7 @@ clean:
 
 
 path.o config.o dgd.o: comp/node.h comp/compile.h
-config.o: comp/dparser.h
+config.o: comp/parser.h
 array.o object.o data.o config.o interpret.o ext.o: comp/dcontrol.h
 
 config.o: lex/macro.h lex/token.h lex/ppcontrol.h

@@ -85,7 +85,7 @@
     <ClInclude Include="..\..\comp\dcontrol.h" />
     <ClInclude Include="..\..\comp\node.h" />
     <ClInclude Include="..\..\comp\optimize.h" />
-    <ClInclude Include="..\..\comp\dparser.h" />
+    <ClInclude Include="..\..\comp\parser.h" />
     <ClInclude Include="..\..\config.h" />
     <ClInclude Include="..\..\data.h" />
     <ClInclude Include="..\..\dgd.h" />
@@ -125,17 +125,17 @@
     <CustomBuild Include="..\..\comp\parser.y">
       <FileType>Document</FileType>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Building LPC parser</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Bison.exe --defines="$(ProjectDir)..\..\comp\dparser.h" "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\comp\parser.cpp;..\..\comp\dparser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Bison.exe --defines="$(ProjectDir)..\..\comp\parser.h" "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\comp\parser.cpp;..\..\comp\parser.h;%(Outputs)</Outputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building LPC parser</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Bison.exe --defines="$(ProjectDir)..\..\comp\dparser.h" "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\comp\parser.cpp;..\..\comp\dparser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Bison.exe --defines="$(ProjectDir)..\..\comp\parser.h" "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\comp\parser.cpp;..\..\comp\parser.h;%(Outputs)</Outputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building LPC parser</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Bison.exe --defines="$(ProjectDir)..\..\comp\dparser.h" "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\comp\parser.cpp;..\..\comp\dparser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Bison.exe --defines="$(ProjectDir)..\..\comp\parser.h" "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\comp\parser.cpp;..\..\comp\parser.h;%(Outputs)</Outputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building LPC parser</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Bison.exe --defines="$(ProjectDir)..\..\comp\dparser.h" "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\comp\parser.cpp;..\..\comp\dparser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Bison.exe --defines="$(ProjectDir)..\..\comp\parser.h" "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\comp\parser.cpp;..\..\comp\parser.h;%(Outputs)</Outputs>
     </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
