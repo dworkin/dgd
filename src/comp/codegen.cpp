@@ -378,7 +378,7 @@ static jmplist *jump_addr(jmplist *list)
  */
 static jmplist *jump(int i, unsigned short line, jmplist *list)
 {
-    code_instr(i, 0);
+    code_instr(i, line);
     return jump_addr(list);
 }
 
