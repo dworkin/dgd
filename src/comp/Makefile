@@ -47,7 +47,7 @@ parser.o compile.o: ../lex/ppcontrol.h
 parser.o control.o optimize.o codegen.o: ../kfun/table.h
 
 $(OBJ): comp.h node.h
-parser.o control.o optimize.o codegen.o compile.o: dcontrol.h
+parser.o control.o optimize.o codegen.o compile.o: control.h
 codegen.o compile.o: codegen.h
 parser.o control.o optimize.o codegen.o compile.o: compile.h
 optimize.o compile.o: optimize.h

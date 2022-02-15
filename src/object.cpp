@@ -23,7 +23,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "dcontrol.h"
+# include "control.h"
 # include "data.h"
 # include "interpret.h"
 # include "ext.h"

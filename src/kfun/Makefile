@@ -38,8 +38,8 @@ std.o: ../comm.h ../call_out.h
 extra.o: ../asn.h
 table.o: ../ext.h
 
-std.o: ../comp/node.h ../comp/dcontrol.h ../comp/compile.h
-table.o: ../comp/dcontrol.h
+std.o: ../comp/node.h ../comp/control.h ../comp/compile.h
+table.o: ../comp/control.h
 
 extra.o: ../parser/parse.h
 

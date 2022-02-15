@@ -23,7 +23,7 @@
 # include "object.h"
 # include "xfloat.h"
 # include "data.h"
-# include "dcontrol.h"
+# include "control.h"
 # include "interpret.h"
 # include "comm.h"
 # include "table.h"

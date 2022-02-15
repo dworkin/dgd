@@ -82,7 +82,7 @@
     <ClInclude Include="..\..\comp\codegen.h" />
     <ClInclude Include="..\..\comp\comp.h" />
     <ClInclude Include="..\..\comp\compile.h" />
-    <ClInclude Include="..\..\comp\dcontrol.h" />
+    <ClInclude Include="..\..\comp\control.h" />
     <ClInclude Include="..\..\comp\node.h" />
     <ClInclude Include="..\..\comp\optimize.h" />
     <ClInclude Include="..\..\comp\parser.h" />
