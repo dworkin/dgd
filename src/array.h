@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,6 +25,8 @@ public:
     Array() {
 	prev = next = this;		/* alist sentinel */
     }
+    virtual ~Array() { }
+
 
     void ref() {
 	refCount++;
@@ -72,6 +74,7 @@ protected:
 class Mapping : public Array {
 public:
     Mapping(unsigned short size);
+    virtual ~Mapping() { }
 
     void sort();
     virtual bool trim();
@@ -105,6 +108,7 @@ private:
 class LWO : public Array {
 public:
     LWO(unsigned short size) : Array(size) { }
+    virtual ~LWO() { }
 
     LWO *copy(Dataspace *data);
 

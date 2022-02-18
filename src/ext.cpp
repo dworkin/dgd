@@ -1682,6 +1682,8 @@ static void ext_vm_caught(Frame *f, bool push)
  */
 static void ext_vm_catch_end(Frame *f)
 {
+    UNREFERENCED_PARAMETER(f);
+
     EC->pop();
 }
 
