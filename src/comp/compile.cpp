@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1464,7 +1464,7 @@ node *c_endswitch(node *expr, node *stmt)
 		 * check for duplicate cases
 		 */
 		i = size;
-		cnt = 0;
+		cnt = 0xffffffffL;
 		w = v;
 		for (;;) {
 		    cnt += w[0]->l.left->r.number - w[0]->l.left->l.number + 1;
@@ -1500,9 +1500,9 @@ node *c_endswitch(node *expr, node *stmt)
 		    sz = 4;
 		}
 
-		if (i == 0 && cnt > size) {
-		    if (cnt > 0xffffffffL / 6 ||
-			(sz + 2L) * cnt > (2 * sz + 2L) * size) {
+		if (i == 0 && cnt >= size) {
+		    if (cnt >= 0xffffffffL / 6 ||
+			(sz + 2L) * cnt >= (2 * sz + 2L) * size) {
 			/*
 			 * no point in changing the type of switch
 			 */
