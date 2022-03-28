@@ -1507,7 +1507,7 @@ Node *Compile::endSwitch(Node *expr, Node *stmt)
 		 * check for duplicate cases
 		 */
 		i = size;
-		cnt = 0;
+		cnt = LPCUINT_MAX;
 		w = v;
 		for (;;) {
 		    cnt += w[0]->l.left->r.number - w[0]->l.left->l.number + 1;
@@ -1543,9 +1543,9 @@ Node *Compile::endSwitch(Node *expr, Node *stmt)
 		    sz = 4;
 		}
 
-		if (i == 0 && cnt > size) {
-		    if (cnt > LPCUINT_MAX / 6 ||
-			(sz + 2L) * cnt > (2 * sz + 2L) * size) {
+		if (i == 0 && cnt >= size) {
+		    if (cnt >= LPCUINT_MAX / 6 ||
+			(sz + 2L) * cnt >= (2 * sz + 2L) * size) {
 			/*
 			 * no point in changing the type of switch
 			 */
