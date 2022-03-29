@@ -154,7 +154,7 @@ void DGD::errHandler(Frame *f, LPCint depth)
  */
 int DGD::main(int argc, char **argv)
 {
-    char *program, *module;
+    char *program;
     Uint rtime, timeout;
     unsigned short rmtime, mtime;
 
@@ -162,20 +162,8 @@ int DGD::main(int argc, char **argv)
 
     --argc;
     program = *argv++;
-    module = (char *) NULL;
-    if (argc > 1 && argv[0][0] == '-' && argv[0][1] == 'e') {
-	if (argv[0][2] == '\0') {
-	    --argc;
-	    argv++;
-	    module = argv[0];
-	} else {
-	    module = argv[0] + 2;
-	}
-	--argc;
-	argv++;
-    }
     if (argc < 1 || argc > 3) {
-	EC->message("Usage: %s [-e module] config_file [[partial_snapshot] snapshot]\012",     /* LF */
+	EC->message("Usage: %s config_file [[partial_snapshot] snapshot]\012",     /* LF */
 		    program);
 	return 2;
     }
@@ -186,8 +174,7 @@ int DGD::main(int argc, char **argv)
     rebuild = TRUE;
     rtime = 0;
     if (!Config::init(argv[0], (argc > 1) ? argv[1] : (char *) NULL,
-		      (argc > 2) ? argv[2] : (char *) NULL, module,
-		      &fragment)) {
+		      (argc > 2) ? argv[2] : (char *) NULL, &fragment)) {
 	return 2;	/* initialization failed */
     }
 

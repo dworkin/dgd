@@ -788,9 +788,9 @@ void Config::dread(int fd, char *buf, const char *layout, Uint n)
 # define MAX_STRINGS	32
 
 static char *hotboot[MAX_STRINGS], *dirs[MAX_STRINGS];
-static char *modules[MAX_STRINGS + 1], *modconf[MAX_STRINGS + 1];
-static void (*mfdlist[MAX_STRINGS + 1])(int*, int);
-static void (*mfinish[MAX_STRINGS + 1])(int);
+static char *modules[MAX_STRINGS], *modconf[MAX_STRINGS];
+static void (*mfdlist[MAX_STRINGS])(int*, int);
+static void (*mfinish[MAX_STRINGS])(int);
 static char *bhosts[MAX_PORTS], *dhosts[MAX_PORTS], *thosts[MAX_PORTS];
 static unsigned short bports[MAX_PORTS], dports[MAX_PORTS], tports[MAX_PORTS];
 static bool attached[MAX_PORTS];
@@ -1418,7 +1418,7 @@ bool Config::includes()
  * initialize the driver
  */
 bool Config::init(char *configfile, char *snapshot, char *snapshot2,
-		  char *module, Sector *fragment)
+		  Sector *fragment)
 {
     char buf[STRINGSZ];
     int fd, fd2, i;
@@ -1467,11 +1467,25 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 
     MM->staticMode();
 
-    /* remove previously added kfuns */
-    KFun::clear();
+    /* change directory */
+    if (P_chdir(path_native(buf, conf[DIRECTORY].str)) < 0) {
+	EC->message("Config error: bad base directory \"%s\"\012",	/* LF */
+		conf[DIRECTORY].str);
+	if (snapshot2 != (char *) NULL) {
+	    P_close(fd2);
+	}
+	if (snapshot != (char *) NULL) {
+	    P_close(fd);
+	}
+	MM->finish();
+	return FALSE;
+    }
 
+    /* prepare to add new kfuns */
+    KFun::clear();
     memset(mfdlist, '\0', MAX_STRINGS * sizeof(void (*)(int*, int)));
     memset(mfinish, '\0', MAX_STRINGS * sizeof(void (*)(int)));
+
     for (i = 0; modules[i] != NULL; i++) {
 	if (!Ext::load(modules[i], modconf[i], &mfdlist[i], &mfinish[i])) {
 	    EC->message("Config error: cannot load runtime extension \"%s\"\012",
@@ -1488,40 +1502,9 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 	    return FALSE;
 	}
     }
-    if (module != (char *) NULL &&
-	!Ext::load(modules[i] = module, NULL, &mfdlist[i], &mfinish[i])) {
-	EC->message("Config error: cannot load runtime extension \"%s\"\012",
-		    module); /* LF*/
-	if (snapshot2 != (char *) NULL) {
-	    P_close(fd2);
-	}
-	if (snapshot != (char *) NULL) {
-	    P_close(fd);
-	}
-	modFinish(TRUE);
-	Ext::finish();
-	MM->finish();
-	return FALSE;
-    }
 
     /* initialize kfuns */
     KFun::init();
-
-    /* change directory */
-    if (P_chdir(path_native(buf, conf[DIRECTORY].str)) < 0) {
-	EC->message("Config error: bad base directory \"%s\"\012",	/* LF */
-		conf[DIRECTORY].str);
-	if (snapshot2 != (char *) NULL) {
-	    P_close(fd2);
-	}
-	if (snapshot != (char *) NULL) {
-	    P_close(fd);
-	}
-	modFinish(TRUE);
-	Ext::finish();
-	MM->finish();
-	return FALSE;
-    }
 
     /* initialize communications */
     if (!Comm::init((int) conf[USERS].num,

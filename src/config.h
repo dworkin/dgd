@@ -162,7 +162,7 @@ class Config {
 public:
     static void modFinish(bool wait);
     static bool init(char *configfile, char *snapshot, char *snapshot2,
-		     char *module, Sector *fragment);
+		     Sector *fragment);
     static char *baseDir();
     static char	*driver();
     static char	**hotbootExec();
