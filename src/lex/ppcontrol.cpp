@@ -69,7 +69,7 @@ bool pp_init(char *file, char **id, String **strs, int nstr, int level)
     }
     mc_init();
     special_define();
-    mc_define("__DGD__", "\x0111\x011", -1);	/* HT 1 HT */
+    mc_define("__DGD__", "\0111\011", -1);	/* HT 1 HT */
 #ifdef NETWORK_EXTENSIONS
     mc_define("__NETWORK_EXTENSIONS__", (char *) NULL, -1);
 #endif
