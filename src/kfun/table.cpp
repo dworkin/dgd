@@ -432,8 +432,13 @@ int KFun::kfunc(const char *name)
 	if (strcmp(name, "call_other") == 0) {
 	    return KF_CALL_OTHER;
 	}
-    } else if (strcmp(name, "status") == 0) {
-	return KF_STATUS;
+    } else {
+	n = strcmp(name, "strlen");
+	if (n == 0) {
+	    return KF_STRLEN;
+	} else if (n < 0 && strcmp(name, "status") == 0) {
+	    return KF_STATUS;
+	}
     }
 
     n = find(kftab, KF_BUILTINS, nkfun, name);

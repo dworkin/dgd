@@ -3413,3 +3413,130 @@ int kf_calltr_idx_idx(Frame *f, int n, KFun *kf)
     return 0;
 }
 # endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("strlen", kf_strlen, pt_strlen, 0)
+# else
+char pt_strlen[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
+
+/*
+ * return the length of a string
+ */
+int kf_strlen(Frame *f, int n, KFun *kf)
+{
+    ssizet len;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    len = f->sp->string->len;
+    f->sp->string->del();
+    PUT_INTVAL(f->sp, len);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[..]", kf_rangeft_str, pt_rangeft_str, 0)
+# else
+char pt_rangeft_str[] = { C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING, T_INT,
+			  T_INT };
+/*
+ * value [ int .. int ]
+ */
+int kf_rangeft_str(Frame *f, int n, KFun *kf)
+{
+    String *str;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    f->addTicks(2);
+    str = f->sp[2].string->range(f->sp[1].number, f->sp->number);
+    f->sp += 2;
+    f->sp->string->del();
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[..]", kf_rangef_str, pt_rangef_str, 0)
+# else
+char pt_rangef_str[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING, T_INT };
+
+/*
+ * value [ int .. ]
+ */
+int kf_rangef_str(Frame *f, int n, KFun *kf)
+{
+    String *str;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    f->addTicks(2);
+    str = f->sp[1].string->range(f->sp->number, f->sp[1].string->len - 1L);
+    f->sp++;
+    f->sp->string->del();
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[..]", kf_ranget_str, pt_ranget_str, 0)
+# else
+char pt_ranget_str[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING, T_INT };
+
+/*
+ * value [ .. int ]
+ */
+int kf_ranget_str(Frame *f, int n, KFun *kf)
+{
+    String *str;
+    Array *a;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    f->addTicks(2);
+    str = f->sp[1].string->range(0, f->sp->number);
+    f->sp++;
+    f->sp->string->del();
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[..]", kf_range_str, pt_range_str, 0)
+# else
+char pt_range_str[] = { C_STATIC, 1, 0, 0, 7, T_STRING, T_STRING };
+
+/*
+ * value [ .. ]
+ */
+int kf_range_str(Frame *f, int n, KFun *kf)
+{
+    String *str;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    f->addTicks(2);
+    str = f->sp->string->range(0, f->sp->string->len - 1);
+    f->sp->string->del();
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif

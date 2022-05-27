@@ -673,29 +673,6 @@ int kf_users(Frame *f, int n, KFun *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("strlen", kf_strlen, pt_strlen, 0)
-# else
-char pt_strlen[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
-
-/*
- * return the length of a string
- */
-int kf_strlen(Frame *f, int n, KFun *kf)
-{
-    ssizet len;
-
-    UNREFERENCED_PARAMETER(n);
-    UNREFERENCED_PARAMETER(kf);
-
-    len = f->sp->string->len;
-    f->sp->string->del();
-    PUT_INTVAL(f->sp, len);
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
 FUNCDEF("allocate", kf_allocate, pt_allocate, 0)
 # else
 char pt_allocate[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
@@ -1582,4 +1559,5 @@ int kf_call_function(Frame *f, int nargs, KFun *kf)
 FUNCDEF("0.call_other", kf_call_other, pt_call_other, 0)
 FUNCDEF("0.call_trace", kf_call_trace, pt_call_trace, 0)
 FUNCDEF("0.status", kf_status, pt_status, 0)
+FUNCDEF("0.strlen", kf_strlen, pt_strlen, 0)
 # endif

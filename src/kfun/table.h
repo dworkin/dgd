@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -181,8 +181,13 @@ extern int  kf_unused	(Frame*, int, KFun*);
 # define KF_SINH		110
 # define KF_TANH		111
 # define KF_CALLTR_IDX_IDX	112
+# define KF_STRLEN		113
+# define KF_RANGEFT_STRING	114
+# define KF_RANGEF_STRING	115
+# define KF_RANGET_STRING	116
+# define KF_RANGE_STRING	117
 
-# define KF_BUILTINS		113
+# define KF_BUILTINS		118
 
 # define SUM_SIMPLE		-2
 # define SUM_ALLOCATE_NIL	-3
