@@ -379,13 +379,10 @@ void KFun::jit()
 	memcpy(protos, proto, PROTO_SIZE(proto));
 	protos += PROTO_SIZE(proto);
     }
-    for (; i < nkfun; i++) {
-	n = kfind[i + 128 - KF_BUILTINS];
-	if (kfx[n] != 0) {
-	    proto = kftab[n].proto;
-	    memcpy(protos, proto, PROTO_SIZE(proto));
-	    protos += PROTO_SIZE(proto);
-	}
+    for (i = 0; i < nkf; i++) {
+	proto = kftab[kfind[i + 128]].proto;
+	memcpy(protos, proto, PROTO_SIZE(proto));
+	protos += PROTO_SIZE(proto);
     }
 
     protos -= size;
