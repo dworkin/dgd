@@ -79,6 +79,7 @@ public:
 # define CF_OUTPUT	0x0040	/* pending output */
 # define CF_ODONE	0x0080	/* output done */
 # define CF_OPENDING	0x0100	/* waiting for connect() to complete */
+# define CF_STOPPED	0x0200	/* output stopped */
 
 /* state */
 # define TS_DATA	0
@@ -555,8 +556,13 @@ void Comm::challenge(Object *obj, String *str)
 int Comm::send(Object *obj, String *str)
 {
     User *usr;
+    Value *v;
 
     usr = &users[EINDEX(obj->etabi)];
+    v = Dataspace::elts(Dataspace::extra(obj->data)->array);
+    if ((usr->flags | v->number) & CF_STOPPED) {
+	EC->error("Output channel closed");
+    }
     if (usr->flags & CF_TELNET) {
 	char outbuf[OUTBUF_SIZE];
 	char *p, *q;
@@ -715,6 +721,37 @@ void Comm::block(Object *obj, int block)
 }
 
 /*
+ * close output channel
+ */
+void Comm::stop(Object *obj)
+{
+    User *usr;
+    Dataspace *data;
+    Array *arr;
+    Value *v;
+
+    usr = &users[EINDEX(obj->etabi)];
+    if (!(usr->flags) & CF_TELNET &&
+	(usr->flags & (CF_UDP | CF_UDPDATA)) == CF_UDPDATA) {
+	EC->error("Message channel not enabled");
+    }
+    arr = Dataspace::extra(data = obj->data)->array;
+    v = Dataspace::elts(arr);
+    if (v->number & CF_STOPPED) {
+	EC->error("Output channel already closed");
+    } else {
+	Value val;
+
+	if (!(usr->flags & CF_FLUSH)) {
+	    usr->addtoflush(arr);
+	}
+	val = *v;
+	val.number |= CF_STOPPED;
+	data->assignElt(arr, v, &val);
+    }
+}
+
+/*
  * flush state, output and connections
  */
 void Comm::flush()
@@ -805,6 +842,10 @@ void Comm::flush()
 	}
 	if (usr->flags & CF_OUTPUT) {
 	    usr->uflush(obj, obj->data, arr);
+	}
+	if ((v->number & CF_STOPPED) && !(usr->flags & CF_STOPPED)) {
+	    usr->flags |= CF_STOPPED;
+	    usr->conn->stop();
 	}
 	/*
 	 * disconnect

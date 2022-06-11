@@ -359,6 +359,7 @@ public:
     virtual bool udp(char *challenge, unsigned int len);
     virtual void del();
     virtual void block(int flag);
+    virtual void stop();
     virtual bool udpCheck();
     virtual int read(char *buf, unsigned int len);
     virtual int readUdp(char *buf, unsigned int len);
@@ -1403,7 +1404,6 @@ void XConnection::del()
     Hashtab::Entry **hash;
 
     if (fd != INVALID_SOCKET) {
-	shutdown(fd, SD_SEND);
 	closesocket(fd);
 	FD_CLR(fd, &infds);
 	FD_CLR(fd, &outfds);
@@ -1454,6 +1454,16 @@ void XConnection::block(int flag)
 	} else {
 	    FD_SET(fd, &infds);
 	}
+    }
+}
+
+/*
+ * close output channel
+ */
+void XConnection::stop()
+{
+    if (fd != INVALID_SOCKET) {
+	shutdown(fd, SD_SEND);
     }
 }
 

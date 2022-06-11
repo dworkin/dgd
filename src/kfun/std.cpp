@@ -944,6 +944,7 @@ int kf_send_message(Frame *f, int n, KFun *kf)
 }
 # endif
 
+
 # ifdef FUNCDEF
 FUNCDEF("send_datagram", kf_send_datagram, pt_send_datagram, 0)
 # else
@@ -970,6 +971,33 @@ int kf_send_datagram(Frame *f, int n, KFun *kf)
     }
     f->sp->string->del();
     PUT_INTVAL(f->sp, num);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("send_close", kf_send_close, pt_send_close, 0)
+# else
+char pt_send_close[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
+
+/*
+ * close output stream
+ */
+int kf_send_close(Frame *f, int n, KFun *kf)
+{
+    Object *obj;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    if (f->lwobj == (LWO *) NULL) {
+	obj = OBJW(f->oindex);
+	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
+	    Comm::stop(obj);
+	}
+    }
+    *--f->sp = Value::nil;
     return 0;
 }
 # endif

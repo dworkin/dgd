@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,6 +27,7 @@ public:
     virtual bool udp(char *challenge, unsigned int len) = 0;
     virtual void del() = 0;
     virtual void block(int flag) = 0;
+    virtual void stop() = 0;
     virtual bool udpCheck() = 0;
     virtual int read(char *buf, unsigned int len) = 0;
     virtual int readUdp(char *buf, unsigned int len) = 0;
@@ -79,6 +80,7 @@ public:
     static void challenge(Object *obj, String *str);
     static void flush();
     static void block(Object *obj, int block);
+    static void stop(Object *obj);
     static void receive(Frame*, Uint, unsigned int);
     static String *ipNumber(Object*);
     static String *ipName(Object*);
