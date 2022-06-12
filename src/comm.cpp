@@ -555,14 +555,14 @@ void Comm::challenge(Object *obj, String *str)
  */
 int Comm::send(Object *obj, String *str)
 {
-    User *usr;
     Value *v;
+    User *usr;
 
-    usr = &users[EINDEX(obj->etabi)];
     v = Dataspace::elts(Dataspace::extra(obj->data)->array);
-    if ((usr->flags | v->number) & CF_STOPPED) {
+    if (v->number & CF_STOPPED) {
 	EC->error("Output channel closed");
     }
+    usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
 	char outbuf[OUTBUF_SIZE];
 	char *p, *q;
