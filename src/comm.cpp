@@ -731,7 +731,7 @@ void Comm::stop(Object *obj)
     Value *v;
 
     usr = &users[EINDEX(obj->etabi)];
-    if (!(usr->flags) & CF_TELNET &&
+    if (!(usr->flags & CF_TELNET) &&
 	(usr->flags & (CF_UDP | CF_UDPDATA)) == CF_UDPDATA) {
 	EC->error("Message channel not enabled");
     }
