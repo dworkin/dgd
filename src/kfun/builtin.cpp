@@ -3515,28 +3515,3 @@ int kf_ranget_str(Frame *f, int n, KFun *kf)
     return 0;
 }
 # endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("[..]", kf_range_str, pt_range_str, 0)
-# else
-char pt_range_str[] = { C_STATIC, 1, 0, 0, 7, T_STRING, T_STRING };
-
-/*
- * value [ .. ]
- */
-int kf_range_str(Frame *f, int n, KFun *kf)
-{
-    String *str;
-
-    UNREFERENCED_PARAMETER(n);
-    UNREFERENCED_PARAMETER(kf);
-
-    f->addTicks(2);
-    str = f->sp->string->range(0, f->sp->string->len - 1);
-    f->sp->string->del();
-    PUT_STR(f->sp, str);
-
-    return 0;
-}
-# endif

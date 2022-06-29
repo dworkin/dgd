@@ -185,9 +185,8 @@ extern int  kf_unused	(Frame*, int, KFun*);
 # define KF_RANGEFT_STRING	114
 # define KF_RANGEF_STRING	115
 # define KF_RANGET_STRING	116
-# define KF_RANGE_STRING	117
 
-# define KF_BUILTINS		118
+# define KF_BUILTINS		117
 
 # define SUM_SIMPLE		-2
 # define SUM_ALLOCATE_NIL	-3
