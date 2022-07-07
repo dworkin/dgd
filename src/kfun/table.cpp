@@ -358,7 +358,7 @@ void KFun::init()
  */
 void KFun::jit()
 {
-    int size, i, n, nkf;
+    int size, i, nkf;
     char *protos, *proto;
 
     for (size = 0, i = 0; i < KF_BUILTINS; i++) {

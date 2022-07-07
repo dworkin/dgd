@@ -3501,7 +3501,6 @@ char pt_ranget_str[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING, T_INT };
 int kf_ranget_str(Frame *f, int n, KFun *kf)
 {
     String *str;
-    Array *a;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
