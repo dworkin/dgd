@@ -66,7 +66,7 @@
 # define I_LINE_SHIFT		6
 
 # define VERSION_VM_MAJOR	2
-# define VERSION_VM_MINOR	3
+# define VERSION_VM_MINOR	4
 
 
 # define FETCH1S(pc)	SCHAR(*(pc)++)

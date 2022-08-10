@@ -174,6 +174,7 @@ static CodeChunk *lcode, *tcode;		/* code chunk list */
 static CodeChunk *fcode;			/* free code chunk list */
 static unsigned int cchunksz = CODE_CHUNK;	/* code chunk size */
 static Uint here;				/* current offset */
+static unsigned short caught, max;		/* number of catches */
 static char *last_instruction;			/* last instruction's address */
 
 /*
@@ -260,7 +261,7 @@ char *CodeChunk::make(unsigned short depth, int nlocals, unsigned short *size)
     char *code;
     Uint sz;
 
-    *size = sz = 5 + here + line_info_size;
+    *size = sz = 7 + here + line_info_size;
 
     if (sz > USHRT_MAX) {
 	Compile::error("function too large");
@@ -268,6 +269,8 @@ char *CodeChunk::make(unsigned short depth, int nlocals, unsigned short *size)
     code = ALLOC(char, sz);
     *code++ = depth >> 8;
     *code++ = depth;
+    *code++ = max >> 8;
+    *code++ = max;
     *code++ = nlocals;
     *code++ = here >> 8;
     *code++ = here;
@@ -280,7 +283,7 @@ char *CodeChunk::make(unsigned short depth, int nlocals, unsigned short *size)
     memcpy(code, l->code, cchunksz);
     code += cchunksz;
     LineChunk::make(code);
-    code -= 5 + here;
+    code -= 7 + here;
 
     /* add blocks to free list */
     tcode->next = fcode;
@@ -291,6 +294,7 @@ char *CodeChunk::make(unsigned short depth, int nlocals, unsigned short *size)
     cchunksz = CODE_CHUNK;
 
     here = 0;
+    caught = max = 0;
     return code;
 }
 
@@ -1046,7 +1050,11 @@ void Codegen::expr(Node *n, int pop)
     case N_CATCH:
 	jlist = JmpList::jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH, 0,
 			      (JmpList *) NULL);
+	if (++caught > max) {
+	    max = caught;
+	}
 	expr(n->l.left, TRUE);
+	--caught;
 	if (!pop) {
 	    CodeChunk::kfun(KF_NIL, 0);
 	}
@@ -2272,7 +2280,11 @@ void Codegen::stmt(Node *n)
 	case N_CATCH:
 	    jlist = JmpList::jump((m->mod) ? I_CATCH | I_POP_BIT : I_CATCH, 0,
 				  (JmpList *) NULL);
+	    if (++caught > max) {
+		max = caught;
+	    }
 	    stmt(m->l.left);
+	    --caught;
 	    if (m->l.left->flags & F_END) {
 		JmpList::resolve(jlist, here);
 		if (m->r.right != (Node *) NULL) {
@@ -2403,7 +2415,7 @@ char *Codegen::function(String *fname, Node *n, int nvar, int npar,
     nparams = npar;
     stmt(n);
     prog = CodeChunk::make(depth + nvar - npar, nvar - npar, size);
-    JmpList::make(prog + 5);
+    JmpList::make(prog + 7);
     ::nfuncs++;
 
     return prog;

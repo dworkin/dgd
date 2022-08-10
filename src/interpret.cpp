@@ -2240,6 +2240,10 @@ void Frame::funcall(Object *obj, LWO *lwobj, int p_ctrli, int funci, int nargs)
     f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
     f.sos = TRUE;
 
+    if (f.p_ctrl->version >= 4) {
+	pc += 2;
+    }
+
     /* initialize local variables */
     n = FETCH1U(pc);
 # ifdef DEBUG
@@ -2406,6 +2410,9 @@ unsigned short Frame::line()
     line = 0;
     pc = p_ctrl->prog + func->offset;
     pc += PROTO_SIZE(pc) + 3;
+    if (p_ctrl->version >= 4) {
+	pc += 2;
+    }
     FETCH2U(pc, u);
     numbers = pc + u;
 
