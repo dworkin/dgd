@@ -271,7 +271,7 @@ public:
      * create new callout patch
      */
     COPatch *patch(Dataplane *plane, COPatch **c, int type, unsigned int handle,
-	       DCallOut *co, Uint time, unsigned int mtime, uindex *q) {
+		   DCallOut *co, Uint time, unsigned int mtime, uindex *q) {
 	/* allocate */
 	return chunknew (chunk) COPatch(plane, c, type, handle, co, time, mtime,
 					q);

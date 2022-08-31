@@ -1969,7 +1969,8 @@ Node *Compile::flookup(Node *n, int typechecked)
     long call;
 
     proto = Control::funCall(n->l.string, &sclass, &call, typechecked);
-    n->r.right = (proto == (char *) NULL) ? (Node *) NULL :
+    n->r.right = (proto == (char *) NULL) ?
+		  (Node *) NULL :
 		  Node::createFcall(PROTO_FTYPE(proto), sclass, proto, call);
     return n;
 }

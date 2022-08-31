@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,40 +27,41 @@ class Object : public Hashtab::Entry {
 public:
     Object *clone();
     void lightWeight();
-    void upgrade(Control*, Frame*);
-    void upgraded(Object*);
-    void del(Frame*);
+    void upgrade(Control *ctrl, Frame *f);
+    void upgraded(Object *tmpl);
+    void del(Frame *f);
 
-    const char *objName(char*);
+    const char *objName(char *name);
     Control *control();
     Dataspace *dataspace();
 
-    static void init(unsigned int, Uint);
+    static void init(unsigned int n, Uint interval);
     static void newPlane();
     static void commitPlane();
     static void discardPlane();
 
     static Object *oread(unsigned int index) {
-	return (BTST(ocmap, index)) ? access(index, OACC_READ) : &objTable[index];
+	return (BTST(ocmap, index)) ?
+		access(index, OACC_READ) : &objTable[index];
     }
     static Object *owrite(unsigned int index) {
 	return (!base) ? access(index, OACC_MODIFY) : &objTable[index];
     }
-    static Object *create(char*, Control*);
-    static const char *builtinName(LPCint);
-    static Object *find(char*, int);
+    static Object *create(char *name, Control *ctrl);
+    static const char *builtinName(LPCint type);
+    static Object *find(char *name, int access);
 
     static bool space();
     static void clean();
     static uindex ocount();
     static uindex dobjects();
-    static bool save(int, bool);
-    static void restore(int, bool);
-    static bool copy(Uint);
+    static bool save(int fd, bool incr);
+    static void restore(int fd, bool part);
+    static bool copy(Uint time);
 
     static void swapout();
-    static void dumpState(bool);
-    static void finish(bool);
+    static void dumpState(bool incr);
+    static void finish(bool boot);
 
     char flags;			/* object status */
     eindex etabi;		/* index in external table */
@@ -87,10 +88,10 @@ private:
     void restoreObject(bool cactive, bool dactive);
     bool purgeUpgrades();
 
-    static Object *access(unsigned int, int);
+    static Object *access(unsigned int index, int access);
     static Object *alloc();
-    static void sweep(uindex);
-    static Uint recount(uindex);
+    static void sweep(uindex n);
+    static Uint recount(uindex n);
     static void cleanUpgrades();
 
     static Uint *ocmap;

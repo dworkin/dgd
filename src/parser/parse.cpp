@@ -824,7 +824,8 @@ void Parser::save()
 /*
  * parse a string
  */
-Array *Parser::parse_string(Frame *f, String *source, String *str, LPCint maxalt)
+Array *Parser::parse_string(Frame *f, String *source, String *str,
+			    LPCint maxalt)
 {
     Dataspace *data;
     Parser *ps;

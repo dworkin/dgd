@@ -204,4 +204,4 @@ private:
 };
 
 /* utility functions */
-extern LPCint strtoint		(char**);
+extern LPCint strtoint(char**);

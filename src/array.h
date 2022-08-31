@@ -27,7 +27,6 @@ public:
     }
     virtual ~Array() { }
 
-
     void ref() {
 	refCount++;
     }

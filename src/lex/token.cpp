@@ -1267,7 +1267,8 @@ int TokenBuf::expand(Macro *mc)
 			    if (token == IDENTIFIER) {
 				Macro *m;
 
-				if ((m=Macro::lookup(yytext)) != (Macro *) NULL) {
+				if ((m=Macro::lookup(yytext)) != (Macro *) NULL)
+				{
 				    token = expand(m);
 				    if (token > 0) {
 					continue;

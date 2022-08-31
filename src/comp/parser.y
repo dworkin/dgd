@@ -1303,7 +1303,7 @@ Node *YYParser::idx(Node *n1, Node *n2)
 	    Compile::error("string index out of range");
 	} else {
 	    n2->l.number =
-		    UCHAR(n1->l.string->text[n1->l.string->index(n2->l.number)]);
+		UCHAR(n1->l.string->text[n1->l.string->index(n2->l.number)]);
 	}
 	return n2;
     }

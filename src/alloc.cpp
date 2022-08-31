@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -894,7 +894,8 @@ void AllocImpl::free(char *mem)
  * reallocate memory
  */
 # ifdef MEMDEBUG
-char *AllocImpl::realloc(char *mem, size_t size1, size_t size2, const char *file, int line)
+char *AllocImpl::realloc(char *mem, size_t size1, size_t size2,
+			 const char *file, int line)
 # else
 char *AllocImpl::realloc(char *mem, size_t size1, size_t size2)
 # endif

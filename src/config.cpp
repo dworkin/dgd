@@ -609,8 +609,8 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 			buf[i + header.i[3]] = rbuf[ri + rheader.i[3]];
 		    }
 		} else {
-		    j = (UCHAR(rbuf[ri + rheader.s[0]] & rbuf[ri + rheader.s[1]]) == 0xff) ?
-			 -1 : 0;
+		    j = (UCHAR(rbuf[ri + rheader.s[0]] &
+			 rbuf[ri + rheader.s[1]]) == 0xff) ? -1 : 0;
 		    buf[i + header.i[0]] = j;
 		    buf[i + header.i[1]] = j;
 		    buf[i + header.i[2]] = rbuf[ri + rheader.s[0]];
@@ -684,8 +684,8 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 			buf[i + header.i[3]] = rbuf[ri + rheader.i[3]];
 		    }
 		} else {
-		    j = (UCHAR(rbuf[ri + rheader.s[0]] & rbuf[ri + rheader.s[1]]) == 0xff) ?
-			 -1 : 0;
+		    j = (UCHAR(rbuf[ri + rheader.s[0]] &
+			 rbuf[ri + rheader.s[1]]) == 0xff) ? -1 : 0;
 		    buf[i + header.i[0]] = j;
 		    buf[i + header.i[1]] = j;
 		    buf[i + header.i[2]] = rbuf[ri + rheader.s[0]];

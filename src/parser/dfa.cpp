@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -526,7 +526,8 @@ bool RgxPosn::trans(Charset *cset, char *posn, unsigned short *size)
 			if (x > n) {
 			    x = n;
 			}
-			found |= cset->chars[c >> 5] & (bits[x - 1] << (c & 31));
+			found |= cset->chars[c >> 5] & (bits[x - 1] <<
+								    (c & 31));
 			c += x;
 			n -= x;
 			while (n >= 32) {

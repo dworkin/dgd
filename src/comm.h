@@ -68,9 +68,10 @@ public:
 
 class Comm {
 public:
-    static bool init(int, int, char**, char**, char**,
-				   unsigned short*, unsigned short*,
-				   unsigned short*, int, int, int);
+    static bool init(int n, int p, char **thosts, char **bhosts, char **dhosts,
+		     unsigned short *tports, unsigned short *bports,
+		     unsigned short *dports, int ntelnet, int nbinary,
+		     int ndatagram);
     static void clear();
     static void finish();
     static void listen();

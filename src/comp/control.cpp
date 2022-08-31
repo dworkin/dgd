@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -516,7 +516,8 @@ bool Control::compareClass(Uint s1, Control *ctrl, Uint s2)
     if (ctrl->compiled == 0 && (s2 >> 16) == ::ninherits) {
 	return FALSE;	/* one is new, and therefore different */
     }
-    return !strconst(s1 >> 16, s1 & 0xffff)->cmp(ctrl->strconst(s2 >> 16, s2 & 0xffff));
+    return !strconst(s1 >> 16, s1 & 0xffff)->cmp(ctrl->strconst(s2 >> 16,
+								s2 & 0xffff));
 }
 
 /*
@@ -2243,7 +2244,8 @@ unsigned short *Control::varmap(Control *octrl)
 		ctrl2 = OBJR(inh2->oindex)->control();
 		v = ctrl2->vars();
 		for (k = 0; k < ctrl2->nvardefs; k++, v++) {
-		    ctrl2->strconst(v->inherit, v->index)->put(((Uint) k << 8) | v->type);
+		    ctrl2->strconst(v->inherit, v->index)->put(((Uint) k << 8) |
+								    v->type);
 		}
 
 		/*
@@ -2817,7 +2819,8 @@ String *Control::strconst(int inherit, Uint idx)
 {
     if (UCHAR(inherit) < ninherits - 1) {
 	/* get the proper control block */
-	return OBJR(inherits[UCHAR(inherit)].oindex)->control()->strconst(inherit, idx);
+	return OBJR(inherits[UCHAR(inherit)].oindex)->control()->strconst(inherit,
+									  idx);
     }
 
     if (strings == (String **) NULL) {

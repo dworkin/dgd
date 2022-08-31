@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -46,15 +46,14 @@ public:
 			    void (*readv) (char*, Sector*, Uint, Uint),
 			    Uint size, Uint offset, Uint *dsize);
     static Sector count();
-    static bool copy(Uint);
-    static int save(char*, bool);
-    static void save2(SnapshotInfo*, int, bool);
-    static void restore(int, unsigned int);
-    static void restore2(int);
+    static int save(char *snapshot, bool keep);
+    static void save2(SnapshotInfo *header, int size, bool incr);
+    static void restore(int fd, unsigned int secsize);
+    static void restore2(int fd);
 
 private:
     static void create();
-    static Sector mapsize(unsigned int);
+    static Sector mapsize(unsigned int size);
     static void newv(Sector *vec, unsigned int size);
     static SwapSlot *load(Sector sec, bool restore, bool fill);
 };

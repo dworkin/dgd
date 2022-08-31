@@ -362,8 +362,8 @@ static char ayt[22];		/* are you there? */
  * initialize communications
  */
 bool Comm::init(int n, int p, char **thosts, char **bhosts, char **dhosts,
-	unsigned short *tports, unsigned short *bports, unsigned short *dports,
-	int ntelnet, int nbinary, int ndatagram)
+		unsigned short *tports, unsigned short *bports,
+		unsigned short *dports, int ntelnet, int nbinary, int ndatagram)
 {
     int i;
     User *usr;
@@ -1093,7 +1093,6 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 	    lastuser = usr->next;
 
 	    obj = OBJ(usr->oindex);
-
 
 	    /*
 	     * Check if we have an event pending from connect() and if so,

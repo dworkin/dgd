@@ -2282,8 +2282,7 @@ void Ext::compile(const Frame *f, Control *ctrl)
 	ctrl = OBJR(inh->oindex)->ctrl;
 	ctrl->program();
 	*ft++ = ctrl->nfuncdefs;
-	for (fdef = ctrl->funcs(), j = ctrl->nfuncdefs; j > 0; fdef++, --j)
-	{
+	for (fdef = ctrl->funcs(), j = ctrl->nfuncdefs; j > 0; fdef++, --j) {
 	    *ft++ = PROTO_FTYPE(ctrl->prog + fdef->offset);
 	}
 	*vt++ = ctrl->nvardefs;

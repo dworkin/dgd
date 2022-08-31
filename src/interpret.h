@@ -183,7 +183,7 @@ public:
 	    }
 	}
     }
-    void growStack(int);
+    void growStack(int size);
     void pushValue(Value *v);
     void pop(int n);
     void objDest(Object *obj);
