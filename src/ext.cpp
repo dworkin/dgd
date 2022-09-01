@@ -196,7 +196,7 @@ void Ext::putFloat(Float *flt, double d)
 {
     unsigned short sign;
     int e;
-    Uuint m;
+    uint64_t m;
 
     if (d == 0.0) {
 	flt->high = 0;
@@ -204,7 +204,7 @@ void Ext::putFloat(Float *flt, double d)
     } else {
 	sign = (d < 0.0);
 	d = frexp(fabs(d), &e);
-	m = (Uuint) ldexp(d, 37);
+	m = (uint64_t) ldexp(d, 37);
 	flt->high = (sign << 15) | ((e - 1 + 1023) << 4) |
 		    ((unsigned short) (m >> 32) & 0xf);
 	flt->low = m;

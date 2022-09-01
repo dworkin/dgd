@@ -224,31 +224,11 @@ int Asi::cmp(Asi &x)
  */
 void Asi::mult1(Uint a, Uint b)
 {
-# ifdef Uuint
-    Uuint t;
+    uint64_t t;
 
-    t = (Uuint) (a) * (b);
+    t = (uint64_t) (a) * (b);
     num[0] = t;
     num[1] = t >> 32;
-# else
-    unsigned short a0, a1, b0, b1;
-    Uint t0, t1;
-
-    a0 = a;
-    a1 = a >> 16;
-    b0 = b;
-    b1 = b >> 16;
-
-    t0 = (Uint) a0 * b1;
-    t1 = (Uint) a1 * b0;
-    t1 = ((t0 += t1) < t1);
-    t1 = (t1 << 16) | (t0 >> 16);
-    t0 <<= 16;
-    if ((num[0] = (Uint) a0 * b0 + t0) < t0) {
-	t1++;
-    }
-    num[1] = (Uint) a1 * b1 + t1;
-# endif
     size = 2;
 }
 
@@ -406,29 +386,11 @@ bool Asi::multRow(Asi &x, Uint y)
 
 void Asi::sqr1(Uint a)
 {
-# ifdef Uuint
-    Uuint t;
+    uint64_t t;
 
-    t = (Uuint) a * a;
+    t = (uint64_t) a * a;
     num[0] = t;
     num[1] = t >> 32;
-# else
-    unsigned short a0, a1;
-    Uint t0, t1;
-
-    a0 = a;
-    a1 = a >> 16;
-
-    t0 = (Uint) a0 * a1;
-    t1 = t0;
-    t1 = ((t0 <<= 1) < t1);
-    t1 = (t1 << 16) | (t0 >> 16);
-    t0 <<= 16;
-    if ((num[0] = (Uint) a0 * a0 + t0) < t0) {
-	t1++;
-    }
-    num[1] = (Uint) a1 * a1 + t1;
-# endif
     size = 2;
 }
 
@@ -479,48 +441,7 @@ void Asi::sqr(Asi &x, Asi &t)
 
 Uint Asi::div1(Uint a)
 {
-# ifdef Uuint
-    return (((Uuint) num[1] << 32) | num[0]) / a;
-# else
-    Uint q1, q0;
-    Uint b[2], c[2], tmp[2];
-    Asi x(b, 2);
-    Asi y(c, 2);
-    Asi z(&a, 1);
-    Asi t(tmp, 2);
-
-    x.copy(*this);
-
-    q1 = ((x.num[1] ^ a) >> 16 == 0) ?
-	  0xffff : x.num[1] / (unsigned short) (a >> 16);
-    t.mult1(a, q1 << 16);
-    if (t.cmp(x) > 0) {
-	y.num[0] = a << 16;
-	y.num[1] = a >> 16;
-	t.sub(y);
-	--q1;
-	if (t.cmp(x) > 0) {
-	    t.sub(y);
-	    --q1;
-	}
-    }
-    x.sub(t);
-
-    q0 = (x.num[1] == a >> 16) ?
-	  0xffff :
-	  ((x.num[1] << 16) | (x.num[0] >> 16)) / (unsigned short) (a >> 16);
-    t.mult1(a, q0);
-    if (t.cmp(x) > 0) {
-	t.sub(z);
-	--q0;
-	if (t.cmp(x) > 0) {
-	    t.sub(z);
-	    --q0;
-	}
-    }
-
-    return (q1 << 16) | q0;
-# endif
+    return (((uint64_t) num[1] << 32) | num[0]) / a;
 }
 
 /*

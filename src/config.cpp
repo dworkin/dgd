@@ -120,7 +120,7 @@ static Config conf[] = {
 struct alignc { char fill; char c;	};
 struct aligns { char fill; short s;	};
 struct aligni { char fill; Int i;	};
-struct alignl { char fill; Uuint l;	};
+struct alignl { char fill; int64_t l;	};
 struct alignp { char fill; char *p;	};
 struct alignz { char c;			};
 
@@ -135,7 +135,7 @@ struct alignz { char c;			};
 
 static SnapshotInfo header;	/* snapshot header */
 static int ialign;		/* align(Int) */
-static int lalign;		/* align(Uuint) */
+static int lalign;		/* align(int64_t) */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -146,7 +146,7 @@ static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
 static int resize;		/* sizeof(eindex) */
 static int rialign;		/* align(Int) */
-static int rlalign;		/* align(Uuint) */
+static int rlalign;		/* align(int64_t) */
 static int rualign;		/* align(uindex) */
 static int rtalign;		/* align(ssizet) */
 static int rdalign;		/* align(sector) */
@@ -190,7 +190,7 @@ void Config::dumpinit()
 {
     short s;
     Int i;
-    Uuint l;
+    int64_t l;
     alignc cdummy;
     aligns sdummy;
     aligni idummy;
@@ -462,8 +462,8 @@ Uint Config::dsize(const char *layout)
 	    ral = rialign;
 	    break;
 
-	case 'l':	/* Uuint */
-	    sz = rsz = sizeof(Uuint);
+	case 'l':	/* int64_t */
+	    sz = rsz = sizeof(int64_t);
 	    al = lalign;
 	    ral = rlalign;
 	    break;
@@ -643,8 +643,8 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		buf[i + header.l[5]] = rbuf[ri + rheader.l[5]];
 		buf[i + header.l[6]] = rbuf[ri + rheader.l[6]];
 		buf[i + header.l[7]] = rbuf[ri + rheader.l[7]];
-		i += sizeof(Uuint);
-		ri += sizeof(Uuint);
+		i += sizeof(int64_t);
+		ri += sizeof(int64_t);
 		break;
 
 	    case 't':

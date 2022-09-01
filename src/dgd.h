@@ -40,7 +40,7 @@ class Frame;
 # define BCLR(map, bit)		(map[BOFF(bit)] &= ~BBIT(bit))
 # define BTST(map, bit)		(map[BOFF(bit)] & BBIT(bit))
 
-typedef Uuint Time;
+typedef uint64_t Time;
 
 # define TIME_INT		2000
 

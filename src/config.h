@@ -135,13 +135,13 @@ public:
     char secsize[2];
     char s[2];			/* short */
     char i[4];			/* Int */
-    char l[8];			/* Uuint */
+    char l[8];			/* int64_t */
     char utsize;		/* sizeof(uindex) + sizeof(ssizet) */
     char desize;		/* sizeof(sector) + sizeof(eindex) */
     char psize;			/* sizeof(char*), upper nibble reserved */
     char calign;		/* align(char) */
     char salign;		/* align(short) */
-    char ilalign;		/* align(Int) + align(Uuint) */
+    char ilalign;		/* align(Int) + align(int64_t) */
     char palign;		/* align(char*) */
     char zalign;		/* align(struct) */
     char start[4];
