@@ -196,9 +196,9 @@ bool Float::atof(char **s, Float *f)
 void Float::ftoa(char *buffer)
 {
     short i, e;
-    Uint n;
+    FloatLow n;
     char *p;
-    char digits[10];
+    char digits[FLOAT_DIGITS + 1];
     double a;
 
     a = f_get(this);
@@ -236,15 +236,19 @@ void Float::ftoa(char *buffer)
 	}
 	e = -e;
     }
+# ifdef LARGENUM
+    a *= 1e13;
+# else
     a *= tens[3];
+# endif
 
     /*
      * obtain digits
      */
     a += 0.5;
-    n = (Uint) a;
-    if (n == 1000000000) {
-	p = digits + 8;
+    n = (FloatLow) a;
+    if (n == FLOAT_LIMIT) {
+	p = digits + FLOAT_DIGITS - 1;
 	p[0] = '1';
 	p[1] = '\0';
 	i = 1;
@@ -253,7 +257,7 @@ void Float::ftoa(char *buffer)
 	while (n != 0 && n % 10 == 0) {
 	    n /= 10;
 	}
-	p = digits + 9;
+	p = digits + FLOAT_DIGITS;
 	*p = '\0';
 	i = 0;
 	do {
@@ -263,7 +267,7 @@ void Float::ftoa(char *buffer)
 	} while (n != 0);
     }
 
-    if (e >= 9 || (e < -3 && i - e > 9)) {
+    if (e >= FLOAT_DIGITS || (e < -3 && i - e > FLOAT_DIGITS)) {
 	buffer[0] = *p;
 	if (i != 1) {
 	    buffer[1] = '.';
@@ -277,7 +281,7 @@ void Float::ftoa(char *buffer)
 	    buffer[i] = '-';
 	    e = -e;
 	}
-	p = digits + 9;
+	p = digits + FLOAT_DIGITS;
 	do {
 	    *--p = '0' + e % 10;
 	    e /= 10;
@@ -285,7 +289,7 @@ void Float::ftoa(char *buffer)
 	strcpy(buffer + i + 1, p);
     } else if (e < 0) {
 	e = 1 - e;
-	memcpy(buffer, "0.0000000", e);
+	memcpy(buffer, "0.000000000000", e);
 	strcpy(buffer + e, p);
     } else {
 	while (e >= 0) {
@@ -374,17 +378,17 @@ void Float::div(Float &f)
  */
 int Float::cmp(Float &f)
 {
-    if ((short) (high ^ f.high) < 0) {
-	return ((short) high < 0) ? -1 : 1;
+    if ((high ^ f.high) & FLOAT_SIGN) {
+	return (high & FLOAT_SIGN) ? -1 : 1;
     }
 
     if (high == f.high && low == f.low) {
 	return 0;
     }
     if (high <= f.high && (high < f.high || low < f.low)) {
-	return ((short) high < 0) ? 1 : -1;
+	return (high & FLOAT_SIGN) ? 1 : -1;
     }
-    return ((short) high < 0) ? -1 : 1;
+    return (high & FLOAT_SIGN) ? -1 : 1;
 }
 
 /*
@@ -422,13 +426,9 @@ void Float::fmod(Float &f)
  */
 LPCint Float::frexp()
 {
-    short e;
+    int e;
 
-    if (high == 0) {
-	return 0;
-    }
-    e = ((high & 0x7ff0) >> 4) - 1022;
-    high = (high & 0x800f) | (1022 << 4);
+    f_put(this, ::frexp(f_get(this), &e));
     return e;
 }
 
@@ -437,19 +437,7 @@ LPCint Float::frexp()
  */
 void Float::ldexp(LPCint exp)
 {
-    if (high == 0) {
-	return;
-    }
-    exp += (high & 0x7ff0) >> 4;
-    if (exp <= 0) {
-	high = 0;
-	low = 0;
-	return;
-    }
-    if (exp > 1023 + 1023) {
-	f_erange();
-    }
-    high = (high & 0x800f) | (exp << 4);
+    f_put(this, ::ldexp(f_get(this), exp));
 }
 
 /*

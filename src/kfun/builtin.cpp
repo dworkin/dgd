@@ -72,7 +72,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 {
     String *str;
     Array *a;
-    char *num, buffer[18];
+    char *num, buffer[FLOAT_BUFFER];
     Float f1, f2;
     long l;
 
@@ -2006,7 +2006,7 @@ char pt_tostring[] = { C_STATIC, 1, 0, 0, 7, T_STRING, T_MIXED };
  */
 int kf_tostring(Frame *f, int n, KFun *kf)
 {
-    char *num, buffer[18];
+    char *num, buffer[FLOAT_BUFFER];
     Float flt;
 
     UNREFERENCED_PARAMETER(n);
@@ -2430,7 +2430,7 @@ char pt_add_float_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_FLOAT,
  */
 int kf_add_float_string(Frame *f, int n, KFun *kf)
 {
-    char buffer[18];
+    char buffer[FLOAT_BUFFER];
     Float flt;
     String *str;
     long l;
@@ -2520,7 +2520,7 @@ char pt_add_string_float[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
  */
 int kf_add_string_float(Frame *f, int n, KFun *kf)
 {
-    char buffer[18];
+    char buffer[FLOAT_BUFFER];
     Float flt;
     String *str;
 
@@ -3121,7 +3121,7 @@ char pt_sum[] = { C_STATIC | C_ELLIPSIS, 0, 1, 0, 7, T_MIXED, T_MIXED };
  */
 int kf_sum(Frame *f, int nargs, KFun *kf)
 {
-    char buffer[LPCINT_BUFFER], *num;
+    char buffer[FLOAT_BUFFER], *num;
     String *s;
     Array *a;
     Value *v, *e1, *e2;

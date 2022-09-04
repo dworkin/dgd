@@ -22,9 +22,9 @@
 # define I_PUSH_INT1		0x00	/* 1 signed */
 # define I_PUSH_INT2		0x20	/* 2 signed */
 # define I_PUSH_INT4		0x01	/* 4 signed */
-# define I_PUSH_INT8		0x21	/* reserved */
+# define I_PUSH_INT8		0x21	/* 8 signed */
 # define I_PUSH_FLOAT6		0x03	/* 6 unsigned */
-# define I_PUSH_FLOAT12		0x23	/* reserved */
+# define I_PUSH_FLOAT12		0x23	/* 12 unsigned */
 # define I_PUSH_STRING		0x04	/* 1 unsigned */
 # define I_PUSH_NEAR_STRING	0x24	/* 1 unsigned, 1 unsigned */
 # define I_PUSH_FAR_STRING	0x05	/* 1 unsigned, 2 unsigned */
@@ -71,23 +71,59 @@
 
 # define FETCH1S(pc)	SCHAR(*(pc)++)
 # define FETCH1U(pc)	UCHAR(*(pc)++)
-# define FETCH2S(pc, v)	((short) (v = *(pc)++ << 8, v |= UCHAR(*(pc)++)))
-# define FETCH2U(pc, v)	((unsigned short) (v = *(pc)++ << 8, \
+# define FETCH2S(pc, v)	((short) (v = UCHAR(*(pc)++) << 8, v |= UCHAR(*(pc)++)))
+# define FETCH2U(pc, v)	((unsigned short) (v = UCHAR(*(pc)++) << 8, \
 					   v |= UCHAR(*(pc)++)))
-# define FETCH3S(pc, v)	((LPCint) (v = *(pc)++ << 8, \
+# define FETCH3S(pc, v)	((LPCint) (v = SCHAR(*(pc)++) << 8, \
 				   v |= UCHAR(*(pc)++), v <<= 8, \
 				   v |= UCHAR(*(pc)++)))
 # define FETCH3U(pc, v)	((LPCuint) (v = UCHAR(*(pc)++) << 8, \
 				    v |= UCHAR(*(pc)++), v <<= 8, \
 				    v |= UCHAR(*(pc)++)))
-# define FETCH4S(pc, v)	((LPCint) (v = *(pc)++ << 8, \
+# define FETCH4S(pc, v)	((LPCint) (v = SCHAR(*(pc)++) << 8, \
 				   v |= UCHAR(*(pc)++), v <<= 8, \
 				   v |= UCHAR(*(pc)++), v <<= 8, \
 				   v |= UCHAR(*(pc)++)))
-# define FETCH4U(pc, v)	((LPCuint) (v = *(pc)++ << 8, \
+# define FETCH4U(pc, v)	((LPCuint) (v = UCHAR(*(pc)++) << 8, \
 				    v |= UCHAR(*(pc)++), v <<= 8, \
 				    v |= UCHAR(*(pc)++), v <<= 8, \
 				    v |= UCHAR(*(pc)++)))
+# ifdef LARGENUM
+# define FETCH5S(pc, v)	((LPCint) (v = SCHAR(*(pc)++) << 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++)))
+# define FETCH6S(pc, v)	((LPCint) (v = SCHAR(*(pc)++) << 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++)))
+# define FETCH7S(pc, v)	((LPCint) (v = SCHAR(*(pc)++) << 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++)))
+# define FETCH8S(pc, v)	((LPCint) (v = SCHAR(*(pc)++) << 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++), v <<= 8, \
+				   v |= UCHAR(*(pc)++)))
+# define FETCH8U(pc, v)	((LPCuint) (v = UCHAR(*(pc)++) << 8, \
+				    v |= UCHAR(*(pc)++), v <<= 8, \
+				    v |= UCHAR(*(pc)++), v <<= 8, \
+				    v |= UCHAR(*(pc)++), v <<= 8, \
+				    v |= UCHAR(*(pc)++), v <<= 8, \
+				    v |= UCHAR(*(pc)++), v <<= 8, \
+				    v |= UCHAR(*(pc)++), v <<= 8, \
+				    v |= UCHAR(*(pc)++)))
+# endif
 
 # define PUSH_INTVAL(f, i)	((--(f)->sp)->number = (i),		\
 				 (f)->sp->type = T_INT)

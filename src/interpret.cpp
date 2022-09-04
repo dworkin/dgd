@@ -1499,6 +1499,68 @@ unsigned short Frame::switchInt(char *pc)
 	    }
 	}
 	break;
+
+# ifdef LARGENUM
+    case 5:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 7 * m;
+	    FETCH5S(p, num);
+	    if (sp->number == num) {
+		return FETCH2U(p, l);
+	    } else if (sp->number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 6:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 8 * m;
+	    FETCH6S(p, num);
+	    if (sp->number == num) {
+		return FETCH2U(p, l);
+	    } else if (sp->number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 7:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 9 * m;
+	    FETCH7S(p, num);
+	    if (sp->number == num) {
+		return FETCH2U(p, l);
+	    } else if (sp->number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 8:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 10 * m;
+	    FETCH8S(p, num);
+	    if (sp->number == num) {
+		return FETCH2U(p, l);
+	    } else if (sp->number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+# endif
     }
 
     return dflt;
@@ -1590,6 +1652,76 @@ unsigned short Frame::switchRange(char *pc)
 	    }
 	}
 	break;
+
+# ifdef LARGENUM
+    case 5:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 12 * m;
+	    FETCH5S(p, num);
+	    if (sp->number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		FETCH5S(p, num);
+		if (sp->number <= num) {
+		    return FETCH2U(p, l);
+		}
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 6:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 14 * m;
+	    FETCH6S(p, num);
+	    if (sp->number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		FETCH6S(p, num);
+		if (sp->number <= num) {
+		    return FETCH2U(p, l);
+		}
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 7:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 16 * m;
+	    FETCH7S(p, num);
+	    if (sp->number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		FETCH7S(p, num);
+		if (sp->number <= num) {
+		    return FETCH2U(p, l);
+		}
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 8:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 18 * m;
+	    FETCH8S(p, num);
+	    if (sp->number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		FETCH8S(p, num);
+		if (sp->number <= num) {
+		    return FETCH2U(p, l);
+		}
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+# endif
     }
     return dflt;
 }
@@ -1686,6 +1818,9 @@ void Frame::interpret(char *pc)
     int size, instance;
     bool atomic;
     Value val;
+# ifdef LARGENUM
+    Float flt;
+# endif
 
     size = 0;
     l = 0;
@@ -1712,10 +1847,30 @@ void Frame::interpret(char *pc)
 	    PUSH_INTVAL(this, FETCH4S(pc, l));
 	    continue;
 
+# ifdef LARGENUM
+	case I_PUSH_INT8:
+	    PUSH_INTVAL(this, FETCH8S(pc, l));
+	    continue;
+
+	case I_PUSH_FLOAT6:
+	    FETCH2U(pc, u);
+	    Ext::largeFloat(&flt, u, FETCH4U(pc, l));
+	    PUSH_FLTVAL(this, flt);
+	    continue;
+
+	case I_PUSH_FLOAT12:
+	    FETCH4U(pc, l);
+	    flt.high = l;
+	    FETCH8U(pc, l);
+	    flt.low = l;
+	    PUSH_FLTVAL(this, flt);
+	    continue;
+# else
 	case I_PUSH_FLOAT6:
 	    FETCH2U(pc, u);
 	    PUSH_FLTCONST(this, u, FETCH4U(pc, l));
 	    continue;
+# endif
 
 	case I_PUSH_STRING:
 	    PUSH_STRVAL(this, p_ctrl->strconst(p_ctrl->ninherits - 1,
@@ -2533,6 +2688,16 @@ unsigned short Frame::line()
 	case I_PUSH_FLOAT6:
 	    pc += 6;
 	    break;
+
+# ifdef LARGENUM
+	case I_PUSH_INT8:
+	    pc += 8;
+	    break;
+
+	case I_PUSH_FLOAT12:
+	    pc += 12;
+	    break;
+# endif
 
 	case I_SWITCH:
 	    switch (FETCH1U(pc)) {

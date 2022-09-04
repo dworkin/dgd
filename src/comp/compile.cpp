@@ -1539,8 +1539,18 @@ Node *Compile::endSwitch(Node *expr, Node *stmt)
 		    sz = 2;
 		} else if (l <= 8388607L) {
 		    sz = 3;
-		} else {
+# ifdef LARGENUM
+		} else if (l <= 2147483647LL) {
 		    sz = 4;
+		} else if (l <= 549755813887LL) {
+		    sz = 5;
+		} else if (l <= 140737488355327LL) {
+		    sz = 6;
+		} else if (l <= 36028797018963967LL) {
+		    sz = 7;
+# endif
+		} else {
+		    sz = sizeof(LPCint);
 		}
 
 		if (i == 0 && cnt >= size) {

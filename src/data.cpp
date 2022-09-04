@@ -25,6 +25,7 @@
 # include "control.h"
 # include "data.h"
 # include "interpret.h"
+# include "ext.h"
 # include "call_out.h"
 # include "parse.h"
 
@@ -1216,7 +1217,7 @@ struct SCallOut {
     SValue val[4];		/* function name, 3 direct arguments */
 };
 
-static char sco_layout[] = "lu[ccui][ccui][ccui][ccui]";
+static char sco_layout[] = "lu[ccuI][ccuI][ccuI][ccuI]";
 
 struct SCallOut0 {
     Uint time;			/* time of call */
@@ -1226,13 +1227,14 @@ struct SCallOut0 {
     SValue val[4];		/* function name, 3 direct arguments */
 };
 
-static char sco0_layout[] = "issu[ccui][ccui][ccui][ccui]";
+static char sco0_layout[] = "issu[ccuI][ccuI][ccuI][ccuI]";
 
 # define co_prev	time
 # define co_next	nargs
 
 static bool conv_14;			/* convert arrays & strings? */
 static bool conv_16;			/* convert callouts? */
+static bool conv_float;			/* convert floats? */
 static bool convDone;			/* conversion complete? */
 
 /*
@@ -1374,6 +1376,47 @@ void Dataspace::convSCallOut0(SCallOut *sco, Sector *s, Uint n, Uint offset,
     FREE(sco0 - n);
 }
 
+# ifdef LARGENUM
+/*
+ * expand floating point values
+ */
+void Dataspace::expandValues(SValue *v, Uint n)
+{
+    Float flt;
+
+    while (n != 0) {
+	if (v->type == T_FLOAT && v->oindex > TRUE) {
+	    Ext::largeFloat(&flt, v->oindex, v->objcnt);
+	    v->oindex = flt.high;
+	    v->objcnt = flt.low;
+	}
+	v++;
+	--n;
+    }
+}
+
+/*
+ * expand floats in dataspace
+ */
+void Dataspace::expand()
+{
+    SCallOut *co;
+    uindex i;
+
+    expandValues(svariables, nvariables);
+    expandValues(selts, eltsize);
+    for (co = scallouts, i = ncallouts; i > 0; co++, --i) {
+	if (co->val[0].type == T_STRING) {
+	    if (co->nargs > 3) {
+		expandValues(co->val, 4);
+	    } else {
+		expandValues(co->val, co->nargs + 1);
+	    }
+	}
+    }
+}
+# endif
+
 /*
  * convert dataspace
  */
@@ -1469,6 +1512,12 @@ Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
 			  (Uint) header.ncallouts, size, readv);
 	}
     }
+
+# ifdef LARGENUM
+    if (conv_float) {
+	data->expand();
+    }
+# endif
 
     data->ctrl = obj->control();
     data->ctrl->ndata++;
@@ -3617,10 +3666,11 @@ void Dataspace::init()
 /*
  * prepare for conversions
  */
-void Dataspace::initConv(bool c14, bool c16)
+void Dataspace::initConv(bool c14, bool c16, bool cfloat)
 {
     conv_14 = c14;
     conv_16 = c16;
+    conv_float = cfloat;
 }
 
 /*

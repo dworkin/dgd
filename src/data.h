@@ -45,7 +45,7 @@ public:
     uindex oindex;		/* index in object table */
     union {
 	LPCint number;		/* number */
-	Uint objcnt;		/* object creation count */
+	LPCuint objcnt;		/* object creation count */
 	String *string;		/* string */
 	Array *array;		/* array or mapping */
     };
@@ -162,7 +162,7 @@ public:
     static Object *upgradeLWO(LWO *lwobj, Object *obj);
     static void xport();
     static void init();
-    static void initConv(bool c14, bool c16);
+    static void initConv(bool c14, bool c16, bool cfloat);
     static void converted();
     static Sector swapout(unsigned int frag);
     static void upgradeMemory(Object *tmpl, Object *newob);
@@ -196,6 +196,9 @@ private:
     virtual ~Dataspace();
 
     void freeValues();
+# ifdef LARGENUM
+    void expand();
+# endif
     void loadStrings(void (*readv) (char*, Sector*, Uint, Uint));
     String *string(Uint idx);
     void loadArrays(void (*readv) (char*, Sector*, Uint, Uint));
@@ -222,6 +225,9 @@ private:
     static void convSCallOut0(struct SCallOut *sco, Sector *s, Uint n,
 			      Uint offset,
 			      void (*readv) (char*, Sector*, Uint, Uint));
+# ifdef LARGENUM
+    static void expandValues(struct SValue *v, Uint n);
+# endif
     static Dataspace *conv(Object *obj, Uint *counttab,
 			   void (*readv) (char*, Sector*, Uint, Uint));
     static void fixObjs(struct SValue *v, Uint n, Uint *ctab);

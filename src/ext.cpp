@@ -132,9 +132,17 @@ double Ext::getFloat(const Float *flt)
     if ((flt->high | flt->low) == 0) {
 	return 0.0;
     } else {
+# ifdef LARGENUM
+	d = ldexp((double) (0x10000 | (flt->high & 0xffff)), 64);
+	d = ldexp(d + flt->low,
+		  ((flt->high >> 16) & 0x7fff) - FLOAT_BIAS - 80);
+	return ((flt->high >> 31) ? -d : d);
+# else
 	d = ldexp((double) (0x10 | (flt->high & 0xf)), 32);
-	d = ldexp(d + flt->low, ((flt->high >> 4) & 0x7ff) - 1023 - 36);
+	d = ldexp(d + flt->low,
+		  ((flt->high >> 4) & 0x7ff) - FLOAT_BIAS - 36);
 	return ((flt->high >> 15) ? -d : d);
+# endif
     }
 }
 
@@ -154,13 +162,13 @@ bool Ext::checkFloat(double *d)
 	return FALSE;
     }
 
-# if (DBL_MANT_DIG > 37)
+# if !defined(LARGENUM) && (DBL_MANT_DIG > 37)
     sign = (*d < 0.0);
     *d = frexp(fabs(*d), &e);
     *d += (double) (1 << (DBL_MANT_DIG - 38));
     *d -= (double) (1 << (DBL_MANT_DIG - 38));
     if (*d >= 1.0) {
-	if (++e > 1023) {
+	if (++e > FLOAT_BIAS) {
 	    return FALSE;
 	}
 	*d = ldexp(*d, -1);
@@ -172,7 +180,7 @@ bool Ext::checkFloat(double *d)
 # else
     frexp(*d, &e);
 # endif
-    if (e <= -1023) {
+    if (e <= -FLOAT_BIAS) {
 	*d = 0.0;
     }
 
@@ -196,7 +204,11 @@ void Ext::putFloat(Float *flt, double d)
 {
     unsigned short sign;
     int e;
+# ifdef LARGENUM
+    double dummy;
+# else
     uint64_t m;
+# endif
 
     if (d == 0.0) {
 	flt->high = 0;
@@ -204,13 +216,64 @@ void Ext::putFloat(Float *flt, double d)
     } else {
 	sign = (d < 0.0);
 	d = frexp(fabs(d), &e);
+# ifdef LARGENUM
+	d = ldexp(d, 17);
+	flt->high = (sign << 31) | ((e - 1 + FLOAT_BIAS) << 16) |
+		    ((Uint) d & 0xffff);
+	flt->low = (uint64_t) ldexp(modf(d, &dummy), 36) << 28;
+# else
 	m = (uint64_t) ldexp(d, 37);
-	flt->high = (sign << 15) | ((e - 1 + 1023) << 4) |
+	flt->high = (sign << 15) | ((e - 1 + FLOAT_BIAS) << 4) |
 		    ((unsigned short) (m >> 32) & 0xf);
 	flt->low = m;
+# endif
     }
 }
 
+# ifdef LARGENUM
+/*
+ * store a large float in a small one
+ */
+bool Ext::smallFloat(unsigned short *fhigh, Uint *flow, Float *flt)
+{
+    unsigned short exp;
+
+    exp = (flt->high & ~FLOAT_SIGN) >> 16;
+    if (exp == 0) {
+	*fhigh = 0;
+	*flow = 0;
+	return TRUE;
+    }
+    if (exp <= FLOAT_BIAS - 0x3ff || exp > FLOAT_BIAS + 0x3ff ||
+	(flt->low << 12) != 0) {
+	return FALSE;
+    }
+
+    *fhigh = ((flt->high & FLOAT_SIGN) >> 16) +
+	     ((exp - FLOAT_BIAS + 0x3ff) << 4) + ((flt->high >> 12) & 0xf);
+    *flow = (flt->high << 20) + (flt->low >> 44);
+    return TRUE;
+}
+
+/*
+ * expand a small float
+ */
+void Ext::largeFloat(Float *flt, unsigned short fhigh, Uint flow)
+{
+    unsigned short exp;
+
+    exp = (fhigh & ~0x8000) >> 4;
+    if (exp == 0) {
+	flt->high = 0;
+	flt->low = 0;
+    } else {
+	flt->high = ((fhigh & 0x8000) << 16) +
+		    ((exp + FLOAT_BIAS - 0x3ff) << 16) +
+		    ((fhigh & 0xf) << 12) + (flow >> 20);
+	flt->low = (FloatLow) flow << 44;
+    }
+}
+# endif
 /*
  * retrieve a float from a value
  */

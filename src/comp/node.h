@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -46,14 +46,14 @@ public:
     String *sclass;		/* object class */
     union {
 	LPCint number;		/* numeric value */
-	unsigned short fhigh;	/* high word of float */
+	FloatHigh fhigh;	/* high word of float */
 	String *string;		/* string value */
 	char *ptr;		/* character pointer */
 	Node *left;		/* left child */
     } l;
     union {
 	LPCint number;		/* numeric value */
-	Uint flow;		/* low longword of float */
+	FloatLow flow;		/* low longword of float */
 	Node *right;		/* right child */
     } r;
 

@@ -25,6 +25,7 @@
 # include "control.h"
 # include "data.h"
 # include "interpret.h"
+# include "ext.h"
 # include "table.h"
 # include "node.h"
 # include "codegen.h"
@@ -909,6 +910,11 @@ void Codegen::expr(Node *n, int pop)
     Node *args;
     int nargs;
     bool spread;
+# ifdef LARGENUM
+    Float flt;
+    unsigned short fhigh;
+    Uint flow;
+# endif
 
     switch (n->type) {
     case N_ADD:
@@ -1120,10 +1126,29 @@ void Codegen::expr(Node *n, int pop)
 	break;
 
     case N_FLOAT:
+# ifdef LARGENUM
+	flt.high = n->l.fhigh;
+	flt.low = n->r.flow;
+	if (Ext::smallFloat(&fhigh, &flow, &flt)) {
+	    CodeChunk::instr(I_PUSH_FLOAT6, n->line);
+	    CodeChunk::word(fhigh);
+	    CodeChunk::word((int) (flow >> 16));
+	    CodeChunk::word((int) flow);
+	} else {
+	    CodeChunk::instr(I_PUSH_FLOAT12, n->line);
+	    CodeChunk::word((int) (n->l.fhigh >> 16));
+	    CodeChunk::word((int) n->l.fhigh);
+	    CodeChunk::word((int) (n->r.flow >> 48));
+	    CodeChunk::word((int) (n->r.flow >> 32));
+	    CodeChunk::word((int) (n->r.flow >> 16));
+	    CodeChunk::word((int) n->r.flow);
+	}
+# else
 	CodeChunk::instr(I_PUSH_FLOAT6, n->line);
 	CodeChunk::word(n->l.fhigh);
 	CodeChunk::word((int) (n->r.flow >> 16));
 	CodeChunk::word((int) n->r.flow);
+# endif
 	break;
 
     case N_FUNC:
@@ -1262,6 +1287,14 @@ void Codegen::expr(Node *n, int pop)
 	if (n->l.number >= -128 && n->l.number <= 127) {
 	    CodeChunk::instr(I_PUSH_INT1, n->line);
 	    CodeChunk::byte((int) n->l.number);
+# ifdef LARGENUM
+	} else if (n->l.number < -2147483648LL || n->l.number > 2147483647LL) {
+	    CodeChunk::instr(I_PUSH_INT8, n->line);
+	    CodeChunk::word((int) (n->l.number >> 48));
+	    CodeChunk::word((int) (n->l.number >> 32));
+	    CodeChunk::word((int) (n->l.number >> 16));
+	    CodeChunk::word((int) n->l.number);
+# endif
 	} else {
 	    CodeChunk::instr(I_PUSH_INT4, n->line);
 	    CodeChunk::word((int) (n->l.number >> 16));
@@ -1955,6 +1988,14 @@ void Codegen::switchInt(Node *n)
 
 	l = m->l.left->l.number;
 	switch (sz) {
+# ifdef LARGENUM
+	case 8:
+	    CodeChunk::word((int) (l >> 48));
+	    /* fall through */
+	case 6:
+	    CodeChunk::word((int) (l >> 32));
+	    /* fall through */
+# endif
 	case 4:
 	    CodeChunk::word((int) (l >> 16));
 	    /* fall through */
@@ -1962,6 +2003,14 @@ void Codegen::switchInt(Node *n)
 	    CodeChunk::word((int) l);
 	    break;
 
+# ifdef LARGENUM
+	case 7:
+	    CodeChunk::word((int) (l >> 40));
+	    /* fall through */
+	case 5:
+	    CodeChunk::word((int) (l >> 24));
+	    /* fall through */
+# endif
 	case 3:
 	    CodeChunk::byte((int) (l >> 16));
 	    CodeChunk::word((int) l);
@@ -2027,6 +2076,14 @@ void Codegen::switchRange(Node *n)
 
 	l = m->l.left->l.number;
 	switch (sz) {
+# ifdef LARGENUM
+	case 8:
+	    CodeChunk::word((int) (l >> 48));
+	    /* fall through */
+	case 6:
+	    CodeChunk::word((int) (l >> 32));
+	    /* fall through */
+# endif
 	case 4:
 	    CodeChunk::word((int) (l >> 16));
 	    /* fall through */
@@ -2034,6 +2091,14 @@ void Codegen::switchRange(Node *n)
 	    CodeChunk::word((int) l);
 	    break;
 
+# ifdef LARGENUM
+	case 7:
+	    CodeChunk::word((int) (l >> 40));
+	    /* fall through */
+	case 5:
+	    CodeChunk::word((int) (l >> 24));
+	    /* fall through */
+# endif
 	case 3:
 	    CodeChunk::byte((int) (l >> 16));
 	    CodeChunk::word((int) l);
@@ -2045,6 +2110,14 @@ void Codegen::switchRange(Node *n)
 	}
 	l = m->l.left->r.number;
 	switch (sz) {
+# ifdef LARGENUM
+	case 8:
+	    CodeChunk::word((int) (l >> 48));
+	    /* fall through */
+	case 6:
+	    CodeChunk::word((int) (l >> 32));
+	    /* fall through */
+# endif
 	case 4:
 	    CodeChunk::word((int) (l >> 16));
 	    /* fall through */
@@ -2052,6 +2125,14 @@ void Codegen::switchRange(Node *n)
 	    CodeChunk::word((int) l);
 	    break;
 
+# ifdef LARGENUM
+	case 7:
+	    CodeChunk::word((int) (l >> 40));
+	    /* fall through */
+	case 5:
+	    CodeChunk::word((int) (l >> 24));
+	    /* fall through */
+# endif
 	case 3:
 	    CodeChunk::byte((int) (l >> 16));
 	    CodeChunk::word((int) l);

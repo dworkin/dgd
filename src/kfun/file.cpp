@@ -21,6 +21,7 @@
 # define INCLUDE_FILE_IO
 # define INCLUDE_CTYPE
 # include "kfun.h"
+# include "ext.h"
 # include "path.h"
 # include "editor.h"
 # endif
@@ -138,6 +139,35 @@ static void put(savecontext *x, const char *buf, unsigned int len)
 }
 
 /*
+ * save a float
+ */
+static void save_float(savecontext *x, Float *flt)
+{
+# ifdef LARGENUM
+    char buf[26];
+    unsigned short fhigh;
+    Uint flow;
+# else
+    char buf[FLOAT_BUFFER];
+# endif
+
+    flt->ftoa(buf);
+    put(x, buf, strlen(buf));
+# ifdef LARGENUM
+    if (Ext::smallFloat(&fhigh, &flow, flt)) {
+	sprintf(buf, "=%04x%08lx", fhigh, (long) flow);
+	put(x, buf, 13);
+    } else {
+	sprintf(buf, "=%08lx%016llx", (long) flt->high, (long long) flt->low);
+	put(x, buf, 25);
+    }
+# else
+    sprintf(buf, "=%04x%08lx", flt->high, (long) flt->low);
+    put(x, buf, 13);
+# endif
+}
+
+/*
  * save a string
  */
 static void save_string(savecontext *x, String *str)
@@ -189,7 +219,7 @@ static void save_mapping (savecontext*, Mapping*);
  */
 static void save_array(savecontext *x, Array *a)
 {
-    char buf[18];
+    char buf[LPCINT_BUFFER];
     Uint i;
     Value *v;
     Float flt;
@@ -218,10 +248,7 @@ static void save_array(savecontext *x, Array *a)
 
 	case T_FLOAT:
 	    GET_FLT(v, flt);
-	    flt.ftoa(buf);
-	    put(x, buf, strlen(buf));
-	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
-	    put(x, buf, 13);
+	    save_float(x, &flt);
 	    break;
 
 	case T_STRING:
@@ -255,7 +282,7 @@ static void save_array(savecontext *x, Array *a)
  */
 static void save_mapping(savecontext *x, Mapping *a)
 {
-    char buf[18];
+    char buf[LPCINT_BUFFER];
     Uint i;
     uindex n;
     Value *v;
@@ -309,10 +336,7 @@ static void save_mapping(savecontext *x, Mapping *a)
 
 	case T_FLOAT:
 	    GET_FLT(v, flt);
-	    flt.ftoa(buf);
-	    put(x, buf, strlen(buf));
-	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
-	    put(x, buf, 13);
+	    save_float(x, &flt);
 	    break;
 
 	case T_STRING:
@@ -337,10 +361,7 @@ static void save_mapping(savecontext *x, Mapping *a)
 
 	case T_FLOAT:
 	    GET_FLT(v, flt);
-	    flt.ftoa(buf);
-	    put(x, buf, strlen(buf));
-	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
-	    put(x, buf, 13);
+	    save_float(x, &flt);
 	    break;
 
 	case T_STRING:
@@ -376,7 +397,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
     Control *ctrl;
     String *str;
     Inherit *inh;
-    char file[STRINGSZ], buf[18], tmp[STRINGSZ + 8], *_tmp;
+    char file[STRINGSZ], buf[LPCINT_BUFFER], tmp[STRINGSZ + 8], *_tmp;
     savecontext x;
     Float flt;
 
@@ -446,10 +467,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
 
 		    case T_FLOAT:
 			GET_FLT(var, flt);
-			flt.ftoa(buf);
-			put(&x, buf, strlen(buf));
-			sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
-			put(&x, buf, 13);
+			save_float(&x, &flt);
 			break;
 
 		    case T_STRING:
@@ -622,6 +640,42 @@ static char *restore_number(restcontext *x, char *buf, Value *val)
     if (*p == '=') {
 	flt.high = 0;
 	flt.low = 0;
+# ifdef LARGENUM
+	q = p;
+	for (i = 24; i != 0 && isxdigit(*++p); --i) ;
+	p = q;
+	if (i == 0) {
+	    for (i = 8; i > 0; --i) {
+		if (!isxdigit(*++p)) {
+		    restore_error(x, "hexadecimal digit expected");
+		}
+		flt.high <<= 4;
+		if (isdigit(*p)) {
+		    flt.high += *p - '0';
+		} else {
+		    flt.high += toupper(*p) + 10 - 'A';
+		}
+	    }
+	    if ((flt.high & 0x7fff0000L) == 0x7fff0000L) {
+		restore_error(x, "illegal exponent");
+	    }
+	    for (i = 16; i > 0; --i) {
+		if (!isxdigit(*++p)) {
+		    restore_error(x, "hexadecimal digit expected");
+		}
+		flt.low <<= 4;
+		if (isdigit(*p)) {
+		    flt.low += *p - '0';
+		} else {
+		    flt.low += toupper(*p) + 10 - 'A';
+		}
+	    }
+
+	    PUT_FLTVAL(val, flt);
+	    return p + 1;
+	}
+# endif
+
 	for (i = 4; i > 0; --i) {
 	    if (!isxdigit(*++p)) {
 		restore_error(x, "hexadecimal digit expected");

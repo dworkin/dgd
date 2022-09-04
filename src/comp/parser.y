@@ -1153,7 +1153,7 @@ Node *YYParser::cast(Node *n, Node *type)
 {
     Float flt;
     LPCint i;
-    char *p, buffer[18];
+    char *p, buffer[FLOAT_BUFFER];
 
     if (type->mod != n->mod) {
 	switch (type->mod) {

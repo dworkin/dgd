@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,6 +17,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+# ifdef LARGENUM
+
+# define FLOAT_BIAS	0x3fff
+# define FLOAT_SIGN	0x80000000L
+# define FLOAT_ONE	0x3fff0000L
+# define FLOAT_MONE	0xbfff0000L
+# define FLOAT_DIGITS	14
+# define FLOAT_LIMIT	100000000000000LL
+# define FLOAT_BUFFER	LPCINT_BUFFER
+
+typedef Uint FloatHigh;
+typedef uint64_t FloatLow;
+
+# else
+
+# define FLOAT_BIAS	0x3ff
+# define FLOAT_SIGN	0x8000
+# define FLOAT_ONE	0x3ff0
+# define FLOAT_MONE	0xbff0
+# define FLOAT_DIGITS	9
+# define FLOAT_LIMIT	1000000000
+# define FLOAT_BUFFER	17
+
+typedef unsigned short FloatHigh;
+typedef Uint FloatLow;
+
+# endif
+
 class Float {
 public:
     static bool atof(char **buf, Float *f);
@@ -27,7 +55,7 @@ public:
 	low = 0;
     }
     void initOne() {
-	high = 0x3ff0;
+	high = FLOAT_ONE;
 	low = 0;
     }
 
@@ -35,13 +63,13 @@ public:
     LPCint ftoi();
 
     void abs() {
-	high &= ~0x8000;
+	high &= ~FLOAT_SIGN;
     }
     void negate() {
-	high ^= 0x8000;
+	high ^= FLOAT_SIGN;
     }
     bool negative() {
-	return !!(high & 0x8000);
+	return !!(high & FLOAT_SIGN);
     }
 
     void add(Float &f);
@@ -72,12 +100,12 @@ public:
     void sinh();
     void tanh();
 
-    unsigned short high;	/* high word of float */
-    Uint low;			/* low longword of float */
+    FloatHigh high;		/* high word of float */
+    FloatLow low;		/* low longword of float */
 };				/* 1 sign, 11 exponent, 36 mantissa */
 
 # define FLOAT_ISZERO(h, l)	((h) == 0)
-# define FLOAT_ISONE(h, l)	((h) == 0x3ff0 && (l) == 0L)
-# define FLOAT_ISMONE(h, l)	((h) == 0xbff0 && (l) == 0L)
+# define FLOAT_ISONE(h, l)	((h) == FLOAT_ONE && (l) == 0)
+# define FLOAT_ISMONE(h, l)	((h) == FLOAT_MONE && (l) == 0)
 
 extern Float max_int, thousand, thousandth;
