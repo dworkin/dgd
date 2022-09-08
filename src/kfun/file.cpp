@@ -702,6 +702,9 @@ static char *restore_number(restcontext *x, char *buf, Value *val)
 	    }
 	}
 
+# ifdef LARGENUM
+	Ext::largeFloat(&flt, flt.high, flt.low);
+# endif
 	PUT_FLTVAL(val, flt);
 	return p + 1;
     } else if (isfloat) {
