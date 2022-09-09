@@ -21,6 +21,10 @@
 # include "dgd.h"
 # include "xfloat.h"
 
+# ifdef LARGENUM
+# error LARGENUM not supported with simulated floats
+# endif
+
 class Flt {
 public:
     void add(Flt *b);

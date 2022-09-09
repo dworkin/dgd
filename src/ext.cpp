@@ -273,7 +273,7 @@ void Ext::largeFloat(Float *flt, unsigned short fhigh, Uint flow)
 	flt->low = (FloatLow) flow << 44;
     }
 }
-# endif
+# endif	/* LARGENUM */
 /*
  * retrieve a float from a value
  */
@@ -302,7 +302,7 @@ static int ext_float_putval(Value *val, long double ld)
     PUT_FLTVAL(val, flt);
     return TRUE;
 }
-# endif
+# endif	/* !NOFLOAT */
 
 /*
  * retrieve a string from a value
