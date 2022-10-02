@@ -395,7 +395,7 @@ int kf_random(Frame *f, int n, KFun *kf)
 	PUT_INT(f->sp, ((LPCuint) (Uint) P_random() << 31) ^ (Uint) P_random());
     } else if (f->sp->number > 0xffffffffL) {
 	PUT_INT(f->sp, (((LPCuint) (Uint) P_random() << 31) ^
-			(Uint) P_random()) & f->sp->number);
+			(Uint) P_random()) % f->sp->number);
 # else
 	PUT_INT(f->sp, (Uint) P_random() & 0x7fffffffL);
 # endif
