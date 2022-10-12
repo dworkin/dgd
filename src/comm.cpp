@@ -844,6 +844,7 @@ void Comm::flush()
 	    usr->uflush(obj, obj->data, arr);
 	}
 	if ((v->number & CF_STOPPED) && !(usr->flags & CF_STOPPED)) {
+	    obj->data->assignElt(arr, &v[1], &Value::nil);
 	    usr->flags |= CF_STOPPED;
 	    usr->conn->stop();
 	}
