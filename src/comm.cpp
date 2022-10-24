@@ -862,10 +862,25 @@ void comm_flush()
 	    d_assign_elt(obj->data, arr, &arr->elts[1], &nil_value);
 	    arr_del(arr);
 	    usr->flags &= ~CF_FLUSH;
-	} else {
-	    /* discard */
+	} else if (obj->count != 0) {
+	    /* clean up */
 	    usr->flush = flush;
 	    flush = usr;
+	} else {
+	    /* discard */
+	    usr->oindex = OBJ_NONE;
+	    if (usr->next == usr) {
+		lastuser = (user *) NULL;
+	    } else {
+		usr->next->prev = usr->prev;
+		usr->prev->next = usr->next;
+		if (usr == lastuser) {
+		    lastuser = usr->next;
+		}
+	    }
+	    usr->next = freeuser;
+	    freeuser = usr;
+	    --nusers;
 	}
     }
 
