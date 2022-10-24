@@ -785,10 +785,25 @@ void Comm::flush()
 	    obj->data->assignElt(arr, &arr->elts[1], &Value::nil);
 	    arr->del();
 	    usr->flags &= ~CF_FLUSH;
-	} else {
-	    /* discard */
+	} else if (obj->count != 0) {
+	    /* clean up */
 	    usr->flush = ::flush;
 	    ::flush = usr;
+	} else {
+	    /* discard */
+	    usr->oindex = OBJ_NONE;
+	    if (usr->next == usr) {
+		lastuser = (User *) NULL;
+	    } else {
+		usr->next->prev = usr->prev;
+		usr->prev->next = usr->next;
+		if (usr == lastuser) {
+		    lastuser = usr->next;
+		}
+	    }
+	    usr->next = freeuser;
+	    freeuser = usr;
+	    --nusers;
 	}
     }
 
