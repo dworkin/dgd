@@ -779,9 +779,13 @@ static LPCint ext_vm_instanceof(Frame *f, uint16_t inherit, uint16_t index)
 {
     LPCint instance;
 
-    instance = f->instanceOf(((Uint) inherit << 16) + index);
-    f->sp++;
-    return instance;
+    try {
+	instance = f->instanceOf(((Uint) inherit << 16) + index);
+	f->sp++;
+	return instance;
+    } catch (const char*) {
+	longjmp(*EC->env, 1);
+    }
 }
 
 /*
