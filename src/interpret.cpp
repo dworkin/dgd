@@ -1252,14 +1252,14 @@ void i_cast(Frame *f, Value *val, unsigned int type, Uint sclass)
 
     if (type == T_CLASS) {
 	if (val->type == T_OBJECT) {
-	    if (!i_instanceof(f, val->oindex, sclass)) {
+	    if (i_instanceof(f, val->oindex, sclass) <= 0) {
 		error("Value is not of object type /%s", i_classname(f, sclass));
 	    }
 	    return;
 	} else if (val->type == T_LWOBJECT) {
 	    elts = d_get_elts(val->u.array);
 	    if (elts->type == T_OBJECT) {
-		if (!i_instanceof(f, elts->oindex, sclass)) {
+		if (i_instanceof(f, elts->oindex, sclass) <= 0) {
 		    error("Value is not of object type /%s",
 			  i_classname(f, sclass));
 		}
@@ -2162,14 +2162,14 @@ void i_typecheck(Frame *f, Frame *prog_f, const char *name, const char *ftype,
 	    if ((ptype & T_TYPE) == T_CLASS && ptype == T_CLASS &&
 		atype == T_OBJECT) {
 		if (f->sp[i].type == T_OBJECT) {
-		    if (!i_instanceof(prog_f, f->sp[i].oindex, sclass)) {
+		    if (i_instanceof(prog_f, f->sp[i].oindex, sclass) <= 0) {
 			error("Bad object argument %d for function %s",
 			      nargs - i, name);
 		    }
 		} else {
 		    elts = d_get_elts(f->sp[i].u.array);
 		    if (elts->type == T_OBJECT) {
-			if (!i_instanceof(prog_f, elts->oindex, sclass)) {
+			if (i_instanceof(prog_f, elts->oindex, sclass) <= 0) {
 			    error("Bad object argument %d for function %s",
 				  nargs - i, name);
 			}
