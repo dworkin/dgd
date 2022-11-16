@@ -536,14 +536,14 @@ void Frame::cast(Value *val, unsigned int type, Uint sclass)
 
     if (type == T_CLASS) {
 	if (val->type == T_OBJECT) {
-	    if (!instanceOf(val->oindex, sclass)) {
+	    if (instanceOf(val->oindex, sclass) <= 0) {
 		EC->error("Value is not of object type /%s", className(sclass));
 	    }
 	    return;
 	} else if (val->type == T_LWOBJECT) {
 	    elts = Dataspace::elts(val->array);
 	    if (elts->type == T_OBJECT) {
-		if (!instanceOf(elts->oindex, sclass)) {
+		if (instanceOf(elts->oindex, sclass) <= 0) {
 		    EC->error("Value is not of object type /%s",
 			      className(sclass));
 		}
@@ -1387,14 +1387,14 @@ void Frame::typecheck(Frame *f, const char *name, const char *ftype,
 	    if ((ptype & T_TYPE) == T_CLASS && ptype == T_CLASS &&
 		atype == T_OBJECT) {
 		if (sp[i].type == T_OBJECT) {
-		    if (!f->instanceOf(sp[i].oindex, sclass)) {
+		    if (f->instanceOf(sp[i].oindex, sclass) <= 0) {
 			EC->error("Bad object argument %d for function %s",
 				  nargs - i, name);
 		    }
 		} else {
 		    elts = Dataspace::elts(sp[i].array);
 		    if (elts->type == T_OBJECT) {
-			if (!f->instanceOf(elts->oindex, sclass)) {
+			if (f->instanceOf(elts->oindex, sclass) <= 0) {
 			    EC->error("Bad object argument %d for function %s",
 				      nargs - i, name);
 			}
