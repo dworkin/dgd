@@ -10,8 +10,8 @@ apk upgrade
 git -C /container/dgd pull
 make -C /container/dgd/src DEFINES="$DEFINES" DEBUG="$DEBUG" install
 git -C /container/lpc-ext pull
-make -C /container/lpc-ext DEBUG="$DEBUG" jit zlib crypto
-EXT=`grep ^EXT /container/lpc-ext/Makefile | sed s/EXT=//`
+make -C /container/lpc-ext/src DEFINES="$DEFINES" DEBUG="$DEBUG" jit zlib crypto
+EXT=`grep ^EXT /container/lpc-ext/src/Makefile | sed s/EXT=//`
 
 sed < /container/server.dgd > /container/config				\
 	-e 's!^directory.*$!directory = "/container/src";!'		\

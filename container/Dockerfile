@@ -13,6 +13,6 @@ RUN git clone -b release https://github.com/dworkin/dgd.git
 RUN git clone -b release https://github.com/dworkin/lpc-ext.git
 RUN mkdir cache
 RUN chown dgd:dgd cache
-RUN ln -s lpc-ext/jit/jitcomp
+RUN ln -s lpc-ext/src/jit/jitcomp
 
 ENTRYPOINT [ "/container/server", "/container/config" ]
