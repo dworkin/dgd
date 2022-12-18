@@ -1,4 +1,4 @@
-This file was written for release 1.5.x of DGD, Dworkin's Game Driver.
+This file was written for release 1.5.20 of DGD, Dworkin's Game Driver.
 
 DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS
 and many versions of Unix.  The source repository for DGD can be found at:
@@ -9,8 +9,8 @@ DGD's home page is at:
 
     http://www.dworkin.nl/dgd/
 
-DGD 1.5 modernizes the bytecode VM, drops precompiler support, adds UDP
-support, and is currently being maintained as the most stable version.
+DGD 1.5 modernizes the bytecode VM, drops precompiler support and adds UDP
+support.
 
 The 1.5 line of DGD is the last one which is backward compatible with the
 snapshot format all the way back to DGD 1.0.86.  Version 1.6 and later can
