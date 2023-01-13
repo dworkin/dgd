@@ -16,17 +16,20 @@ in the container.
 The container expects the following to be present in the current directory
 when started:
 
-    server.dgd		a configuration file for DGD (see server.dgd.example)
-    src			the LPC source tree
-    state		where snapshots are stored
+-   server.dgd  
+    a configuration file for DGD (see server.dgd.example)
+-   src  
+    the LPC source tree
+-   state  
+    where snapshots are stored
 
-First, modify Dockerfile and set the USER argument to the ID of the user
-who owns the source tree.  Then, copy your DGD config file to server.dgd;
-lines marked with PLACEHOLDER in server.dgd.example will be replaced by
+First, modify `Dockerfile` and set the `USER` argument to the ID of the user
+who owns the source tree.  Then, copy your DGD config file to `server.dgd`;
+lines marked with `PLACEHOLDER` in `server.dgd.example` will be replaced by
 the container with appropriate container-relative values.
 
-Then, copy docker-compose.yml.example to docker-compose.yml and change
+Then, copy `docker-compose.yml.example` to `docker-compose.yml` and change
 the ports to match those in the configuration file.
 
-Build and start the container with "docker-compose up".  Update the
-running container with "docker exec <container-id> /container/update".
+Build and start the container with `docker-compose up`.  Update the
+running container with `docker exec <container-id> /container/update`.

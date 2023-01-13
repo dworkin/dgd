@@ -1,13 +1,13 @@
 New types can be added using builtin light-weight objects.  These types
-have a name that starts with "/builtin", like: /builtin/type#-1 (this
-is configurable with the BIPREFIX define in config.h).
+have a name that starts with "/builtin", like: "/builtin/type#-1" (this
+is configurable with the `BIPREFIX` define in `config.h`).
 
-To add a type, reserve a positive number for it in object.h, like
-
+To add a type, reserve a positive number for it in `object.h`, like
+```
     # define BUILTIN_TYPE	0
-
-Then give it a name in Object::builtinName():
-
+```
+Then give it a name in `Object::builtinName()`:
+```
     const char *Object::builtinName(Int type)
     {
 	switch (type) {
@@ -17,9 +17,9 @@ Then give it a name in Object::builtinName():
 	    fatal("unknown builtin type %d", type);
 	}
     }
-
+```
 A function to create a light-weight object of this type could look like this:
-
+```
     # ifdef FUNCDEF
     FUNCDEF("new_type", kf_new_type, pt_new_type, 0)
     # else
@@ -55,21 +55,21 @@ A function to create a light-weight object of this type could look like this:
 	return 0;
     }
     # endif
-
+```
 Ordinary light-weight objects will have an object as the first element of
 their array.  For builtin types, the first element must be an integer,
 the type number; the second element is reserved and must be initialized
-to Float 0.0.
+to `Float` 0.0.
 
 For the third element, a version number for your type is suggested, in case
 you decide to change the way your type is build and want to convert old
 instances.  The fourth and later elements can hold arbitrary LPC data.
 
 By default, builtin types have no functions callable from LPC, functions
-that can be probed with function_object(), or information about them that
-can be returned with status().  If you do want them to have any of that,
-edit the source code for the functions Frame::call(), kf_function_object(),
-kf_status() and kf_statuso_idx().
+that can be probed with `function_object()`, or information about them that
+can be returned with `status()`.  If you do want them to have any of that,
+edit the source code for the functions `Frame::call()`, `kf_function_object()`,
+`kf_status()` and `kf_statuso_idx()`.
 
-At compile time, a node of a builtin type should have modifier T_CLASS, and
-a class string built from the base name, as returned by Object::builtinName().
+At compile time, a node of a builtin type should have modifier `T_CLASS`, and
+a class string built from the base name, as returned by `Object::builtinName()`.
