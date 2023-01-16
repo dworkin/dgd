@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -104,13 +104,6 @@ const char *RxBuf::comp(const char *pattern)
 	    break;
 
 	case '*':
-	    if (*prevcode == RBRAC) {
-		return "Regular expression contains \\)*";
-	    }
-	    if (*prevcode == EOW) {
-		/* not really an error, but too troublesome */
-		return "Regular expression contains \\>*";
-	    }
 	    if (*prevpat == 0) {
 		return "* must follow pattern";
 	    }
@@ -136,6 +129,19 @@ const char *RxBuf::comp(const char *pattern)
 		*m++ = c;
 		*m++ = letter;
 		break;
+
+	    case SOW:
+		return "* follows \\<";
+
+	    case EOW:
+		/* not really an error, but too troublesome */
+		return "* follows \\>";
+
+	    case LBRAC:
+		return "* follows \\(";
+
+	    case RBRAC:
+		return "* follows \\)";
 	    }
 	    break;
 
