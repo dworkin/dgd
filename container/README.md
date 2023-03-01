@@ -10,8 +10,8 @@ system) can be updated without restarting, and without service interruption
 even for connected clients.
 
 DGD is configured to be hotbooted into a new version after an update.  The
-JIT compiler extension, gzip extension and crypto extension are included
-in the container.
+JIT compiler extension, zlib extension, crypto extension and tls extension
+are included in the container.
 
 The container expects the following to be present in the current directory
 when started:

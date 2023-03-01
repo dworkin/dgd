@@ -10,7 +10,7 @@ apk upgrade
 git -C /container/dgd pull
 make -C /container/dgd/src DEFINES="$DEFINES" DEBUG="$DEBUG" install
 git -C /container/lpc-ext pull
-make -C /container/lpc-ext/src DEFINES="$DEFINES" DEBUG="$DEBUG" ZLIB=1.2.12 jit zlib crypto
+make -C /container/lpc-ext/src DEFINES="$DEFINES" DEBUG="$DEBUG" ZLIB=1.2.12 jit zlib crypto tls
 EXT=`grep ^EXT /container/lpc-ext/src/Makefile | sed s/EXT=//`
 
 sed < /container/server.dgd > /container/config				\
@@ -19,4 +19,4 @@ sed < /container/server.dgd > /container/config				\
 	-e 's!^dump_file.*$!dump_file = "/container/state/snapshot";!'	\
 	-e 's!^ed_tmpfile.*$!ed_tmpfile = "/container/state/ed";!'	\
 	-e 's!^hotboot.*$!hotboot = ({ "/container/dgd/bin/dgd", "/container/config", "/container/state/snapshot", "/container/state/snapshot.old" });!'\
-	-e 's!^modules.*$!modules = ([ "/container/lpc-ext/jit.'$EXT'" : "/container", "/container/lpc-ext/zlib.'$EXT'" : "", "/container/lpc-ext/crypto.'$EXT'" : "" ]);!'
+	-e 's!^modules.*$!modules = ([ "/container/lpc-ext/jit.'$EXT'" : "/container", "/container/lpc-ext/zlib.'$EXT'" : "", "/container/lpc-ext/crypto.'$EXT'" : "", "/container/lpc-ext/tls.'$EXT'" : "" ]);!'
