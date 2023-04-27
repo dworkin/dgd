@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1099,7 +1099,7 @@ int kf_millitime(Frame *f, int n, KFun *kf)
     a = Array::create(f->data, 2);
     PUT_INTVAL(&a->elts[0], P_mtime(&milli));
     Float::itof(milli, &flt);
-    flt.mult(thousandth);
+    flt.div(thousand);
     PUT_FLTVAL(&a->elts[1], flt);
     PUSH_ARRVAL(f, a);
     return 0;
@@ -1194,7 +1194,7 @@ int kf_remove_call_out(Frame *f, int n, KFun *kf)
     if (mdelay != TIME_INT) {
 	Float::itof(delay, &flt1);
 	Float::itof(mdelay, &flt2);
-	flt2.mult(thousandth);
+	flt2.div(thousand);
 	flt1.add(flt2);
 	PUT_FLTVAL(f->sp, flt1);
     } else {

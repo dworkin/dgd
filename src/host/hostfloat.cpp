@@ -1,6 +1,6 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,11 +29,9 @@
 # ifdef LARGENUM
 Float max_int =		{ 0x403dffffL, 0xfffffffff0000000LL };
 Float thousand =	{ 0x4008f400L, 0x0000000000000000LL };
-Float thousandth =	{ 0x3ff50624L, 0xdd2f1a9fd0000000LL };
 # else
 Float max_int =		{ 0x41df, 0xffffffc0L };	/* 0x7fffffff */
 Float thousand =	{ 0x408f, 0x40000000L };	/* 1e3 */
-Float thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
 # endif
 
 
