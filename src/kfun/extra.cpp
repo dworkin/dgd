@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,8 +31,8 @@ extern String *P_encrypt_des_key (Frame*, String*);
 extern String *P_encrypt_des (Frame*, String*, String*);
 extern void ext_runtime_error (Frame*, const char*);
 
-char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
-		      T_STRING, T_STRING };
+char pt_encrypt[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
+		      T_STRING, T_STRING, T_STRING, T_STRING };
 
 /*
  * prepare a key for encryption
@@ -90,8 +90,8 @@ FUNCDEF("decrypt", kf_decrypt, pt_decrypt, 0)
 # else
 extern String *P_decrypt_des_key (Frame*, String*);
 
-char pt_decrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
-		      T_STRING, T_STRING };
+char pt_decrypt[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
+		      T_STRING, T_STRING, T_STRING, T_STRING };
 
 /*
  * prepare a key for decryption
