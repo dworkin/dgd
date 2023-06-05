@@ -293,6 +293,25 @@ Parser::~Parser()
 }
 
 /*
+ * reset a parser that has grown too large
+ */
+void Parser::reset()
+{
+    if (fastr != (char *) NULL) {
+	FREE(fastr);
+	fastr = (char *) NULL;
+    }
+    if (lrstr != (char *) NULL) {
+	FREE(lrstr);
+	lrstr = (char *) NULL;
+    }
+    delete fa;
+    delete lr;
+    fa = Dfa::create(source->text, grammar->text);
+    lr = Srp::create(grammar->text);
+}
+
+/*
  * perform a reduction
  */
 void Parser::reduce(PNode *pn, char *p)
@@ -911,6 +930,7 @@ Array *Parser::parse_string(Frame *f, String *source, String *str,
 	    /*
 	     * lexer or parser has become too big
 	     */
+	    ps->reset();
 	    EC->error("Grammar too large");
 	}
 	delete ps->pnc;
