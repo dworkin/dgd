@@ -75,7 +75,7 @@ PNode *PNode::create(PnChunk **c, short symb, unsigned short state, char *text,
     return pn;
 }
 
-struct PState{
+struct PState {
     SNode *first;		/* first in list */
     SNode *last;		/* last in list */
 };
@@ -143,10 +143,10 @@ void SNode::add(SnList *list, PNode *pn, PState *state)
     if (state->first == (SNode *) NULL) {
 	state->first = state->last = this;
     } else {
-	state->last->next = this;
+	state->last->slist = this;
 	state->last = this;
     }
-    this->slist = (SNode *) NULL;
+    slist = (SNode *) NULL;
 }
 
 /*
