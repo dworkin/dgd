@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1294,6 +1294,7 @@ bool Config::includes()
     puts("# define O_CALLOUTS\t4\t/* callouts in object */\012");
     puts("# define O_INDEX\t5\t/* unique ID for master object */\012");
     puts("# define O_UNDEFINED\t6\t/* undefined functions */\012");
+    puts("# define O_SPECIAL\t6\t/* object has special role */\012");
 
     puts("\012# define CO_HANDLE\t0\t/* callout handle */\012");
     puts("# define CO_FUNCTION\t1\t/* function name */\012");
@@ -2037,6 +2038,10 @@ bool Config::objecti(Dataspace *data, Object *obj, LPCint idx, Value *v)
 	}
 	break;
 
+    case 7:	/* O_SPECIAL */
+	PUT_INTVAL(v, (obj->flags & O_SPECIAL) != 0);
+	break;
+
     default:
 	return FALSE;
     }
@@ -2053,10 +2058,10 @@ Array *Config::object(Dataspace *data, Object *obj)
     LPCint i;
     Array *a;
 
-    a = Array::createNil(data, 7);
+    a = Array::createNil(data, 8);
     try {
 	EC->push();
-	for (i = 0, v = a->elts; i < 7; i++, v++) {
+	for (i = 0, v = a->elts; i < 8; i++, v++) {
 	    objecti(data, obj, i, v);
 	}
 	EC->pop();
