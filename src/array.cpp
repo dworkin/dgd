@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1840,8 +1840,7 @@ Value *Mapping::index(Dataspace *data, Value *val, Value *elt, Value *verify)
 	break;
 
     case T_STRING:
-	i = Hashtab::hashstr(val->string->text, STRMAPHASHSZ) ^
-							    val->string->len;
+	i = HM->hashstr(val->string->text, STRMAPHASHSZ) ^ val->string->len;
 	break;
 
     case T_OBJECT:

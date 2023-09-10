@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -218,8 +218,8 @@ IpAddr *IpAddr::create(In46Addr *ipnum)
     /* check hash table */
 # ifdef INET6
     if (ipnum->ipv6) {
-	hash = &ipahtab[Hashtab::hashmem((char *) ipnum,
-					 sizeof(struct in6_addr)) % ipahtabsz];
+	hash = &ipahtab[HM->hashmem((char *) ipnum,
+				    sizeof(struct in6_addr)) % ipahtabsz];
     } else
 # endif
     {
@@ -298,9 +298,8 @@ IpAddr *IpAddr::create(In46Addr *ipnum)
 	    /* remove from hash table */
 # ifdef INET6
 	    if (ipa->ipnum.ipv6) {
-		h = &ipahtab[Hashtab::hashmem((char *) &ipa->ipnum,
-					      sizeof(struct in6_addr)) %
-								    ipahtabsz];
+		h = &ipahtab[HM->hashmem((char *) &ipa->ipnum,
+					 sizeof(struct in6_addr)) % ipahtabsz];
 	    } else
 # endif
 	    {
@@ -422,7 +421,7 @@ void IpAddr::lookup()
     }
 }
 
-class XConnection : public Hashtab::Entry, public Connection, public Allocated {
+class XConnection : public Hash::Entry, public Connection, public Allocated {
 public:
     XConnection() : fd(-1) { }
 
@@ -486,9 +485,9 @@ public:
     char buffer[BINBUF_SIZE];		/* buffer */
 };
 
-static Hashtab::Entry **udphtab;	/* UDP hash table */
+static Hash::Entry **udphtab;		/* UDP hash table */
 static int udphtabsz;			/* UDP hash table size */
-static Hashtab *chtab;			/* challenge hash table */
+static Hash::Hashtab *chtab;		/* challenge hash table */
 static Udp *udescs;			/* UDP port descriptor array */
 static int nudescs;			/* # datagram ports */
 static int inpkts, outpkts;		/* UDP packet notification pipe */
@@ -507,7 +506,7 @@ void Udp::recv6(int n)
     socklen_t fromlen;
     int size;
     unsigned short hashval;
-    Hashtab::Entry **hash;
+    Hash::Entry **hash;
     XConnection *conn;
     char *p;
 
@@ -519,8 +518,8 @@ void Udp::recv6(int n)
 	return;
     }
 
-    hashval = (Hashtab::hashmem((char *) &from.sin6_addr,
-				sizeof(struct in6_addr)) ^ from.sin6_port) %
+    hashval = (HM->hashmem((char *) &from.sin6_addr,
+			   sizeof(struct in6_addr)) ^ from.sin6_port) %
 								    udphtabsz;
     hash = &udphtab[hashval];
     pthread_mutex_lock(&udpmutex);
@@ -610,7 +609,7 @@ void Udp::recv(int n)
     socklen_t fromlen;
     int size;
     unsigned short hashval;
-    Hashtab::Entry **hash;
+    Hash::Entry **hash;
     XConnection *conn;
     char *p;
 
@@ -758,7 +757,7 @@ static void *udp_run(void *arg)
 
 static int nusers;			/* # of users */
 static XConnection **connections;	/* connections array */
-static Hashtab::Entry *flist;		/* list of free connections */
+static Hash::Entry *flist;		/* list of free connections */
 static PortDesc *tdescs, *bdescs;	/* telnet & binary descriptor arrays */
 static int ntdescs, nbdescs;		/* # telnet & binary ports */
 static fd_set infds;			/* file descriptor input bitmap */
@@ -1120,7 +1119,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	udescs[n].accept = FALSE;
     }
 
-    flist = (Hashtab::Entry *) NULL;
+    flist = (Hash::Entry *) NULL;
     connections = ALLOC(XConnection*, nusers = maxusers);
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	*conn = new XConnection();
@@ -1128,9 +1127,9 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	flist = *conn;
     }
 
-    udphtab = ALLOC(Hashtab::Entry*, udphtabsz = maxusers);
-    memset(udphtab, '\0', udphtabsz * sizeof(Hashtab::Entry*));
-    chtab = Hashtab::create(maxusers, UDPHASHSZ, TRUE);
+    udphtab = ALLOC(Hash::Entry*, udphtabsz = maxusers);
+    memset(udphtab, '\0', udphtabsz * sizeof(Hash::Entry*));
+    chtab = HM->create(maxusers, UDPHASHSZ, TRUE);
     if (nudescs != 0) {
 	udpstop = FALSE;
 	pthread_mutex_init(&udpmutex, NULL);
@@ -1363,7 +1362,7 @@ XConnection *XConnection::create(int portfd, int port)
 XConnection *XConnection::createUdp(int port)
 {
     XConnection *conn;
-    Hashtab::Entry **hash;
+    Hash::Entry **hash;
 
     conn = (XConnection *) flist;
     flist = conn->next;
@@ -1488,7 +1487,7 @@ bool XConnection::attach()
 bool XConnection::udp(char *challenge, unsigned int len)
 {
     char buffer[UDPHASHSZ];
-    Hashtab::Entry **hash;
+    Hash::Entry **hash;
     XConnection *conn;
 
     if (len == 0 || len > BINBUF_SIZE || udpbuf != (char *) NULL) {
@@ -1530,7 +1529,7 @@ bool XConnection::udp(char *challenge, unsigned int len)
  */
 void XConnection::del()
 {
-    Hashtab::Entry **hash;
+    Hash::Entry **hash;
 
     if (fd >= 0) {
 	close(fd);
@@ -1548,7 +1547,7 @@ void XConnection::del()
 		hash = chtab->lookup(name, FALSE);
 # ifdef INET6
 	    } else if (addr->ipnum.ipv6) {
-		hash = &udphtab[(Hashtab::hashmem((char *) &addr->ipnum,
+		hash = &udphtab[(HM->hashmem((char *) &addr->ipnum,
 				 sizeof(struct in6_addr)) ^ port) % udphtabsz];
 # endif
 	    } else {
@@ -1611,7 +1610,7 @@ int Connection::select(Uint t, unsigned int mtime)
      * data only.
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
-    if (flist == (Hashtab::Entry *) NULL) {
+    if (flist == (Hash::Entry *) NULL) {
 	/* can't accept new connections, so don't check for them */
 	for (n = ntdescs; n != 0; ) {
 	    --n;
@@ -1912,7 +1911,7 @@ Connection *Connection::connect(void *addr, int len)
     int on;
     long arg;
 
-    if (flist == (Hashtab::Entry *) NULL) {
+    if (flist == (Hash::Entry *) NULL) {
        return NULL;
     }
 
@@ -1976,10 +1975,10 @@ Connection *Connection::connectDgram(int uport, void *addr, int len)
 {
     In46Addr ipnum;
     XConnection *conn, *c;
-    Hashtab::Entry **hash;
+    Hash::Entry **hash;
     unsigned short port, hashval;
 
-    if (flist == (Hashtab::Entry *) NULL) {
+    if (flist == (Hash::Entry *) NULL) {
        return NULL;
     }
 
@@ -2031,7 +2030,7 @@ Connection *Connection::connectDgram(int uport, void *addr, int len)
     }
 
     if (ipnum.ipv6) {
-	hashval = (Hashtab::hashmem((char *) &ipnum,
+	hashval = (HM->hashmem((char *) &ipnum,
 				sizeof(struct in6_addr)) ^ port) % udphtabsz;
     } else
 # endif
@@ -2273,7 +2272,7 @@ Connection *Connection::import(int fd, char *addr, unsigned short port,
 		conn->udp(buf, bufsz);
 	    }
 	    if (flags & CONN_UCHAN) {
-		Hashtab::Entry **hash;
+		Hash::Entry **hash;
 
 		conn->bufsz = bufsz;
 		MM->staticMode();
@@ -2282,7 +2281,7 @@ Connection *Connection::import(int fd, char *addr, unsigned short port,
 		memcpy(conn->udpbuf, buf, bufsz);
 # ifdef INET6
 		if (inaddr.ipv6) {
-		    hash = &udphtab[(Hashtab::hashmem((char *) &inaddr.addr6,
+		    hash = &udphtab[(HM->hashmem((char *) &inaddr.addr6,
 			   sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
 		} else
 # endif

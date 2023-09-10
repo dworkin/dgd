@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,7 +25,7 @@
 
 # define STR_CHUNK	128
 
-struct StrHash : public Hashtab::Entry, public ChunkAllocated {
+struct StrHash : public Hash::Entry, public ChunkAllocated {
     String *str;		/* string entry */
     Uint index;			/* building index */
 };
@@ -33,7 +33,7 @@ struct StrHash : public Hashtab::Entry, public ChunkAllocated {
 static Chunk<String, STR_CHUNK> schunk;
 static Chunk<StrHash, STR_CHUNK> hchunk;
 
-static Hashtab *sht;		/* string merge table */
+static Hash::Hashtab *sht;		/* string merge table */
 
 
 String::String(const char *text, long len)
@@ -96,7 +96,7 @@ void String::clean()
  */
 void String::merge()
 {
-    sht = Hashtab::create(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
+    sht = HM->create(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
 }
 
 /*
@@ -120,7 +120,7 @@ Uint String::put(Uint n)
 	     * Not in the hash table. Make a new entry.
 	     */
 	    s = *h = chunknew (hchunk) StrHash;
-	    s->next = (Hashtab::Entry *) NULL;
+	    s->next = (Hash::Entry *) NULL;
 	    s->name = text;
 	    s->str = this;
 	    s->index = n;
@@ -139,11 +139,11 @@ Uint String::put(Uint n)
  */
 void String::clear()
 {
-    if (sht != (Hashtab *) NULL) {
+    if (sht != (Hash::Hashtab *) NULL) {
 	delete sht;
 
 	hchunk.clean();
-	sht = (Hashtab *) NULL;
+	sht = (Hash::Hashtab *) NULL;
     }
 }
 

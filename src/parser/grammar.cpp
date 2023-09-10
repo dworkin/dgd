@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -457,7 +457,7 @@ int RgxNode::token(String *str, ssizet *strlen, char *buffer,
 }
 
 
-class Rule : public Hashtab::Entry, public ChunkAllocated {
+class Rule : public Hash::Entry, public ChunkAllocated {
 public:
     static Rule *create(class RlChunk **c, int type);
 
@@ -736,7 +736,7 @@ String *Grammar::create(Rule *rgxlist, Rule *strlist, Rule *estrlist,
 String *Grammar::parse(String *gram)
 {
     char buffer[STRINGSZ];
-    Hashtab *ruletab, *strtab;
+    Hash::Hashtab *ruletab, *strtab;
     RsChunk *rschunks;
     RlChunk *rlchunks;
     Rule *rgxlist, *strlist, *estrlist, *prodlist, *tmplist, *rr, *rrl;
@@ -756,8 +756,8 @@ String *Grammar::parse(String *gram)
 # endif
 
     /* initialize */
-    ruletab = Hashtab::create(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
-    strtab = Hashtab::create(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
+    ruletab = HM->create(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
+    strtab = HM->create(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
     rschunks = (RsChunk *) NULL;
     rlchunks = (RlChunk *) NULL;
     rgxlist = strlist = estrlist = prodlist = tmplist = (Rule *) NULL;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -42,14 +42,14 @@ public:
     }
 } mchunk;
 
-static Hashtab *mt;		/* macro hash table */
+static Hash::Hashtab *mt;	/* macro hash table */
 
 /*
  * intiialize the macro table
  */
 void Macro::init()
 {
-    mt = Hashtab::create(MACTABSZ, MACHASHSZ, FALSE);
+    mt = HM->create(MACTABSZ, MACHASHSZ, FALSE);
 }
 
 /*
@@ -57,9 +57,9 @@ void Macro::init()
  */
 void Macro::clear()
 {
-    if (mt != (Hashtab *) NULL) {
+    if (mt != (Hash::Hashtab *) NULL) {
 	delete mt;
-	mt = (Hashtab *) NULL;
+	mt = (Hash::Hashtab *) NULL;
 
 	mchunk.items();
 	mchunk.clean();
@@ -71,7 +71,7 @@ void Macro::clear()
  */
 Macro::Macro(const char *name)
 {
-    next = (Hashtab::Entry *) NULL;
+    next = (Hash::Entry *) NULL;
     this->name = strcpy(ALLOC(char, strlen(name) + 1), name);
     replace = (char *) NULL;
 }
@@ -94,7 +94,7 @@ Macro::~Macro()
  */
 void Macro::define(const char *name, const char *replace, int narg)
 {
-    Hashtab::Entry **m;
+    Hash::Entry **m;
     Macro *mac;
 
     m = mt->lookup(name, FALSE);
@@ -124,7 +124,7 @@ void Macro::define(const char *name, const char *replace, int narg)
  */
 void Macro::undef(char *name)
 {
-    Hashtab::Entry **m;
+    Hash::Entry **m;
     Macro *mac;
 
     m = mt->lookup(name, FALSE);

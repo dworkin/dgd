@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,51 +20,133 @@
 # ifndef H_HASH
 # define H_HASH
 
-class Hashtab : public Allocated {
+extern class Hash *HM;
+
+class Hash {
 public:
-    virtual ~Hashtab() { }
-
-    static Hashtab *create(unsigned int size, unsigned int maxlen, bool mem);
-
-    static unsigned char hashchar(char c) {
-	return tab[(unsigned char) c];
-    }
-    static unsigned short hashstr(const char *str, unsigned int len);
-    static unsigned short hashmem(const char *mem, unsigned int len);
-
     struct Entry {
 	Entry *next;		/* next entry in hash table */
 	const char *name;	/* string to use in hashing */
     };
 
-    virtual Entry **table() = 0;
-    virtual Uint size() = 0;
-    virtual Entry **lookup(const char*, bool) = 0;
+    class Hashtab : public Allocated {
+    public:
+	/*
+	 * create a new hashtable of size "size", where "maxlen" characters
+	 * of each string are significant
+	 */
+	Hashtab(unsigned int size, unsigned int maxlen, bool mem) :
+	    size(size), maxlen(maxlen), mem(mem) {
+	    table = ALLOC(Entry*, size);
+	    memset(table, '\0', size * sizeof(Entry*));
+	}
+
+	/*
+	 * delete a hash table
+	 */
+	virtual ~Hashtab() {
+	    FREE(table);
+	}
+
+	/*
+	 * lookup a name in a hashtable, return the address of the entry
+	 * or &NULL if none found
+	 */
+	Entry **lookup(const char *name, bool move) {
+	    Entry **first, **e, *next;
+
+	    if (mem) {
+		first = e = &(table[HM->hashmem(name, maxlen) % size]);
+		while (*e != (Entry *) NULL) {
+		    if (memcmp((*e)->name, name, maxlen) == 0) {
+			if (move && e != first) {
+			    /* move to first position */
+			    next = (*e)->next;
+			    (*e)->next = *first;
+			    *first = *e;
+			    *e = next;
+			    return first;
+			}
+			break;
+		    }
+		    e = &((*e)->next);
+		}
+	    } else {
+		first = e = &(table[HM->hashstr(name, maxlen) % size]);
+		while (*e != (Entry *) NULL) {
+		    if (strcmp((*e)->name, name) == 0) {
+			if (move && e != first) {
+			    /* move to first position */
+			    next = (*e)->next;
+			    (*e)->next = *first;
+			    *first = *e;
+			    *e = next;
+			    return first;
+			}
+			break;
+		    }
+		    e = &((*e)->next);
+		}
+	    }
+	    return e;
+	}
+
+	Uint size;		/* size of hash table */
+	Entry **table;		/* hash table entries */
+
+    private:
+	unsigned short maxlen;	/* max length of string to be used in hashing */
+	bool mem;		/* \0-terminated string or raw memory? */
+    };
+
+    /*
+     * hashtable factory
+     */
+    virtual Hashtab *create(unsigned int size, unsigned int maxlen, bool mem) {
+	return new Hashtab(size, maxlen, mem);
+    }
+
+    virtual unsigned char hashchar(char c) {
+	return (unsigned char) c;
+    }
+
+    /*
+     * hash string
+     */
+    virtual unsigned short hashstr(const char *str, unsigned int len) {
+	unsigned char h, l;
+
+	h = l = 0;
+	while (*str != '\0' && len > 0) {
+	    h = l;
+	    l = hashchar(l ^ (unsigned char) *str++);
+	    --len;
+	}
+	return (unsigned short) ((h << 8) | l);
+    }
+
+    /*
+     * hash memory
+     */
+    virtual unsigned short hashmem(const char *mem, unsigned int len) {
+	unsigned char h, l;
+
+	h = l = 0;
+	while (len > 0) {
+	    h = l;
+	    l = hashchar(l ^ (unsigned char) *mem++);
+	    --len;
+	}
+	return (unsigned short) ((h << 8) | l);
+    }
+};
+
+class HashImpl : public Hash {
+public:
+    virtual unsigned char hashchar(char c);
 
 private:
     static unsigned char tab[256];
-};
-
-class HashtabImpl : public Hashtab {
-public:
-    HashtabImpl(unsigned int size, unsigned int maxlen, bool mem);
-    virtual ~HashtabImpl();
-
-    virtual Entry **table() {
-	return m_table;
-    }
-
-    virtual Uint size() {
-	return m_size;
-    }
-
-    virtual Entry **lookup(const char *name, bool move);
-
-private:
-    Uint m_size;		/* size of hash table (power of two) */
-    unsigned short m_maxlen;	/* max length of string to be used in hashing */
-    bool m_mem;			/* \0-terminated string or raw memory? */
-    Entry **m_table;		/* hash table entries */
 };
 
 # endif /* H_HASH */

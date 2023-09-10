@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -85,7 +85,7 @@ public:
 class ObjPlane : public Allocated {
 public:
     ObjPlane(ObjPlane *prev) {
-	htab = (Hashtab *) NULL;
+	htab = (Hash::Hashtab *) NULL;
 	optab = (ObjPatchTable *) NULL;
 
 	if (prev != (ObjPlane *) NULL) {
@@ -115,7 +115,7 @@ public:
 		prev->htab = htab;
 		prev->optab = optab;
 	    } else {
-		if (htab != (Hashtab *) NULL) {
+		if (htab != (Hash::Hashtab *) NULL) {
 		    delete htab;
 		}
 		delete optab;
@@ -141,7 +141,7 @@ public:
 	prev->boot = boot;
     }
 
-    Hashtab *htab;		/* object name hash table */
+    Hash::Hashtab *htab;	/* object name hash table */
     ObjPatchTable *optab;	/* object patch table */
     uintptr_t clean;		/* list of objects to clean */
     uintptr_t upgrade;		/* list of upgrade objects */
@@ -185,7 +185,7 @@ void Object::init(unsigned int n, Uint interval)
     ocmap = ALLOC(Uint, BMAP(n));
     memset(ocmap, '\0', BMAP(n) * sizeof(Uint));
     for (n = 4; n < otabsize; n <<= 1) ;
-    baseplane.htab = Hashtab::create(n >> 2, OBJHASHSZ, FALSE);
+    baseplane.htab = HM->create(n >> 2, OBJHASHSZ, FALSE);
     baseplane.upgrade = baseplane.clean = OBJ_NONE;
     baseplane.destruct = baseplane.free = OBJ_NONE;
     baseplane.nobjects = 0;
@@ -235,15 +235,14 @@ Object *Object::access(unsigned int index, int access)
 	obj = &oplane->optab->addPatch(index, oplane)->obj;
 	if (obj->name != (char *) NULL) {
 	    char *name;
-	    Hashtab::Entry **h;
+	    Hash::Entry **h;
 
 	    /* copy object name to higher plane */
 	    strcpy(name = ALLOC(char, strlen(obj->name) + 1), obj->name);
 	    obj->name = name;
 	    if (obj->count != 0) {
-		if (oplane->htab == (Hashtab *) NULL) {
-		    oplane->htab = Hashtab::create(OBJPATCHHTABSZ, OBJHASHSZ,
-						   FALSE);
+		if (oplane->htab == (Hash::Hashtab *) NULL) {
+		    oplane->htab = HM->create(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
 		}
 		h = oplane->htab->lookup(name, FALSE);
 		obj->next = *h;
@@ -337,7 +336,7 @@ void Object::commitPlane()
 		     * commit to base plane
 		     */
 		    if (op->obj.name != (char *) NULL) {
-			Hashtab::Entry **h;
+			Hash::Entry **h;
 
 			if (obj->name == (char *) NULL) {
 			    char *name;
@@ -454,7 +453,7 @@ void Object::discardPlane()
 			}
 			FREE(op->obj.name);
 		    } else {
-			Hashtab::Entry **h;
+			Hash::Entry **h;
 
 			if (op->obj.count != 0) {
 			    /*
@@ -532,7 +531,7 @@ Object *Object::create(char *name, Control *ctrl)
     Object *o;
     Inherit *inh;
     int i;
-    Hashtab::Entry **h;
+    Hash::Entry **h;
 
     /* allocate object */
     o = alloc();
@@ -544,8 +543,8 @@ Object *Object::create(char *name, Control *ctrl)
     o->name = strcpy(ALLOC(char, strlen(name) + 1), name);
     if (base) {
 	MM->dynamicMode();
-    } else if (oplane->htab == (Hashtab *) NULL) {
-	oplane->htab = Hashtab::create(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
+    } else if (oplane->htab == (Hash::Hashtab *) NULL) {
+	oplane->htab = HM->create(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
     }
     h = oplane->htab->lookup(name, FALSE);
     o->next = *h;
@@ -657,7 +656,7 @@ void Object::upgrade(Control *ctrl, Frame *f)
     }
 
     /* add to upgrades list */
-    obj->next = (Hashtab::Entry *) oplane->upgrade;
+    obj->next = (Hash::Entry *) oplane->upgrade;
     oplane->upgrade = obj->index;
 
     /* mark as upgrading */
@@ -729,7 +728,7 @@ void Object::del(Frame *f)
     }
 
     /* put in clean list */
-    next = (Hashtab::Entry *) oplane->clean;
+    next = (Hash::Entry *) oplane->clean;
     oplane->clean = index;
 }
 
@@ -836,7 +835,7 @@ Object *Object::find(char *name, int access)
 	}
     } else {
 	/* look it up in the hash table */
-	if (oplane->htab == (Hashtab *) NULL ||
+	if (oplane->htab == (Hash::Hashtab *) NULL ||
 	    (o = (Object *) *oplane->htab->lookup(name, TRUE)) ==
 							    (Object *) NULL) {
 	    if (oplane != &baseplane) {
@@ -1349,7 +1348,7 @@ void Object::restore(int fd, bool part)
 	    MM->dynamicMode();
 
 	    if (o->count != 0) {
-		Hashtab::Entry **h;
+		Hash::Entry **h;
 
 		/* add name to lookup table */
 		h = baseplane.htab->lookup(p, FALSE);

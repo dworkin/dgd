@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,7 +24,7 @@
  * Generic string hash table.
  */
 
-unsigned char Hashtab::tab[256] = {
+unsigned char HashImpl::tab[256] = {
     0001, 0127, 0061, 0014, 0260, 0262, 0146, 0246,
     0171, 0301, 0006, 0124, 0371, 0346, 0054, 0243,
     0016, 0305, 0325, 0265, 0241, 0125, 0332, 0120,
@@ -60,109 +60,13 @@ unsigned char Hashtab::tab[256] = {
 };
 
 /*
- * hashtable factory
- */
-Hashtab *Hashtab::create(unsigned int size, unsigned int maxlen, bool mem)
-{
-    return new HashtabImpl(size, maxlen, mem);
-}
-
-/*
- * Hash string s, considering at most len characters. Return
- * an unsigned modulo size.
+ * hash a single character using lookup table
  * Based on Peter K. Pearson's article in CACM 33-6, pp 677.
  */
-unsigned short Hashtab::hashstr(const char *str, unsigned int len)
+unsigned char HashImpl::hashchar(char c)
 {
-    unsigned char h, l;
-
-    h = l = 0;
-    while (*str != '\0' && len > 0) {
-	h = l;
-	l = tab[l ^ (unsigned char) *str++];
-	--len;
-    }
-    return (unsigned short) ((h << 8) | l);
+    return tab[c];
 }
 
-/*
- * hash memory
- */
-unsigned short Hashtab::hashmem(const char *mem, unsigned int len)
-{
-    unsigned char h, l;
-
-    h = l = 0;
-    while (len > 0) {
-	h = l;
-	l = tab[l ^ (unsigned char) *mem++];
-	--len;
-    }
-    return (unsigned short) ((h << 8) | l);
-}
-
-
-/*
- * create a new hashtable of size "size", where "maxlen" characters
- * of each string are significant
- */
-HashtabImpl::HashtabImpl(unsigned int size, unsigned int maxlen, bool mem)
-{
-    m_size = size;
-    m_maxlen = maxlen;
-    m_mem = mem;
-    m_table = ALLOC(Entry*, size);
-    memset(m_table, '\0', size * sizeof(Entry*));
-}
-
-/*
- * delete a hash table
- */
-HashtabImpl::~HashtabImpl()
-{
-    FREE(m_table);
-}
-
-/*
- * lookup a name in a hashtable, return the address of the entry
- * or &NULL if none found
- */
-Hashtab::Entry **HashtabImpl::lookup(const char *name, bool move)
-{
-    Entry **first, **e, *next;
-
-    if (m_mem) {
-	first = e = &(m_table[hashmem(name, m_maxlen) % m_size]);
-	while (*e != (Entry *) NULL) {
-	    if (memcmp((*e)->name, name, m_maxlen) == 0) {
-		if (move && e != first) {
-		    /* move to first position */
-		    next = (*e)->next;
-		    (*e)->next = *first;
-		    *first = *e;
-		    *e = next;
-		    return first;
-		}
-		break;
-	    }
-	    e = &((*e)->next);
-	}
-    } else {
-	first = e = &(m_table[hashstr(name, m_maxlen) % m_size]);
-	while (*e != (Entry *) NULL) {
-	    if (strcmp((*e)->name, name) == 0) {
-		if (move && e != first) {
-		    /* move to first position */
-		    next = (*e)->next;
-		    (*e)->next = *first;
-		    *first = *e;
-		    *e = next;
-		    return first;
-		}
-		break;
-	    }
-	    e = &((*e)->next);
-	}
-    }
-    return e;
-}
+static HashImpl HMI;
+Hash *HM = &HMI;

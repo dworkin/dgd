@@ -254,10 +254,10 @@ void Control::del()
 }
 
 
-class ObjHash : public Hashtab::Entry, public Allocated {
+class ObjHash : public Hash::Entry, public Allocated {
 public:
     ObjHash(const char *name, ObjHash **h) {
-	next = (Hashtab::Entry *) NULL;
+	next = (Hash::Entry *) NULL;
 	this->name = name;
 	index = -1;		/* new object */
 	priv = 0;
@@ -283,7 +283,7 @@ public:
      * initialize the object hash table
      */
     static void init() {
-	otab = Hashtab::create(OMERGETABSZ, OBJHASHSZ, FALSE);
+	otab = HM->create(OMERGETABSZ, OBJHASHSZ, FALSE);
     }
 
     /*
@@ -299,9 +299,9 @@ public:
 	}
 	olist = (ObjHash **) NULL;
 
-	if (otab != (Hashtab *) NULL) {
+	if (otab != (Hash::Hashtab *) NULL) {
 	    delete otab;
-	    otab = (Hashtab *) NULL;
+	    otab = (Hash::Hashtab *) NULL;
 	}
     }
 
@@ -312,18 +312,18 @@ public:
 private:
     ObjHash **list;		/* next in linked list */
 
-    static Hashtab *otab;	/* object hash table */
+    static Hash::Hashtab *otab;	/* object hash table */
     static ObjHash **olist;	/* list of all object hash table entries */
 };
 
-Hashtab *ObjHash::otab;
+Hash::Hashtab *ObjHash::otab;
 ObjHash **ObjHash::olist;
 
 
 # define VFH_CHUNK	64
 
 /* variable/function hash table */
-class VFH : public Hashtab::Entry, public ChunkAllocated {
+class VFH : public Hash::Entry, public ChunkAllocated {
 public:
     static void create(String *str, ObjHash *ohash, unsigned short ct,
 		       String *cvstr, short idx, VFH **addr);
@@ -447,8 +447,8 @@ Label *Label::labels;
 static ObjHash *inherits[MAX_INHERITS * 2];	/* inherited objects */
 static int ninherits;			/* # inherited objects */
 static bool privinherit;		/* TRUE if private inheritance used */
-static Hashtab *vtab;			/* variable merge table */
-static Hashtab *ftab;			/* function merge table */
+static Hash::Hashtab *vtab;		/* variable merge table */
+static Hash::Hashtab *ftab;		/* function merge table */
 static unsigned short nvars;		/* # variables */
 static unsigned short nsymbs;		/* # symbols */
 static int nfclash;			/* # prototype clashes */
@@ -460,8 +460,8 @@ static Uint nifcalls;			/* # inherited function calls */
 void Control::prepare()
 {
     ObjHash::init();
-    vtab = Hashtab::create(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
-    ftab = Hashtab::create(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
+    vtab = HM->create(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
+    ftab = HM->create(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
 }
 
 /*
@@ -1750,13 +1750,13 @@ bool Control::checkFuncs()
     }
 
     if (nfclash != 0 || privinherit) {
-	Hashtab::Entry **t;
+	Hash::Entry **t;
 	unsigned short sz;
 	VFH **f, **n;
 	bool clash;
 
 	clash = FALSE;
-	for (t = ftab->table(), sz = ftab->size(); sz > 0; t++, --sz) {
+	for (t = ftab->table, sz = ftab->size; sz > 0; t++, --sz) {
 	    for (f = (VFH **) t; *f != (VFH *) NULL; ) {
 		if ((*f)->ohash == (ObjHash *) NULL) {
 		    /*
@@ -2043,7 +2043,7 @@ void Control::makeSymbols()
 		/*
 		 * all non-private functions are put into the hash table
 		 */
-		x = Hashtab::hashstr(name, SYMBHASH) % nsymbs;
+		x = HM->hashstr(name, SYMBHASH) % nsymbs;
 		if (symtab[x].next == x) {
 		    /*
 		     * new entry
@@ -2147,11 +2147,11 @@ void Control::clear()
 {
     ObjHash::clear();
     VFH::clear();
-    if (vtab != (Hashtab *) NULL) {
+    if (vtab != (Hash::Hashtab *) NULL) {
 	delete vtab;
 	delete ftab;
-	vtab = (Hashtab *) NULL;
-	ftab = (Hashtab *) NULL;
+	vtab = (Hash::Hashtab *) NULL;
+	ftab = (Hash::Hashtab *) NULL;
     }
     Label::clear();
 
@@ -3284,7 +3284,7 @@ Symbol *Control::symb(const char *func, unsigned int len)
 	return (Symbol *) NULL;
     }
 
-    i = Hashtab::hashstr(func, SYMBHASH) % i;
+    i = HM->hashstr(func, SYMBHASH) % i;
     symb1 = symb = &symbs()[i];
     ctrl = OBJR(inherits[UCHAR(symb->inherit)].oindex)->control();
     f = ctrl->funcs() + UCHAR(symb->index);
