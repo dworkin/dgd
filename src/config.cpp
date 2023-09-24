@@ -1294,7 +1294,7 @@ bool Config::includes()
     puts("# define O_CALLOUTS\t4\t/* callouts in object */\012");
     puts("# define O_INDEX\t5\t/* unique ID for master object */\012");
     puts("# define O_UNDEFINED\t6\t/* undefined functions */\012");
-    puts("# define O_SPECIAL\t6\t/* object has special role */\012");
+    puts("# define O_SPECIAL\t7\t/* object has special role */\012");
 
     puts("\012# define CO_HANDLE\t0\t/* callout handle */\012");
     puts("# define CO_FUNCTION\t1\t/* function name */\012");
