@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1210,7 +1210,9 @@ String *Asi::numtostr(bool minus)
 	} else {
 	    /* skip leading 0xff bytes */
 	    for (len = 24; UCHAR(bits >> len) == 0xff; len -= 8) ;
-	    prefix = TRUE;
+	    if (!((bits >> len) & 0x80)) {
+		prefix = TRUE;
+	    }
 	}
     } else {
 	/* skip leading 0x00 bytes */
