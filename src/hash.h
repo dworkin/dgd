@@ -106,8 +106,8 @@ public:
 	return new Hashtab(size, maxlen, mem);
     }
 
-    virtual unsigned char hashchar(char c) {
-	return (unsigned char) c;
+    virtual unsigned char hashchar(unsigned char c) {
+	return c;
     }
 
     /*
@@ -143,7 +143,7 @@ public:
 
 class HashImpl : public Hash {
 public:
-    virtual unsigned char hashchar(char c);
+    virtual unsigned char hashchar(unsigned char c);
 
 private:
     static unsigned char tab[256];

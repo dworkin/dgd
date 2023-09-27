@@ -63,7 +63,7 @@ unsigned char HashImpl::tab[256] = {
  * hash a single character using lookup table
  * Based on Peter K. Pearson's article in CACM 33-6, pp 677.
  */
-unsigned char HashImpl::hashchar(char c)
+unsigned char HashImpl::hashchar(unsigned char c)
 {
     return tab[c];
 }
