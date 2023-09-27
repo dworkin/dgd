@@ -92,18 +92,20 @@ Macro::~Macro()
 /*
  * define a macro
  */
-void Macro::define(const char *name, const char *replace, int narg)
+bool Macro::define(const char *name, const char *replace, int narg)
 {
+    bool status;
     Hash::Entry **m;
     Macro *mac;
 
+    status = TRUE;
     m = mt->lookup(name, FALSE);
     if ((Macro *) *m != (Macro *) NULL) {
 	/* the macro already exists. */
 	mac = (Macro *) *m;
 	if (mac->replace != (char *) NULL &&
 	    (mac->narg != narg || strcmp(mac->replace, replace) != 0)) {
-	    warning("macro %s redefined", name);
+	    status = FALSE;
 	}
     } else {
 	*m = mac = chunknew (mchunk) Macro(name);
@@ -117,6 +119,8 @@ void Macro::define(const char *name, const char *replace, int narg)
 	mac->replace = (char *) NULL;
     }
     mac->narg = narg;
+
+    return status;
 }
 
 /*

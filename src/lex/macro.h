@@ -26,7 +26,7 @@ public:
 
     static void init();
     static void clear();
-    static void define(const char *name, const char *replace, int narg);
+    static bool define(const char *name, const char *replace, int narg);
     static void undef(char *name);
     static Macro *lookup(char *name);
 

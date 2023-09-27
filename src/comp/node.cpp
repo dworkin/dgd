@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,8 +24,7 @@
 # include "xfloat.h"
 # include "data.h"
 # include "interpret.h"
-# include "macro.h"
-# include "token.h"
+# include "ppcontrol.h"
 # include "node.h"
 
 # define NODE_CHUNK	128
@@ -85,7 +84,7 @@ Node *Node::createInt(LPCint num)
 {
     Node *n;
 
-    n = create(TokenBuf::line());
+    n = create(PP->line());
     n->type = N_INT;
     n->flags = F_CONST;
     n->mod = T_INT;
@@ -101,7 +100,7 @@ Node *Node::createFloat(Float *flt)
 {
     Node *n;
 
-    n = create(TokenBuf::line());
+    n = create(PP->line());
     n->type = N_FLOAT;
     n->flags = F_CONST;
     n->mod = T_FLOAT;
@@ -117,7 +116,7 @@ Node *Node::createNil()
 {
     Node *n;
 
-    n = create(TokenBuf::line());
+    n = create(PP->line());
     n->type = nil_node;
     n->flags = F_CONST;
     n->mod = Value::nil.type;
@@ -133,7 +132,7 @@ Node *Node::createStr(String *str)
 {
     Node *n;
 
-    n = create(TokenBuf::line());
+    n = create(PP->line());
     n->type = N_STR;
     n->flags = F_CONST;
     n->mod = T_STRING;
@@ -151,7 +150,7 @@ Node *Node::createVar(unsigned int type, int idx)
 {
     Node *n;
 
-    n = create(TokenBuf::line());
+    n = create(PP->line());
     n->type = N_VAR;
     n->mod = type;
     n->l.number = idx;
@@ -166,7 +165,7 @@ Node *Node::createType(int type, String *tclass)
 {
     Node *n;
 
-    n = create(TokenBuf::line());
+    n = create(PP->line());
     n->type = N_TYPE;
     n->mod = type;
     n->sclass = tclass;
@@ -184,7 +183,7 @@ Node *Node::createFcall(int mod, String *tclass, char *func, LPCint call)
 {
     Node *n;
 
-    n = create(TokenBuf::line());
+    n = create(PP->line());
     n->type = N_FUNC;
     n->mod = mod;
     n->sclass = tclass;
@@ -212,7 +211,7 @@ Node *Node::createMon(int type, int mod, Node *left)
 {
     Node *n;
 
-    n = create(TokenBuf::line());
+    n = create(PP->line());
     n->type = type;
     n->mod = mod;
     n->l.left = left;
@@ -228,7 +227,7 @@ Node *Node::createBin(int type, int mod, Node *left, Node *right)
 {
     Node *n;
 
-    n = create(TokenBuf::line());
+    n = create(PP->line());
     n->type = type;
     n->mod = mod;
     n->l.left = left;

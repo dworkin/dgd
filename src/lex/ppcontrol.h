@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,11 +17,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-class PP {
+class Preproc {
 public:
     static bool init(char *file, char **id, String **strs, int nstr, int level);
     static void clear();
+    static bool include(char *file, String **strs, int nstr);
+    static char *filename();
+    static unsigned short line();
     static int gettok();
+
+    virtual void error(const char *format, ...) {
+	va_list args;
+	char buf[4 * STRINGSZ];		/* file name + 2 * string + overhead */
+
+	sprintf(buf, "%s, %u: ", filename(), line());
+	va_start(args, format);
+	vsprintf(buf + strlen(buf), format, args);
+	va_end(args);
+	EC->message("%s\012", buf);     /* LF */
+    }
 
 private:
     static int wsgettok();
@@ -37,3 +51,10 @@ private:
     static int argnum(char **args, int narg, int token);
     static void do_define();
 };
+
+extern Preproc *PP;
+
+extern char *yytext;
+extern int yyleng;
+extern LPCint yynumber;
+extern Float yyfloat;

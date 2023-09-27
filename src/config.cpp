@@ -33,8 +33,6 @@
 # include "comm.h"
 # include "ext.h"
 # include "version.h"
-# include "macro.h"
-# include "token.h"
 # include "ppcontrol.h"
 # include "node.h"
 # include "parser.h"
@@ -829,7 +827,7 @@ static int ntports, nbports, ndports;
  */
 void Config::err(const char *err)
 {
-    EC->message("Config error, line %u: %s\012", TokenBuf::line(), err);/* LF */
+    EC->message("Config error, line %u: %s\012", PP->line(), err);	/* LF */
 }
 
 /*
@@ -850,7 +848,7 @@ bool Config::config()
     memset(dirs, '\0', sizeof(dirs));
     strs = (char **) NULL;
 
-    while ((c=PP::gettok()) != EOF) {
+    while ((c=PP->gettok()) != EOF) {
 	if (c != IDENTIFIER) {
 	    err("option expected");
 	    return FALSE;
@@ -875,12 +873,12 @@ bool Config::config()
 	    }
 	}
 
-	if (PP::gettok() != '=') {
+	if (PP->gettok() != '=') {
 	    err("'=' expected");
 	    return FALSE;
 	}
 
-	if ((c=PP::gettok()) != conf[m].type) {
+	if ((c=PP->gettok()) != conf[m].type) {
 	    if (c != INT_CONST && c != STRING_CONST && c != '(') {
 		err("syntax error");
 		return FALSE;
@@ -939,7 +937,7 @@ bool Config::config()
 	    break;
 
 	case '(':
-	    if (PP::gettok() != '{') {
+	    if (PP->gettok() != '{') {
 		err("'{' expected");
 		return FALSE;
 	    }
@@ -949,7 +947,7 @@ bool Config::config()
 	    case INCLUDE_DIRS:	strs = dirs; break;
 	    }
 	    for (;;) {
-		if (PP::gettok() != STRING_CONST) {
+		if (PP->gettok() != STRING_CONST) {
 		    err("string expected");
 		    return FALSE;
 		}
@@ -961,7 +959,7 @@ bool Config::config()
 		strs[l] = strcpy(ALLOC(char, strlen(yytext) + 1), yytext);
 		l++;
 		MM->dynamicMode();
-		if ((c=PP::gettok()) == '}') {
+		if ((c=PP->gettok()) == '}') {
 		    break;
 		}
 		if (c != ',') {
@@ -969,7 +967,7 @@ bool Config::config()
 		    return FALSE;
 		}
 	    }
-	    if (PP::gettok() != ')') {
+	    if (PP->gettok() != ')') {
 		err("')' expected");
 		return FALSE;
 	    }
@@ -977,12 +975,12 @@ bool Config::config()
 	    break;
 
 	case '[':
-	    if (PP::gettok() != '[') {
+	    if (PP->gettok() != '[') {
 		err("'[' expected");
 		return FALSE;
 	    }
 	    l = 0;
-	    if ((c=PP::gettok()) != ']') {
+	    if ((c=PP->gettok()) != ']') {
 		switch (m) {
 		case BINARY_PORT:
 		    strs = bhosts;
@@ -1016,11 +1014,11 @@ bool Config::config()
 					 yytext);
 			MM->dynamicMode();
 		    }
-		    if (PP::gettok() != ':') {
+		    if (PP->gettok() != ':') {
 			err("':' expected");
 			return FALSE;
 		    }
-		    if (PP::gettok() != INT_CONST) {
+		    if (PP->gettok() != INT_CONST) {
 			err("integer expected");
 			return FALSE;
 		    }
@@ -1029,17 +1027,17 @@ bool Config::config()
 			return FALSE;
 		    }
 		    ports[l++] = yylval.number;
-		    if ((c=PP::gettok()) == ']') {
+		    if ((c=PP->gettok()) == ']') {
 			break;
 		    }
 		    if (c != ',') {
 			err("',' expected");
 			return FALSE;
 		    }
-		    c = PP::gettok();
+		    c = PP->gettok();
 		}
 	    }
-	    if (PP::gettok() != ')') {
+	    if (PP->gettok() != ')') {
 		err("')' expected");
 		return FALSE;
 	    }
@@ -1059,12 +1057,12 @@ bool Config::config()
 	    break;
 
 	case ']':
-	    if (PP::gettok() != '[') {
+	    if (PP->gettok() != '[') {
 		err("'[' expected");
 		return FALSE;
 	    }
 	    l = 0;
-	    if ((c=PP::gettok()) != ']') {
+	    if ((c=PP->gettok()) != ']') {
 		for (;;) {
 		    if (l == MAX_STRINGS - 1) {
 			err("mapping too large");
@@ -1078,11 +1076,11 @@ bool Config::config()
 		    modules[l] = strcpy(ALLOC(char, strlen(yytext) + 1),
 					yytext);
 		    MM->dynamicMode();
-		    if (PP::gettok() != ':') {
+		    if (PP->gettok() != ':') {
 			err("':' expected");
 			return FALSE;
 		    }
-		    if (PP::gettok() != STRING_CONST) {
+		    if (PP->gettok() != STRING_CONST) {
 			err("string expected");
 			return FALSE;
 		    }
@@ -1090,17 +1088,17 @@ bool Config::config()
 		    modconf[l++] = strcpy(ALLOC(char, strlen(yytext) + 1),
 					  yytext);
 		    MM->dynamicMode();
-		    if ((c=PP::gettok()) == ']') {
+		    if ((c=PP->gettok()) == ']') {
 			break;
 		    }
 		    if (c != ',') {
 			err("',' expected");
 			return FALSE;
 		    }
-		    c = PP::gettok();
+		    c = PP->gettok();
 		}
 	    }
-	    if (PP::gettok() != ')') {
+	    if (PP->gettok() != ')') {
 		err("')' expected");
 		return FALSE;
 	    }
@@ -1108,7 +1106,7 @@ bool Config::config()
 	    break;
 	}
 	conf[m].set = TRUE;
-	if (PP::gettok() != ';') {
+	if (PP->gettok() != ';') {
 	    err("';' expected");
 	    return FALSE;
 	}
@@ -1491,14 +1489,14 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     /*
      * process config file
      */
-    if (!PP::init(path_native(buf, configfile), (char **) NULL,
+    if (!PP->init(path_native(buf, configfile), (char **) NULL,
 		  (String **) NULL, 0, 0)) {
 	EC->message("Config error: cannot open config file\012");	/* LF */
 	MM->finish();
 	return FALSE;
     }
     init = config();
-    PP::clear();
+    PP->clear();
     MM->purge();
     if (!init) {
 	MM->finish();

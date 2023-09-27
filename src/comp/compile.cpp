@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,8 +26,6 @@
 # include "data.h"
 # include "interpret.h"
 # include "path.h"
-# include "macro.h"
-# include "token.h"
 # include "ppcontrol.h"
 # include "node.h"
 # include "optimize.h"
@@ -620,7 +618,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 	    EC->error("Compilation nesting too deep");
 	}
 
-	PP::clear();
+	PP->clear();
 	Control::clear();
 	clear();
     } else if (current != (Context *) NULL) {
@@ -677,11 +675,11 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 	    }
 
 	    if (strs != (String **) NULL) {
-		PP::init(file_c, paths, strs, nstr, 1);
-	    } else if (!PP::init(file_c, paths, (String **) NULL, 0, 1)) {
+		PP->init(file_c, paths, strs, nstr, 1);
+	    } else if (!PP->init(file_c, paths, (String **) NULL, 0, 1)) {
 		EC->error("Could not compile \"/%s\"", file_c);
 	    }
-	    if (!TokenBuf::include(include, (String **) NULL, 0)) {
+	    if (!PP->include(include, (String **) NULL, 0)) {
 		EC->error("Could not include \"/%s\"", include);
 	    }
 
@@ -710,7 +708,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 
 	    } else if (nerrors == 0) {
 		/* another try */
-		PP::clear();
+		PP->clear();
 		Control::clear();
 		clear();
 	    } else {
@@ -720,14 +718,14 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 	}
 	EC->pop();
     } catch (const char*) {
-	PP::clear();
+	PP->clear();
 	Control::clear();
 	clear();
 	current = c.prev;
 	EC->error((char *) NULL);
     }
 
-    PP::clear();
+    PP->clear();
     if (!seen_decls) {
 	/*
 	 * object with inherit statements only (or nothing at all)
@@ -787,7 +785,7 @@ String *Compile::objecttype(Node *n)
 	Frame *f;
 
 	f = current->frame;
-	p = TokenBuf::filename();
+	p = PP->filename();
 	PUSH_STRVAL(f, String::create(p, strlen(p)));
 	PUSH_STRVAL(f, n->l.string);
 	DGD::callDriver(f, "object_type", 2);
@@ -1866,7 +1864,7 @@ Node *Compile::returnStmt(Node *n, int typechecked)
 void Compile::startCompound()
 {
     if (thisblock == (CodeBlock *) NULL) {
-	fline = TokenBuf::line();
+	fline = PP->line();
     }
     CodeBlock::create();
 }
@@ -2633,36 +2631,54 @@ unsigned short Compile::matchType(unsigned int type1, unsigned int type2)
 }
 
 /*
- * Call the driver object with the supplied error message.
+ * Forward the error to the preprocessor error handler.
  */
 void Compile::error(const char *format, ...)
 {
     va_list args;
-    char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
+    char buf[3 * STRINGSZ];	/* 2 * string + overhead */
 
-    if (driver_object != (char *) NULL &&
-	Object::find(driver_object, OACC_READ) != (Object *) NULL) {
-	Frame *f;
+    va_start(args, format);
+    vsprintf(buf, format, args);
+    va_end(args);
+    PP->error("%s", buf);
+}
 
-	f = current->frame;
-	fname = TokenBuf::filename();
-	PUSH_STRVAL(f, String::create(fname, strlen(fname)));
-	PUSH_INTVAL(f, TokenBuf::line());
+
+class PreprocImpl : public Preproc {
+public:
+    /*
+     * Call the driver object with the supplied error message.
+     */
+    virtual void error(const char *format, ...) {
+	va_list args;
+	char buf[3 * STRINGSZ];		/* 2 * string + overhead */
+
 	va_start(args, format);
 	vsprintf(buf, format, args);
 	va_end(args);
-	PUSH_STRVAL(f, String::create(buf, strlen(buf)));
 
-	DGD::callDriver(f, "compile_error", 3);
-	(f->sp++)->del();
-    } else {
-	/* there is no driver object to call; show the error on stderr */
-	sprintf(buf, "%s, %u: ", TokenBuf::filename(), TokenBuf::line());
-	va_start(args, format);
-	vsprintf(buf + strlen(buf), format, args);
-	va_end(args);
-	EC->message("%s\012", buf);     /* LF */
+	if (driver_object != (char *) NULL &&
+	    Object::find(driver_object, OACC_READ) != (Object *) NULL) {
+	    Frame *f;
+	    char *fname;
+
+	    f = current->frame;
+	    fname = PP->filename();
+	    PUSH_STRVAL(f, String::create(fname, strlen(fname)));
+	    PUSH_INTVAL(f, PP->line());
+	    PUSH_STRVAL(f, String::create(buf, strlen(buf)));
+
+	    DGD::callDriver(f, "compile_error", 3);
+	    (f->sp++)->del();
+	} else {
+	    /* there is no driver object to call; fall back to the default */
+	    Preproc::error("%s", buf);
+	}
+
+	nerrors++;
     }
+};
 
-    nerrors++;
-}
+static PreprocImpl PPI;
+Preproc *PP = &PPI;

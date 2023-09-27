@@ -25,6 +25,7 @@
 # include "special.h"
 # include "ppstr.h"
 # include "token.h"
+# include "ppcontrol.h"
 
 /*
  * The functions for getting a (possibly preprocessed) token from the input
@@ -338,7 +339,7 @@ void TokenBuf::skip_comment()
 	do {
 	    c = gc();
 	    if (c == EOF) {
-		error("EOF in comment");
+		PP->error("EOF in comment");
 		return;
 	    }
 	    if (c == LF) {
@@ -513,7 +514,7 @@ int TokenBuf::string(char quote)
 	    }
 	} else if (c == LF || c == EOF) {
 	    if (pp_level == 0) {
-		error("unterminated string");
+		PP->error("unterminated string");
 	    }
 	    uc(c);
 	    break;
@@ -526,7 +527,7 @@ int TokenBuf::string(char quote)
     }
 
     if (pp_level == 0 && p + n > yyend - 4) {
-	error("string too long");
+	PP->error("string too long");
     }
     *p = '\0';
     yyleng = p - yytext;
@@ -716,14 +717,14 @@ int TokenBuf::gettok()
 		yyfloat.low = 0;
 		if (pp_level == 0) {
 		    if (p == yyend) {
-			error("too long floating point constant");
+			PP->error("too long floating point constant");
 		    } else {
 			char *buf;
 
 			*p = '\0';
 			buf = yytext;
 			if (!Float::atof(&buf, &yyfloat)) {
-			    error("overflow in floating point constant");
+			    PP->error("overflow in floating point constant");
 			}
 		    }
 		}
@@ -732,9 +733,9 @@ int TokenBuf::gettok()
 		if (pp_level == 0) {
 		    /* unclear if this was decimal or octal */
 		    if (p == yyend) {
-			error("too long integer constant");
+			PP->error("too long integer constant");
 		    } else if (overflow) {
-			error("overflow in integer constant");
+			PP->error("overflow in integer constant");
 		    }
 		}
 		c = INT_CONST;
@@ -889,11 +890,11 @@ int TokenBuf::gettok()
 	uc(c);
 	if (pp_level == 0) {
 	    if (p == yyend) {
-		error("too long integer constant");
+		PP->error("too long integer constant");
 	    } else if (badoctal) {
-		error("bad octal constant");
+		PP->error("bad octal constant");
 	    } else if (overflow) {
-		error("overflow in integer constant");
+		PP->error("overflow in integer constant");
 	    }
 	}
 	c = INT_CONST;
@@ -934,9 +935,9 @@ int TokenBuf::gettok()
 	uc(c);
 	if (pp_level == 0) {
 	    if (p == yyend) {
-		error("too long integer constant");
+		PP->error("too long integer constant");
 	    } else if (overflow) {
-		error("overflow in integer constant");
+		PP->error("overflow in integer constant");
 	    }
 	}
 	c = INT_CONST;
@@ -962,7 +963,7 @@ int TokenBuf::gettok()
 	}
 	uc(c);
 	if (pp_level == 0 && p == yyend) {
-	    error("too long identifier");
+	    PP->error("too long identifier");
 	}
 	c = IDENTIFIER;
 	break;
@@ -972,11 +973,11 @@ int TokenBuf::gettok()
 	*p++ = c;
 	if (c == '\'') {
 	    if (pp_level == 0) {
-		error("too short character constant");
+		PP->error("too short character constant");
 	    }
 	} else if (c == LF || c == EOF) {
 	    if (pp_level == 0) {
-		error("unterminated character constant");
+		PP->error("unterminated character constant");
 	    }
 	    uc(c);
 	} else {
@@ -989,7 +990,7 @@ int TokenBuf::gettok()
 	    *p++ = c;
 	    if (c != '\'') {
 		if (pp_level == 0) {
-		    error("illegal character constant");
+		    PP->error("illegal character constant");
 		}
 		uc(c);
 	    }
@@ -1018,7 +1019,7 @@ void TokenBuf::skiptonl(int ws)
     for (;;) {
 	switch (gettok()) {
 	case EOF:
-	    error("unterminated line");
+	    PP->error("unterminated line");
 	    --pp_level;
 	    return;
 
@@ -1032,7 +1033,7 @@ void TokenBuf::skiptonl(int ws)
 
 	default:
 	    if (ws) {
-		error("bad token in control");
+		PP->error("bad token in control");
 		ws = FALSE;
 	    }
 	    break;
@@ -1124,7 +1125,7 @@ int TokenBuf::expand(Macro *mc)
 		if (token == EOF) {	/* sigh */
 		    line = ibuffer->_line;
 		    ibuffer->_line = startline;
-		    error("EOF in macro call");
+		    PP->error("EOF in macro call");
 		    ibuffer->_line = line;
 		    errcount++;
 		    break;
@@ -1134,7 +1135,7 @@ int TokenBuf::expand(Macro *mc)
 		    if (s->len < 0) {
 			line = ibuffer->_line;
 			ibuffer->_line = startline;
-			error("macro argument too long");
+			PP->error("macro argument too long");
 			ibuffer->_line = line;
 			errcount++;
 		    } else if (narg < mc->narg) {
@@ -1185,7 +1186,7 @@ int TokenBuf::expand(Macro *mc)
 	--pp_level;
 
 	if (errcount == 0 && narg != mc->narg) {
-	    error("macro argument count mismatch");
+	    PP->error("macro argument count mismatch");
 	    errcount++;
 	}
 
@@ -1305,7 +1306,7 @@ int TokenBuf::expand(Macro *mc)
 	    narg = s->len;	/* so s can be deleted before the push */
 	    delete s;
 	    if (narg < 0) {
-		error("macro expansion too large");
+		PP->error("macro expansion too large");
 	    } else {
 		push(mc, strcpy(ALLOC(char, narg + 1), ppbuf), narg, FALSE);
 	    }
