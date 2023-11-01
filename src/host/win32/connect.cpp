@@ -1022,7 +1022,7 @@ bool Connection::init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	flist = *conn;
     }
 
-    udphtab = ALLOC(HM->Entry*, udphtabsz = maxusers);
+    udphtab = ALLOC(Hash::Entry*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(Hash::Entry*));
     chtab = HM->create(maxusers, UDPHASHSZ, TRUE);
 
