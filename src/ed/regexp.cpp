@@ -428,12 +428,12 @@ bool RxBuf::match(const char *start, const char *text, bool ic, char *m,
 
 	case LBRAC:
 	    /* start of subexpression */
-	    se[*m++].start = t;
+	    se[UCHAR(*m++)].start = t;
 	    continue;
 
 	case RBRAC:
 	    /* end of subexpression */
-	    se[*m].size = t - se[*m].start;
+	    se[UCHAR(*m)].size = t - se[UCHAR(*m)].start;
 	    m++;
 	    continue;
 	}

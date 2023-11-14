@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -712,7 +712,7 @@ void CmdBuf::indent(const char *text)
 	sp = cb->stack;
 	ip = cb->ind;
 	for (;;) {
-	    top = *sp;
+	    top = UCHAR(*sp);
 	    if (top == LOPERATOR && token == RHOOK) {
 		/* ) after LOPERATOR is ROPERATOR */
 		token = ROPERATOR;
@@ -772,9 +772,9 @@ void CmdBuf::indent(const char *text)
 
 	    /* reduce handle */
 	    do {
-		top = *sp++;
+		top = UCHAR(*sp++);
 		ip++;
-	    } while (f[*sp] >= g[top]);
+	    } while (f[UCHAR(*sp)] >= g[top]);
 	}
 	cb->stack = sp;
 	cb->ind = ip;
