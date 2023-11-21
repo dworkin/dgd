@@ -41,6 +41,7 @@
 
 # define yylex		PP->gettok
 # define yyerror	Compile::error
+# define register	/* nothing */
 
 int nerrors;			/* number of errors encountered so far */
 static int ndeclarations;	/* number of declarations */
