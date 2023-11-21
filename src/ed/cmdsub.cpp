@@ -70,7 +70,7 @@ void CmdBuf::println(const char *text)
     cb = ccb;
 
     if (cb->flags & CB_NUMBER) {
-	sprintf(buffer, "%6ld  ", (long) cb->lineno++);
+	snprintf(buffer, sizeof(buffer), "%6ld  ", (long) cb->lineno++);
 	p = buffer + 8;
     } else {
 	p = buffer;

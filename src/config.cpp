@@ -1117,7 +1117,8 @@ bool Config::config()
 	    l != DATAGRAM_PORT && l != DATAGRAM_USERS) {
 	    char buffer[64];
 
-	    sprintf(buffer, "unspecified option %s", conf[l].name);
+	    snprintf(buffer, sizeof(buffer), "unspecified option %s",
+		     conf[l].name);
 	    err(buffer);
 	    return FALSE;
 	}
@@ -1250,7 +1251,7 @@ bool Config::includes()
 
     /* create status.h file */
     obuf = buf;
-    sprintf(buffer, "%s/status.h", dirs[0]);
+    snprintf(buffer, sizeof(buffer), "%s/status.h", dirs[0]);
     if (!open(buffer)) {
 	return FALSE;
     }
@@ -1303,33 +1304,33 @@ bool Config::includes()
     }
 
     /* create type.h file */
-    sprintf(buffer, "%s/type.h", dirs[0]);
+    snprintf(buffer, sizeof(buffer), "%s/type.h", dirs[0]);
     if (!open(buffer)) {
 	return FALSE;
     }
     puts("/*\012 * This file gives definitions for the value returned ");
     puts("by the\012 * typeof() kfun.  It is automatically generated ");
     puts("by DGD on startup.\012 */\012\012");
-    sprintf(buffer, "# define T_NIL\t\t%d\012", T_NIL);
+    snprintf(buffer, sizeof(buffer), "# define T_NIL\t\t%d\012", T_NIL);
     puts(buffer);
-    sprintf(buffer, "# define T_INT\t\t%d\012", T_INT);
+    snprintf(buffer, sizeof(buffer), "# define T_INT\t\t%d\012", T_INT);
     puts(buffer);
-    sprintf(buffer, "# define T_FLOAT\t%d\012", T_FLOAT);
+    snprintf(buffer, sizeof(buffer), "# define T_FLOAT\t%d\012", T_FLOAT);
     puts(buffer);
-    sprintf(buffer, "# define T_STRING\t%d\012", T_STRING);
+    snprintf(buffer, sizeof(buffer), "# define T_STRING\t%d\012", T_STRING);
     puts(buffer);
-    sprintf(buffer, "# define T_OBJECT\t%d\012", T_OBJECT);
+    snprintf(buffer, sizeof(buffer), "# define T_OBJECT\t%d\012", T_OBJECT);
     puts(buffer);
-    sprintf(buffer, "# define T_ARRAY\t%d\012", T_ARRAY);
+    snprintf(buffer, sizeof(buffer), "# define T_ARRAY\t%d\012", T_ARRAY);
     puts(buffer);
-    sprintf(buffer, "# define T_MAPPING\t%d\012", T_MAPPING);
+    snprintf(buffer, sizeof(buffer), "# define T_MAPPING\t%d\012", T_MAPPING);
     puts(buffer);
     if (!close()) {
 	return FALSE;
     }
 
     /* create connect.h file */
-    sprintf(buffer, "%s/connect.h", dirs[0]);
+    snprintf(buffer, sizeof(buffer), "%s/connect.h", dirs[0]);
     if (!open(buffer)) {
 	return FALSE;
     }
@@ -1346,7 +1347,7 @@ bool Config::includes()
     }
 
     /* create limits.h file */
-    sprintf(buffer, "%s/limits.h", dirs[0]);
+    snprintf(buffer, sizeof(buffer), "%s/limits.h", dirs[0]);
     if (!open(buffer)) {
 	return FALSE;
     }
@@ -1368,7 +1369,7 @@ bool Config::includes()
     }
 
     /* create float.h file */
-    sprintf(buffer, "%s/float.h", dirs[0]);
+    snprintf(buffer, sizeof(buffer), "%s/float.h", dirs[0]);
     if (!open(buffer)) {
 	return FALSE;
     }
@@ -1400,7 +1401,7 @@ bool Config::includes()
     }
 
     /* create trace.h file */
-    sprintf(buffer, "%s/trace.h", dirs[0]);
+    snprintf(buffer, sizeof(buffer), "%s/trace.h", dirs[0]);
     if (!open(buffer)) {
 	return FALSE;
     }
@@ -1418,7 +1419,7 @@ bool Config::includes()
     }
 
     /* create kfun.h file */
-    sprintf(buffer, "%s/kfun.h", dirs[0]);
+    snprintf(buffer, sizeof(buffer), "%s/kfun.h", dirs[0]);
     if (!open(buffer)) {
 	return FALSE;
     }
@@ -1427,8 +1428,8 @@ bool Config::includes()
     puts("startup.\012 */\012\012");
     for (i = KF_BUILTINS; i < nkfun; i++) {
 	if (!isdigit(kftab[i].name[0])) {
-	    sprintf(buffer, "# define kf_%s\t\t%d\012", kftab[i].name,
-		    kftab[i].version);
+	    snprintf(buffer, sizeof(buffer), "# define kf_%s\t\t%d\012",
+		     kftab[i].name, kftab[i].version);
 	    for (p = buffer + 9; *p != '\0'; p++) {
 		if (*p == '.') {
 		    *p = '_';
@@ -1442,7 +1443,7 @@ bool Config::includes()
     puts("\012\012/*\012 * Supported ciphers and hashing algorithms.\012 */");
     puts("\012\012# define ENCRYPT_CIPHERS\t");
     for (i = 0; ; ) {
-	sprintf(buffer, "\"%s\"", kfenc[i].name);
+	snprintf(buffer, sizeof(buffer), "\"%s\"", kfenc[i].name);
 	puts(buffer);
 	if (++i == ne) {
 	    break;
@@ -1451,7 +1452,7 @@ bool Config::includes()
     }
     puts("\012# define DECRYPT_CIPHERS\t");
     for (i = 0; ; ) {
-	sprintf(buffer, "\"%s\"", kfdec[i].name);
+	snprintf(buffer, sizeof(buffer), "\"%s\"", kfdec[i].name);
 	puts(buffer);
 	if (++i == nd) {
 	    break;
@@ -1460,7 +1461,7 @@ bool Config::includes()
     }
     puts("\012# define HASH_ALGORITHMS\t");
     for (i = 0; ; ) {
-	sprintf(buffer, "\"%s\"", kfhsh[i].name);
+	snprintf(buffer, sizeof(buffer), "\"%s\"", kfhsh[i].name);
 	puts(buffer);
 	if (++i == nh) {
 	    break;

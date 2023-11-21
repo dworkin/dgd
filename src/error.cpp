@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -194,7 +194,7 @@ void ErrorContextImpl::error(const char *format, ...)
 
     if (format != (char *) NULL) {
 	va_start(args, format);
-	vsprintf(ebuf, format, args);
+	vsnprintf(ebuf, sizeof(ebuf), format, args);
 	error(String::create(ebuf, strlen(ebuf)));
 	va_end(args);
     } else {
@@ -214,10 +214,10 @@ void ErrorContextImpl::fatal(const char *format, ...)
 
     if (count++ == 0) {
 	va_start(args, format);
-	vsprintf(ebuf1, format, args);
+	vsnprintf(ebuf1, sizeof(ebuf1), format, args);
 	va_end(args);
 
-	sprintf(ebuf2, "Fatal error: %s\012", ebuf1);	/* LF */
+	snprintf(ebuf2, sizeof(ebuf2), "Fatal error: %s\012", ebuf1);	/* LF */
 
 	P_message(ebuf2);	/* show message */
     }
@@ -239,13 +239,13 @@ void ErrorContextImpl::message(const char *format, ...)
 	}
 # endif
 	if (exception()->len <= sizeof(ebuf) - 2) {
-	    sprintf(ebuf, "%s\012", exception()->text);
+	    snprintf(ebuf, sizeof(ebuf), "%s\012", exception()->text);
 	} else {
 	    strcpy(ebuf, "[too long error string]\012");
 	}
     } else {
 	va_start(args, format);
-	vsprintf(ebuf, format, args);
+	vsnprintf(ebuf, sizeof(ebuf), format, args);
 	va_end(args);
     }
     P_message(ebuf);	/* show message */

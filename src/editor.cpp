@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -61,7 +61,7 @@ public:
 	    internal = TRUE;
 	    EC->push((ErrorContext::Handler) ed_handler);
 	    va_start(args, format);
-	    vsprintf(ebuf, format, args);
+	    vsnprintf(ebuf, sizeof(ebuf), format, args);
 	    va_end(args);
 	    EC->error(ebuf);
 	} else {
@@ -78,7 +78,7 @@ public:
 	Uint len;
 
 	va_start(args, format);
-	vsprintf(buf, format, args);
+	vsnprintf(buf, sizeof(buf), format, args);
 	va_end(args);
 	len = strlen(buf);
 	if (outbufsz + len > USHRT_MAX) {
@@ -166,7 +166,7 @@ void Editor::create(Object *obj)
     obj->etabi = newed = e - editors;
     obj->flags |= O_EDITOR;
 
-    sprintf(tmp, "%s%05u", tmpedfile, EINDEX(obj->etabi));
+    snprintf(tmp, sizeof(tmp), "%s%05u", tmpedfile, EINDEX(obj->etabi));
     MM->staticMode();
     e->ed = new CmdBuf(tmp);
     MM->dynamicMode();

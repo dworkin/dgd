@@ -1,6 +1,6 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
- * Copyright (C) 2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2021-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -38,10 +38,10 @@ int main(int argc, char *argv[])
     char tmp[100], line[2048], *p;
     CmdBuf *ed;
 
-    sprintf(tmp, "/tmp/ed%05d", (int) getpid());
+    snprintf(tmp, sizeof(tmp), "/tmp/ed%05d", (int) getpid());
     ed = new CmdBuf(tmp);
     if (argc > 1) {
-	sprintf(line, "e %s", argv[1]);
+	snprintf(line, sizeof(line), "e %s", argv[1]);
 	try {
 	    ed->command(line);
 	} catch (const char*) { }

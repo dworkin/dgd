@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2019 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -42,8 +42,8 @@ void Special::define()
     Macro::define("__TIME__", (char *) NULL, -1);
 
     P_ctime(buf, P_time());
-    sprintf(datestr, "\"%.6s %.4s\"", buf + 4, buf + 20);
-    sprintf(timestr, "\"%.8s\"", buf + 11);
+    snprintf(datestr, sizeof(datestr), "\"%.6s %.4s\"", buf + 4, buf + 20);
+    snprintf(timestr, sizeof(timestr), "\"%.8s\"", buf + 11);
 }
 
 /*
@@ -54,10 +54,10 @@ char *Special::replace(const char *name)
     static char buf[STRINGSZ + 3];
 
     if (strcmp(name, "__LINE__") == 0) {
-	sprintf(buf, " %u ", TokenBuf::line());
+	snprintf(buf, sizeof(buf), " %u ", TokenBuf::line());
 	return buf;
     } else if (strcmp(name, "__FILE__") == 0) {
-	sprintf(buf, "\"%s\"", TokenBuf::filename());
+	snprintf(buf, sizeof(buf), "\"%s\"", TokenBuf::filename());
 	return buf;
     } else if (strcmp(name, "__DATE__") == 0) {
 	return datestr;

@@ -1227,7 +1227,7 @@ Node *YYParser::cast(Node *n, Node *type)
 	    switch (n->type) {
 	    case N_INT:
 		/* cast int constant to string */
-		sprintf(buffer, "%ld", (long) n->l.number);
+		snprintf(buffer, sizeof(buffer), "%ld", (long) n->l.number);
 		return Node::createStr(String::create(buffer, strlen(buffer)));
 
 	    case N_FLOAT:

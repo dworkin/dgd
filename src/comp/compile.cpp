@@ -2639,7 +2639,7 @@ void Compile::error(const char *format, ...)
     char buf[3 * STRINGSZ];	/* 2 * string + overhead */
 
     va_start(args, format);
-    vsprintf(buf, format, args);
+    vsnprintf(buf, sizeof(buf), format, args);
     va_end(args);
     PP->error("%s", buf);
 }
@@ -2655,7 +2655,7 @@ public:
 	char buf[3 * STRINGSZ];		/* 2 * string + overhead */
 
 	va_start(args, format);
-	vsprintf(buf, format, args);
+	vsnprintf(buf, sizeof(buf), format, args);
 	va_end(args);
 
 	if (driver_object != (char *) NULL &&

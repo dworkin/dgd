@@ -758,7 +758,7 @@ int Swap::save(char *snapshot, bool keep)
     }
     if (swapping) {
 	p = path_native(buf1, snapshot);
-	sprintf(buffer, "%s.old", snapshot);
+	snprintf(buffer, sizeof(buffer), "%s.old", snapshot);
 	q = path_native(buf2, buffer);
 	P_unlink(q);
 	P_rename(p, q);

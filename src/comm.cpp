@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -386,7 +386,7 @@ bool Comm::init(int n, int p, char **thosts, char **bhosts, char **dhosts,
     nusers = odone = newlines = 0;
     this_user = OBJ_NONE;
 
-    sprintf(ayt, "\15\12[%s]\15\12", VERSION);
+    snprintf(ayt, sizeof(ayt), "\15\12[%s]\15\12", VERSION);
 
     nexttport = nextbport = nextdport = 0;
 

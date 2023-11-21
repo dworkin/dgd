@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -155,14 +155,15 @@ static void save_float(savecontext *x, Float *flt)
     put(x, buf, strlen(buf));
 # ifdef LARGENUM
     if (Ext::smallFloat(&fhigh, &flow, flt)) {
-	sprintf(buf, "=%04x%08lx", fhigh, (long) flow);
+	snprintf(buf, sizeof(buf), "=%04x%08lx", fhigh, (long) flow);
 	put(x, buf, 13);
     } else {
-	sprintf(buf, "=%08lx%016llx", (long) flt->high, (long long) flt->low);
+	snprintf(buf, sizeof(buf), "=%08lx%016llx", (long) flt->high,
+		 (long long) flt->low);
 	put(x, buf, 25);
     }
 # else
-    sprintf(buf, "=%04x%08lx", flt->high, (long) flt->low);
+    snprintf(buf, sizeof(buf), "=%04x%08lx", flt->high, (long) flt->low);
     put(x, buf, 13);
 # endif
 }
@@ -227,13 +228,13 @@ static void save_array(savecontext *x, Array *a)
     i = a->put(x->narrays);
     if (i < x->narrays) {
 	/* same as some previous array */
-	sprintf(buf, "#%lu", (unsigned long) i);
+	snprintf(buf, sizeof(buf), "#%lu", (unsigned long) i);
 	put(x, buf, strlen(buf));
 	return;
     }
     x->narrays++;
 
-    sprintf(buf, "({%d|", a->size);
+    snprintf(buf, sizeof(buf), "({%d|", a->size);
     put(x, buf, strlen(buf));
     for (i = a->size, v = Dataspace::elts(a); i > 0; --i, v++) {
 	switch (v->type) {
@@ -242,7 +243,7 @@ static void save_array(savecontext *x, Array *a)
 	    break;
 
 	case T_INT:
-	    sprintf(buf, "%ld", (long) v->number);
+	    snprintf(buf, sizeof(buf), "%ld", (long) v->number);
 	    put(x, buf, strlen(buf));
 	    break;
 
@@ -291,7 +292,7 @@ static void save_mapping(savecontext *x, Mapping *a)
     i = a->put(x->narrays);
     if (i < x->narrays) {
 	/* same as some previous mapping */
-	sprintf(buf, "@%lu", (unsigned long) i);
+	snprintf(buf, sizeof(buf), "@%lu", (unsigned long) i);
 	put(x, buf, strlen(buf));
 	return;
     }
@@ -315,7 +316,7 @@ static void save_mapping(savecontext *x, Mapping *a)
 	}
 	v++;
     }
-    sprintf(buf, "([%d|", n);
+    snprintf(buf, sizeof(buf), "([%d|", n);
     put(x, buf, strlen(buf));
 
     for (i = a->size >> 1, v = a->elts; i > 0; --i) {
@@ -330,7 +331,7 @@ static void save_mapping(savecontext *x, Mapping *a)
 	    break;
 
 	case T_INT:
-	    sprintf(buf, "%ld", (long) v->number);
+	    snprintf(buf, sizeof(buf), "%ld", (long) v->number);
 	    put(x, buf, strlen(buf));
 	    break;
 
@@ -355,7 +356,7 @@ static void save_mapping(savecontext *x, Mapping *a)
 	v++;
 	switch (v->type) {
 	case T_INT:
-	    sprintf(buf, "%ld", (long) v->number);
+	    snprintf(buf, sizeof(buf), "%ld", (long) v->number);
 	    put(x, buf, strlen(buf));
 	    break;
 
@@ -420,7 +421,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
     strcpy(tmp, file);
     _tmp = strrchr(tmp, '/');
     _tmp = (_tmp == (char *) NULL) ? tmp : _tmp + 1;
-    sprintf(_tmp, "_tmp%04x", ++count);
+    snprintf(_tmp, sizeof(tmp) - (_tmp - tmp), "_tmp%04x", ++count);
     x.fd = P_open(tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
     if (x.fd < 0) {
 	EC->error("Cannot create temporary save file \"/%s\"", tmp);
@@ -461,7 +462,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
 		    put(&x, " ", 1);
 		    switch (var->type) {
 		    case T_INT:
-			sprintf(buf, "%ld", (long) var->number);
+			snprintf(buf, sizeof(buf), "%ld", (long) var->number);
 			put(&x, buf, strlen(buf));
 			break;
 
