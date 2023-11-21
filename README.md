@@ -7,7 +7,7 @@ and many versions of Unix.
 
 [DGD source repository](https://github.com/dworkin/dgd)
 
-[DGD's home page](http://www.dworkin.nl/dgd)
+[DGD's home page](https://www.dworkin.nl/dgd)
 
 DGD offers JIT compilation support.  This requires the
 [JIT extension module](https://github.com/dworkin/lpc-ext).
@@ -16,7 +16,7 @@ Alongside DGD, there is Hydra.  Hydra is fully compatible with DGD, but offers
 acceleration for multi-core systems.  Hydra also supports JIT compilation,
 using the same extension module as DGD.
 
-[Hydra's home page](http://www.dworkin.nl/hydra)
+[Hydra's home page](https://www.dworkin.nl/hydra)
 
 ### PLEASE NOTE
 
