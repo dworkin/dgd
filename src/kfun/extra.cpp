@@ -31,8 +31,8 @@ extern String *P_encrypt_des_key (Frame*, String*);
 extern String *P_encrypt_des (Frame*, String*, String*);
 extern void ext_runtime_error (Frame*, const char*);
 
-char pt_encrypt[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
-		      T_STRING, T_STRING, T_STRING, T_MIXED };
+char pt_encrypt[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
+		      T_MIXED, T_STRING, T_MIXED };
 
 /*
  * prepare a key for encryption
@@ -90,8 +90,8 @@ FUNCDEF("decrypt", kf_decrypt, pt_decrypt, 0)
 # else
 extern String *P_decrypt_des_key (Frame*, String*);
 
-char pt_decrypt[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
-		      T_STRING, T_STRING, T_STRING, T_MIXED };
+char pt_decrypt[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
+		      T_MIXED, T_STRING, T_MIXED };
 
 /*
  * prepare a key for decryption
