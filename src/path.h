@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -33,7 +33,7 @@ public:
 	char buf2[STRINGSZ];
 
 	if (file[0] != '/' && strlen(from) + strlen(file) < STRINGSZ - 4) {
-	    sprintf(buf2, "%s/../%s", from, file);
+	    snprintf(buf2, sizeof(buf2), "%s/../%s", from, file);
 	    file = buf2;
 	}
 	return resolve(buf, file);

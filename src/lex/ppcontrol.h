@@ -30,9 +30,9 @@ public:
 	va_list args;
 	char buf[4 * STRINGSZ];		/* file name + 2 * string + overhead */
 
-	sprintf(buf, "%s, %u: ", filename(), line());
+	snprintf(buf, sizeof(buf), "%s, %u: ", filename(), line());
 	va_start(args, format);
-	vsprintf(buf + strlen(buf), format, args);
+	vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), format, args);
 	va_end(args);
 	EC->message("%s\012", buf);     /* LF */
     }
