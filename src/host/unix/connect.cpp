@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -457,7 +457,7 @@ public:
     int fd;				/* file descriptor */
     int npkts;				/* # packets in buffer */
     int bufsz;				/* # bytes in buffer */
-    int err;				/* state of outbound UDP connection */
+    int err;				/* state of outbound connection */
     char *udpbuf;			/* datagram buffer */
     IpAddr *addr;			/* internet address of connection */
     unsigned short port;		/* UDP port of connection */
@@ -1948,7 +1948,14 @@ Connection *Connection::connect(void *addr, int len)
        return NULL;
     }
 
-    ::connect(sock, (struct sockaddr *) addr, len);
+    if (::connect(sock, (struct sockaddr *) addr, len) == 0) {
+	conn->err = 0;
+    } else {
+	conn->err = errno;
+	if (conn->err == EINPROGRESS) {
+	    conn->err = 0;
+	}
+    }
 
     conn = (XConnection *) flist;
     flist = conn->next;
@@ -2098,22 +2105,26 @@ int XConnection::checkConnected(int *errcode)
 	return -2;
     }
 
-    if (!FD_ISSET(fd, &writefds)) {
-	return 0;
-    }
-    FD_CLR(fd, &waitfds);
+    if (err != 0) {
+	optval = err;
+    } else {
+	if (!FD_ISSET(fd, &writefds)) {
+	    return 0;
+	}
+	FD_CLR(fd, &waitfds);
 
-    /*
-     * Delayed connect completed, check for errors
-     */
-    lon = sizeof(int);
-    /*
-     * Get error state for the socket
-     */
-    *errcode = 0;
-    if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (void *)(&optval), &lon) < 0) {
-	return -1;
+	/*
+	 * Delayed connect completed, check for errors
+	 */
+	lon = sizeof(int);
+	/*
+	 * Get error state for the socket
+	 */
+	if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (void *)(&optval), &lon) < 0) {
+	    return -1;
+	}
     }
+    *errcode = 0;
     if (optval != 0) {
 	switch (optval) {
 	case ECONNREFUSED:
