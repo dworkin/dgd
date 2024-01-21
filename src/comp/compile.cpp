@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1563,7 +1563,7 @@ Node *Compile::endSwitch(Node *expr, Node *stmt)
 			 * convert range label switch to int label switch
 			 * by adding new labels
 			 */
-			w = ALLOCA(Node*, cnt);
+			w = ALLOCA(Node*, ++cnt);
 			for (i = size; i > 0; --i) {
 			    *w++ = *v;
 			    for (l = v[0]->l.left->l.number;
