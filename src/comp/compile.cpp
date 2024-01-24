@@ -542,7 +542,7 @@ bool Compile::inherit(char *file, Node *label, int priv)
 	}
 	obj = Object::find(file, OACC_READ);
 	if (obj == (Object *) NULL) {
-	    compile(f, file, (Object *) NULL, (String **) NULL, 0, TRUE);
+	    compile(f, file, (Object *) NULL, 0, TRUE);
 	    return FALSE;
 	}
     } else {
@@ -575,7 +575,7 @@ bool Compile::inherit(char *file, Node *label, int priv)
 	    file = PM->from(buf, current->file, file);
 	    obj = Object::find(file, OACC_READ);
 	    if (obj == (Object *) NULL) {
-		compile(f, file, (Object *) NULL, (String **) NULL, 0, TRUE);
+		compile(f, file, (Object *) NULL, 0, TRUE);
 		return FALSE;
 	    }
 	}
@@ -598,8 +598,7 @@ extern int yyparse ();
 /*
  * compile an LPC file
  */
-Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
-			 int nstr, int iflag)
+Object *Compile::compile(Frame *f, char *file, Object *obj, int nstr, int iflag)
 {
     Context c;
     char file_c[STRINGSZ + 2];
@@ -631,7 +630,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 	EC->error("Illegal object name \"/%s\"", file);
     }
     strcpy(file_c, file);
-    if (strs == (String **) NULL) {
+    if (nstr == 0) {
 	strcat(file_c, ".c");
     }
     c.frame = f;
@@ -652,8 +651,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 		     * compile the driver object to do pathname translation
 		     */
 		    current = (Context *) NULL;
-		    compile(f, driver_object, (Object *) NULL, (String **) NULL,
-			    0, FALSE);
+		    compile(f, driver_object, (Object *) NULL, 0, FALSE);
 		    current = &c;
 		}
 
@@ -662,8 +660,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 		    /*
 		     * compile auto object
 		     */
-		    aobj = compile(f, auto_object, (Object *) NULL,
-				   (String **) NULL, 0, TRUE);
+		    aobj = compile(f, auto_object, (Object *) NULL, 0, TRUE);
 		}
 		/* inherit auto object */
 		if (O_UPGRADING(aobj)) {
@@ -674,12 +671,20 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, String **strs,
 		Control::inherit(c.frame, file, aobj, (String *) NULL, FALSE);
 	    }
 
-	    if (strs != (String **) NULL) {
-		PP->init(file_c, paths, strs, nstr, 1);
-	    } else if (!PP->init(file_c, paths, (String **) NULL, 0, 1)) {
+	    if (nstr != 0) {
+		int i;
+		Value *v;
+
+		v = f->sp;
+		PP->init(file_c, paths, v->string->text, v->string->len, 1);
+		for (i = 1; i < nstr; i++) {
+		    v++;
+		    PP->push(v->string->text, v->string->len);
+		}
+	    } else if (!PP->init(file_c, paths, (char *) NULL, 0, 1)) {
 		EC->error("Could not compile \"/%s\"", file_c);
 	    }
-	    if (!PP->include(include, (String **) NULL, 0)) {
+	    if (!PP->include(include, (char *) NULL, 0)) {
 		EC->error("Could not include \"/%s\"", include);
 	    }
 

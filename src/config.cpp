@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1490,8 +1490,8 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     /*
      * process config file
      */
-    if (!PP->init(path_native(buf, configfile), (char **) NULL,
-		  (String **) NULL, 0, 0)) {
+    if (!PP->init(path_native(buf, configfile), (char **) NULL, (char *) NULL,
+		  0, 0)) {
 	EC->message("Config error: cannot open config file\012");	/* LF */
 	MM->finish();
 	return FALSE;

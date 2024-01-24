@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -43,8 +43,6 @@ int kf_compile_object(Frame *f, int nargs, KFun *kf)
     char file[STRINGSZ];
     Value *v;
     Object *obj;
-    String **strs;
-    int i;
     bool iflag;
 
     UNREFERENCED_PARAMETER(kf);
@@ -65,14 +63,6 @@ int kf_compile_object(Frame *f, int nargs, KFun *kf)
 	    EC->error("Cannot recompile inherited object");
 	}
     }
-    if (--nargs != 0) {
-	strs = ALLOCA(String*, nargs);
-	for (i = nargs, v = f->sp; i > 0; --i) {
-	    *strs++ = (v++)->string;
-	}
-    } else {
-	strs = (String **) NULL;
-    }
     try {
 	EC->push();
 	if (OBJR(f->oindex)->flags & O_DRIVER) {
@@ -85,18 +75,12 @@ int kf_compile_object(Frame *f, int nargs, KFun *kf)
 	} else {
 	    iflag = FALSE;
 	}
-	obj = Compile::compile(f, file, obj, strs, nargs, iflag);
+	obj = Compile::compile(f, file, obj, --nargs, iflag);
 	EC->pop();
     } catch (const char*) {
-	if (nargs != 0) {
-	    AFREE(strs - nargs);
-	}
 	EC->error((char *) NULL);
     }
-    if (nargs != 0) {
-	AFREE(strs - nargs);
-	f->pop(nargs);
-    }
+    f->pop(nargs);
     f->sp->string->del();
     PUT_OBJVAL(f->sp, obj);
 

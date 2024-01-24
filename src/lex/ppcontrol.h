@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,9 +19,11 @@
 
 class Preproc {
 public:
-    static bool init(char *file, char **id, String **strs, int nstr, int level);
+    static bool init(char *file, char **id, char *buffer, unsigned int buflen,
+		     int level);
     static void clear();
-    static bool include(char *file, String **strs, int nstr);
+    static bool include(char *file, char *buffer, unsigned int buflen);
+    static void push(char *buffer, unsigned int buflen);
     static char *filename();
     static unsigned short line();
     static int gettok();

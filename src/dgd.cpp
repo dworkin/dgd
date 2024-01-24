@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -51,8 +51,8 @@ bool DGD::callDriver(Frame *f, const char *func, int narg)
 	driver_name = Config::driver();
 	driver = Object::find(driver_name, OACC_READ);
 	if (driver == (Object *) NULL) {
-	    driver = Compile::compile(f, driver_name, (Object *) NULL,
-				      (String **) NULL, 0, FALSE);
+	    driver = Compile::compile(f, driver_name, (Object *) NULL, 0,
+				      FALSE);
 	}
 	dindex = driver->index;
 	dcount = driver->count;

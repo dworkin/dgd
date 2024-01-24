@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -44,10 +44,7 @@ public:
     virtual char *edWrite(char *buf, char *file) {
 	return resolve(buf, file);
     }
-    virtual char *include(char *buf, char *from, char *file, String ***strs,
-			  int *nstr) {
-	UNREFERENCED_PARAMETER(strs);
-	UNREFERENCED_PARAMETER(nstr);
+    virtual char *include(char *buf, char *from, char *file) {
 	return Path::from(buf, from, file);
     }
 };
@@ -57,8 +54,7 @@ public:
     virtual char *resolve(char *buf, char *file);
     virtual char *edRead(char *buf, char *file);
     virtual char *edWrite(char *buf, char *file);
-    virtual char *include(char *buf, char *from, char *file, String ***strs,
-			  int *nstr);
+    virtual char *include(char *buf, char *from, char *file);
 };
 
 extern Path *PM;

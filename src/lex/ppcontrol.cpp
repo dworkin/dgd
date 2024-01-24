@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -87,7 +87,8 @@ static IFState top;		/* initial ifstate */
  * initialize preprocessor. Return TRUE if the input file could
  * be opened.
  */
-bool Preproc::init(char *file, char **id, String **strs, int nstr, int level)
+bool Preproc::init(char *file, char **id, char *buffer, unsigned int buflen,
+		   int level)
 {
     top.active = TRUE;
     top.skipping = FALSE;
@@ -96,9 +97,7 @@ bool Preproc::init(char *file, char **id, String **strs, int nstr, int level)
     top.prev = (IFState *) NULL;
 
     TokenBuf::init();
-    if (strs != (String **) NULL) {
-	TokenBuf::include(file, strs, nstr);
-    } else if (!TokenBuf::include(file, (String **) NULL, 0)) {
+    if (!include(file, buffer, buflen)) {
 	TokenBuf::clear();
 	return FALSE;
     }
@@ -156,9 +155,17 @@ void Preproc::clear()
 /*
  * include a file
  */
-bool Preproc::include(char *file, String **strs, int nstr)
+bool Preproc::include(char *file, char *buffer, unsigned int buflen)
 {
-    return TokenBuf::include(file, strs, nstr);
+    return TokenBuf::include(file, buffer, buflen);
+}
+
+/*
+ * include a string buffer
+ */
+void Preproc::push(char *buffer, unsigned int buflen)
+{
+    TokenBuf::push(buffer, buflen);
 }
 
 /*
@@ -469,7 +476,6 @@ void Preproc::do_include()
     char file[MAX_LINE_SIZE], path[STRINGSZ + MAX_LINE_SIZE], buf[STRINGSZ];
     int token;
     char **idir;
-    char *include;
     String **strs;
     int nstr;
 
@@ -492,8 +498,7 @@ void Preproc::do_include()
 	TokenBuf::skiptonl(TRUE);
 
 	/* first try the path direct */
-	include = PM->include(buf, TokenBuf::filename(), file, &strs, &nstr);
-	if (TokenBuf::include(include, strs, nstr)) {
+	if (PM->include(buf, TokenBuf::filename(), file) != (char *) NULL) {
 	    include_level++;
 	    return;
 	}
@@ -510,8 +515,7 @@ void Preproc::do_include()
 	strcpy(path, *idir);
 	strcat(path, "/");
 	strcat(path, file);
-	include = PM->include(buf, TokenBuf::filename(), path, &strs, &nstr);
-	if (TokenBuf::include(include, strs, nstr)) {
+	if (PM->include(buf, TokenBuf::filename(), path) != (char *) NULL) {
 	    include_level++;
 	    return;
 	}

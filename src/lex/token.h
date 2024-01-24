@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,7 +21,8 @@ class TokenBuf : public ChunkAllocated {
 public:
     static void init();
     static void clear();
-    static bool include(char *file, String **strs, int nstr);
+    static void push(char *buffer, unsigned int buflen);
+    static bool include(char *file, char *buffer, unsigned int buflen);
     static void endinclude();
     static unsigned short line();
     static char *filename();
@@ -44,13 +45,12 @@ private:
     static char *esc(char *p);
     static int string(char quote);
 
-    String **strs;		/* input buffer array */
-    int nstr;			/* number of input buffers */
     char *buffer;		/* token buffer */
     char *p;			/* token buffer pointer */
     int inbuf;			/* # chars in token buffer */
     char ubuf[4];		/* unget buffer */
     char *up;			/* unget buffer pointer */
+    bool file;			/* file buffer? */
     bool eof;			/* TRUE if empty(buffer) -> EOF */
     unsigned short _line;	/* line number */
     int fd;			/* file descriptor */
@@ -59,4 +59,5 @@ private:
 	Macro *mc;		/* macro this buffer is an expansion of */
     };
     TokenBuf *prev;		/* previous token buffer */
+    TokenBuf *iprev;		/* previous token ibuffer */
 };
