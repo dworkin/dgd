@@ -109,6 +109,10 @@ ed/ed::
 	$(MAKE) -C ed 'CXX=$(CXX)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
 		'LD=$(LD)' 'LDFLAGS=$(LDFLAGS)' ed
 
+lex/lex::
+	$(MAKE) -C lex 'CXX=$(CXX)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
+		'LD=$(LD)' 'LDFLAGS=$(LDFLAGS)' lex
+
 clean:
 	rm -f a.out $(OBJ)
 	$(MAKE) -C comp clean
