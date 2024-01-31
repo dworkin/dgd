@@ -79,6 +79,11 @@ int main(int argc, char *argv[])
     char filename[1024], *nfilename;
     int line, nline, c;
 
+    if (argc != 2) {
+	fprintf(stderr, "Usage: %s file\n", argv[0]);
+	return 2;
+    }
+
     filename[0] = '\0';
     line = 0;
     Preproc::init(argv[1], (char **) paths, (char *) NULL, 0, 0);
