@@ -33,54 +33,6 @@ static PathImpl PMI;
 Path *PM = &PMI;
 
 /*
- * resolve a path
- */
-char *PathImpl::resolve(char *buf, char *file)
-{
-    char *p, *q, *d;
-
-    strncpy(buf, file, STRINGSZ - 1);
-    buf[STRINGSZ - 1] = '\0';
-    d = p = q = buf;
-    for (;;) {
-	if (*p == '/' || *p == '\0') {
-	    /* reached a directory separator */
-	    if (q - 1 == d && d[0] == '.') {
-		/* . */
-		q = d;
-	    } else if (q - 2 == d && d[0] == '.' && d[1] == '.') {
-		/* .. */
-		q = d;
-		if (q != buf) {
-		    for (--q; q != buf && *--q != '/'; ) ;
-		}
-	    }
-	    if (q != buf) {
-		if (q[-1] == '/') {
-		    /* // or path/ */
-		    --q;
-		}
-		*q++ = *p;
-	    }
-	    d = q;
-	    if (*p == '\0') {
-		break;
-	    }
-	    p++;
-	} else {
-	    *q++ = *p++;
-	}
-    }
-
-    if (q == buf) {
-	/* "" -> "." */
-	*q++ = '.';
-	*q = '\0';
-    }
-    return buf;
-}
-
-/*
  * resolve an editor read file path
  */
 char *PathImpl::edRead(char *buf, char *file)

@@ -20,7 +20,44 @@
 class Path {
 public:
     virtual char *resolve(char *buf, char *file) {
-	strcpy(buf, file);
+	char *p, *q, *d;
+
+	strncpy(buf, file, STRINGSZ - 1);
+	buf[STRINGSZ - 1] = '\0';
+	d = p = q = buf;
+	for (;;) {
+	    if (*p == '/' || *p == '\0') {
+		/* reached a directory separator */
+		if (q - 1 == d && d[0] == '.') {
+		    q = d;	/* . */
+		} else if (q - 2 == d && d[0] == '.' && d[1] == '.') {
+		    /* .. */
+		    q = d;
+		    if (q != buf) {
+			for (--q; q != buf && *--q != '/'; ) ;
+		    }
+		}
+		if (q != buf) {
+		    if (q[-1] == '/') {
+			--q;	/* // or path/ */
+		    }
+		    *q++ = *p;
+		}
+		d = q;
+		if (*p == '\0') {
+		    break;
+		}
+		p++;
+	    } else {
+		*q++ = *p++;
+	    }
+	}
+
+	if (q == buf) {
+	    /* "" -> "." */
+	    *q++ = '.';
+	    *q = '\0';
+	}
 	return buf;
     }
     virtual char *string(char *buf, char *file, unsigned int len) {
@@ -51,7 +88,6 @@ public:
 
 class PathImpl : public Path {
 public:
-    virtual char *resolve(char *buf, char *file);
     virtual char *edRead(char *buf, char *file);
     virtual char *edWrite(char *buf, char *file);
     virtual char *include(char *buf, char *from, char *file);

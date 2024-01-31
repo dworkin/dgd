@@ -31,14 +31,24 @@ Alloc *MM = &LMM;
 static ErrorContext LEC;
 ErrorContext *EC = &LEC;
 
-static Path LPM;
-Path *PM = &LPM;
-
 static Hash LHM;
 Hash *HM = &LHM;
 
 static Preproc LPP;
 Preproc *PP = &LPP;
+
+class LexPath : public Path {
+public:
+    virtual char *include(char *buf, char *from, char *file) {
+	if (!PP->include(Path::from(buf, from, file), (char *) NULL, 0)) {
+	    return (char *) NULL;
+	}
+	return buf;
+    }
+};
+
+static LexPath LPM;
+Path *PM = &LPM;
 
 const char *paths[] = { "/usr/include", (char *) NULL };
 YYSTYPE yylval;
@@ -66,10 +76,33 @@ char *P_ctime(char *buf, Uint time)
 
 int main(int argc, char *argv[])
 {
-    int c;
+    char filename[1024], *nfilename;
+    int line, nline, c;
 
+    filename[0] = '\0';
+    line = 0;
     Preproc::init(argv[1], (char **) paths, (char *) NULL, 0, 0);
     while ((c=Preproc::gettok()) != EOF) {
+	nfilename = Preproc::filename() + 1;
+	nline = Preproc::line();
+	if (strcmp(filename, nfilename) != 0) {
+	    if (filename[0] != '\0') {
+		printf("\n");
+	    }
+	    strcpy(filename, nfilename);
+	    line = nline;
+	    printf("#line %d \"%s\"\n", line, filename);
+	} else if (nline != line) {
+	    if (nline > line && nline - line <= 5) {
+		while (line < nline) {
+		    printf("\n");
+		    line++;
+		}
+	    } else {
+		line = nline;
+		printf("\n#line %d\n", line);
+	    }
+	}
 	switch (c) {
 	case STRING_CONST:
 	    printf(" \"%s\"", yytext);
