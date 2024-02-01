@@ -38,10 +38,10 @@ $(OBJ) lex.o : lex.h ../config.h ../host.h ../alloc.h ../xfloat.h
 macro.o special.o token.o ppcontrol.o lex.o: ../hash.h
 token.o ppcontrol.o lex.o: ../path.h
 
-$(OBJ): ../comp/node.h ../comp/compile.h ../comp/parser.h
+$(OBJ) lex.o: ../comp/node.h ../comp/compile.h ../comp/parser.h
 
 $(OBJ) lex.o: lex.h
 macro.o special.o token.o ppcontrol.o: macro.h
 ppstr.o token.o ppcontrol.o: ppstr.h
 special.o token.o ppcontrol.o: special.h token.h
-token.o ppcontrol.o: ppcontrol.h
+token.o ppcontrol.o lex.o: ppcontrol.h

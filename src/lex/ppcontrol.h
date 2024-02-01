@@ -32,11 +32,11 @@ public:
 	va_list args;
 	char buf[4 * STRINGSZ];		/* file name + 2 * string + overhead */
 
-	snprintf(buf, sizeof(buf), "%s, %u: ", filename(), line());
+	snprintf(buf, sizeof(buf), "\"%s\", %u: ", filename() + 1, line());
 	va_start(args, format);
 	vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), format, args);
 	va_end(args);
-	EC->message("%s\012", buf);     /* LF */
+	fprintf(stderr, "%s\n", buf);
     }
 
 private:
