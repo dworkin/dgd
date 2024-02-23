@@ -476,8 +476,6 @@ void Preproc::do_include()
     char file[MAX_LINE_SIZE], path[STRINGSZ + MAX_LINE_SIZE], buf[STRINGSZ];
     int token;
     char **idir;
-    String **strs;
-    int nstr;
 
     if (include_level == INCLUDEDEPTH) {
 	PP->error("#include nesting too deep");

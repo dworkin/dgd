@@ -79,7 +79,7 @@ char *PathImpl::edWrite(char *buf, char *file)
 }
 
 /*
- * resolve an include path
+ * attempt to include a path
  */
 char *PathImpl::include(char *buf, char *from, char *file)
 {
@@ -89,54 +89,56 @@ char *PathImpl::include(char *buf, char *from, char *file)
     String *str;
 
     if (Compile::autodriver()) {
-	PP->include(PathImpl::from(buf, from, file), (char *) NULL, 0);
-	return buf;
-    }
+	if (PP->include(PathImpl::from(buf, from, file), (char *) NULL, 0)) {
+	    return buf;
+	}
+    } else {
+	f = cframe;
+	PUSH_STRVAL(f, String::create(from, strlen(from)));
+	PUSH_STRVAL(f, String::create(file, strlen(file)));
+	if (!DGD::callDriver(f, "include_file", 2)) {
+	    if (PP->include(PathImpl::from(buf, from, file), (char *) NULL, 0))
+	    {
+		return buf;
+	    }
+	} else if (f->sp->type == T_STRING) {
+	    /* simple path */
+	    resolve(buf, f->sp->string->text);
+	    if (PP->include(buf, (char *) NULL, 0)) {
+		(f->sp++)->string->del();
+		return buf;
+	    }
+	} else if (f->sp->type == T_ARRAY) {
+	    /*
+	     * Array of strings.  Check that the array does indeed contain only
+	     * strings, then return it.
+	     */
+	    i = f->sp->array->size;
+	    if (i != 0) {
+		v = Dataspace::elts(f->sp->array);
+		while ((v++)->type == T_STRING) {
+		    if (--i == 0) {
+			PathImpl::from(buf, from, file);
 
-    f = cframe;
-    PUSH_STRVAL(f, String::create(from, strlen(from)));
-    PUSH_STRVAL(f, String::create(file, strlen(file)));
-    if (!DGD::callDriver(f, "include_file", 2)) {
-	f->sp++;
-	PP->include(PathImpl::from(buf, from, file), (char *) NULL, 0);
-	return buf;
-    }
-
-    if (f->sp->type == T_STRING) {
-	/* simple path */
-	resolve(buf, f->sp->string->text);
-	(f->sp++)->string->del();
-	PP->include(buf, (char *) NULL, 0);
-	return buf;
-    } else if (f->sp->type == T_ARRAY) {
-	/*
-	 * Array of strings.  Check that the array does indeed contain only
-	 * strings, then return it.
-	 */
-	i = f->sp->array->size;
-	if (i != 0) {
-	    v = Dataspace::elts(f->sp->array);
-	    while ((v++)->type == T_STRING) {
-		if (--i == 0) {
-		    PathImpl::from(buf, from, file);
-
-		    i = f->sp->array->size;
-		    str = (--v)->string;
-		    PP->include(buf, str->text, str->len);
-
-		    while (--i != 0) {
+			i = f->sp->array->size;
 			str = (--v)->string;
-			PP->push(str->text, str->len);
-		    }
-		    (f->sp++)->del();
+			PP->include(buf, str->text, str->len);
 
-		    /* return the untranslated path, as well */
-		    return buf;
+			while (--i != 0) {
+			    str = (--v)->string;
+			    PP->push(str->text, str->len);
+			}
+			(f->sp++)->del();
+
+			/* return the untranslated path, as well */
+			return buf;
+		    }
 		}
 	    }
 	}
+
+	(f->sp++)->del();
     }
 
-    (f->sp++)->del();
     return (char *) NULL;
 }
