@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,13 +40,8 @@ public:
     static void commitPlane();
     static void discardPlane();
 
-    static Object *oread(unsigned int index) {
-	return (BTST(ocmap, index)) ?
-		access(index, OACC_READ) : &objTable[index];
-    }
-    static Object *owrite(unsigned int index) {
-	return (!base) ? access(index, OACC_MODIFY) : &objTable[index];
-    }
+    static Object *access(unsigned int index, int access);
+
     static Object *create(char *name, Control *ctrl);
     static const char *builtinName(LPCint type);
     static Object *find(char *name, int access);
@@ -79,35 +74,15 @@ public:
     Sector cfirst;		/* first sector of control block */
     Sector dfirst;		/* first sector of dataspace block */
 
-    static Object *objTable;
-    static bool swap, dump, incr, stop, boot;
-    static Uint objDestrCount;
-
 private:
     void remove(Frame *f);
     void restoreObject(bool cactive, bool dactive);
     bool purgeUpgrades();
 
-    static Object *access(unsigned int index, int access);
     static Object *alloc();
     static void sweep(uindex n);
     static Uint recount(uindex n);
     static void cleanUpgrades();
-
-    static Uint *ocmap;
-    static bool base;
-    static bool rcount;
-    static uindex otabsize;
-    static uindex uobjects;
-    static Uint *omap;
-    static Uint *counttab;
-    static Uint *insttab;
-    static Object *upgradeList;
-    static uindex ndobject, dobject;
-    static uindex mobjects;
-    static uindex dchunksz;
-    static Uint dinterval;
-    static Uint dtime;
 };
 
 # define O_MASTER		0x01
@@ -123,9 +98,11 @@ private:
 
 # define OBJ_LAYOUT		"xceuuuiiippdd"
 
-# define OBJ(i)			(&Object::objTable[i])
-# define OBJR(i)		(Object::oread((i)))
-# define OBJW(i)		(Object::owrite((i)))
+# define OBJ(i)			(&objTable[i])
+# define OBJR(i)		((BTST(ocmap, (i))) ? \
+				  Object::access((i), OACC_READ) : OBJ((i)))
+# define OBJW(i)		((!obase) ? \
+				  Object::access((i), OACC_MODIFY) : OBJ((i)))
 
 # define O_UPGRADING(o)		((o)->cref > (o)->ref)
 # define O_INHERITED(o)		((o)->ref - 1 != (o)->cref)
@@ -133,6 +110,12 @@ private:
 				 (o)->dfirst != SW_UNUSED)
 
 # define OBJ_NONE		UINDEX_MAX
+
+extern Object	*objTable;
+extern Uint	*ocmap;
+extern bool	 obase, swap, dump, incr, stop, boot;
+extern Uint	 objDestrCount;
+
 
 # ifdef CLOSURES
 # define BUILTIN_FUNCTION	0

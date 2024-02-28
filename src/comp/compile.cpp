@@ -1684,8 +1684,7 @@ Node *Compile::caseLabel(Node *n1, Node *n2)
 	    }
 	}
 	/* compare type with other cases */
-	if (n1->l.number != 0 || n2 != (Node *) NULL ||
-	    Value::nil.type != T_INT) {
+	if (n1->l.number != 0 || n2 != (Node *) NULL || ::nil.type != T_INT) {
 	    if (switch_list->type == T_MIXED) {
 		switch_list->type = T_INT;
 	    } else if (switch_list->type != T_INT) {

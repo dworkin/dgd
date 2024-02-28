@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -30,16 +30,16 @@
 # include "parse.h"
 
 
-Value Value::zeroInt = { T_INT, TRUE };
-Value Value::zeroFloat = { T_FLOAT, TRUE };
-Value Value::nil = { T_NIL, TRUE };
+Value zeroInt = { T_INT, TRUE };
+Value zeroFloat = { T_FLOAT, TRUE };
+Value nil = { T_NIL, TRUE };
 
 /*
  * initialize nil value
  */
 void Value::init(bool stricttc)
 {
-    Value::nil.type = (stricttc) ? T_NIL : T_INT;
+    nil.type = (stricttc) ? T_NIL : T_INT;
 }
 
 /*
@@ -93,7 +93,7 @@ void Value::copy(Value *v, Value *w, unsigned int len)
 
 	case T_OBJECT:
 	    if (DESTRUCTED(w)) {
-		*v++ = Value::nil;
+		*v++ = nil;
 		w++;
 		continue;
 	    }
@@ -102,7 +102,7 @@ void Value::copy(Value *v, Value *w, unsigned int len)
 	case T_LWOBJECT:
 	    o = Dataspace::elts(w->array);
 	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
-		*v++ = Value::nil;
+		*v++ = nil;
 		w++;
 		continue;
 	    }
@@ -1733,7 +1733,7 @@ void Dataspace::newVars(Control *ctrl, Value *val)
 	if (T_ARITHMETIC(var->type)) {
 	    val->type = var->type;
 	} else {
-	    val->type = Value::nil.type;
+	    val->type = nil.type;
 	}
 	val++;
     }
@@ -1760,7 +1760,7 @@ Value *Dataspace::variable(unsigned int idx)
 	if (nsectors == 0 && svariables == (SValue *) NULL) {
 	    /* new datablock */
 	    newVars(ctrl, variables);
-	    variables[nvariables - 1] = Value::nil;	/* extra var */
+	    variables[nvariables - 1] = nil;	/* extra var */
 	} else {
 	    /*
 	     * variables must be loaded from swap
@@ -1858,7 +1858,7 @@ void Dataspace::loadCallouts()
 	    loadValues(sco->val, co->val,
 		       (sco->nargs > 3) ? 4 : sco->nargs + 1);
 	} else {
-	    co->val[0] = Value::nil;
+	    co->val[0] = nil;
 	}
 	sco++;
 	co++;
@@ -2687,7 +2687,7 @@ void Dataspace::setExtra(Dataspace *data, Value *val)
  */
 void Dataspace::wipeExtra(Dataspace *data)
 {
-    data->assignVar(data->variable(data->nvariables - 1), &Value::nil);
+    data->assignVar(data->variable(data->nvariables - 1), &nil);
 
     if (data->parser != (Parser *) NULL) {
 	/*
@@ -2893,7 +2893,7 @@ void Dataspace::freeCallOut(unsigned int handle)
 	v[0].string->del();
 	break;
     }
-    v[0] = Value::nil;
+    v[0] = nil;
 
     n = fcallouts;
     if (n != 0) {
@@ -3109,7 +3109,7 @@ String *Dataspace::callOut(unsigned int handle, Frame *f, int *nargs)
 	switch (v->type) {
 	case T_OBJECT:
 	    if (DESTRUCTED(v)) {
-		*v = Value::nil;
+		*v = nil;
 	    }
 	    break;
 
@@ -3117,13 +3117,13 @@ String *Dataspace::callOut(unsigned int handle, Frame *f, int *nargs)
 	    o = Dataspace::elts(v->array);
 	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		v->array->del();
-		*v = Value::nil;
+		*v = nil;
 	    }
 	    break;
 	}
     }
 
-    co->val[0] = Value::nil;
+    co->val[0] = nil;
     n = fcallouts;
     if (n != 0) {
 	callouts[n - 1].co_prev = handle;
@@ -3287,15 +3287,15 @@ void Dataspace::upgrade(unsigned int nvar, unsigned short *vmap, Object *tmpl)
     for (n = nvar, v = ALLOC(Value, n); n > 0; --n) {
 	switch (*vmap) {
 	case NEW_INT:
-	    *v++ = Value::zeroInt;
+	    *v++ = zeroInt;
 	    break;
 
 	case NEW_FLOAT:
-	    *v++ = Value::zeroFloat;
+	    *v++ = zeroFloat;
 	    break;
 
 	case NEW_POINTER:
-	    *v++ = Value::nil;
+	    *v++ = nil;
 	    break;
 
 	default:
@@ -3382,15 +3382,15 @@ Object *Dataspace::upgradeLWO(LWO *lwobj, Object *obj)
     for (n = nvar; n > 0; --n) {
 	switch (*vmap) {
 	case NEW_INT:
-	    *v++ = Value::zeroInt;
+	    *v++ = zeroInt;
 	    break;
 
 	case NEW_FLOAT:
-	    *v++ = Value::zeroFloat;
+	    *v++ = zeroFloat;
 	    break;
 
 	case NEW_POINTER:
-	    *v++ = Value::nil;
+	    *v++ = nil;
 	    break;
 
 	default:

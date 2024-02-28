@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -80,7 +80,7 @@ static int ext_value_type(Value *val)
  */
 static Value *ext_value_nil()
 {
-    return &Value::nil;
+    return &nil;
 }
 
 /*
@@ -1316,7 +1316,7 @@ static LPCint ext_vm_toint_float(Frame *f, double iflt)
  */
 static void ext_vm_nil(Frame *f)
 {
-    *--f->sp = Value::nil;
+    *--f->sp = nil;
 }
 
 # ifndef NOFLOAT

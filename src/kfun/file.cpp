@@ -58,14 +58,14 @@ int kf_editor(Frame *f, int nargs, KFun *kf)
 	Editor::create(obj);
     }
     if (nargs == 0) {
-	*--f->sp = Value::nil;
+	*--f->sp = nil;
     } else {
 	str = Editor::command(obj, f->sp->string->text);
 	f->sp->string->del();
 	if (str != (String *) NULL) {
 	    PUT_STR(f->sp, str);
 	} else {
-	    *f->sp = Value::nil;
+	    *f->sp = nil;
 	}
     }
     return 0;
@@ -101,7 +101,7 @@ int kf_query_editor(Frame *f, int n, KFun *kf)
 	f->sp->array->del();
     }
 
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -508,7 +508,7 @@ int kf_save_object(Frame *f, int n, KFun *kf)
     }
 
     f->sp->string->del();
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -776,7 +776,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 
     ac_put(x, T_ARRAY, a = Array::create(x->f->data, val->number));
     for (i = a->size, v = a->elts; i > 0; --i) {
-	*v++ = Value::nil;
+	*v++ = nil;
     }
     i = a->size;
     v = a->elts;
@@ -827,7 +827,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 
     ac_put(x, T_MAPPING, a = Mapping::create(x->f->data, val->number << 1));
     for (i = a->size, v = a->elts; i > 0; --i) {
-	*v++ = Value::nil;
+	*v++ = nil;
     }
     i = a->size;
     v = a->elts;
@@ -884,7 +884,7 @@ static char *restore_value(restcontext *x, char *buf, Value *val)
 	if (buf[1] != 'i' || buf[2] != 'l') {
 	    restore_error(x, "nil expected");
 	}
-	*val = Value::nil;
+	*val = nil;
 	return buf + 3;
 
     case '#':
@@ -1008,8 +1008,8 @@ int kf_restore_object(Frame *f, int n, KFun *kf)
 		    var->type != T_LWOBJECT) {
 		    data->assignVar(var,
 				    (v->type == T_INT) ?
-				     &Value::zeroInt : (v->type == T_FLOAT) ?
-					    &Value::zeroFloat : &Value::nil);
+				     &zeroInt : (v->type == T_FLOAT) ?
+						 &zeroFloat : &nil);
 		}
 		var++;
 		nvars++;
@@ -1255,7 +1255,7 @@ int kf_read_file(Frame *f, int nargs, KFun *kf)
     }
 
     f->sp->string->del();
-    *f->sp = Value::nil;
+    *f->sp = nil;
 
     if (size < 0) {
 	/* size has to be >= 0 */

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -154,26 +154,25 @@ public:
     ObjPlane *prev;		/* previous object plane */
 };
 
-Object *Object::objTable;	/* object table */
-Uint *Object::ocmap;		/* object change map */
-bool Object::base;		/* object base plane flag */
-bool Object::swap, Object::dump, Object::incr, Object::stop, Object::boot;
-				/* global state vars */
-bool Object::rcount;		/* object counts recalculated? */
-uindex Object::otabsize;	/* size of object table */
-uindex Object::uobjects;	/* objects to check for upgrades */
+Object *objTable;		/* object table */
+Uint *ocmap;			/* object change map */
+bool obase;			/* object base plane flag */
+bool swap, dump, incr, stop, boot; /* global state vars */
+static bool rcount;		/* object counts recalculated? */
+static uindex otabsize;		/* size of object table */
+static uindex uobjects;		/* objects to check for upgrades */
 static ObjPlane baseplane(NULL);/* base object plane */
 static ObjPlane *oplane;	/* current object plane */
-Uint *Object::omap;		/* object dump bitmap */
-Uint *Object::counttab;		/* object count table */
-Uint *Object::insttab;		/* object instance table */
-Object *Object::upgradeList;	/* list of upgraded objects */
-uindex Object::ndobject, Object::dobject; /* objects to copy */
-uindex Object::mobjects;	/* max objects to copy */
-uindex Object::dchunksz;	/* copy chunk size */
-Uint Object::dinterval;		/* copy interval */
-Uint Object::dtime;		/* time copying started */
-Uint Object::objDestrCount;	/* objects destructed count */
+static Uint *omap;		/* object dump bitmap */
+static Uint *counttab;		/* object count table */
+static Uint *insttab;		/* object instance table */
+static Object *upgradeList;	/* list of upgraded objects */
+static uindex ndobject, dobject;/* objects to copy */
+static uindex mobjects;		/* max objects to copy */
+static uindex dchunksz;		/* copy chunk size */
+static Uint dinterval;		/* copy interval */
+static Uint dtime;		/* time copying started */
+Uint objDestrCount;		/* objects destructed count */
 
 /*
  * initialize the object tables
@@ -205,7 +204,7 @@ void Object::init(unsigned int n, Uint interval)
     uobjects = ndobject = mobjects = 0;
     dinterval = ((interval + 1) * 19) / 20;
     objDestrCount = 1;
-    base = TRUE;
+    obase = TRUE;
     rcount = TRUE;
 }
 
@@ -302,7 +301,7 @@ Object *Object::alloc()
 void Object::newPlane()
 {
     oplane = new ObjPlane(oplane);
-    base = FALSE;
+    obase = FALSE;
 }
 
 /*
@@ -415,7 +414,7 @@ void Object::commitPlane()
     delete oplane;
     oplane = prev;
 
-    base = (prev == &baseplane);
+    obase = (prev == &baseplane);
 }
 
 /*
@@ -519,7 +518,7 @@ void Object::discardPlane()
     oplane = p->prev;
     delete p;
 
-    base = (oplane == &baseplane);
+    obase = (oplane == &baseplane);
 }
 
 
@@ -537,11 +536,11 @@ Object *Object::create(char *name, Control *ctrl)
     o = alloc();
 
     /* put object in object name hash table */
-    if (base) {
+    if (obase) {
 	MM->staticMode();
     }
     o->name = strcpy(ALLOC(char, strlen(name) + 1), name);
-    if (base) {
+    if (obase) {
 	MM->dynamicMode();
     } else if (oplane->htab == (Hash::Hashtab *) NULL) {
 	oplane->htab = HM->create(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);

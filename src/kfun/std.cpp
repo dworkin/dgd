@@ -149,7 +149,7 @@ int kf_this_object(Frame *f, int n, KFun *kf)
 	    PUT_LWOVAL(f->sp, f->lwobj);
 	}
     } else {
-	*f->sp = Value::nil;
+	*f->sp = nil;
     }
     return 0;
 }
@@ -173,7 +173,7 @@ int kf_previous_object(Frame *f, int nargs, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (nargs == 0) {
-	*--f->sp = Value::nil;
+	*--f->sp = nil;
     } else if (f->sp->number < 0) {
 	return 1;
     }
@@ -191,7 +191,7 @@ int kf_previous_object(Frame *f, int nargs, KFun *kf)
 	}
     }
 
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -214,7 +214,7 @@ int kf_previous_program(Frame *f, int nargs, KFun *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (nargs == 0) {
-	*--f->sp = Value::nil;
+	*--f->sp = nil;
     } else if (f->sp->number < 0) {
 	return 1;
     }
@@ -226,7 +226,7 @@ int kf_previous_program(Frame *f, int nargs, KFun *kf)
 	str->text[0] = '/';
 	strcpy(str->text + 1, prog);
     } else {
-	*f->sp = Value::nil;
+	*f->sp = nil;
     }
     return 0;
 }
@@ -467,7 +467,7 @@ int kf_find_object(Frame *f, int n, KFun *kf)
     if (PM->string(path, f->sp->string->text,
 		   f->sp->string->len) == (char *) NULL) {
 	f->sp->string->del();
-	*f->sp = Value::nil;
+	*f->sp = nil;
 	return 0;
     }
     f->addTicks(2);
@@ -476,7 +476,7 @@ int kf_find_object(Frame *f, int n, KFun *kf)
     if (obj != (Object *) NULL) {
 	PUT_OBJVAL(f->sp, obj);
     } else {
-	*f->sp = Value::nil;
+	*f->sp = nil;
     }
     return 0;
 }
@@ -516,7 +516,7 @@ int kf_function_object(Frame *f, int nargs, KFun *kf)
 	/* no user-probeable functions within (right?) */
 	(f->sp++)->array->del();
 	f->sp->string->del();
-	*f->sp = Value::nil;
+	*f->sp = nil;
 	return 0;
     }
     f->sp++;
@@ -540,7 +540,7 @@ int kf_function_object(Frame *f, int nargs, KFun *kf)
 	    return 0;
 	}
     }
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -565,7 +565,7 @@ int kf_this_user(Frame *f, int n, KFun *kf)
     if (obj != (Object *) NULL) {
 	PUSH_OBJVAL(f, obj);
     } else {
-	*--f->sp = Value::nil;
+	*--f->sp = nil;
     }
     return 0;
 }
@@ -598,7 +598,7 @@ int kf_query_ip_number(Frame *f, int n, KFun *kf)
 	f->sp->array->del();
     }
 
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -630,7 +630,7 @@ int kf_query_ip_name(Frame *f, int n, KFun *kf)
 	f->sp->array->del();
     }
 
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -679,7 +679,7 @@ int kf_allocate(Frame *f, int n, KFun *kf)
     f->addTicks(f->sp->number);
     PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->number));
     for (i = f->sp->array->size, v = f->sp->array->elts; i > 0; --i, v++) {
-	*v = Value::nil;
+	*v = nil;
     }
     return 0;
 }
@@ -709,7 +709,7 @@ int kf_allocate_int(Frame *f, int n, KFun *kf)
     f->addTicks(f->sp->number);
     PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->number));
     for (i = f->sp->array->size, v = f->sp->array->elts; i > 0; --i, v++) {
-	*v = Value::zeroInt;
+	*v = zeroInt;
     }
     return 0;
 }
@@ -739,7 +739,7 @@ int kf_allocate_float(Frame *f, int n, KFun *kf)
     f->addTicks(f->sp->number);
     PUT_ARRVAL(f->sp, Array::create(f->data, f->sp->number));
     for (i = f->sp->array->size, v = f->sp->array->elts; i > 0; --i, v++) {
-	*v = Value::zeroFloat;
+	*v = zeroFloat;
     }
     return 0;
 }
@@ -981,7 +981,7 @@ int kf_send_close(Frame *f, int n, KFun *kf)
 	    Comm::stop(obj);
 	}
     }
-    *--f->sp = Value::nil;
+    *--f->sp = nil;
     return 0;
 }
 # endif
@@ -1010,7 +1010,7 @@ int kf_datagram_challenge(Frame *f, int n, KFun *kf)
 	}
     }
     f->sp->string->del();
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -1037,7 +1037,7 @@ int kf_block_input(Frame *f, int n, KFun *kf)
 	    Comm::block(obj, f->sp->number != 0);
 	}
     }
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -1204,7 +1204,7 @@ int kf_swapout(Frame *f, int n, KFun *kf)
 
     Object::swapout();
 
-    *--f->sp = Value::nil;
+    *--f->sp = nil;
     return 0;
 }
 # endif
@@ -1231,7 +1231,7 @@ int kf_dump_state(Frame *f, int nargs, KFun *kf)
     } else {
 	incr = (f->sp->number != 0);
     }
-    *f->sp = Value::nil;
+    *f->sp = nil;
 
     Object::dumpState(incr);
 
@@ -1281,7 +1281,7 @@ int kf_connect(Frame *f, int nargs, KFun *kf)
 
     Comm::connect(f, obj, f->sp->string->text, port);
     f->sp->string->del();
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -1343,7 +1343,7 @@ int kf_connect_datagram(Frame *f, int nargs, KFun *kf)
 
     Comm::connectDgram(f, obj, f->sp[1].number, f->sp->string->text, port);
     (f->sp++)->string->del();
-    *f->sp = Value::nil;
+    *f->sp = nil;
     return 0;
 }
 # endif
@@ -1375,7 +1375,7 @@ int kf_shutdown(Frame *f, int nargs, KFun *kf)
     }
     Object::finish(boot);
 
-    *--f->sp = Value::nil;
+    *--f->sp = nil;
     return 0;
 }
 # endif
@@ -1421,7 +1421,7 @@ int kf_new_function(Frame *f, int nargs, KFun *kf)
 	    PUT_LWOVAL(&elts[3], f->lwobj);
 	}
     } else {
-	elts[3] = Value::nil;	/* postpone error until function is called */
+	elts[3] = nil;	/* postpone error until function is called */
     }
     v = f->sp;
     elts += a->size;

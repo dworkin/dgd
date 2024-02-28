@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1390,7 +1390,7 @@ int kf_rangef(Frame *f, int n, KFun *kf)
 	if (VAL_NIL(f->sp)) {
 	    kf->argError(2);
 	}
-	*--f->sp = Value::nil;
+	*--f->sp = nil;
 	kf->ternary(f);
 
 	return 0;
@@ -1462,7 +1462,7 @@ int kf_ranget(Frame *f, int n, KFun *kf)
 	}
 	--f->sp;
 	f->sp[0] = f->sp[1];
-	f->sp[1] = Value::nil;
+	f->sp[1] = nil;
 	kf->ternary(f);
 
 	return 0;
@@ -1527,8 +1527,8 @@ int kf_range(Frame *f, int n, KFun *kf)
     }
     if (f->sp->type == T_LWOBJECT &&
 	f->sp->array->elts[0].type == T_OBJECT) {
-	*--f->sp = Value::nil;
-	*--f->sp = Value::nil;
+	*--f->sp = nil;
+	*--f->sp = nil;
 	kf->ternary(f);
 
 	return 0;
@@ -2153,7 +2153,7 @@ int kf_call_other(Frame *f, int nargs, KFun *kf)
     val = &f->sp[nargs - 1];
     if (val->type == T_STRING) {
 	*--f->sp = *val;
-	*val = Value::nil;	/* erase old copy */
+	*val = nil;		/* erase old copy */
 	DGD::callDriver(f, "call_object", 1);
 	*val = *f->sp++;
     }
@@ -2176,7 +2176,7 @@ int kf_call_other(Frame *f, int nargs, KFun *kf)
 	 * call from destructed object
 	 */
 	f->pop(nargs);
-	*--f->sp = Value::nil;
+	*--f->sp = nil;
 	return 0;
     }
 
@@ -2184,7 +2184,7 @@ int kf_call_other(Frame *f, int nargs, KFun *kf)
 		nargs - 2)) {
 	val = f->sp++;		/* function exists */
     } else {
-	val = &Value::nil;	/* function doesn't exist */
+	val = &nil;		/* function doesn't exist */
     }
     (f->sp++)->string->del();
     f->sp->del();
@@ -2255,7 +2255,7 @@ int kf_statuso_idx(Frame *f, int nargs, KFun *kf)
 	if (f->sp[1].array->elts[0].type == T_OBJECT) {
 	    n = f->sp[1].array->elts[0].oindex;
 	    f->sp[1].array->del();
-	    f->sp[1] = Value::nil;
+	    f->sp[1] = nil;
 	} else {
 	    /* no user-visible parts within (right?) */
 	    EC->error("Index on bad type");
@@ -2316,7 +2316,7 @@ int kf_nil(Frame *f, int n, KFun *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    *--f->sp = Value::nil;
+    *--f->sp = nil;
     return 0;
 }
 # endif
@@ -2347,7 +2347,7 @@ int kf_status(Frame *f, int nargs, KFun *kf)
 	switch (f->sp->type) {
 	case T_INT:
 	    if (f->sp->number != 0) {
-		*f->sp = Value::nil;
+		*f->sp = nil;
 		return 0;
 	    }
 	    a = Config::status(f);
@@ -3282,21 +3282,21 @@ int kf_sum(Frame *f, int nargs, KFun *kf)
 	    case SUM_ALLOCATE_NIL:
 		v++;
 		for (len = v->number; len > 0; --len) {
-		    *--e1 = Value::nil;
+		    *--e1 = nil;
 		}
 		continue;
 
 	    case SUM_ALLOCATE_INT:
 		v++;
 		for (len = v->number; len > 0; --len) {
-		    *--e1 = Value::zeroInt;
+		    *--e1 = zeroInt;
 		}
 		continue;
 
 	    case SUM_ALLOCATE_FLT:
 		v++;
 		for (len = v->number; len > 0; --len) {
-		    *--e1 = Value::zeroFloat;
+		    *--e1 = zeroFloat;
 		}
 		continue;
 

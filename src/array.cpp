@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -65,8 +65,8 @@ public:
     MapElt(Uint hashval, MapElt *next) {
 	this->hashval = hashval;
 	add = FALSE;
-	idx = Value::nil;
-	val = Value::nil;
+	idx = nil;
+	val = nil;
 	this->next = next;
     }
     ~MapElt() {
@@ -81,8 +81,8 @@ public:
      */
     void remove(Dataspace *data, Array *m) {
 	if (add) {
-	    data->assignElt(m, &idx, &Value::nil);
-	    data->assignElt(m, &val, &Value::nil);
+	    data->assignElt(m, &idx, &nil);
+	    data->assignElt(m, &val, &nil);
 	}
 	delete this;
     }
@@ -100,7 +100,7 @@ public:
 		 * index is destructed object
 		 */
 		if (add) {
-		    data->assignElt(m, &val, &Value::nil);
+		    data->assignElt(m, &val, &nil);
 		}
 		return TRUE;
 	    }
@@ -113,8 +113,8 @@ public:
 		 * index is destructed object
 		 */
 		if (add) {
-		    data->assignElt(m, &idx, &Value::nil);
-		    data->assignElt(m, &val, &Value::nil);
+		    data->assignElt(m, &idx, &nil);
+		    data->assignElt(m, &val, &nil);
 		}
 		return TRUE;
 	    }
@@ -127,7 +127,7 @@ public:
 		 * value is destructed object
 		 */
 		if (add) {
-		    data->assignElt(m, &idx, &Value::nil);
+		    data->assignElt(m, &idx, &nil);
 		}
 		return TRUE;
 	    }
@@ -140,8 +140,8 @@ public:
 		 * value is destructed object
 		 */
 		if (add) {
-		    data->assignElt(m, &idx, &Value::nil);
-		    data->assignElt(m, &val, &Value::nil);
+		    data->assignElt(m, &idx, &nil);
+		    data->assignElt(m, &val, &nil);
 		}
 		return TRUE;
 	    }
@@ -514,7 +514,7 @@ Array *Array::create(Dataspace *data, LPCint size)
 	a->elts = ALLOC(Value, size);
     }
     a->tag = atag++;
-    a->objDestrCount = Object::objDestrCount;
+    a->objDestrCount = ::objDestrCount;
     a->primary = &data->plane->alocal;
     a->prev = &data->alist;
     a->next = data->alist.next;
@@ -534,7 +534,7 @@ Array *Array::createNil(Dataspace *data, LPCint size)
 
     a = create(data, size);
     for (i = size, v = a->elts; i != 0; --i, v++) {
-	*v = Value::nil;
+	*v = nil;
     }
     return a;
 }
@@ -718,7 +718,7 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
     unsigned short n;
 
     v2 = Dataspace::elts(a);
-    if (a->objDestrCount == Object::objDestrCount) {
+    if (a->objDestrCount == ::objDestrCount) {
 	/*
 	 * no need to check for destructed objects
 	 */
@@ -728,19 +728,19 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
 	 * Copy and check for destructed objects.  If destructed objects are
 	 * found, they will be replaced by nil in the original array.
 	 */
-	a->objDestrCount = Object::objDestrCount;
+	a->objDestrCount = ::objDestrCount;
 	for (n = a->size; n != 0; --n) {
 	    switch (v2->type) {
 	    case T_OBJECT:
 		if (DESTRUCTED(v2)) {
-		    data->assignElt(a, v2, &Value::nil);
+		    data->assignElt(a, v2, &nil);
 		}
 		break;
 
 	    case T_LWOBJECT:
 		o = Dataspace::elts(v2->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
-		    data->assignElt(a, v2, &Value::nil);
+		    data->assignElt(a, v2, &nil);
 		}
 		break;
 	    }
@@ -920,7 +920,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 
     v1 = Dataspace::elts(this);
     v3 = a3->elts;
-    if (objDestrCount == Object::objDestrCount) {
+    if (objDestrCount == ::objDestrCount) {
 	for (n = size; n > 0; --n) {
 	    if (search(v1, v2, a2->size, 1, FALSE) < 0) {
 		/*
@@ -932,13 +932,13 @@ Array *Array::sub(Dataspace *data, Array *a2)
 	    v1++;
 	}
     } else {
-	objDestrCount = Object::objDestrCount;
+	objDestrCount = ::objDestrCount;
 	for (n = size; n > 0; --n) {
 	    switch (v1->type) {
 	    case T_OBJECT:
 		if (DESTRUCTED(v1)) {
 		    /* replace destructed object by nil */
-		    primary->data->assignElt(this, v1, &Value::nil);
+		    primary->data->assignElt(this, v1, &nil);
 		}
 		break;
 
@@ -946,7 +946,7 @@ Array *Array::sub(Dataspace *data, Array *a2)
 		o = Dataspace::elts(v1->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
-		    primary->data->assignElt(this, v1, &Value::nil);
+		    primary->data->assignElt(this, v1, &nil);
 		}
 		break;
 	    }
@@ -995,7 +995,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 
     v1 = Dataspace::elts(this);
     v3 = a3->elts;
-    if (objDestrCount == Object::objDestrCount) {
+    if (objDestrCount == ::objDestrCount) {
 	for (n = size; n > 0; --n) {
 	    if (search(v1, v2, a2->size, 1, FALSE) >= 0) {
 		/*
@@ -1007,13 +1007,13 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 	    v1++;
 	}
     } else {
-	objDestrCount = Object::objDestrCount;
+	objDestrCount = ::objDestrCount;
 	for (n = size; n > 0; --n) {
 	    switch (v1->type) {
 	    case T_OBJECT:
 		if (DESTRUCTED(v1)) {
 		    /* replace destructed object by nil */
-		    primary->data->assignElt(this, v1, &Value::nil);
+		    primary->data->assignElt(this, v1, &nil);
 		}
 		break;
 
@@ -1021,7 +1021,7 @@ Array *Array::intersect(Dataspace *data, Array *a2)
 		o = Dataspace::elts(v1->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
-		    primary->data->assignElt(this, v1, &Value::nil);
+		    primary->data->assignElt(this, v1, &nil);
 		}
 		break;
 	    }
@@ -1081,7 +1081,7 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
 
     v = v3;
     v2 = Dataspace::elts(a2);
-    if (a2->objDestrCount == Object::objDestrCount) {
+    if (a2->objDestrCount == ::objDestrCount) {
 	for (n = a2->size; n > 0; --n) {
 	    if (search(v2, v1, size, 1, FALSE) < 0) {
 		/*
@@ -1092,13 +1092,13 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
 	    v2++;
 	}
     } else {
-	a2->objDestrCount = Object::objDestrCount;
+	a2->objDestrCount = ::objDestrCount;
 	for (n = a2->size; n > 0; --n) {
 	    switch (v2->type) {
 	    case T_OBJECT:
 		if (DESTRUCTED(v2)) {
 		    /* replace destructed object by nil */
-		    a2->primary->data->assignElt(a2, v2, &Value::nil);
+		    a2->primary->data->assignElt(a2, v2, &nil);
 		}
 		break;
 
@@ -1106,7 +1106,7 @@ Array *Array::setAdd(Dataspace *data, Array *a2)
 		o = Dataspace::elts(v2->array);
 		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
-		    a2->primary->data->assignElt(a2, v2, &Value::nil);
+		    a2->primary->data->assignElt(a2, v2, &nil);
 		}
 		break;
 	    }
@@ -1324,7 +1324,7 @@ Mapping *Mapping::create(Dataspace *data, LPCint size)
 	m->elts = ALLOC(Value, size);
     }
     m->tag = atag++;
-    m->objDestrCount = Object::objDestrCount;
+    m->objDestrCount = ::objDestrCount;
     m->primary = &data->plane->alocal;
     m->prev = &data->alist;
     m->next = data->alist.next;
@@ -1390,7 +1390,7 @@ void Mapping::dehash(Dataspace *data, bool clean)
 		    /*
 		     * index is destructed object
 		     */
-		    data->assignElt(this, v2 + 1, &Value::nil);
+		    data->assignElt(this, v2 + 1, &nil);
 		    v2 += 2;
 		    continue;
 		}
@@ -1402,8 +1402,8 @@ void Mapping::dehash(Dataspace *data, bool clean)
 		    /*
 		     * index is destructed object
 		     */
-		    data->assignElt(this, v2++, &Value::nil);
-		    data->assignElt(this, v2++, &Value::nil);
+		    data->assignElt(this, v2++, &nil);
+		    data->assignElt(this, v2++, &nil);
 		    continue;
 		}
 		break;
@@ -1414,7 +1414,7 @@ void Mapping::dehash(Dataspace *data, bool clean)
 		    /*
 		     * value is destructed object
 		     */
-		    data->assignElt(this, v2, &Value::nil);
+		    data->assignElt(this, v2, &nil);
 		    v2 += 2;
 		    continue;
 		}
@@ -1426,8 +1426,8 @@ void Mapping::dehash(Dataspace *data, bool clean)
 		    /*
 		     * value is destructed object
 		     */
-		    data->assignElt(this, v2++, &Value::nil);
-		    data->assignElt(this, v2++, &Value::nil);
+		    data->assignElt(this, v2++, &nil);
+		    data->assignElt(this, v2++, &nil);
 		    continue;
 		}
 		break;
@@ -1524,14 +1524,14 @@ bool Mapping::trim()
  */
 void Mapping::compact(Dataspace *data)
 {
-    if (hashmod || objDestrCount != Object::objDestrCount) {
+    if (hashmod || objDestrCount != ::objDestrCount) {
 	if (hashmod && (!THISPLANE(primary) || !SAMEPLANE(data, primary->data)))
 	{
 	    dehash(data, FALSE);
 	}
 
 	dehash(data, TRUE);
-	objDestrCount = Object::objDestrCount;
+	objDestrCount = ::objDestrCount;
     }
 }
 
@@ -1890,7 +1890,7 @@ Value *Mapping::index(Dataspace *data, Value *val, Value *elt, Value *verify)
 		hashed->remove(p, data, this);
 
 		if (add) {
-		    return &Value::nil;
+		    return &nil;
 		}
 
 		/* change array part also */
@@ -1930,8 +1930,8 @@ Value *Mapping::index(Dataspace *data, Value *val, Value *elt, Value *verify)
 		/*
 		 * delete the element
 		 */
-		data->assignElt(this, v, &Value::nil);
-		data->assignElt(this, v + 1, &Value::nil);
+		data->assignElt(this, v, &nil);
+		data->assignElt(this, v + 1, &nil);
 
 		size -= 2;
 		if (size == 0) {
@@ -1943,7 +1943,7 @@ Value *Mapping::index(Dataspace *data, Value *val, Value *elt, Value *verify)
 		    memmove(v, v + 2, (size - n) * sizeof(Value));
 		}
 		Dataspace::changeMap(this);
-		return &Value::nil;
+		return &nil;
 	    }
 	    val = v;
 	    elt = v + 1;
@@ -1952,7 +1952,7 @@ Value *Mapping::index(Dataspace *data, Value *val, Value *elt, Value *verify)
     }
 
     if (elt == (Value *) NULL) {
-	return &Value::nil;	/* not found */
+	return &nil;	/* not found */
     }
 
     if (!hash) {
@@ -2103,7 +2103,7 @@ LWO *LWO::create(Dataspace *data, Object *obj)
     PUT_FLTVAL(&a->elts[1], flt);
     Dataspace::newVars(ctrl, a->elts + 2);
     a->tag = atag++;
-    a->objDestrCount = Object::objDestrCount;
+    a->objDestrCount = ::objDestrCount;
     a->primary = &data->plane->alocal;
     a->prev = &data->alist;
     a->next = data->alist.next;
@@ -2122,7 +2122,7 @@ LWO *LWO::copy(Dataspace *data)
     copy = alloc(size);
     Value::copy(copy->elts = ALLOC(Value, size), elts, size);
     copy->tag = atag++;
-    copy->objDestrCount = Object::objDestrCount;
+    copy->objDestrCount = ::objDestrCount;
     copy->primary = &data->plane->alocal;
     copy->prev = &data->alist;
     copy->next = data->alist.next;

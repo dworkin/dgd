@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -122,7 +122,7 @@ void Frame::pushValue(Value *v)
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
 	     */
-	    *sp = Value::nil;
+	    *sp = nil;
 	}
 	break;
 
@@ -133,7 +133,7 @@ void Frame::pushValue(Value *v)
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
 	     */
-	    *sp = Value::nil;
+	    *sp = nil;
 	    break;
 	}
 	/* fall through */
@@ -174,7 +174,7 @@ void Frame::objDest(Object *obj)
 	    switch (v->type) {
 	    case T_OBJECT:
 		if (v->oindex == index) {
-		    *v = Value::nil;
+		    *v = nil;
 		}
 		break;
 
@@ -182,7 +182,7 @@ void Frame::objDest(Object *obj)
 		if (v->array->elts[0].type == T_OBJECT &&
 		    v->array->elts[0].oindex == index) {
 		    v->array->del();
-		    *v = Value::nil;
+		    *v = nil;
 		}
 		break;
 	    }
@@ -200,7 +200,7 @@ void Frame::objDest(Object *obj)
 		switch (v->type) {
 		case T_OBJECT:
 		    if (v->oindex == index) {
-			*v = Value::nil;
+			*v = nil;
 		    }
 		    break;
 
@@ -208,7 +208,7 @@ void Frame::objDest(Object *obj)
 		    if (v->array->elts[0].type == T_OBJECT &&
 			v->array->elts[0].oindex == index) {
 			v->array->del();
-			*v = Value::nil;
+			*v = nil;
 		    }
 		    break;
 		}
@@ -414,14 +414,14 @@ void Frame::index(Value *aval, Value *ival, Value *val, bool keep)
 
     case T_OBJECT:
 	if (DESTRUCTED(val)) {
-	    *val = Value::nil;
+	    *val = nil;
 	}
 	break;
 
     case T_LWOBJECT:
 	ival = Dataspace::elts(val->array);
 	if (ival->type == T_OBJECT && DESTRUCTED(ival)) {
-	    *val = Value::nil;
+	    *val = nil;
 	    break;
 	}
 	/* fall through */
@@ -671,7 +671,7 @@ void Frame::storeIndex(Value *val)
 {
     Value var;
 
-    var = Value::nil;
+    var = nil;
     if (storeIndex(&var, sp + 2, sp + 1, val)) {
 	sp[2].string->del();
 	var.string->del();
@@ -687,7 +687,7 @@ void Frame::storeParamIndex(int param, Value *val)
 {
     Value var, *lvar;
 
-    var = Value::nil;
+    var = nil;
     if (storeIndex(&var, sp + 2, sp + 1, val)) {
 	lvar = argp + param;
 	if (lvar->type == T_STRING && lvar->string == sp[2].string) {
@@ -707,7 +707,7 @@ void Frame::storeLocalIndex(int local, Value *val)
 {
     Value var, *lvar;
 
-    var = Value::nil;
+    var = nil;
     if (storeIndex(&var, sp + 2, sp + 1, val)) {
 	lvar = fp - local;
 	if (lvar->type == T_STRING && lvar->string == sp[2].string) {
@@ -728,7 +728,7 @@ void Frame::storeGlobalIndex(int inherit, int index, Value *val)
     unsigned short offset;
     Value var, *gvar;
 
-    var = Value::nil;
+    var = nil;
     if (storeIndex(&var, sp + 2, sp + 1, val)) {
 	addTicks(5);
 	inherit = ctrl->imap[p_index + inherit];
@@ -758,7 +758,7 @@ void Frame::storeIndexIndex(Value *val)
 {
     Value var;
 
-    var = Value::nil;
+    var = nil;
     if (storeIndex(&var, sp + 2, sp + 1, val)) {
 	sp[1] = var;
 	storeIndex(sp + 2, sp + 4, sp + 3, sp + 1);
@@ -2164,7 +2164,7 @@ void Frame::interpret(char *pc)
 		EC->pop();
 		pc = this->pc;
 		if (p_ctrl->version < 3 || (instr & I_POP_BIT)) {
-		    *--sp = Value::nil;
+		    *--sp = nil;
 		}
 	    } catch (const char*) {
 		/* error */
@@ -2312,18 +2312,18 @@ void Frame::funcall(Object *obj, LWO *lwobj, int p_ctrli, int funci, int nargs)
 	while (nargs < n) {
 	    switch (i=FETCH1U(pc)) {
 	    case T_INT:
-		*--sp = Value::zeroInt;
+		*--sp = zeroInt;
 		break;
 
 	    case T_FLOAT:
-		*--sp = Value::zeroFloat;
+		*--sp = zeroFloat;
 		break;
 
 	    default:
 		if ((i & T_TYPE) == T_CLASS) {
 		    pc += 3;
 		}
-		*--sp = Value::nil;
+		*--sp = nil;
 		break;
 	    }
 	    nargs++;
@@ -2406,7 +2406,7 @@ void Frame::funcall(Object *obj, LWO *lwobj, int p_ctrli, int funci, int nargs)
 # endif
     if (n > 0) {
 	do {
-	    *--f.sp = Value::nil;
+	    *--f.sp = nil;
 	} while (--n > 0);
     }
 

@@ -2017,7 +2017,7 @@ bool Config::objecti(Dataspace *data, Object *obj, LPCint idx, Value *v)
 	    if (a != (Array *) NULL) {
 		PUT_ARRVAL(v, a);
 	    } else {
-		*v = Value::nil;
+		*v = nil;
 	    }
 	} else {
 	    PUT_ARRVAL(v, Array::create(data, 0));
@@ -2033,7 +2033,7 @@ bool Config::objecti(Dataspace *data, Object *obj, LPCint idx, Value *v)
 	if (ctrl->flags & CTRL_UNDEFINED) {
 	    PUT_MAPVAL(v, ctrl->undefined(data));
 	} else {
-	    *v = Value::nil;
+	    *v = nil;
 	}
 	break;
 

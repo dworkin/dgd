@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -49,9 +49,9 @@ public:
 	String *string;		/* string */
 	Array *array;		/* array or mapping */
     };
-
-    static Value zeroInt, zeroFloat, nil;
 };
+
+extern Value zeroInt, zeroFloat, nil;
 
 # define T_TYPE		0x0f	/* type mask */
 # define T_NIL		0x00
@@ -82,7 +82,7 @@ public:
 			  "array", "mapping", "object", "mixed", "void" }
 # define TNBUFSIZE	24
 
-# define VAL_NIL(v)	((v)->type == Value::nil.type && (v)->number == 0)
+# define VAL_NIL(v)	((v)->type == nil.type && (v)->number == 0)
 # define VAL_TRUE(v)	((v)->number != 0 || (v)->type > T_FLOAT ||	\
 			 ((v)->type == T_FLOAT && (v)->oindex != 0))
 

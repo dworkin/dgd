@@ -85,15 +85,15 @@ void DGD::endTask()
 
     CallOut::swapcount(Dataspace::swapout(fragment));
 
-    if (Object::stop) {
+    if (stop) {
 	Comm::clear();
 	Editor::finish();
 # ifdef DEBUG
-	Object::swap = TRUE;
+	swap = TRUE;
 # endif
     }
 
-    if (Object::swap || !MM->check()) {
+    if (swap || !MM->check()) {
 	/*
 	 * swap out everything and possibly extend the static memory area
 	 */
@@ -101,27 +101,27 @@ void DGD::endTask()
 	Array::freeall();
 	String::clean();
 	MM->purge();
-	Object::swap = FALSE;
+	swap = FALSE;
     }
 
-    if (Object::dump) {
+    if (dump) {
 	/*
 	 * create a snapshot
 	 */
-	Config::dump(Object::incr, Object::boot);
-	Object::dump = FALSE;
-	if (!Object::incr) {
+	Config::dump(incr, boot);
+	dump = FALSE;
+	if (!incr) {
 	    rebuild = TRUE;
 	    dindex = UINDEX_MAX;
 	}
     }
 
-    if (Object::stop) {
+    if (stop) {
 	Swap::finish();
 	Config::modFinish(TRUE);
 	Ext::finish();
 
-	if (Object::boot) {
+	if (boot) {
 	    char **hotboot;
 
 	    /*
@@ -136,7 +136,7 @@ void DGD::endTask()
 	Array::freeall();
 	String::clean();
 	MM->finish();
-	std::exit(Object::boot);
+	std::exit(boot);
     }
 }
 
@@ -170,7 +170,7 @@ int DGD::main(int argc, char **argv)
 
     /* initialize */
     dindex = UINDEX_MAX;
-    Object::swap = Object::dump = Object::incr = Object::stop = FALSE;
+    swap = dump = incr = stop = FALSE;
     rebuild = TRUE;
     rtime = 0;
     if (!Config::init(argv[0], (argc > 1) ? argv[1] : (char *) NULL,
