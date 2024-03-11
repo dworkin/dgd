@@ -17,4 +17,4 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-# define VERSION	"DGD 1.7.2"
+# define VERSION	"DGD 1.7.3"
