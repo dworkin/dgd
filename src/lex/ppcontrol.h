@@ -19,14 +19,14 @@
 
 class Preproc {
 public:
-    static bool init(char *file, char **id, char *buffer, unsigned int buflen,
-		     int level);
-    static void clear();
-    static bool include(char *file, char *buffer, unsigned int buflen);
-    static void push(char *buffer, unsigned int buflen);
-    static char *filename();
-    static unsigned short line();
-    static int gettok();
+    bool init(char *file, char **id, char *buffer, unsigned int buflen,
+	      int level);
+    void clear();
+    bool include(char *file, char *buffer, unsigned int buflen);
+    void push(char *buffer, unsigned int buflen);
+    char *filename();
+    unsigned short line();
+    int gettok();
 
     virtual void error(const char *format, ...) {
 	va_list args;
@@ -40,18 +40,17 @@ public:
     }
 
 private:
-    static int wsgettok();
-    static int mcgtok();
-    static int wsmcgtok();
-    static int expr_get();
-    static long eval_expr(int priority);
-    static int pptokenz(char *key, unsigned int len);
-    static int tokenz(char *key, unsigned int len);
-    static void unexpected(int token, const char *wanted,
-			   const char *directive);
-    static void do_include();
-    static int argnum(char **args, int narg, int token);
-    static void do_define();
+    int wsgettok();
+    int mcgtok();
+    int wsmcgtok();
+    int expr_get();
+    long eval_expr(int priority);
+    int pptokenz(char *key, unsigned int len);
+    int tokenz(char *key, unsigned int len);
+    void unexpected(int token, const char *wanted, const char *directive);
+    void do_include();
+    int argnum(char **args, int narg, int token);
+    void do_define();
 };
 
 extern Preproc *PP;

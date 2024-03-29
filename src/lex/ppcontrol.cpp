@@ -266,12 +266,12 @@ int Preproc::expr_get()
 		}
 		strcpy(buf, yytext);
 		if (token != IDENTIFIER) {
-		    PP->error("missing identifier in defined");
+		    error("missing identifier in defined");
 		}
 		if (paren && token != ')') {
 		    token = wsgettok();
 		    if (token != ')') {
-			PP->error("missing ) in defined");
+			error("missing ) in defined");
 			expr_unget(token);
 		    }
 		}
@@ -300,7 +300,7 @@ long Preproc::eval_expr(int priority)
 	expr = eval_expr(0);
 	token = expr_get();
 	if (token != ')') {
-	    PP->error("missing ) in conditional control");
+	    error("missing ) in conditional control");
 	    expr_unget(token);
 	}
     } else if (pri[token + 1] & UNARY) {
@@ -317,7 +317,7 @@ long Preproc::eval_expr(int priority)
     } else {
 	/* bad token */
 	if (token == LF) {
-	    PP->error("missing expression in conditional control");
+	    error("missing expression in conditional control");
 	}
 	expr_unget(token);
 	return 0;
@@ -335,10 +335,10 @@ long Preproc::eval_expr(int priority)
 	    expr2 = eval_expr((int) expr2);
 	    if (expr2 == 0) {
 		if (token == '/') {
-		    PP->error("division by zero in conditional control");
+		    error("division by zero in conditional control");
 		    continue;
 		} else if (token == '%') {
-		    PP->error("modulus by zero in conditional control");
+		    error("modulus by zero in conditional control");
 		    continue;
 		}
 	    }
@@ -364,7 +364,7 @@ long Preproc::eval_expr(int priority)
 	    case '?':
 		token = expr_get();
 		if (token != ':') {
-		    PP->error("? without : in conditional control");
+		    error("? without : in conditional control");
 		    expr_unget(token);
 		} else if (expr == 0) {
 		    expr = eval_expr(0);
@@ -461,9 +461,9 @@ int Preproc::tokenz(char *key, unsigned int len)
 void Preproc::unexpected(int token, const char *wanted, const char *directive)
 {
     if (token == LF) {
-	PP->error("missing %s in #%s", wanted, directive);
+	error("missing %s in #%s", wanted, directive);
     } else {
-	PP->error("unexpected token in #%s", directive);
+	error("unexpected token in #%s", directive);
 	TokenBuf::skiptonl(FALSE);
     }
 }
@@ -478,7 +478,7 @@ void Preproc::do_include()
     char **idir;
 
     if (include_level == INCLUDEDEPTH) {
-	PP->error("#include nesting too deep");
+	error("#include nesting too deep");
 	TokenBuf::skiptonl(FALSE);
 	return;
     }
@@ -488,7 +488,7 @@ void Preproc::do_include()
     TokenBuf::header(FALSE);
 
     if (idirs == (char **) NULL) {
-	PP->error("illegal #include from config file");
+	error("illegal #include from config file");
 	return;
     }
     if (token == STRING_CONST) {
@@ -518,7 +518,7 @@ void Preproc::do_include()
 	    return;
 	}
     }
-    PP->error("cannot include \"%s\"", file);
+    error("cannot include \"%s\"", file);
 }
 
 /*
@@ -564,12 +564,12 @@ void Preproc::do_define()
 	if (token != ')') {
 	    for (;;) {
 		if (token == LF || token == EOF) {
-		    PP->error("unterminated macro definition");
+		    error("unterminated macro definition");
 		    errcount++;
 		    break;
 		}
 		if (token != IDENTIFIER) {
-		    PP->error("unexpected token in macro parameter list");
+		    error("unexpected token in macro parameter list");
 		    errcount++;
 		    TokenBuf::skiptonl(FALSE);
 		    break;
@@ -578,7 +578,7 @@ void Preproc::do_define()
 		    arg = ALLOCA(char, strlen(yytext) + 1);
 		    args[narg++] = strcpy(arg, yytext);
 		} else {
-		    PP->error("too many parameters in macro definition");
+		    error("too many parameters in macro definition");
 		    errcount++;
 		    TokenBuf::skiptonl(FALSE);
 		    break;
@@ -588,12 +588,12 @@ void Preproc::do_define()
 		    break;
 		}
 		if (token == LF || token == EOF) {
-		    PP->error("unterminated macro definition");
+		    error("unterminated macro definition");
 		    errcount++;
 		    break;
 		}
 		if (token != ',') {
-		    PP->error("unexpected token in macro parameter list");
+		    error("unexpected token in macro parameter list");
 		    errcount++;
 		    TokenBuf::skiptonl(FALSE);
 		    break;
@@ -636,7 +636,7 @@ void Preproc::do_define()
 		    s->append((i | MA_TAG | MA_STRING));
 		    s->append(HT);
 		} else {
-		    PP->error("# must be followed by parameter");
+		    error("# must be followed by parameter");
 		    errcount++;
 		    TokenBuf::skiptonl(FALSE);
 		    break;
@@ -644,14 +644,14 @@ void Preproc::do_define()
 	    } else if (token == HASH_HASH) {
 		/* concatenate previous token with next */
 		if (s->len == 1) {
-		    PP->error("## at start of macro replacement list");
+		    error("## at start of macro replacement list");
 		    errcount++;
 		    TokenBuf::skiptonl(FALSE);
 		    break;
 		}
 		token = wsgettok();
 		if (token == LF || token == EOF) {
-		    PP->error("## at end of macro replacement list");
+		    error("## at end of macro replacement list");
 		    errcount++;
 		    break;
 		}
@@ -698,11 +698,11 @@ void Preproc::do_define()
 
     if (errcount == 0) {
 	if (i < 0) {
-	    PP->error("macro replacement list too large");
+	    error("macro replacement list too large");
 	} else if (Special::replace(name) != (char *) NULL) {
-	    PP->error("#define of predefined macro");
+	    error("#define of predefined macro");
 	} else if (!Macro::define(name, buf, narg)) {
-	    PP->error("macro %s redefined", name);
+	    error("macro %s redefined", name);
 	}
     }
 }
@@ -731,7 +731,7 @@ int Preproc::gettok()
 	switch (token) {
 	case EOF:
 	    while (ifs->level > include_level) {
-		PP->error("missing #endif");
+		error("missing #endif");
 		ifs->pop();
 	    }
 	    if (include_level > 0) {
@@ -785,9 +785,9 @@ int Preproc::gettok()
 	    /* fall through */
 	default:
 	    if (token >= 32 && token < 127) {
-		PP->error("illegal character: '%c'", token);
+		error("illegal character: '%c'", token);
 	    } else {
-		PP->error("illegal character: 0x%02x", token);
+		error("illegal character: 0x%02x", token);
 	    }
 	    break;
 
@@ -817,10 +817,10 @@ int Preproc::gettok()
 
 		case PP_ELIF:
 		    if (ifs == &top) {
-			PP->error("#elif without #if");
+			error("#elif without #if");
 			TokenBuf::skiptonl(FALSE);
 		    } else if (!ifs->expect_else) {
-			PP->error("#elif after #else");
+			error("#elif after #else");
 			TokenBuf::skiptonl(FALSE);
 		    } else if (!ifs->active || !ifs->skipping) {
 			/* #elif within unactive/after non-skipped #if */
@@ -871,10 +871,10 @@ int Preproc::gettok()
 
 		case PP_ELSE:
 		    if (ifs == &top) {
-			PP->error("#else without #if");
+			error("#else without #if");
 			TokenBuf::skiptonl(FALSE);
 		    } else if (!ifs->expect_else) {
-			PP->error("#else after #else");
+			error("#else after #else");
 			TokenBuf::skiptonl(FALSE);
 		    } else {
 			ifs->expect_else = FALSE;
@@ -885,7 +885,7 @@ int Preproc::gettok()
 
 		case PP_ENDIF:
 		    if (ifs->level <= include_level) {
-			PP->error("#endif without #if");
+			error("#endif without #if");
 			TokenBuf::skiptonl(FALSE);
 		    } else {
 			ifs->pop();
@@ -911,9 +911,9 @@ int Preproc::gettok()
 			}
 			TokenBuf::setpp(FALSE);
 			if (s->len == 0) {
-			    PP->error("#error directive");
+			    error("#error directive");
 			} else {
-			    PP->error("#error:%s", buf);
+			    error("#error:%s", buf);
 			}
 			delete s;
 		    } else {
@@ -969,7 +969,7 @@ int Preproc::gettok()
 		    token = wsgettok();
 		    if (token == IDENTIFIER) {
 			if (Special::replace(yytext) != (char *) NULL) {
-			    PP->error("#undef of predefined macro");
+			    error("#undef of predefined macro");
 			} else {
 			    Macro::undef(yytext);
 			}
@@ -985,12 +985,12 @@ int Preproc::gettok()
 		    break;
 
 		default:
-		    PP->error("undefined control");
+		    error("undefined control");
 		    TokenBuf::skiptonl(FALSE);
 		    break;
 		}
 	    } else if (token != LF) {
-		PP->error("undefined control");
+		error("undefined control");
 		TokenBuf::skiptonl(FALSE);
 	    }
 	    break;
