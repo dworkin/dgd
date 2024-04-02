@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -170,7 +170,7 @@ public:
     char zero3;			/* reserved (0) */
     char zero4;			/* reserved (0) */
     char dflags;		/* flags */
-    char zero5;			/* reserved (0) */
+    char vmversion;		/* VM version */
     char vstr[18];
     char offset[4];
 

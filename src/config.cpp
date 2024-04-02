@@ -236,7 +236,8 @@ void Config::dumpinit()
     header.ilalign = ialign | (lalign << 4);
     header.palign = (char *) &pdummy.p - (char *) &pdummy.fill;
     header.zalign = sizeof(alignz);
-    header.zero1 = header.zero2 = 0;
+    header.zero1 = header.zero2 = header.zero3 = header.zero4 = 0;
+    header.vmversion = VERSION_VM_MINOR;
 
     ualign = (sizeof(uindex) == sizeof(short)) ? salign : ialign;
     talign = (sizeof(ssizet) == sizeof(short)) ? salign : ialign;
@@ -324,9 +325,11 @@ bool Config::restore(int fd, int fd2)
     }
     header.version = rheader.version;
     if (memcmp(&header, &rheader, DUMP_TYPE) != 0 || rheader.zero1 != 0 ||
-	rheader.zero2 != 0 || rheader.zero3 != 0 || rheader.zero4 != 0 ||
-	rheader.zero5 != 0) {
+	rheader.zero2 != 0 || rheader.zero3 != 0 || rheader.zero4 != 0) {
 	EC->error("Bad or incompatible snapshot header");
+    }
+    if (rheader.vmversion > VERSION_VM_MINOR) {
+	EC->error("Incompatible VM version");
     }
     if (rheader.dflags & FLAGS_PARTIAL) {
 	SnapshotInfo h;
