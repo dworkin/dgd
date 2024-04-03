@@ -93,6 +93,7 @@ private:
     static Node *block(Node *n, int type, int flags);
     static Node *reloop(Node *n);
     static Node *endloop(Node *n);
+    static unsigned int aggrType(unsigned int, unsigned int);
     static bool lvalue(Node *n);
     static Node *funcall(Node *call, Node *args, int funcptr);
     static void lvalAggr(Node **n);

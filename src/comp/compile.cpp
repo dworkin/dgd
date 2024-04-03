@@ -2005,10 +2005,66 @@ Node *Compile::iflookup(Node *n, Node *label)
 }
 
 /*
+ * determine combined type of an array aggregate
+ */
+unsigned int Compile::aggrType(unsigned int t1, unsigned int t2)
+{
+    if ((t2 & T_TYPE) == T_CLASS) {
+	/* from class to object */
+	t2 = (t2 & T_REF) | T_OBJECT;
+    }
+
+    switch (t1) {
+    case T_ARRAY:
+	return t2;		/* first element */
+
+    case T_NIL:
+	if (t2 == T_NIL || T_POINTER(t2)) {
+	    return t2;		/* nil matches pointer/nil */
+	}
+	/* fall through */
+    case T_MIXED:
+	break;
+
+    default:
+	if (t2 == T_NIL) {
+	    if (T_POINTER(t1)) {
+		return t1;	/* nil matches pointer */
+	    }
+	    break;
+	}
+
+	if ((t1 & T_REF) != (t2 & T_REF)) {
+	    /* unequal references */
+	    return (t1 > t2) ? (t2 & T_REF) | T_MIXED : (t1 & T_REF) | T_MIXED;
+	}
+	return (t1 == t2) ? t1 : (t1 & T_REF) | T_MIXED;
+    }
+
+    return T_MIXED;
+}
+
+/*
  * create an aggregate
  */
 Node *Compile::aggregate(Node *n, unsigned int type)
 {
+    if (type == T_ARRAY) {
+	if (n == NULL) {
+	    type = T_MIXED;
+	} else {
+	    Node *m;
+
+	    for (m = n; m->type == N_PAIR; m = m->l.left) {
+		type = aggrType(type, m->r.right->mod);
+	    }
+	    type = aggrType(type, m->mod);
+	    if (type == T_NIL) {
+		type = T_MIXED;
+	    }
+	}
+	type += (1 << REFSHIFT);
+    }
     return Node::createMon(N_AGGR, type, Node::revert(n));
 }
 
