@@ -1109,6 +1109,10 @@ bool Config::config()
 	    break;
 	}
 	conf[m].set = TRUE;
+	if (m == CACHE_SIZE) {
+	    err("option 'cache_size' is deprecated");
+	}
+
 	if (PP->gettok() != ';') {
 	    err("';' expected");
 	    return FALSE;
@@ -1486,7 +1490,6 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
     char buf[STRINGSZ];
     int fd, fd2, i;
     bool init;
-    Sector cache;
 
     fd = fd2 = -1;
 
@@ -1597,8 +1600,7 @@ bool Config::init(char *configfile, char *snapshot, char *snapshot2,
 		 (Uint) conf[DUMP_INTERVAL].num);
 
     /* initialize swap device */
-    cache = (Sector) ((conf[CACHE_SIZE].set) ? conf[CACHE_SIZE].num : 100);
-    Swap::init(conf[SWAP_FILE].str, (Sector) conf[SWAP_SIZE].num, cache,
+    Swap::init(conf[SWAP_FILE].str, (Sector) conf[SWAP_SIZE].num,
 	       (unsigned int) conf[SECTOR_SIZE].num);
 
     /* initialize swapped data handler */
