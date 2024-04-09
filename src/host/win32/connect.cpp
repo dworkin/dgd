@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1805,8 +1805,6 @@ Connection *Connection::connect(void *addr, int len)
 	return NULL;
     }
 
-    ::connect(sock, (struct sockaddr *) addr, len);
-
     conn = (XConnection *) flist;
     flist = conn->next;
     conn->fd = sock;
@@ -1814,6 +1812,9 @@ Connection *Connection::connect(void *addr, int len)
     conn->udpbuf = (char *) NULL;
     conn->addr = (IpAddr *) NULL;
     conn->at = -1;
+
+    ::connect(sock, (struct sockaddr *) addr, len);
+
     FD_SET(sock, &infds);
     FD_SET(sock, &outfds);
     FD_CLR(sock, &readfds);

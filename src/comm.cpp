@@ -96,7 +96,7 @@ static User *users;		/* array of users */
 static User *lastuser;		/* last user checked */
 static User *freeuser;		/* linked list of free users */
 static User *flush;		/* flush list */
-static int nusers;		/* # of users */
+static Uint nusers;		/* # of users */
 static int odone;		/* # of users with output done */
 static uindex this_user;	/* current user */
 
@@ -347,9 +347,9 @@ void User::uflush(Object *obj, Dataspace *data, Array *arr)
 
 
 static User *outbound;		/* pending outbound list */
-static int maxusers;		/* max # of users */
-static int maxdgram;		/* max # of datagram users */
-static int ndgram;		/* # of datagram users */
+static Uint maxusers;		/* max # of users */
+static Uint maxdgram;		/* max # of datagram users */
+static Uint ndgram;		/* # of datagram users */
 static long newlines;		/* # of newlines in all input buffers */
 static int ntport, nbport;	/* # telnet/binary ports */
 static int ndport;		/* # datagram ports */

@@ -1948,6 +1948,14 @@ Connection *Connection::connect(void *addr, int len)
        return NULL;
     }
 
+    conn = (XConnection *) flist;
+    flist = conn->next;
+    conn->fd = sock;
+    conn->name = (char *) NULL;
+    conn->udpbuf = (char *) NULL;
+    conn->addr = (IpAddr *) NULL;
+    conn->at = -1;
+
     if (::connect(sock, (struct sockaddr *) addr, len) == 0) {
 	conn->err = 0;
     } else {
@@ -1957,13 +1965,6 @@ Connection *Connection::connect(void *addr, int len)
 	}
     }
 
-    conn = (XConnection *) flist;
-    flist = conn->next;
-    conn->fd = sock;
-    conn->name = (char *) NULL;
-    conn->udpbuf = (char *) NULL;
-    conn->addr = (IpAddr *) NULL;
-    conn->at = -1;
     FD_SET(sock, &infds);
     FD_SET(sock, &outfds);
     FD_CLR(sock, &readfds);
