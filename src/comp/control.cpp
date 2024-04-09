@@ -3075,7 +3075,6 @@ void Control::save()
 	stext = this->stext;
 	if (header.nstrings > 0 && sslength == (ssizet *) NULL) {
 	    String **strs;
-	    Uint strsize;
 	    ssizet *l;
 	    char *t;
 
@@ -3085,11 +3084,10 @@ void Control::save()
 	    }
 
 	    strs = strings;
-	    strsize = 0;
 	    l = sslength;
 	    t = stext;
 	    for (i = header.nstrings; i > 0; --i) {
-		strsize += *l = (*strs)->len;
+		*l = (*strs)->len;
 		memcpy(t, (*strs++)->text, *l);
 		t += *l++;
 	    }
