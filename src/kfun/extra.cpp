@@ -449,12 +449,12 @@ int kf_sscanf(Frame *f, int nargs, KFun *kf)
     struct {
 	char type;			/* int, float or string */
 	union {
-	    unsigned short fhigh;	/* high word of float */
+	    FloatHigh fhigh;		/* high word of float */
 	    ssizet len;			/* length of string */
 	};
 	union {
 	    LPCint number;		/* number */
-	    Uint flow;			/* low longword of float */
+	    FloatLow flow;		/* low longword of float */
 	    char *text;			/* text of string */
 	};
     } results[MAX_LOCALS];
