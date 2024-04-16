@@ -2050,7 +2050,7 @@ unsigned int Compile::aggrType(unsigned int t1, unsigned int t2)
 Node *Compile::aggregate(Node *n, unsigned int type)
 {
     if (type == T_ARRAY) {
-	if (n == NULL) {
+	if (!stricttc || n == NULL) {
 	    type = T_MIXED;
 	} else {
 	    Node *m;
