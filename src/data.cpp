@@ -1539,7 +1539,7 @@ void Dataspace::loadStrings(void (*readv) (char*, Sector*, Uint, Uint))
 	    /* load strings text */
 	    if (flags & DATA_STRCMP) {
 		stext = Swap::decompress(sectors, readv, strsize,
-				         stroffset + nstrings * sizeof(SString),
+					 stroffset + nstrings * sizeof(SString),
 					 &strsize);
 	    } else {
 		stext = ALLOC(char, strsize);

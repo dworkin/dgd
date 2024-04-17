@@ -2307,7 +2307,7 @@ Node *Compile::address(Node *func, Node *args, int typechecked)
     }
     func = funcall(flookup(Node::createStr(String::create("new.function", 12)),
 			   FALSE),
-	        args, FALSE);
+		   args, FALSE);
     func->mod = T_CLASS;
     func->sclass = String::create(BIPREFIX "function", BIPREFIXLEN + 8);
     func->sclass->ref();
