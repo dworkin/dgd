@@ -17,8 +17,10 @@ project on Visual Studio.
     64 bit integers and floats.
 -   SLASHSLASH  
     C++ style // comments in LPC code.
+-   SIMFLOAT
+    Simulated floats.  Not a macro but a argument for `make`, `make SIMFLOAT=1`.
 -   NOFLOAT  
-    Compile without host floats (simulated LPC floats will still work).
+    Compile without using host floats (requires simulated floats).
 -   CLOSURES  
     Function pointers, implemented as a builtin type.  See `doc/builtin.md` for
     information about adding builtin types.  CLOSURES allows taking the
