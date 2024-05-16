@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -351,11 +351,12 @@ void Parser::reduce(PNode *pn, char *p)
      */
     frame->addTicks(2);
     for (sn = states[n].first; sn != (SNode *) NULL; sn = sn->slist) {
+	PNode **ppn;
+
 	if (sn->pn->symbol == symb && sn->pn->next == next) {
 	    if (sn->pn->text != (char *) NULL) {
 		/* first alternative */
-		sn->pn->list = sn->pn->trav =
-			       PNode::create(&pnc, symb, n, sn->pn->text,
+		sn->pn->list = PNode::create(&pnc, symb, n, sn->pn->text,
 					     sn->pn->len, (PNode *) NULL,
 					     sn->pn->list);
 		sn->pn->text = (char *) NULL;
@@ -363,11 +364,13 @@ void Parser::reduce(PNode *pn, char *p)
 	    }
 
 	    /* add alternative */
-	    sn->pn->trav->next = pn;
-	    sn->pn->trav = pn;
+	    for (ppn = &sn->pn->list;
+		 *ppn != (PNode *) NULL && (*ppn)->text < red;
+		 ppn = &(*ppn)->next) ;
 	    sn->pn->len++;
 
-	    pn->next = (PNode *) NULL;
+	    pn->next = *ppn;
+	    *ppn = pn;
 	    return;
 	}
 	frame->addTicks(1);
