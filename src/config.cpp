@@ -727,6 +727,41 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 	    case 'e':
 		i = ALGN(i, ealign);
 		ri = ALGN(ri, realign);
+		if (sizeof(eindex) == resize) {
+		    switch (sizeof(eindex)) {
+		    case sizeof(char):
+			buf[i] = rbuf[ri];
+			break;
+
+		    case sizeof(short):
+			buf[i + header.s[0]] = rbuf[ri + rheader.s[0]];
+			buf[i + header.s[1]] = rbuf[ri + rheader.s[1]];
+			break;
+
+		    case sizeof(Int):
+			buf[i + header.i[0]] = rbuf[ri + rheader.i[0]];
+			buf[i + header.i[1]] = rbuf[ri + rheader.i[1]];
+			buf[i + header.i[2]] = rbuf[ri + rheader.i[2]];
+			buf[i + header.i[3]] = rbuf[ri + rheader.i[3]];
+			break;
+		    }
+		} else if (sizeof(eindex) == sizeof(short)) {
+		    buf[i + header.s[0]] = (UCHAR(rbuf[ri]) == 0xff) ? -1 : 0;
+		    buf[i + header.s[1]] = rbuf[ri];
+		} else if (resize == sizeof(char)) {
+		    j = (UCHAR(rbuf[ri]) == 0xff) ? -1 : 0;
+		    buf[i + header.i[0]] = j;
+		    buf[i + header.i[1]] = j;
+		    buf[i + header.i[2]] = j;
+		    buf[i + header.i[3]] = rbuf[ri];
+		} else {
+		    j = (UCHAR(rbuf[ri + rheader.s[0]] &
+			 rbuf[ri + rheader.s[1]]) == 0xff) ? -1 : 0;
+		    buf[i + header.i[0]] = j;
+		    buf[i + header.i[1]] = j;
+		    buf[i + header.i[2]] = rbuf[ri + rheader.s[0]];
+		    buf[i + header.i[3]] = rbuf[ri + rheader.s[1]];
+		}
 		i += sizeof(eindex);
 		ri += resize;
 		break;
