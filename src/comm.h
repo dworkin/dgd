@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -90,6 +90,7 @@ public:
     static void connect(Frame *f, Object *obj, char *addr, unsigned short port);
     static void connectDgram(Frame *f, Object *obj, int uport, char *addr,
 			     unsigned short port);
+    static eindex numUsers();
     static Array *listUsers(Dataspace*);
     static bool isConnection(Object*);
     static bool save(int);

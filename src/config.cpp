@@ -1292,6 +1292,7 @@ bool Config::includes()
     puts("# define ST_DATAGRAMPORTS 24\t/* datagram ports */\012");
     puts("# define ST_TELNETPORTS\t25\t/* telnet ports */\012");
     puts("# define ST_BINARYPORTS\t26\t/* binary ports */\012");
+    puts("# define ST_NUSERS\t27\t/* # users */\012");
 
     puts("\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
     puts("# define O_PROGSIZE\t1\t/* program size of object */\012");
@@ -1952,6 +1953,10 @@ bool Config::statusi(Frame *f, LPCint idx, Value *v)
 	}
 	break;
 
+    case 27:	/* ST_NUSERS */
+	PUT_INTVAL(v, Comm::numUsers());
+	break;
+
     default:
 	return FALSE;
     }
@@ -1970,8 +1975,8 @@ Array *Config::status(Frame *f)
 
     try {
 	EC->push();
-	a = Array::createNil(f->data, 27);
-	for (i = 0, v = a->elts; i < 27; i++, v++) {
+	a = Array::createNil(f->data, 28);
+	for (i = 0, v = a->elts; i < 28; i++, v++) {
 	    statusi(f, i, v);
 	}
 	EC->pop();

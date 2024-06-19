@@ -1516,6 +1516,14 @@ Object *Comm::user()
 }
 
 /*
+ * return the number of connections
+ */
+eindex Comm::numUsers()
+{
+    return nusers;
+}
+
+/*
  * return an array with all user objects
  */
 Array *Comm::listUsers(Dataspace *data)
