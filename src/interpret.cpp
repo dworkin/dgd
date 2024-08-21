@@ -1589,12 +1589,10 @@ unsigned short Frame::switchRange(char *pc)
 	while (l < h) {
 	    m = (l + h) >> 1;
 	    p = pc + 4 * m;
-	    num = FETCH1S(p);
-	    if (sp->number < num) {
+	    if (sp->number < FETCH1S(p)) {
 		h = m;	/* search in lower half */
 	    } else {
-		num = FETCH1S(p);
-		if (sp->number <= num) {
+		if (sp->number <= FETCH1S(p)) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
@@ -1606,12 +1604,10 @@ unsigned short Frame::switchRange(char *pc)
 	while (l < h) {
 	    m = (l + h) >> 1;
 	    p = pc + 6 * m;
-	    FETCH2S(p, num);
-	    if (sp->number < num) {
+	    if (sp->number < FETCH2S(p, num)) {
 		h = m;	/* search in lower half */
 	    } else {
-		FETCH2S(p, num);
-		if (sp->number <= num) {
+		if (sp->number <= FETCH2S(p, num)) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
