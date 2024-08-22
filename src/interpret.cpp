@@ -1459,7 +1459,7 @@ unsigned short Frame::switchInt(char *pc)
 	while (l < h) {
 	    m = (l + h) >> 1;
 	    p = pc + 4 * m;
-	    FETCH2S(p, num);
+	    num = FETCH2S(p, num);
 	    if (sp->number == num) {
 		return FETCH2U(p, l);
 	    } else if (sp->number < num) {
