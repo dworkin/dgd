@@ -1426,7 +1426,7 @@ void Frame::typecheck(Frame *f, const char *name, const char *ftype,
  */
 unsigned short Frame::switchInt(char *pc)
 {
-    unsigned short h, l, m, sz, dflt;
+    unsigned short h, l, m, sz, dflt, u;
     LPCint num;
     char *p;
 
@@ -1459,7 +1459,7 @@ unsigned short Frame::switchInt(char *pc)
 	while (l < h) {
 	    m = (l + h) >> 1;
 	    p = pc + 4 * m;
-	    num = FETCH2S(p, num);
+	    num = FETCH2S(p, u);
 	    if (sp->number == num) {
 		return FETCH2U(p, l);
 	    } else if (sp->number < num) {
