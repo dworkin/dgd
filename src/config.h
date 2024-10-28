@@ -22,6 +22,7 @@
  *
  * UINDEX limits the number of objects
  * SECTOR limits the number of swap sectors (the size of a snapshot)
+ * CINDEX limits the number of callouts
  * EINDEX limits the number of connected users
  * SSIZET limits the length of a string (best kept at 16 bits)
  *
@@ -35,6 +36,10 @@
 # define SECTOR_TYPE	UINDEX_TYPE
 # define SECTOR_MAX	UINDEX_MAX
 # endif
+# ifndef CINDEX_TYPE
+# define CINDEX_TYPE	UINDEX_TYPE
+# define CINDEX_MAX	UINDEX_MAX
+# endif
 # ifndef EINDEX_TYPE
 # define EINDEX_TYPE	unsigned char
 # define EINDEX_MAX	UCHAR_MAX
@@ -47,6 +52,7 @@
 typedef UINDEX_TYPE uindex;
 typedef SECTOR_TYPE Sector;
 # define SW_UNUSED	SECTOR_MAX
+typedef CINDEX_TYPE cindex;
 typedef EINDEX_TYPE eindex;
 # define EINDEX(e)	((eindex) e)
 typedef SSIZET_TYPE ssizet;
@@ -161,7 +167,7 @@ public:
     char calign;		/* align(char), upper nibble reserved */
     char snalsz;		/* align(short) + sizeof(LPCint)  */
     char ilalign;		/* align(Int) + align(int64_t) */
-    char palign;		/* align(char*) */
+    char pfalsz;		/* align(char*) + sizeof(cindex) */
     char zalign;		/* align(struct) */
     char start[4];
     char elapsed[4];

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -34,15 +34,15 @@
 # define last		prev
 
 static CallOut *cotab;			/* callout table */
-static uindex cotabsz;			/* callout table size */
-static uindex queuebrk;			/* queue brk */
-static uindex cycbrk;			/* cyclic buffer brk */
-static uindex flist;			/* free list index */
-static uindex nzero;			/* # immediate callouts */
-static uindex nshort;			/* # short-term callouts, incl. nzero */
-static uindex running;			/* running callouts */
-static uindex immediate;		/* immediate callouts */
-static uindex cycbuf[CYCBUF_SIZE];	/* cyclic buffer of callout lists */
+static cindex cotabsz;			/* callout table size */
+static cindex queuebrk;			/* queue brk */
+static cindex cycbrk;			/* cyclic buffer brk */
+static cindex flist;			/* free list index */
+static cindex nzero;			/* # immediate callouts */
+static cindex nshort;			/* # short-term callouts, incl. nzero */
+static cindex running;			/* running callouts */
+static cindex immediate;		/* immediate callouts */
+static cindex cycbuf[CYCBUF_SIZE];	/* cyclic buffer of callout lists */
 static Uint timestamp;			/* cycbuf start time */
 static Uint timeout;			/* time of first callout in cycbuf */
 static Uint timediff;			/* stored/actual time difference */
@@ -88,7 +88,7 @@ bool CallOut::init(unsigned int max)
  */
 CallOut *CallOut::enqueue(Uint t, unsigned short m)
 {
-    uindex i, j;
+    cindex i, j;
     CallOut *l;
     Time time;
 
@@ -115,10 +115,10 @@ CallOut *CallOut::enqueue(Uint t, unsigned short m)
 /*
  * remove a callout from the queue
  */
-void CallOut::dequeue(uindex i)
+void CallOut::dequeue(cindex i)
 {
     Time t;
-    uindex j;
+    cindex j;
     CallOut *l;
 
     l = cotab - 1;
@@ -148,9 +148,9 @@ void CallOut::dequeue(uindex i)
 /*
  * allocate a new callout for the cyclic buffer
  */
-CallOut *CallOut::newcallout(uindex *list, Uint t)
+CallOut *CallOut::newcallout(cindex *list, Uint t)
 {
-    uindex i;
+    cindex i;
     CallOut *co, *first, *last;
 
     if (flist != 0) {
@@ -196,7 +196,7 @@ CallOut *CallOut::newcallout(uindex *list, Uint t)
 /*
  * remove a callout from the cyclic buffer
  */
-void CallOut::freecallout(uindex *cyc, uindex j, uindex i, Uint t)
+void CallOut::freecallout(cindex *cyc, cindex j, cindex i, Uint t)
 {
     CallOut *l, *first;
 
@@ -312,7 +312,7 @@ Uint CallOut::cotime(unsigned short *mtime)
  * check if, and how, a new callout can be added
  */
 Uint CallOut::check(unsigned int n, LPCint delay, unsigned int mdelay, Uint *tp,
-		    unsigned short *mp, uindex **qp)
+		    unsigned short *mp, cindex **qp)
 {
     Uint t;
     unsigned short m;
@@ -321,11 +321,11 @@ Uint CallOut::check(unsigned int n, LPCint delay, unsigned int mdelay, Uint *tp,
 	/*
 	 * call_outs are disabled
 	 */
-	*qp = (uindex *) NULL;
+	*qp = (cindex *) NULL;
 	return 0;
     }
 
-    if (queuebrk + (uindex) n == cycbrk || cycbrk - (uindex) n == 1) {
+    if (queuebrk + (cindex) n == cycbrk || cycbrk - (cindex) n == 1) {
 	EC->error("Too many callouts");
     }
 
@@ -363,7 +363,7 @@ Uint CallOut::check(unsigned int n, LPCint delay, unsigned int mdelay, Uint *tp,
 	    *qp = &cycbuf[t & CYCBUF_MASK];
 	} else {
 	    /* use queue */
-	    *qp = (uindex *) NULL;
+	    *qp = (cindex *) NULL;
 	}
 	*tp = t;
 	*mp = m;
@@ -376,11 +376,11 @@ Uint CallOut::check(unsigned int n, LPCint delay, unsigned int mdelay, Uint *tp,
  * add a callout
  */
 void CallOut::create(unsigned int oindex, unsigned int handle, Uint t,
-		     unsigned int m, uindex *q)
+		     unsigned int m, cindex *q)
 {
     CallOut *co;
 
-    if (q != (uindex *) NULL) {
+    if (q != (cindex *) NULL) {
 	co = newcallout(q, t);
     } else {
 	if (m == TIME_INT) {
@@ -395,9 +395,9 @@ void CallOut::create(unsigned int oindex, unsigned int handle, Uint t,
 /*
  * remove a short-term callout
  */
-bool CallOut::rmshort(uindex *cyc, uindex i, uindex handle, Uint t)
+bool CallOut::rmshort(cindex *cyc, uindex i, uindex handle, Uint t)
 {
-    uindex j, k;
+    cindex j, k;
     CallOut *l;
 
     k = *cyc;
@@ -549,7 +549,8 @@ void CallOut::list(Array *a)
 void CallOut::expire()
 {
     CallOut *co, *first, *last;
-    uindex handle, oindex, i, *cyc;
+    uindex handle, oindex;
+    cindex i, *cyc;
     Uint t;
     unsigned short m;
     Time time;
@@ -634,7 +635,8 @@ void CallOut::expire()
  */
 void CallOut::call(Frame *f)
 {
-    uindex i, handle;
+    cindex i;
+    uindex handle;
     Object *obj;
     String *str;
     int nargs;
@@ -673,7 +675,7 @@ void CallOut::call(Frame *f)
 /*
  * give information about callouts
  */
-void CallOut::info(uindex *n1, uindex *n2)
+void CallOut::info(cindex *n1, cindex *n2)
 {
     *n1 = nshort;
     *n2 = queuebrk;
@@ -768,20 +770,20 @@ struct CallOut0 {
 # define CO0_LAYOUT	"uuiuu"
 
 struct CallOutHeader {
-    uindex cotabsz;		/* callout table size */
-    uindex queuebrk;		/* queue brk */
-    uindex cycbrk;		/* cyclic buffer brk */
-    uindex flist;		/* free list index */
-    uindex nshort;		/* # of short-term callouts */
-    uindex running;		/* running callouts */
-    uindex immediate;		/* immediate callouts list */
+    cindex cotabsz;		/* callout table size */
+    cindex queuebrk;		/* queue brk */
+    cindex cycbrk;		/* cyclic buffer brk */
+    cindex flist;		/* free list index */
+    cindex nshort;		/* # of short-term callouts */
+    cindex running;		/* running callouts */
+    cindex immediate;		/* immediate callouts list */
     unsigned short hstamp;	/* timestamp high word */
     unsigned short hdiff;	/* timediff high word */
     Uint timestamp;		/* time the last alarm came */
     Uint timediff;		/* accumulated time difference */
 };
 
-static char dh_layout[] = "uuuuuuussii";
+static char dh_layout[] = "fffffffssii";
 
 /*
  * dump callout table
@@ -815,7 +817,7 @@ bool CallOut::save(int fd)
 	    (cycbrk == cotabsz ||
 	     Swap::write(fd, cotab + cycbrk,
 			 (cotabsz - cycbrk) * sizeof(CallOut))) &&
-	    Swap::write(fd, cycbuf, CYCBUF_SIZE * sizeof(uindex)));
+	    Swap::write(fd, cycbuf, CYCBUF_SIZE * sizeof(cindex)));
 }
 
 /*
@@ -824,9 +826,9 @@ bool CallOut::save(int fd)
 void CallOut::restore(int fd, Uint t, bool conv16)
 {
     CallOutHeader dh;
-    uindex n, i, offset;
+    cindex n, i, offset;
     CallOut *co;
-    uindex *cb;
+    cindex *cb;
 
     /* read and check header */
     timediff = t;
@@ -874,7 +876,7 @@ void CallOut::restore(int fd, Uint t, bool conv16)
 			  (Uint) (cotabsz - cycbrk));
 	}
     }
-    Config::dread(fd, (char *) cycbuf, "u", (Uint) CYCBUF_SIZE);
+    Config::dread(fd, (char *) cycbuf, "f", (Uint) CYCBUF_SIZE);
 
     nzero = 0;
     if (running != 0) {

@@ -139,11 +139,14 @@ static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
 static int ealign;		/* align(eindex) */
+static int falign;		/* align(cindex) */
+static int palign;		/* align(char*) */
 static SnapshotInfo rheader;	/* restored header */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
 static int resize;		/* sizeof(eindex) */
+static int rfsize;		/* sizeof(cindex) */
 static int rnsize;		/* sizeof(LPCint) */
 static int rsalign;		/* align(short) */
 static int rialign;		/* align(Int) */
@@ -152,6 +155,8 @@ static int rualign;		/* align(uindex) */
 static int rtalign;		/* align(ssizet) */
 static int rdalign;		/* align(sector) */
 static int realign;		/* align(eindex) */
+static int rfalign;		/* align(cindex) */
+static int rpalign;		/* align(char*) */
 static Uint starttime;		/* start time */
 static Uint elapsed;		/* elapsed time */
 static Uint boottime;		/* boot time */
@@ -234,7 +239,8 @@ void Config::dumpinit()
     ialign = (char *) &idummy.i - (char *) &idummy.fill;
     lalign = (char *) &ldummy.l - (char *) &ldummy.fill;
     header.ilalign = ialign | (lalign << 4);
-    header.palign = (char *) &pdummy.p - (char *) &pdummy.fill;
+    palign = (char *) &pdummy.p - (char *) &pdummy.fill;
+    header.pfalsz = palign | (sizeof(cindex) << 4);
     header.zalign = sizeof(alignz);
     header.zero1 = header.zero2 = header.zero3 = header.zero4 = 0;
     header.vmversion = VERSION_VM_MINOR;
@@ -247,6 +253,7 @@ void Config::dumpinit()
     case sizeof(short):	ealign = salign; break;
     case sizeof(Int):	ealign = ialign; break;
     }
+    falign = (sizeof(cindex) == sizeof(short)) ? salign : ialign;
 }
 
 /*
@@ -370,6 +377,11 @@ bool Config::restore(int fd, int fd2)
     rnsize = (UCHAR(rheader.snalsz) >> 4) + 4;
     rialign = rheader.ilalign & 0xf;
     rlalign = UCHAR(rheader.ilalign) >> 4;
+    rpalign = rheader.pfalsz & 0xf;
+    rfsize = UCHAR(rheader.pfalsz) >> 4;
+    if (rfsize == 0) {
+	rfsize = rusize;			/* backward compat */
+    }
     rualign = (rusize == sizeof(short)) ? rsalign : rialign;
     rtalign = (rtsize == sizeof(short)) ? rsalign : rialign;
     rdalign = (rdsize == sizeof(short)) ? rsalign : rialign;
@@ -378,9 +390,11 @@ bool Config::restore(int fd, int fd2)
     case sizeof(short):	realign = rsalign; break;
     case sizeof(Int):	realign = rialign; break;
     }
-    if (sizeof(uindex) < rusize || sizeof(ssizet) < rtsize ||
+    rfalign = (rfsize == sizeof(short)) ? rsalign : rialign;
+    if (sizeof(uindex) < rusize || sizeof(eindex) < resize ||
+	sizeof(cindex) < rfsize || sizeof(ssizet) < rtsize ||
 	sizeof(Sector) < rdsize || sizeof(LPCint) < rnsize) {
-	EC->error("Cannot restore uindex, ssizet, sector or LPCint of greater width");
+	EC->error("Cannot restore uindex, ssizet, sector, eindex, cindex or LPCint of greater width");
     }
     if ((rheader.psize >> 4) > 1) {
 	EC->error("Cannot restore hindex > 1");	/* Hydra only */
@@ -501,28 +515,35 @@ Uint Config::dsize(const char *layout)
 	    ral = realign;
 	    break;
 
+	case 'f':	/* cindex */
+	    sz = sizeof(cindex);
+	    rsz = rfsize;
+	    al = falign;
+	    ral = rfalign;
+	    break;
+
 	case 'p':	/* pointer */
 	    sz = sizeof(char*);
 	    rsz = rheader.psize;
-	    al = header.palign;
-	    ral = rheader.palign;
+	    al = palign;
+	    ral = rpalign;
 	    break;
 
 	case 'x':	/* hte */
 	    size = ALGN(size, header.zalign);
-	    size = ALGN(size, header.palign);
+	    size = ALGN(size, palign);
 	    size += sizeof(char*);
-	    size = ALGN(size, header.palign);
+	    size = ALGN(size, palign);
 	    size += sizeof(char*);
 	    size = ALGN(size, header.zalign);
 	    rsize = ALGN(rsize, rheader.zalign);
-	    rsize = ALGN(rsize, rheader.palign);
+	    rsize = ALGN(rsize, rpalign);
 	    rsize += rheader.psize;
-	    rsize = ALGN(rsize, rheader.palign);
+	    rsize = ALGN(rsize, rpalign);
 	    rsize += rheader.psize;
 	    rsize = ALGN(rsize, rheader.zalign);
-	    align = ALGN(align, header.palign);
-	    ralign = ALGN(ralign, rheader.palign);
+	    align = ALGN(align, palign);
+	    ralign = ALGN(ralign, rpalign);
 	    continue;
 
 	case '[':	/* struct */
@@ -766,9 +787,34 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 		ri += resize;
 		break;
 
+	    case 'f':
+		i = ALGN(i, falign);
+		ri = ALGN(ri, rfalign);
+		if (sizeof(cindex) == rfsize) {
+		    if (sizeof(cindex) == sizeof(short)) {
+			buf[i + header.s[0]] = rbuf[ri + rheader.s[0]];
+			buf[i + header.s[1]] = rbuf[ri + rheader.s[1]];
+		    } else {
+			buf[i + header.i[0]] = rbuf[ri + rheader.i[0]];
+			buf[i + header.i[1]] = rbuf[ri + rheader.i[1]];
+			buf[i + header.i[2]] = rbuf[ri + rheader.i[2]];
+			buf[i + header.i[3]] = rbuf[ri + rheader.i[3]];
+		    }
+		} else {
+		    j = (UCHAR(rbuf[ri + rheader.s[0]] &
+			 rbuf[ri + rheader.s[1]]) == 0xff) ? -1 : 0;
+		    buf[i + header.i[0]] = j;
+		    buf[i + header.i[1]] = j;
+		    buf[i + header.i[2]] = rbuf[ri + rheader.s[0]];
+		    buf[i + header.i[3]] = rbuf[ri + rheader.s[1]];
+		}
+		i += sizeof(cindex);
+		ri += rfsize;
+		break;
+
 	    case 'p':
-		i = ALGN(i, header.palign);
-		ri = ALGN(ri, rheader.palign);
+		i = ALGN(i, palign);
+		ri = ALGN(ri, rpalign);
 		for (j = sizeof(char*); j > 0; --j) {
 		    buf[i++] = 0;
 		}
@@ -787,18 +833,18 @@ Uint Config::dconv(char *buf, char *rbuf, const char *layout, Uint n)
 
 	    case 'x':
 		i = ALGN(i, header.zalign);
-		i = ALGN(i, header.palign);
+		i = ALGN(i, palign);
 		for (j = sizeof(char*); j > 0; --j) {
 		    buf[i++] = 0;
 		}
-		i = ALGN(i, header.palign);
+		i = ALGN(i, palign);
 		for (j = sizeof(char*); j > 0; --j) {
 		    buf[i++] = 0;
 		}
 		ri = ALGN(ri, rheader.zalign);
-		ri = ALGN(ri, rheader.palign);
+		ri = ALGN(ri, rpalign);
 		ri += rheader.psize;
-		ri = ALGN(ri, rheader.palign);
+		ri = ALGN(ri, rpalign);
 		for (j = rheader.psize; j > 0; --j) {
 		    if (rbuf[ri] != 0) {
 			buf[i - 1] = 1;
@@ -1855,7 +1901,7 @@ void Config::putval(Value *v, size_t n)
 bool Config::statusi(Frame *f, LPCint idx, Value *v)
 {
     const char *version;
-    uindex ncoshort, ncolong;
+    cindex ncoshort, ncolong;
     Array *a;
     Uint t;
     int i;

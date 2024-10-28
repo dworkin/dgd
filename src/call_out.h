@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,15 +21,15 @@ class CallOut {
 public:
     static bool init(unsigned int max);
     static Uint check(unsigned int n, LPCint delay, unsigned int mdelay,
-		      Uint *tp, unsigned short *mp, uindex **qp);
+		      Uint *tp, unsigned short *mp, cindex **qp);
     static void create(unsigned int oindex, unsigned int handle, Uint t,
-		       unsigned int m, uindex *q);
+		       unsigned int m, cindex *q);
     static LPCint remaining(Uint t, unsigned short *m);
     static void del(unsigned int oindex, unsigned int handle, Uint t,
 		    unsigned int m);
     static void list(Array *a);
     static void call(Frame *f);
-    static void info(uindex *n1, uindex *n2);
+    static void info(cindex *n1, cindex *n2);
     static Uint cotime(unsigned short *mtime);
     static Uint delay(Uint rtime, unsigned short rmtime, unsigned short *mtime);
     static void swapcount(unsigned int count);
@@ -40,23 +40,23 @@ public:
 
 private:
     static CallOut *enqueue(Uint t, unsigned short m);
-    static void dequeue(uindex i);
-    static CallOut *newcallout(uindex *list, Uint t);
-    static void freecallout(uindex *cyc, uindex j, uindex i, Uint t);
-    static bool rmshort(uindex *cyc, uindex i, uindex handle, Uint t);
+    static void dequeue(cindex i);
+    static CallOut *newcallout(cindex *list, Uint t);
+    static void freecallout(cindex *cyc, cindex j, cindex i, Uint t);
+    static bool rmshort(cindex *cyc, uindex i, uindex handle, Uint t);
     static void expire();
 
     union {
 	Time time;	/* when to call */
 	struct {
-	    uindex count;	/* # in list */
-	    uindex prev;	/* previous in list */
-	    uindex next;	/* next in list */
+	    cindex count;	/* # in list */
+	    cindex prev;	/* previous in list */
+	    cindex next;	/* next in list */
 	} r;
     };
     uindex handle;	/* callout handle */
     uindex oindex;	/* index in object table */
 };
 
-# define CO1_LAYOUT	"[l|uuu]uu"
-# define CO2_LAYOUT	"[uuu|l]uu"
+# define CO1_LAYOUT	"[l|fff]uu"
+# define CO2_LAYOUT	"[fff|l]uu"

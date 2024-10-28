@@ -150,7 +150,7 @@ char *Value::typeName(char *buf, unsigned int type)
 class COPatch : public ChunkAllocated {
 public:
     COPatch(Dataplane *plane, COPatch **c, int type, unsigned int handle,
-	    DCallOut *co, Uint time, unsigned int mtime, uindex *q) :
+	    DCallOut *co, Uint time, unsigned int mtime, cindex *q) :
 	type(type), handle(handle), plane(plane), time(time), mtime(mtime),
 	queue(q) {
 	int i;
@@ -200,7 +200,7 @@ public:
     /*
      * replace one callout patch with another
      */
-    void replace(DCallOut *co, Uint time, unsigned int mtime, uindex *q) {
+    void replace(DCallOut *co, Uint time, unsigned int mtime, cindex *q) {
 	int i;
 	Value *v;
 
@@ -254,7 +254,7 @@ public:
     Dataplane *plane;		/* dataplane */
     Uint time;			/* start time */
     unsigned short mtime;	/* start time millisec component */
-    uindex *queue;		/* callout queue */
+    cindex *queue;		/* callout queue */
     COPatch *next;		/* next in linked list */
     DCallOut aco;		/* added callout */
     DCallOut rco;		/* removed callout */
@@ -272,7 +272,7 @@ public:
      * create new callout patch
      */
     COPatch *patch(Dataplane *plane, COPatch **c, int type, unsigned int handle,
-		   DCallOut *co, Uint time, unsigned int mtime, uindex *q) {
+		   DCallOut *co, Uint time, unsigned int mtime, cindex *q) {
 	/* allocate */
 	return chunknew (chunk) COPatch(plane, c, type, handle, co, time, mtime,
 					q);
@@ -2913,12 +2913,12 @@ uindex Dataspace::newCallOut(String *func, LPCint delay, unsigned int mdelay,
 {
     Uint ct, t;
     unsigned short m;
-    uindex *q;
+    cindex *q;
     Value v[4];
     uindex handle;
 
     ct = CallOut::check(ncallout, delay, mdelay, &t, &m, &q);
-    if (ct == 0 && q == (uindex *) NULL) {
+    if (ct == 0 && q == (cindex *) NULL) {
 	/* callouts are disabled */
 	return 0;
     }
@@ -3034,7 +3034,7 @@ LPCint Dataspace::delCallOut(Uint handle, unsigned short *mtime)
 	    if (cop == (COPatch *) NULL || cop->plane != plane) {
 		/* delete new */
 		plane->coptab->patch(plane, cc, COP_REMOVE, (uindex) handle, co,
-				     (Uint) 0, 0, (uindex *) NULL);
+				     (Uint) 0, 0, (cindex *) NULL);
 		break;
 	    }
 	    if (cop->handle == handle) {
