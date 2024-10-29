@@ -1597,7 +1597,7 @@ int kf_asn_mult(Frame *f, int n, KFun *kf)
 
 # ifdef FUNCDEF
 FUNCDEF("0.asn_div", kf_asn_div, pt_asn_div_old, 0)
-FUNCDEF("asn_div", kf_asn_div, pt_asn_div, 0)
+FUNCDEF("asn_div", kf_asn_div, pt_asn_div, 1)
 # else
 char pt_asn_div_old[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING,
 			  T_STRING, T_STRING, T_STRING };
@@ -1655,7 +1655,7 @@ int kf_asn_mod(Frame *f, int n, KFun *kf)
 
 # ifdef FUNCDEF
 FUNCDEF("0.asn_pow", kf_asn_pow, pt_asn_pow_old, 0)
-FUNCDEF("asn_pow", kf_asn_pow, pt_asn_pow, 0)
+FUNCDEF("asn_pow", kf_asn_pow, pt_asn_pow, 1)
 # else
 char pt_asn_pow_old[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING,
 			  T_STRING, T_STRING, T_STRING };
@@ -1713,7 +1713,7 @@ int kf_asn_modinv(Frame *f, int n, KFun *kf)
 
 # ifdef FUNCDEF
 FUNCDEF("0.asn_lshift", kf_asn_lshift, pt_asn_lshift_old, 0)
-FUNCDEF("asn_lshift", kf_asn_lshift, pt_asn_lshift, 0)
+FUNCDEF("asn_lshift", kf_asn_lshift, pt_asn_lshift, 1)
 # else
 char pt_asn_lshift_old[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING,
 			     T_STRING, T_INT, T_STRING };
