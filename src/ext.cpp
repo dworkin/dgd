@@ -32,7 +32,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	1
-# define EXTENSION_MINOR	4
+# define EXTENSION_MINOR	5
 
 
 /*
@@ -91,6 +91,7 @@ Value *ext_value_temp(Dataspace *data)
     static Value temp;
 
     UNREFERENCED_PARAMETER(data);
+
     return &temp;
 }
 
@@ -102,6 +103,7 @@ static Value *ext_value_temp2(Dataspace *data)
     static Value temp2;
 
     UNREFERENCED_PARAMETER(data);
+
     return &temp2;
 }
 
@@ -364,39 +366,48 @@ static void ext_object_putval(Value *val, Object *obj)
 static const char *ext_object_name(Frame *f, Object *obj, char *buf)
 {
     UNREFERENCED_PARAMETER(f);
+
     return obj->objName(buf);
 }
 
 /*
  * return TRUE if the given object is special, FALSE otherwise
  */
-static int ext_object_isspecial(Object *obj)
+static int ext_object_isspecial(Frame *f, Object *obj)
 {
-    return ((obj->flags & O_SPECIAL) != 0);
+    UNREFERENCED_PARAMETER(f);
+
+    return ((OBJR(obj->index)->flags & O_SPECIAL) != 0);
 }
 
 /*
  * return TRUE if the given object is marked, FALSE otherwise
  */
-static int ext_object_ismarked(Object *obj)
+static int ext_object_ismarked(Frame *f, Object *obj)
 {
-    return ((obj->flags & O_SPECIAL) == O_SPECIAL);
+    UNREFERENCED_PARAMETER(f);
+
+    return ((OBJR(obj->index)->flags & O_SPECIAL) == O_SPECIAL);
 }
 
 /*
  * mark the given object
  */
-static void ext_object_mark(Object *obj)
+static void ext_object_mark(Frame *f, Object *obj)
 {
-    obj->flags |= O_SPECIAL;
+    UNREFERENCED_PARAMETER(f);
+
+    OBJW(obj->index)->flags |= O_SPECIAL;
 }
 
 /*
  * unmark the given object
  */
-static void ext_object_unmark(Object *obj)
+static void ext_object_unmark(Frame *f, Object *obj)
 {
-    obj->flags &= ~O_SPECIAL;
+    UNREFERENCED_PARAMETER(f);
+
+    OBJW(obj->index)->flags &= ~O_SPECIAL;
 }
 
 /*
