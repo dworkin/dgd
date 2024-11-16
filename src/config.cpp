@@ -53,7 +53,7 @@ static Config conf[] = {
 							1, UINDEX_MAX },
 # define CALL_OUTS	4
 				{ "call_outs",		INT_CONST, FALSE, FALSE,
-							0, UINDEX_MAX - 1 },
+							0, CINDEX_MAX - 1 },
 # define CREATE		5
 				{ "create",		STRING_CONST },
 # define DATAGRAM_PORT	6
@@ -98,7 +98,7 @@ static Config conf[] = {
 				{ "swap_file",		STRING_CONST },
 # define SWAP_FRAGMENT	23
 				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
-							0, SW_UNUSED },
+							0, UINDEX_MAX },
 # define SWAP_SIZE	24
 				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
