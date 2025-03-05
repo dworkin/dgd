@@ -16,12 +16,12 @@ Alongside DGD, there is Hydra.  Hydra is fully compatible with DGD, but offers
 acceleration for multi-core systems.  Hydra also supports JIT compilation,
 using the same extension module as DGD.
 
-[Hydra's home page](https://www.dworkin.nl/hydra)
+[Hydra's home page](https://www.dworkin.nl/hydra-tech)
 
 ### PLEASE NOTE
 
-DGD 1.6 is backward compatible with snapshots from DGD 1.5.9 and later, only.
-To upgrade to DGD 1.6, first upgrade to the latest 1.5.x version, recompile
+DGD 1.7 is backward compatible with snapshots from DGD 1.5.9 and later, only.
+To upgrade to DGD 1.7, first upgrade to the latest 1.5.x version, recompile
 all objects, and create a non-incremental snapshot.
 
 
