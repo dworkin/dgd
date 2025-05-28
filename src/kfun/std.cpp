@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2025 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1136,7 +1136,7 @@ int kf_call_out(Frame *f, int nargs, KFun *kf)
     f->addTicks(nargs);
     if (OBJR(f->oindex)->count != 0 &&
 	(handle=f->data->newCallOut(f->sp[nargs - 1].string, delay,
-				    mdelay, f, nargs - 2)) != 0) {
+				    mdelay, f, nargs - 2, FALSE)) != 0) {
 	/* pop duration */
 	f->sp++;
     } else {
@@ -1146,6 +1146,68 @@ int kf_call_out(Frame *f, int nargs, KFun *kf)
     }
     f->sp->string->del();
     PUT_INTVAL(f->sp, handle);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("call_out_summand", kf_call_out_summand, pt_call_out_summand, 0)
+# else
+char pt_call_out_summand[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 3, 1, 0,
+			       10, T_INT, T_STRING, T_MIXED, T_FLOAT, T_MIXED };
+
+/*
+ * start a summand call_out
+ */
+int kf_call_out_summand(Frame *f, int nargs, KFun *kf)
+{
+    LPCint delay;
+    Uint mdelay;
+    Float flt1, flt2;
+    bool result;
+
+    UNREFERENCED_PARAMETER(kf);
+
+    if (f->sp[nargs - 2].type == T_INT) {
+	delay = f->sp[nargs - 2].number;
+	if (delay < 0) {
+	    /* delay less than 0 */
+	    return 2;
+	}
+	mdelay = TIME_INT;
+    } else if (f->sp[nargs - 2].type == T_FLOAT) {
+	GET_FLT(&f->sp[nargs - 2], flt1);
+	if (flt1.negative() || flt1.cmp(max_int) > 0) {
+	    /* delay < 0.0 or delay > MAX_INT */
+	    return 2;
+	}
+	flt1.modf(&flt2);
+	delay = flt2.ftoi();
+	flt1.mult(thousand);
+	mdelay = flt1.ftoi();
+    } else {
+	return 2;
+    }
+    if (f->lwobj != (LWO *) NULL) {
+	EC->error("call_out_summand() in non-persistent object");
+    }
+
+    f->addTicks(nargs);
+    if (OBJR(f->oindex)->count != 0 &&
+	f->data->newCallOut(f->sp[nargs - 1].string, delay, mdelay, f,
+			    nargs - 2, TRUE) != 0) {
+	/* pop duration */
+	f->sp++;
+	result = TRUE;
+    } else {
+	/* no call_out was started: pop all arguments */
+	f->pop(nargs - 1);
+	result = FALSE;
+    }
+    f->sp->string->del();
+    PUT_INTVAL(f->sp, result);
 
     return 0;
 }

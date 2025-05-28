@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2025 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -380,7 +380,7 @@ void Dataplane::commitValues(Value *v, unsigned int n, LPCint level)
     list = (Array *) NULL;
     for (;;) {
 	while (n != 0) {
-	    if (T_INDEXED(v->type)) {
+	    if (T_INDEXED(v->type) && v->type != T_VOID) {
 		arr = v->array;
 		if (arr->primary->arr == (Array *) NULL &&
 		    arr->primary->plane->level > level) {
@@ -684,22 +684,24 @@ void Dataplane::discardCallouts()
 	    cop = *c;
 	    switch (cop->type) {
 	    case COP_ADD:
-		data->freeCallOut(cop->handle);
+		data->freeCallOut(cop->handle, &cop->aco);
 		COPatch::del(c, TRUE);
 		--ncallout;
 		break;
 
 	    case COP_REMOVE:
 		data->allocCallOut(cop->handle, cop->rco.time, cop->rco.mtime,
-				   cop->rco.nargs, cop->rco.val);
+				   cop->rco.summand, cop->rco.nargs,
+				   cop->rco.val);
 		COPatch::del(c, FALSE);
 		ncallout++;
 		break;
 
 	    case COP_REPLACE:
-		data->freeCallOut(cop->handle);
+		data->freeCallOut(cop->handle, &cop->aco);
 		data->allocCallOut(cop->handle, cop->rco.time, cop->rco.mtime,
-				   cop->rco.nargs, cop->rco.val);
+				   cop->rco.summand, cop->rco.nargs,
+				   cop->rco.val);
 		cop->discard();
 		COPatch::del(c, TRUE);
 		break;
@@ -883,6 +885,7 @@ Dataspace::Dataspace(Object *obj) : base(this)
     fcallouts = 0;
     callouts = (DCallOut *) NULL;
     scallouts = (SCallOut *) NULL;
+    summand = { 0, 0 };
 
     /* value plane */
     plane = &base;
@@ -1154,6 +1157,22 @@ struct SDataspace {
     short flags;		/* dataspace flags: compression */
     unsigned short nvariables;	/* number of variables */
     Uint narrays;		/* number of array values */
+    Uint nstrings;		/* number of strings */
+    Uint eltsize;		/* total size of array elements */
+    Uint strsize;		/* total size of strings */
+    uindex ncallouts;		/* number of callouts */
+    uindex fcallouts;		/* first free callout */
+    uindex shigh;		/* summand high word */
+    LPCuint slow; 		/* summand low word */
+};
+
+static char sd_layout[] = "dssiiiiuuuI";
+
+struct SDataspace0 {
+    Sector nsectors;		/* number of sectors in data space */
+    short flags;		/* dataspace flags: compression */
+    unsigned short nvariables;	/* number of variables */
+    Uint narrays;		/* number of array values */
     Uint eltsize;		/* total size of array elements */
     Uint nstrings;		/* number of strings */
     Uint strsize;		/* total size of strings */
@@ -1161,7 +1180,7 @@ struct SDataspace {
     uindex fcallouts;		/* first free callout */
 };
 
-static char sd_layout[] = "dssiiiiuu";
+static char sd0_layout[] = "dssiiiiuu";
 
 struct SValue {
     char type;			/* object, number, string, array */
@@ -1234,6 +1253,7 @@ static char sco0_layout[] = "issu[ccuI][ccuI][ccuI][ccuI]";
 
 static bool conv_14;			/* convert arrays & strings? */
 static bool conv_16;			/* convert callouts? */
+static bool conv_17;			/* convert dataspace? */
 static bool conv_float;			/* convert floats? */
 static bool convDone;			/* conversion complete? */
 
@@ -1288,6 +1308,8 @@ Dataspace *Dataspace::load(Object *obj,
     data->cooffset = size;
     data->ncallouts = header.ncallouts;
     data->fcallouts = header.fcallouts;
+    data->summand.high = header.shigh;
+    data->summand.low = header.slow;
 
     return data;
 }
@@ -1418,6 +1440,68 @@ void Dataspace::expand()
 # endif
 
 /*
+ * convert callout arguments
+ */
+void Dataspace::convArgs(void)
+{
+    SCallOut *sco;
+    uindex n;
+    SValue t, *elts;
+    int size, i;
+
+    if (narrays != 0) {
+	Uint size, idx;
+
+	saindex = ALLOC(Uint, narrays);
+	for (size = 0, idx = 0; idx < narrays; idx++) {
+	    saindex[idx] = size;
+	    size += sarrays[idx].size;
+	}
+    }
+
+    /*
+     * reorder arguments
+     */
+    for (sco = scallouts, n = ncallouts; n > 0; sco++, --n) {
+	if (sco->val[0].type == T_STRING) {
+	    switch (sco->nargs) {
+	    case 0:
+	    case 1:
+		break;
+
+	    case 2:
+		t = sco->val[1];
+		sco->val[1] = sco->val[2];
+		sco->val[2] = t;
+		break;
+
+	    case 3:
+		t = sco->val[1];
+		sco->val[1] = sco->val[3];
+		sco->val[3] = t;
+		break;
+
+	    default:
+		elts = selts + saindex[sco->val[3].array];
+		size = sco->nargs - 2;
+		t = sco->val[1];
+		sco->val[1] = elts[--size];
+		elts[size] = t;
+		t = sco->val[2];
+		sco->val[2] = elts[--size];
+		elts[size] = t;
+		for (i = 0; i < --size; i++) {
+		    t = elts[i];
+		    elts[i] = elts[size];
+		    elts[size] = t;
+		}
+		break;
+	    }
+	}
+    }
+}
+
+/*
  * convert dataspace
  */
 Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
@@ -1435,8 +1519,27 @@ Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
     /*
      * restore from snapshot
      */
-    size = Swap::convert((char *) &header, &obj->dfirst, sd_layout, (Uint) 1,
-			 (Uint) 0, readv);
+    if (conv_17) {
+	SDataspace0 sheader;
+
+	size = Swap::convert((char *) &sheader, &obj->dfirst, sd0_layout,
+			     (Uint) 1, (Uint) 0, readv);
+	header.nsectors = sheader.nsectors;
+	header.flags = sheader.flags;
+	header.nvariables = sheader.nvariables;
+	header.narrays = sheader.narrays;
+	header.eltsize = sheader.eltsize;
+	header.nstrings = sheader.nstrings;
+	header.strsize = sheader.strsize;
+	header.ncallouts = sheader.ncallouts;
+	header.fcallouts = sheader.fcallouts;
+	header.shigh = 0;
+	header.slow = 0;
+    } else {
+	size = Swap::convert((char *) &header, &obj->dfirst, sd_layout,
+			     (Uint) 1, (Uint) 0, readv);
+    }
+    data->flags = header.flags & DATA_SUMMAND;
     data->nvariables = header.nvariables;
     data->narrays = header.narrays;
     data->eltsize = header.eltsize;
@@ -1444,6 +1547,8 @@ Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
     data->strsize = header.strsize;
     data->ncallouts = header.ncallouts;
     data->fcallouts = header.fcallouts;
+    data->summand.high = header.shigh;
+    data->summand.low = header.slow;
 
     /* sectors */
     data->sectors = ALLOC(Sector, data->nsectors = header.nsectors);
@@ -1507,9 +1612,13 @@ Dataspace *Dataspace::conv(Object *obj, Uint *counttab,
 	if (conv_16) {
 	    convSCallOut0(data->scallouts, data->sectors,
 			  (Uint) header.ncallouts, size, readv);
+	    data->convArgs();
 	} else {
 	    Swap::convert((char *) data->scallouts, data->sectors, sco_layout,
 			  (Uint) header.ncallouts, size, readv);
+	    if (conv_17) {
+		data->convArgs();
+	    }
 	}
     }
 
@@ -2188,10 +2297,15 @@ bool Dataspace::save(bool swap)
 	    }
 
 	    if (swap) {
-		/* save new (?) fcallouts value */
-		Swap::writev((char *) &fcallouts, sectors,
-			     (Uint) sizeof(uindex),
-			  (Uint) ((char *)&header.fcallouts - (char *)&header));
+		Uint offset;
+
+		/* save new (?) fcallouts and summand */
+		header.fcallouts = fcallouts;
+		header.shigh = summand.high;
+		header.slow = summand.low;
+		offset = (char *) &header.fcallouts - (char *) &header;
+		Swap::writev((char *) &header.fcallouts, sectors,
+			     (Uint) sizeof(SDataspace) - offset, offset);
 
 		/* save scallouts */
 		Swap::writev((char *) scallouts, sectors,
@@ -2262,7 +2376,7 @@ bool Dataspace::save(bool swap)
 	}
 
 	/* fill in header */
-	header.flags = 0;
+	header.flags = flags & DATA_SUMMAND;
 	header.nvariables = nvariables;
 	header.narrays = save.narr;
 	header.eltsize = save.arrsize;
@@ -2270,6 +2384,8 @@ bool Dataspace::save(bool swap)
 	header.strsize = save.strsize;
 	header.ncallouts = ncallouts;
 	header.fcallouts = fcallouts;
+	header.shigh = summand.high;
+	header.slow = summand.low;
 
 	/*
 	 * put everything in a saveable form
@@ -2781,9 +2897,23 @@ void Dataspace::changeMap(Mapping *map)
  * allocate a new callout
  */
 uindex Dataspace::allocCallOut(uindex handle, Uint time, unsigned short mtime,
-			       int nargs, Value *v)
+			       bool summand, int nargs, Value *v)
 {
     DCallOut *co;
+
+    if (summand) {
+	Float flt;
+
+	GET_FLT(&v[1], flt);
+	if (flags & DATA_SUMMAND) {
+	    /* add to existing summand */
+	    this->summand.add(flt);
+	    return 0;
+	}
+	this->summand = flt;
+	v[1].type = T_VOID;
+	flags |= DATA_SUMMAND;
+    }
 
     if (ncallouts == 0) {
 	/*
@@ -2844,6 +2974,7 @@ uindex Dataspace::allocCallOut(uindex handle, Uint time, unsigned short mtime,
 
     co->time = time;
     co->mtime = mtime;
+    co->summand = summand;
     co->nargs = nargs;
     memcpy(co->val, v, sizeof(co->val));
     switch (nargs) {
@@ -2867,14 +2998,26 @@ uindex Dataspace::allocCallOut(uindex handle, Uint time, unsigned short mtime,
 /*
  * free a callout
  */
-void Dataspace::freeCallOut(unsigned int handle)
+void Dataspace::freeCallOut(unsigned int handle, DCallOut *aco)
 {
     DCallOut *co;
     Value *v;
     uindex n;
 
+    if (handle == 0) {
+	Float flt;
+
+	/* undo adding to summand */
+	GET_FLT(&aco->val[1], flt);
+	summand.sub(flt);
+	return;
+    }
+
     co = &callouts[handle - 1];
     v = co->val;
+    if (v[1].type == T_VOID) {
+	flags &= ~DATA_SUMMAND;
+    }
     switch (co->nargs) {
     default:
 	delLhs(&v[3]);
@@ -2909,12 +3052,13 @@ void Dataspace::freeCallOut(unsigned int handle)
  * add a new callout
  */
 uindex Dataspace::newCallOut(String *func, LPCint delay, unsigned int mdelay,
-			     Frame *f, int nargs)
+			     Frame *f, int nargs, bool summand)
 {
     Uint ct, t;
     unsigned short m;
     cindex *q;
     Value v[4];
+    Array *arr;
     uindex handle;
 
     ct = CallOut::check(ncallout, delay, mdelay, &t, &m, &q);
@@ -2923,36 +3067,43 @@ uindex Dataspace::newCallOut(String *func, LPCint delay, unsigned int mdelay,
 	return 0;
     }
 
-    PUT_STRVAL(&v[0], func);
     switch (nargs) {
-    case 3:
-	v[3] = f->sp[2];
-    case 2:
-	v[2] = f->sp[1];
-    case 1:
-	v[1] = f->sp[0];
-    case 0:
-	break;
-
     default:
-	v[1] = f->sp[0];
-	v[2] = f->sp[1];
-	PUT_ARRVAL(&v[3], Array::create(this, nargs - 2));
-	memcpy(v[3].array->elts, f->sp + 2, (nargs - 2) * sizeof(Value));
-	refImports(v[3].array);
+	arr = Array::create(this, nargs - 2);
+	memcpy(arr->elts, f->sp, (nargs - 2) * sizeof(Value));
+	refImports(arr);
+	f->sp += nargs - 1;
+	PUT_ARRVAL(f->sp, arr);
+    case 3:
+	v[3] = *f->sp++;
+    case 2:
+	v[2] = *f->sp++;
+    case 1:
+	v[1] = *f->sp++;
+    case 0:
+	PUT_STRVAL(&v[0], func);
 	break;
     }
-    f->sp += nargs;
-    handle = allocCallOut(0, ct, m, nargs, v);
+    handle = allocCallOut(0, ct, m, summand, nargs, v);
+    if (handle == 0) {
+	if (nargs > 3) {
+	    nargs = 3;
+	}
+	do {
+	    v[nargs].del();
+	} while (--nargs >= 0);
+    }
 
     if (plane->level == 0) {
 	/*
 	 * add normal callout
 	 */
-	CallOut::create(oindex, handle, t, m, q);
+	if (handle != 0) {
+	    CallOut::create(oindex, handle, t, m, q);
+	}
     } else {
 	COPatch **c, *cop;
-	DCallOut *co;
+	DCallOut *co, co0;
 	COPatch **cc;
 
 	/*
@@ -2961,7 +3112,17 @@ uindex Dataspace::newCallOut(String *func, LPCint delay, unsigned int mdelay,
 	if (plane->coptab == (COPTable *) NULL) {
 	    plane->coptab = new COPTable;
 	}
-	co = &callouts[handle - 1];
+	if (handle != 0) {
+	    co = &callouts[handle - 1];
+	} else {
+	    co0.time = ct;
+	    co0.mtime = m;
+	    co0.summand = TRUE;
+	    co0.nargs = 1;
+	    co0.val[0].type = T_VOID;
+	    co0.val[1] = v[1];
+	    co = &co0;
+	}
 	cc = c = &plane->coptab->cop[handle % COPATCHHTABSZ];
 	for (;;) {
 	    cop = *c;
@@ -2983,7 +3144,7 @@ uindex Dataspace::newCallOut(String *func, LPCint delay, unsigned int mdelay,
 	ncallout++;
     }
 
-    return handle;
+    return (handle != 0) ? handle : TRUE;
 }
 
 /*
@@ -3049,7 +3210,7 @@ LPCint Dataspace::delCallOut(Uint handle, unsigned short *mtime)
 	    c = &cop->next;
 	}
     }
-    freeCallOut((uindex) handle);
+    freeCallOut((uindex) handle, (DCallOut *) NULL);
 
     return t;
 }
@@ -3076,20 +3237,40 @@ String *Dataspace::callOut(unsigned int handle, Frame *f, int *nargs)
     f->growStack((*nargs = co->nargs) + 1);
     *--f->sp = v[0];
 
+    if (co->nargs >= 1 && v[1].type == T_VOID) {
+	PUT_FLTVAL(&v[1], summand);
+	flags &= ~DATA_SUMMAND;
+    }
     switch (co->nargs) {
-    case 3:
-	delLhs(&v[3]);
-	*--f->sp = v[3];
-    case 2:
-	delLhs(&v[2]);
-	*--f->sp = v[2];
-    case 1:
-	delLhs(&v[1]);
-	*--f->sp = v[1];
     case 0:
 	break;
 
+    case 1:
+	delLhs(&v[1]);
+	*--f->sp = v[1];
+	break;
+
+    case 2:
+	delLhs(&v[1]);
+	*--f->sp = v[1];
+	delLhs(&v[2]);
+	*--f->sp = v[2];
+	break;
+
+    case 3:
+	delLhs(&v[1]);
+	*--f->sp = v[1];
+	delLhs(&v[2]);
+	*--f->sp = v[2];
+	delLhs(&v[3]);
+	*--f->sp = v[3];
+	break;
+
     default:
+	delLhs(&v[1]);
+	*--f->sp = v[1];
+	delLhs(&v[2]);
+	*--f->sp = v[2];
 	n = co->nargs - 2;
 	f->sp -= n;
 	memcpy(f->sp, elts(v[3].array), n * sizeof(Value));
@@ -3097,10 +3278,6 @@ String *Dataspace::callOut(unsigned int handle, Frame *f, int *nargs)
 	FREE(v[3].array->elts);
 	v[3].array->elts = (Value *) NULL;
 	v[3].array->del();
-	delLhs(&v[2]);
-	*--f->sp = v[2];
-	delLhs(&v[1]);
-	*--f->sp = v[1];
 	break;
     }
 
@@ -3194,24 +3371,29 @@ Array *Dataspace::listCallouts(Dataspace *data)
 	    v++;
 
 	    /* copy arguments */
-	    switch (size) {
-	    case 3:
-		*v++ = co->val[3];
-	    case 2:
-		*v++ = co->val[2];
-	    case 1:
-		*v++ = co->val[1];
-	    case 0:
-		break;
+	    if (size != 0) {
+		*v++ = (co->val[1].type == T_VOID) ? zeroFloat : co->val[1];
+		switch (size) {
+		case 1:
+		    break;
 
-	    default:
-		n = size - 2;
-		for (v2 = this->elts(co->val[3].array) + n; n > 0; --n) {
-		    *v++ = *--v2;
+		case 2:
+		    *v++ = co->val[2];
+		    break;
+
+		case 3:
+		    *v++ = co->val[2];
+		    *v++ = co->val[3];
+		    break;
+
+		default:
+		    *v++ = co->val[2];
+		    n = size - 2;
+		    for (v2 = this->elts(co->val[3].array) + n; n > 0; --n) {
+			*v++ = *--v2;
+		    }
+		    break;
 		}
-		*v++ = co->val[2];
-		*v++ = co->val[1];
-		break;
 	    }
 	    while (size > 0) {
 		(--v)->ref();
@@ -3459,7 +3641,7 @@ void Dataspace::import(ArrImport *imp, Value *val, unsigned short n)
     import = (Array *) NULL;
     for (;;) {
 	while (n > 0) {
-	    if (T_INDEXED(val->type)) {
+	    if (T_INDEXED(val->type) && val->type != T_VOID) {
 		Uint i, j;
 
 		a = val->array;
@@ -3666,10 +3848,11 @@ void Dataspace::init()
 /*
  * prepare for conversions
  */
-void Dataspace::initConv(bool c14, bool c16, bool cfloat)
+void Dataspace::initConv(bool c14, bool c16, bool c17, bool cfloat)
 {
     conv_14 = c14;
     conv_16 = c16;
+    conv_17 = c17;
     conv_float = cfloat;
 }
 

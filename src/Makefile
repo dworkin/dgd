@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+# Copyright (C) 2010-2025 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -139,7 +139,8 @@ $(OBJ):	dgd.h config.h host.h alloc.h error.h
 error.o str.o array.o object.o data.o: str.h array.h object.h hash.h swap.h
 path.o comm.o editor.o call_out.o: str.h array.h object.h hash.h swap.h
 interpret.o config.o ext.o dgd.o: str.h array.h object.h hash.h swap.h
-array.o data.o call_out.o interpret.o path.o config.o ext.o dgd.o: xfloat.h
+array.o error.o str.o object.o data.o comm.o call_out.o interpret.o: xfloat.h
+path.o config.o ext.o dgd.o: xfloat.h
 error.o array.o object.o data.o path.o editor.o comm.o: interpret.h
 call_out.o interpret.o config.o ext.o dgd.o: interpret.h
 error.o str.o array.o object.o data.o path.o comm.o call_out.o: data.h

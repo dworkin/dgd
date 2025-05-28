@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2025 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -89,6 +89,7 @@ extern Value zeroInt, zeroFloat, nil;
 struct DCallOut {
     Uint time;			/* time of call */
     unsigned short mtime;	/* time of call milliseconds */
+    bool summand;		/* summand callout? */
     uindex nargs;		/* number of arguments */
     Value val[4];		/* function name, 3 direct arguments */
 };
@@ -139,10 +140,10 @@ public:
     void assignVar(Value *var, Value *val);
     void assignElt(Array *arr, Value *elt, Value *val);
     uindex allocCallOut(uindex handle, Uint time, unsigned short mtime,
-			int nargs, Value *v);
-    void freeCallOut(unsigned int handle);
+			bool summand, int nargs, Value *v);
+    void freeCallOut(unsigned int handle, DCallOut *aco);
     uindex newCallOut(String *func, LPCint delay, unsigned int mdelay, Frame *f,
-		      int nargs);
+		      int nargs, bool summand);
     LPCint delCallOut(Uint handle, unsigned short *mtime);
     String *callOut(unsigned int handle, Frame *f, int *nargs);
     Array *listCallouts(Dataspace *data);
@@ -162,7 +163,7 @@ public:
     static Object *upgradeLWO(LWO *lwobj, Object *obj);
     static void xport();
     static void init();
-    static void initConv(bool c14, bool c16, bool cfloat);
+    static void initConv(bool c14, bool c16, bool c17, bool cfloat);
     static void converted();
     static Sector swapout(unsigned int frag);
     static void upgradeMemory(Object *tmpl, Object *newob);
@@ -185,6 +186,7 @@ public:
     uindex ncallouts;		/* # callouts */
     uindex fcallouts;		/* free callout list */
     DCallOut *callouts;		/* callouts */
+    Float summand;		/* callout summand */
 
     class Parser *parser;	/* parse_string data */
 
@@ -199,6 +201,7 @@ private:
 # ifdef LARGENUM
     void expand();
 # endif
+    void convArgs(void);
     void loadStrings(void (*readv) (char*, Sector*, Uint, Uint));
     String *string(Uint idx);
     void loadArrays(void (*readv) (char*, Sector*, Uint, Uint));
@@ -267,6 +270,7 @@ private:
 
 /* bit values for dataspace->flags */
 # define DATA_STRCMP		0x03	/* strings compressed */
+# define DATA_SUMMAND		0x04	/* callout summand */
 
 /* bit values for dataspace->plane->flags */
 # define MOD_ALL		0x3f

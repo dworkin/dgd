@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2025 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -122,7 +122,7 @@ struct alignl { char fill; int64_t l;	};
 struct alignp { char fill; char *p;	};
 struct alignz { char c;			};
 
-# define FORMAT_VERSION	17
+# define FORMAT_VERSION	18
 
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
 # define DUMP_HEADERSZ	28	/* header size */
@@ -313,11 +313,11 @@ void Config::dump(bool incr, bool boot)
  */
 bool Config::restore(int fd, int fd2)
 {
-    bool conv_14, conv_15, conv_16;
+    bool conv_14, conv_15, conv_16, conv_17;
     unsigned int secsize;
 
     secsize = rheader.restore(fd);
-    conv_14 = conv_15 = conv_16 = FALSE;
+    conv_14 = conv_15 = conv_16 = conv_17 = FALSE;
     if (rheader.version < 15) {
 	if (!(rheader.dflags & FLAGS_COMP159)) {
 	    EC->error("Snapshot contains legacy programs");
@@ -329,6 +329,9 @@ bool Config::restore(int fd, int fd2)
     }
     if (rheader.version < 17) {
 	conv_16 = TRUE;
+    }
+    if (rheader.version < 18) {
+	conv_17 = TRUE;
     }
     header.version = rheader.version;
     if (memcmp(&header, &rheader, DUMP_TYPE) != 0 || rheader.zero1 != 0 ||
@@ -404,7 +407,7 @@ bool Config::restore(int fd, int fd2)
     Swap::restore(fd, secsize);
     KFun::restore(fd);
     Object::restore(fd, rheader.dflags & FLAGS_PARTIAL);
-    Dataspace::initConv(conv_14, conv_16, (sizeof(LPCint) != rnsize));
+    Dataspace::initConv(conv_14, conv_16, conv_17, (sizeof(LPCint) != rnsize));
     Control::initConv(conv_14, conv_15, conv_16);
     if (conv_14) {
 	struct {
