@@ -50,6 +50,9 @@ LD=	$(CXX)
 YACC=	yacc
 BIN=	../bin
 
+ifeq ($(HOST),DARWIN)
+  CXX+=-std=c++11
+endif
 ifeq ($(HOST),LINUX)
   DEFINES+=-D_FILE_OFFSET_BITS=64
   CXX+=-pthread
