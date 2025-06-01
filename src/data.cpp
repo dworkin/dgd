@@ -885,7 +885,7 @@ Dataspace::Dataspace(Object *obj) : base(this)
     fcallouts = 0;
     callouts = (DCallOut *) NULL;
     scallouts = (SCallOut *) NULL;
-    summand = { 0, 0 };
+    summand.initZero();
 
     /* value plane */
     plane = &base;
