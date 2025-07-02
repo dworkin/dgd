@@ -448,8 +448,10 @@ void Dataplane::commitCallouts(bool merge)
 		     */
 		    switch (cop->type) {
 		    case COP_ADD:
-			CallOut::create(alocal.data->oindex, cop->handle,
-					cop->time, cop->mtime, cop->queue);
+			if (cop->handle != 0) {
+			    CallOut::create(alocal.data->oindex, cop->handle,
+					    cop->time, cop->mtime, cop->queue);
+			}
 			--ncallout;
 			break;
 
@@ -684,7 +686,14 @@ void Dataplane::discardCallouts()
 	    cop = *c;
 	    switch (cop->type) {
 	    case COP_ADD:
-		data->freeCallOut(cop->handle, &cop->aco);
+		if (cop->handle != 0) {
+		    data->freeCallOut(cop->handle, &cop->aco);
+		} else {
+		    Float flt;
+
+		    GET_FLT(&cop->aco.val[1], flt);
+		    data->summand.sub(flt);
+		}
 		COPatch::del(c, TRUE);
 		--ncallout;
 		break;
@@ -3130,19 +3139,34 @@ uindex Dataspace::newCallOut(String *func, LPCint delay, unsigned int mdelay,
 	    if (cop == (COPatch *) NULL || cop->plane != plane) {
 		/* add new */
 		plane->coptab->patch(plane, cc, COP_ADD, handle, co, t, m, q);
+		ncallout++;
 		break;
 	    }
 
 	    if (cop->handle == handle) {
-		/* replace removed */
-		cop->replace(co, t, m, q);
+		if (cop->type == COP_REMOVE) {
+		    /* replace removed */
+		    cop->replace(co, t, m, q);
+		    ncallout++;
+		} else {
+		    Float f1, f2;
+
+# ifdef DEBUG
+		    if (handle != 0) {
+			EC->fatal("not a summand");
+		    }
+# endif
+		    /* add to summand */
+		    GET_FLT(&v[1], f1);
+		    GET_FLT(&cop->aco.val[1], f2);
+		    f1.add(f2);
+		    PUT_FLT(&cop->aco.val[1], f1);
+		}
 		break;
 	    }
 
 	    c = &cop->next;
 	}
-
-	ncallout++;
     }
 
     return (handle != 0) ? handle : TRUE;
