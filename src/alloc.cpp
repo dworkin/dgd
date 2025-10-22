@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2025 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -230,39 +230,46 @@ public:
 	    return c;
 	}
 
-	/* try current chunk */
-	if (schunk == (MemChunk *) NULL || schunk->size < size) {
-	    size_t chunksz;
-
+	if (size > ((schunksz != 0) ? schunksz : INIT_MEM)) {
 	    /*
-	     * allocate static memory block
+	     * allocate directly
 	     */
-	    if (schunk != (MemChunk *) NULL) {
-		schunk->next = sflist;
-		sflist = schunk;
-	    }
-	    chunksz = (size < INIT_MEM) ? INIT_MEM : size;
-	    schunk = MemChunk::alloc(chunksz, &slist);
-	    memSize += schunk->size = chunksz;
-	    if (schunksz != 0 && dmem) {
-		/* fragmentation matters */
-		EC->message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
-	    }
-	}
-	if (schunk->size - size <= MOFFSET) {
-	    /* remainder is too small */
-	    c = schunk;
-	    schunk = (MemChunk *) NULL;
+	    c = MemChunk::alloc(size, &slist);
+	    memSize += c->size = size;
 	} else {
-	    c = schunk;
-	    schunk = (MemChunk *) ((char *) schunk + size);
-	    if ((schunk->size=c->size - size) <= SSMALL) {
-		/* small chunk */
-		schunk->next = schunks[(schunk->size - MOFFSET) / STRUCT_AL -1];
-		schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1] = schunk;
-		schunk = (MemChunk *) NULL;
+	    if (schunk == (MemChunk *) NULL || schunk->size < size) {
+		size_t chunksz;
+
+		/*
+		 * allocate static memory block
+		 */
+		if (schunk != (MemChunk *) NULL) {
+		    schunk->next = sflist;
+		    sflist = schunk;
+		}
+		chunksz = (schunksz != 0) ? schunksz : INIT_MEM;
+		schunk = MemChunk::alloc(chunksz, &slist);
+		memSize += schunk->size = chunksz;
+		if (schunksz != 0 && dmem) {
+		    /* fragmentation matters */
+		    EC->message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
+		}
 	    }
-	    c->size = size;
+	    if (schunk->size - size <= MOFFSET) {
+		/* remainder is too small */
+		c = schunk;
+		schunk = (MemChunk *) NULL;
+	    } else {
+		c = schunk;
+		schunk = (MemChunk *) ((char *) schunk + size);
+		if ((schunk->size=c->size - size) <= SSMALL) {
+		    /* small chunk */
+		    schunk->next = schunks[(schunk->size - MOFFSET) / STRUCT_AL -1];
+		    schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1] = schunk;
+		    schunk = (MemChunk *) NULL;
+		}
+		c->size = size;
+	    }
 	}
 
 	if (c->size > SIZE_MASK) {
