@@ -978,6 +978,10 @@ void Asi::power(Asi &a, Asi &b, Asi &mod, Asi &t)
 	/* q = mod >> j */
 	q.copy(mod);
 	q.rshift((size << 5) + i);
+	q.size -= size;
+	if (q.num[q.size - 1] == 0) {
+	    q.size--;
+	}
 
 	/* size = number of words, i = mask */
 	if (i != 0) {
