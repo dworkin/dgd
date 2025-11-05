@@ -3082,7 +3082,7 @@ uindex Dataspace::newCallOut(String *func, LPCint delay, unsigned int mdelay,
 	arr = Array::create(this, nargs - 2);
 	memcpy(arr->elts, f->sp, (nargs - 2) * sizeof(Value));
 	refImports(arr);
-	f->sp += nargs - 1;
+	f->sp += nargs - 3;
 	PUT_ARRVAL(f->sp, arr);
     case 3:
 	v[3] = *f->sp++;
