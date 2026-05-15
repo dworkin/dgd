@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2010,12 +2010,12 @@ Node *YYParser::quest(Node *n1, Node *n2, Node *n3)
     }
 
     type = T_MIXED;
-    if (Compile::nil(n2) && T_POINTER(n3->mod)) {
+    if (Compile::nil(n2) && T_POINTER(n3->mod) && n3->mod < T_MIXED) {
 	/*
 	 * expr ? nil : expr
 	 */
 	type = n3->mod;
-    } else if (Compile::nil(n3) && T_POINTER(n2->mod)) {
+    } else if (Compile::nil(n3) && T_POINTER(n2->mod) && n2->mod < T_MIXED) {
 	/*
 	 * expr ? expr : nil;
 	 */

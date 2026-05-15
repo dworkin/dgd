@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2019,7 +2019,7 @@ unsigned int Compile::aggrType(unsigned int t1, unsigned int t2)
 	return t2;		/* first element */
 
     case T_NIL:
-	if (t2 == T_NIL || T_POINTER(t2)) {
+	if (t2 == T_NIL || (T_POINTER(t2) && t2 < T_MIXED)) {
 	    return t2;		/* nil matches pointer/nil */
 	}
 	/* fall through */
@@ -2028,7 +2028,7 @@ unsigned int Compile::aggrType(unsigned int t1, unsigned int t2)
 
     default:
 	if (t2 == T_NIL) {
-	    if (T_POINTER(t1)) {
+	    if (T_POINTER(t1) && t1 < T_MIXED) {
 		return t1;	/* nil matches pointer */
 	    }
 	    break;
