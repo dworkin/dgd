@@ -133,19 +133,24 @@ double Ext::getFloat(const Float *flt)
 
     if ((flt->high | flt->low) == 0) {
 	return 0.0;
-    } else {
 # ifdef LARGENUM
+    } else if ((flt->high & 0x7fff0000) != 0x7fff0000) {
 	d = ldexp((double) (0x10000 | (flt->high & 0xffff)), 64);
 	d = ldexp(d + flt->low,
 		  ((flt->high >> 16) & 0x7fff) - FLOAT_BIAS - 80);
-	return ((flt->high >> 31) ? -d : d);
+    } else {
+	/* inf or nan */
+	d = (((flt->high & 0xffff) | flt->low) == 0) ? 1.0 / 0.0 : 0.0 / 0.0;
+    }
+    return ((flt->high >> 31) ? -d : d);
 # else
+    } else {
 	d = ldexp((double) (0x10 | (flt->high & 0xf)), 32);
 	d = ldexp(d + flt->low,
 		  ((flt->high >> 4) & 0x7ff) - FLOAT_BIAS - 36);
 	return ((flt->high >> 15) ? -d : d);
-# endif
     }
+# endif
 }
 
 /*
@@ -217,13 +222,20 @@ void Ext::putFloat(Float *flt, double d)
 	flt->low = 0;
     } else {
 	sign = (d < 0.0);
-	d = frexp(fabs(d), &e);
 # ifdef LARGENUM
-	d = ldexp(d, 17);
-	flt->high = (sign << 31) | ((e - 1 + FLOAT_BIAS) << 16) |
-		    ((Uint) d & 0xffff);
-	flt->low = (uint64_t) ldexp(modf(d, &dummy), 36) << 28;
+	if (isfinite(d)) {
+	    d = frexp(fabs(d), &e);
+	    d = ldexp(d, 17);
+	    flt->high = (sign << 31) | ((e - 1 + FLOAT_BIAS) << 16) |
+			((Uint) d & 0xffff);
+	    flt->low = (uint64_t) ldexp(modf(d, &dummy), 36) << 28;
+	} else {
+	    /* inf or nan */
+	    flt->high = (sign << 31) | ((isnan(d)) ? 0x7fff8000 : 0x7fff0000);
+	    flt->low = 0;
+	}
 # else
+	d = frexp(fabs(d), &e);
 	m = (uint64_t) ldexp(d, 37);
 	flt->high = (sign << 15) | ((e - 1 + FLOAT_BIAS) << 4) |
 		    ((unsigned short) (m >> 32) & 0xf);
@@ -246,13 +258,18 @@ bool Ext::smallFloat(unsigned short *fhigh, Uint *flow, Float *flt)
 	*flow = 0;
 	return TRUE;
     }
-    if (exp <= FLOAT_BIAS - 0x3ff || exp > FLOAT_BIAS + 0x3ff ||
-	(flt->low << 12) != 0) {
-	return FALSE;
+    if (exp != 0x7fff) {
+	if (exp <= FLOAT_BIAS - 0x3ff || exp > FLOAT_BIAS + 0x3ff ||
+	    (flt->low << 12) != 0) {
+	    return FALSE;
+	}
+	exp = exp - FLOAT_BIAS + 0x3ff;
+    } else {
+	exp = 0x7ff;
     }
 
-    *fhigh = ((flt->high & FLOAT_SIGN) >> 16) +
-	     ((exp - FLOAT_BIAS + 0x3ff) << 4) + ((flt->high >> 12) & 0xf);
+    *fhigh = ((flt->high & FLOAT_SIGN) >> 16) + (exp << 4) +
+	     ((flt->high >> 12) & 0xf);
     *flow = (flt->high << 20) + (flt->low >> 44);
     return TRUE;
 }
@@ -269,8 +286,8 @@ void Ext::largeFloat(Float *flt, unsigned short fhigh, Uint flow)
 	flt->high = 0;
 	flt->low = 0;
     } else {
-	flt->high = ((fhigh & 0x8000) << 16) +
-		    ((exp + FLOAT_BIAS - 0x3ff) << 16) +
+	exp = (exp != 0x7ff) ? exp + FLOAT_BIAS - 0x3ff : 0x7fff;
+	flt->high = ((fhigh & 0x8000) << 16) + (exp << 16) +
 		    ((fhigh & 0xf) << 12) + (flow >> 20);
 	flt->low = (FloatLow) flow << 44;
     }
@@ -2395,10 +2412,11 @@ void Ext::compile(const Frame *f, Control *ctrl)
 
     /* start JIT compiler */
     ctrl = f->p_ctrl;
-    (*jit_compile)(ctrl->oindex, ctrl->instance, 0, ctrl->ninherits,
-		   (uint8_t *) ctrl->prog, ctrl->progsize, ctrl->nfuncdefs,
-		   (uint8_t *) ftypes, ctrl->ninherits + nftypes,
-		   (uint8_t *) vtypes, ctrl->ninherits + ctrl->nvariables);
+    (*jit_compile)(ctrl->oindex, ctrl->instance, ctrl->flags & CTRL_PUREFLOAT,
+		   ctrl->ninherits, (uint8_t *) ctrl->prog, ctrl->progsize,
+		   ctrl->nfuncdefs, (uint8_t *) ftypes,
+		   ctrl->ninherits + nftypes, (uint8_t *) vtypes,
+		   ctrl->ninherits + ctrl->nvariables);
 
     AFREE(ftypes);
     AFREE(vtypes);

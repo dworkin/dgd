@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,6 +21,7 @@ class Compile {
 public:
     static void init(char *a, char *d, char *i, char **p, int tc);
     static bool typechecking();
+    static bool pureFloat();
     static bool inherit(char *file, Node *label, int priv);
     static Object *compile(Frame *f, char *file, Object *obj, int nstr,
 			   int iflag);

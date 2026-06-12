@@ -114,7 +114,7 @@ int kf_fmod(Frame *f, int n, KFun *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    f1.fmod(f2);
+    f1.fmod(f2, PUREFLOAT(f));
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -170,7 +170,7 @@ int kf_ldexp(Frame *f, int n, KFun *kf)
 
     f->addTicks(1);
     GET_FLT(f->sp + 1, flt);
-    flt.ldexp(f->sp->number);
+    flt.ldexp(f->sp->number, PUREFLOAT(f));
     f->sp++;
     PUT_FLT(f->sp, flt);
     return 0;
@@ -225,7 +225,7 @@ int kf_exp(Frame *f, int n, KFun *kf)
 
     f->addTicks(21);
     GET_FLT(f->sp, flt);
-    flt.exp();
+    flt.exp(PUREFLOAT(f));
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -249,7 +249,7 @@ int kf_log(Frame *f, int n, KFun *kf)
 
     f->addTicks(35);
     GET_FLT(f->sp, flt);
-    flt.log();
+    flt.log(PUREFLOAT(f));
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -273,7 +273,7 @@ int kf_log10(Frame *f, int n, KFun *kf)
 
     f->addTicks(41);
     GET_FLT(f->sp, flt);
-    flt.log10();
+    flt.log10(PUREFLOAT(f));
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -300,7 +300,7 @@ int kf_pow(Frame *f, int n, KFun *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    f1.pow(f2);
+    f1.pow(f2, PUREFLOAT(f));
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -324,7 +324,7 @@ int kf_sqrt(Frame *f, int n, KFun *kf)
 
     f->addTicks(11);
     GET_FLT(f->sp, flt);
-    flt.sqrt();
+    flt.sqrt(PUREFLOAT(f));
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -396,7 +396,7 @@ int kf_tan(Frame *f, int n, KFun *kf)
 
     f->addTicks(31);
     GET_FLT(f->sp, flt);
-    flt.tan();
+    flt.tan(PUREFLOAT(f));
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -420,7 +420,7 @@ int kf_acos(Frame *f, int n, KFun *kf)
 
     f->addTicks(24);
     GET_FLT(f->sp, flt);
-    flt.acos();
+    flt.acos(PUREFLOAT(f));
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -444,7 +444,7 @@ int kf_asin(Frame *f, int n, KFun *kf)
 
     f->addTicks(24);
     GET_FLT(f->sp, flt);
-    flt.asin();
+    flt.asin(PUREFLOAT(f));
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -519,7 +519,7 @@ int kf_cosh(Frame *f, int n, KFun *kf)
 
     f->addTicks(24);
     GET_FLT(f->sp, flt);
-    flt.cosh();
+    flt.cosh(PUREFLOAT(f));
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -543,7 +543,7 @@ int kf_sinh(Frame *f, int n, KFun *kf)
 
     f->addTicks(24);
     GET_FLT(f->sp, flt);
-    flt.sinh();
+    flt.sinh(PUREFLOAT(f));
     PUT_FLT(f->sp, flt);
     return 0;
 }

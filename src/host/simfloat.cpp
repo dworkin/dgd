@@ -1082,6 +1082,18 @@ void Float::ftoa(char *buffer)
 	return;
     }
 
+    if (a.exp == BIAS + 1023 + 1) {
+	if ((a.high & 0x3fff) | a.low) {
+	    strcpy(buffer, "nan");
+	} else {
+	    if (a.sign != 0) {
+		*buffer++ = '-';
+	    }
+	    strcpy(buffer, "inf");
+	}
+	return;
+    }
+
     if (a.sign != 0) {
 	*buffer++ = '-';
 	a.sign = 0;
@@ -1206,10 +1218,11 @@ LPCint Float::ftoi()
 /*
  * add a Float
  */
-void Float::add(Float &f)
+void Float::add(Float &f, bool pure)
 {
     Flt a, b;
 
+    UNREFERENCED_PARAMETER(pure);
     b.fromFloat(&f);
     a.fromFloat(this);
     a.add(&b);
@@ -1219,10 +1232,11 @@ void Float::add(Float &f)
 /*
  * subtract a Float
  */
-void Float::sub(Float &f)
+void Float::sub(Float &f, bool pure)
 {
     Flt a, b;
 
+    UNREFERENCED_PARAMETER(pure);
     b.fromFloat(&f);
     a.fromFloat(this);
     a.sub(&b);
@@ -1232,10 +1246,11 @@ void Float::sub(Float &f)
 /*
  * multiply by a Float
  */
-void Float::mult(Float &f)
+void Float::mult(Float &f, bool pure)
 {
     Flt a, b;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     b.fromFloat(&f);
     a.mult(&b);
@@ -1245,10 +1260,11 @@ void Float::mult(Float &f)
 /*
  * divide by a Float
  */
-void Float::div(Float &f)
+void Float::div(Float &f, bool pure)
 {
     Flt a, b;
 
+    UNREFERENCED_PARAMETER(pure);
     b.fromFloat(&f);
     a.fromFloat(this);
     a.div(&b);
@@ -1308,11 +1324,12 @@ void Float::ceil()
 /*
  * perform fmod
  */
-void Float::fmod(Float &f)
+void Float::fmod(Float &f, bool pure)
 {
     Flt a, b, c;
     unsigned short sign;
 
+    UNREFERENCED_PARAMETER(pure);
     b.fromFloat(&f);
     if (b.exp == 0) {
 	Flt::edom();
@@ -1355,8 +1372,9 @@ LPCint Float::frexp()
 /*
  * make a float from a fraction and an exponent
  */
-void Float::ldexp(LPCint exp)
+void Float::ldexp(LPCint exp, bool pure)
 {
+    UNREFERENCED_PARAMETER(pure);
     if (high == 0) {
 	return;
     }
@@ -1395,10 +1413,11 @@ void Float::modf(Float *f)
 /*
  * exp(f)
  */
-void Float::exp()
+void Float::exp(bool pure)
 {
     Flt a;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     if (a.cmp(&maxlog) > 0) {
 	/* overflow */
@@ -1417,10 +1436,11 @@ void Float::exp()
 /*
  * log(f)
  */
-void Float::log()
+void Float::log(bool pure)
 {
     Flt a;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     if (a.sign != 0 || a.exp == 0) {
 	/* <= 0.0 */
@@ -1434,7 +1454,7 @@ void Float::log()
 /*
  * log10(f)
  */
-void Float::log10()
+void Float::log10(bool pure)
 {
     static Flt l102a = FLT_CONST(0, -2, 0x4000, 0x0000000L);
     static Flt l102b = FLT_CONST(1, -7, 0x77d9, 0x5ec10c0L);
@@ -1442,6 +1462,7 @@ void Float::log10()
     Flt a, b, c, d, e;
     short n;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     if (a.sign != 0 || a.exp == 0) {
 	/* <= 0.0 */
@@ -1527,11 +1548,12 @@ void Float::log10()
 /*
  * pow(f1, f2)
  */
-void Float::pow(Float &f)
+void Float::pow(Float &f, bool pure)
 {
     Flt a, b, c;
     unsigned short sign;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     b.fromFloat(&f);
 
@@ -1587,10 +1609,11 @@ void Float::pow(Float &f)
 /*
  * sqrt(f)
  */
-void Float::sqrt()
+void Float::sqrt(bool pure)
 {
     Flt a;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     if (a.sign != 0) {
 	Flt::edom();
@@ -1750,7 +1773,7 @@ void Float::sin()
 /*
  * float(f)
  */
-void Float::tan()
+void Float::tan(bool pure)
 {
     static Flt p[] = {
 	FLT_CONST(1, 13, 0x992d, 0x8d24f3fL),
@@ -1770,6 +1793,7 @@ void Float::tan()
     int n;
     unsigned short sign;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     if (a.exp >= 0x801d) {
 	Flt::edom();
@@ -1837,12 +1861,13 @@ static Flt ascq[] = {
 /*
  * acos(f)
  */
-void Float::acos()
+void Float::acos(bool pure)
 {
     Flt a, b, c;
     unsigned short sign;
     bool flag;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     sign = a.sign;
     a.sign = 0;
@@ -1901,12 +1926,13 @@ void Float::acos()
 /*
  * asin(f)
  */
-void Float::asin()
+void Float::asin(bool pure)
 {
     Flt a, b, c;
     unsigned short sign;
     bool flag;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     sign = a.sign;
     a.sign = 0;
@@ -2090,10 +2116,11 @@ void Float::atan2(Float &f)
 /*
  * cosh(f)
  */
-void Float::cosh()
+void Float::cosh(bool pure)
 {
     Flt a, b;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     a.sign = 0;
     if (a.cmp(&maxlog) > 0) {
@@ -2112,7 +2139,7 @@ void Float::cosh()
 /*
  * sinh(f)
  */
-void Float::sinh()
+void Float::sinh(bool pure)
 {
     static Flt p[] = {
 	FLT_CONST(1, -1, 0x9435, 0xfe8bb3cL),
@@ -2128,6 +2155,7 @@ void Float::sinh()
     Flt a, b, c, d;
     unsigned short sign;
 
+    UNREFERENCED_PARAMETER(pure);
     a.fromFloat(this);
     if (a.cmp(&maxlog) > 0 || a.cmp(&minlog) < 0) {
 	Flt::erange();

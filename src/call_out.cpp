@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -536,8 +536,8 @@ void CallOut::list(Array *a)
 	} else {
 	    Float::itof(t, &flt1);
 	    Float::itof(m, &flt2);
-	    flt2.div(thousand);
-	    flt1.add(flt2);
+	    flt2.div(thousand, TRUE);
+	    flt1.add(flt2, TRUE);
 	    PUT_FLTVAL(w, flt1);
 	}
     }

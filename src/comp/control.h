@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2020 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -87,7 +87,7 @@ public:
     static unsigned short var(String *str, long *ref, String **cvstr);
     static int nInherits();
     static bool checkFuncs();
-    static Control *construct();
+    static Control *construct(bool pure);
     static void clear();
 
     static Control *load(Object *obj, Uint instance);
@@ -203,7 +203,8 @@ private:
 # define CTRL_PROGCMP		0x003	/* program compressed */
 # define CTRL_STRCMP		0x00c	/* strings compressed */
 # define CTRL_UNDEFINED		0x010	/* has undefined functions */
-# define CTRL_VARMAP		0x020	/* varmap updated */
+# define CTRL_PUREFLOAT		0x020	/* has unconstrained floats */
+# define CTRL_VARMAP		0x040	/* varmap updated */
 
 /* data compression */
 # define CMP_TYPE		0x03

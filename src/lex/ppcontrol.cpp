@@ -47,6 +47,7 @@ public:
 static Chunk<IFState, ICHUNKSZ> ichunk;
 
 static int include_level;	/* current #include level */
+static bool ppfloat;		/* #pragma unconstrained_float */
 static IFState *ifs;		/* current conditional inclusion state */
 
 /*
@@ -105,6 +106,7 @@ bool Preproc::init(char *file, char **id, char *buffer, unsigned int buflen,
     Special::define();
     Macro::define("__DGD__", "\0111\011", -1);	/* HT 1 HT */
     include_level = level;
+    ppfloat = FALSE;
     ifs = &top;
 
     if (!init_pri) {
@@ -980,7 +982,26 @@ int Preproc::gettok()
 		    break;
 
 		case PP_PRAGMA:
-		    /* no pragmas */
+		    if (ifs->skipping) {
+			TokenBuf::skiptonl(FALSE);
+			break;
+		    }
+		    token = wsmcgtok();
+		    if (token == IDENTIFIER &&
+			strcmp(yytext, "unconstrained_float") == 0) {
+# ifdef LARGENUM
+			token = wsmcgtok();
+			if (token == LF) {
+			    ppfloat = TRUE;
+			    break;
+			}
+			unexpected(token, (char *) NULL, "pragma");
+# else
+			error("inappropriate directive in #pragma");
+# endif
+		    } else if (token == LF) {
+			break;
+		    }
 		    TokenBuf::skiptonl(FALSE);
 		    break;
 
@@ -996,4 +1017,12 @@ int Preproc::gettok()
 	    break;
 	}
     }
+}
+
+/*
+ * unconstrained floats?
+ */
+bool Preproc::pragmaFloat()
+{
+    return ppfloat;
 }

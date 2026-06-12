@@ -107,7 +107,7 @@ int kf_add(Frame *f, int n, KFun *kf)
 	    GET_FLT(f->sp, f2);
 	    f->sp++;
 	    GET_FLT(f->sp, f1);
-	    f1.add(f2);
+	    f1.add(f2, PUREFLOAT(f));
 	    PUT_FLT(f->sp, f1);
 	    return 0;
 
@@ -243,7 +243,7 @@ int kf_add1(Frame *f, int n, KFun *kf)
 	f->addTicks(1);
 	GET_FLT(f->sp, f1);
 	f2.initOne();
-	f1.add(f2);
+	f1.add(f2, PUREFLOAT(f));
 	PUT_FLT(f->sp, f1);
     } else if (f->sp->type == T_LWOBJECT &&
 	       f->sp->array->elts[0].type == T_OBJECT) {
@@ -388,7 +388,7 @@ int kf_div(Frame *f, int n, KFun *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	f1.div(f2);
+	f1.div(f2, PUREFLOAT(f));
 	PUT_FLT(f->sp, f1);
 	return 0;
 
@@ -977,7 +977,7 @@ int kf_mult(Frame *f, int n, KFun *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	f1.mult(f2);
+	f1.mult(f2, PUREFLOAT(f));
 	PUT_FLT(f->sp, f1);
 	return 0;
 
@@ -1638,7 +1638,7 @@ int kf_sub(Frame *f, int n, KFun *kf)
 	    GET_FLT(f->sp, f2);
 	    f->sp++;
 	    GET_FLT(f->sp, f1);
-	    f1.sub(f2);
+	    f1.sub(f2, PUREFLOAT(f));
 	    PUT_FLT(f->sp, f1);
 	    return 0;
 	}
@@ -1728,7 +1728,7 @@ int kf_sub1(Frame *f, int n, KFun *kf)
 	f->addTicks(1);
 	GET_FLT(f->sp, f1);
 	f2.initOne();
-	f1.sub(f2);
+	f1.sub(f2, PUREFLOAT(f));
 	PUT_FLT(f->sp, f1);
     } else if (f->sp->type == T_LWOBJECT &&
 	       f->sp->array->elts[0].type == T_OBJECT) {
@@ -2412,7 +2412,7 @@ int kf_add_float(Frame *f, int n, KFun *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    f1.add(f2);
+    f1.add(f2, PUREFLOAT(f));
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -2590,7 +2590,7 @@ int kf_add1_float(Frame *f, int n, KFun *kf)
     f->addTicks(1);
     GET_FLT(f->sp, f1);
     f2.initOne();
-    f1.add(f2);
+    f1.add(f2, PUREFLOAT(f));
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -2616,7 +2616,7 @@ int kf_div_float(Frame *f, int n, KFun *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    f1.div(f2);
+    f1.div(f2, PUREFLOAT(f));
     PUT_FLT(f->sp, f1);
     return 0;
 
@@ -2898,7 +2898,7 @@ int kf_mult_float(Frame *f, int n, KFun *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    f1.mult(f2);
+    f1.mult(f2, PUREFLOAT(f));
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -3014,7 +3014,7 @@ int kf_sub_float(Frame *f, int n, KFun *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    f1.sub(f2);
+    f1.sub(f2, PUREFLOAT(f));
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -3039,7 +3039,7 @@ int kf_sub1_float(Frame *f, int n, KFun *kf)
     f->addTicks(1);
     GET_FLT(f->sp, f1);
     f2.initOne();
-    f1.sub(f2);
+    f1.sub(f2, PUREFLOAT(f));
     PUT_FLT(f->sp, f1);
     return 0;
 }

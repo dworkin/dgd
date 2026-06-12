@@ -72,32 +72,32 @@ public:
 	return !!(high & FLOAT_SIGN);
     }
 
-    void add(Float &f);
-    void sub(Float &f);
-    void mult(Float &f);
-    void div(Float &f);
+    void add(Float &f, bool pure);
+    void sub(Float &f, bool pure);
+    void mult(Float &f, bool pure);
+    void div(Float &f, bool pure);
     int cmp(Float &f);
     void floor();
     void ceil();
-    void fmod(Float &f);
+    void fmod(Float &f, bool pure);
     LPCint frexp();
-    void ldexp(LPCint exp);
+    void ldexp(LPCint exp, bool pure);
     void modf(Float *f);
 
-    void exp();
-    void log();
-    void log10();
-    void pow(Float &f);
-    void sqrt();
+    void exp(bool pure);
+    void log(bool pure);
+    void log10(bool pure);
+    void pow(Float &f, bool pure);
+    void sqrt(bool pure);
     void cos();
     void sin();
-    void tan();
-    void acos();
-    void asin();
+    void tan(bool pure);
+    void acos(bool pure);
+    void asin(bool pure);
     void atan();
     void atan2(Float &f);
-    void cosh();
-    void sinh();
+    void cosh(bool pure);
+    void sinh(bool pure);
     void tanh();
     int is_inf();
     int is_nan();

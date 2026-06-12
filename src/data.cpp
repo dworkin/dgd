@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2025 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -692,7 +692,7 @@ void Dataplane::discardCallouts()
 		    Float flt;
 
 		    GET_FLT(&cop->aco.val[1], flt);
-		    data->summand.sub(flt);
+		    data->summand.sub(flt, TRUE);
 		}
 		COPatch::del(c, TRUE);
 		--ncallout;
@@ -2937,7 +2937,7 @@ uindex Dataspace::allocCallOut(uindex handle, Uint time, unsigned short mtime,
 	GET_FLT(&v[1], flt);
 	if (flags & DATA_SUMMAND) {
 	    /* add to existing summand */
-	    this->summand.add(flt);
+	    this->summand.add(flt, TRUE);
 	    return 0;
 	}
 	this->summand = flt;
@@ -3039,7 +3039,7 @@ void Dataspace::freeCallOut(unsigned int handle, DCallOut *aco)
 
 	/* undo adding to summand */
 	GET_FLT(&aco->val[1], flt);
-	summand.sub(flt);
+	summand.sub(flt, TRUE);
 	return;
     }
 
@@ -3179,7 +3179,7 @@ uindex Dataspace::newCallOut(String *func, LPCint delay, unsigned int mdelay,
 		    /* add to summand */
 		    GET_FLT(&v[1], f1);
 		    GET_FLT(&cop->aco.val[1], f2);
-		    f1.add(f2);
+		    f1.add(f2, TRUE);
 		    PUT_FLT(&cop->aco.val[1], f1);
 		}
 		break;

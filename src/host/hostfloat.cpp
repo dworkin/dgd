@@ -62,9 +62,11 @@ static double f_get(const Float *flt)
 /*
  * store a float in a value
  */
-static void f_put(Float *flt, double d)
+static void f_put(Float *flt, double d, bool pure)
 {
-    Ext::constrainFloat(&d);
+    if (!pure) {
+	Ext::constrainFloat(&d);
+    }
     Ext::putFloat(flt, d);
 }
 
@@ -211,6 +213,18 @@ void Float::ftoa(char *buffer)
 	return;
     }
 
+    if (!isfinite(a)) {
+	if (isnan(a)) {
+	    strcpy(buffer, "nan");
+	} else {
+	    if (a < 0) {
+		*buffer++ = '-';
+	    }
+	    strcpy(buffer, "inf");
+	}
+	return;
+    }
+
     if (a < 0.0) {
 	*buffer++ = '-';
 	a = -a;
@@ -314,7 +328,7 @@ void Float::ftoa(char *buffer)
  */
 void Float::itof(LPCint i, Float *f)
 {
-    f_put(f, (double) i);
+    Ext::putFloat(f, (double) i);
 }
 
 /*
@@ -342,39 +356,39 @@ LPCint Float::ftoi()
 /*
  * add a Float
  */
-void Float::add(Float &f)
+void Float::add(Float &f, bool pure)
 {
-    f_put(this, f_get(this) + f_get(&f));
+    f_put(this, f_get(this) + f_get(&f), pure);
 }
 
 /*
  * subtract a Float
  */
-void Float::sub(Float &f)
+void Float::sub(Float &f, bool pure)
 {
-    f_put(this, f_get(this) - f_get(&f));
+    f_put(this, f_get(this) - f_get(&f), pure);
 }
 
 /*
  * multiply by a Float
  */
-void Float::mult(Float &f)
+void Float::mult(Float &f, bool pure)
 {
-    f_put(this, f_get(this) * f_get(&f));
+    f_put(this, f_get(this) * f_get(&f), pure);
 }
 
 /*
  * divide by a Float
  */
-void Float::div(Float &f)
+void Float::div(Float &f, bool pure)
 {
     double a;
 
     a = f_get(&f);
-    if (a == 0.0) {
+    if (!pure && a == 0.0) {
 	EC->error("Division by zero");
     }
-    f_put(this, f_get(this) / a);
+    f_put(this, f_get(this) / a, pure);
 }
 
 /*
@@ -400,7 +414,7 @@ int Float::cmp(Float &f)
  */
 void Float::floor()
 {
-    f_put(this, ::floor(f_get(this)));
+    Ext::putFloat(this, ::floor(f_get(this)));
 }
 
 /*
@@ -408,21 +422,21 @@ void Float::floor()
  */
 void Float::ceil()
 {
-    f_put(this, ::ceil(f_get(this)));
+    Ext::putFloat(this, ::ceil(f_get(this)));
 }
 
 /*
  * perform fmod
  */
-void Float::fmod(Float &f)
+void Float::fmod(Float &f, bool pure)
 {
     double a;
 
     a = f_get(&f);
-    if (a == 0.0) {
+    if (!pure && a == 0.0) {
 	f_edom();
     }
-    f_put(this, ::fmod(f_get(this), a));
+    f_put(this, ::fmod(f_get(this), a), pure);
 }
 
 /*
@@ -432,16 +446,16 @@ LPCint Float::frexp()
 {
     int e;
 
-    f_put(this, ::frexp(f_get(this), &e));
+    Ext::putFloat(this, ::frexp(f_get(this), &e));
     return e;
 }
 
 /*
  * make a float from a fraction and an exponent
  */
-void Float::ldexp(LPCint exp)
+void Float::ldexp(LPCint exp, bool pure)
 {
-    f_put(this, ::ldexp(f_get(this), exp));
+    f_put(this, ::ldexp(f_get(this), exp), pure);
 }
 
 /*
@@ -451,83 +465,85 @@ void Float::modf(Float *f)
 {
     double a;
 
-    f_put(this, ::modf(f_get(this), &a));
-    f_put(f, a);
+    Ext::putFloat(this, ::modf(f_get(this), &a));
+    Ext::putFloat(f, a);
 }
 
 
 /*
  * exp(f)
  */
-void Float::exp()
+void Float::exp(bool pure)
 {
-    f_put(this, ::exp(f_get(this)));
+    f_put(this, ::exp(f_get(this)), pure);
 }
 
 /*
  * log(f)
  */
-void Float::log()
+void Float::log(bool pure)
 {
     double a;
 
     a = f_get(this);
-    if (a <= 0.0) {
+    if (!pure && a <= 0.0) {
 	f_edom();
     }
-    f_put(this, ::log(a));
+    f_put(this, ::log(a), pure);
 }
 
 /*
  * log10(f)
  */
-void Float::log10()
+void Float::log10(bool pure)
 {
     double a;
 
     a = f_get(this);
-    if (a <= 0.0) {
+    if (!pure && a <= 0.0) {
 	f_edom();
     }
-    f_put(this, ::log10(a));
+    f_put(this, ::log10(a), pure);
 }
 
 /*
  * pow(f1, f2)
  */
-void Float::pow(Float &f)
+void Float::pow(Float &f, bool pure)
 {
     double a, b;
 
     a = f_get(this);
     b = f_get(&f);
-    if (a < 0.0) {
-	if (b != ::floor(b)) {
-	    /* non-integer power of negative number */
-	    f_edom();
-	}
-    } else if (a == 0.0) {
-	if (b < 0.0) {
-	    /* negative power of 0.0 */
-	    f_edom();
+    if (!pure) {
+	if (a < 0.0) {
+	    if (b != ::floor(b)) {
+		/* non-integer power of negative number */
+		f_edom();
+	    }
+	} else if (a == 0.0) {
+	    if (b < 0.0) {
+		/* negative power of 0.0 */
+		f_edom();
+	    }
 	}
     }
 
-    f_put(this, ::pow(a, b));
+    f_put(this, ::pow(a, b), pure);
 }
 
 /*
  * sqrt(f)
  */
-void Float::sqrt()
+void Float::sqrt(bool pure)
 {
     double a;
 
     a = f_get(this);
-    if (a < 0.0) {
+    if (!pure && a < 0.0) {
 	f_edom();
     }
-    f_put(this, ::sqrt(a));
+    f_put(this, ::sqrt(a), pure);
 }
 
 /*
@@ -535,7 +551,7 @@ void Float::sqrt()
  */
 void Float::cos()
 {
-    f_put(this, ::cos(f_get(this)));
+    Ext::putFloat(this, ::cos(f_get(this)));
 }
 
 /*
@@ -543,43 +559,43 @@ void Float::cos()
  */
 void Float::sin()
 {
-    f_put(this, ::sin(f_get(this)));
+    Ext::putFloat(this, ::sin(f_get(this)));
 }
 
 /*
  * float(f)
  */
-void Float::tan()
+void Float::tan(bool pure)
 {
-    f_put(this, ::tan(f_get(this)));
+    f_put(this, ::tan(f_get(this)), pure);
 }
 
 /*
  * acos(f)
  */
-void Float::acos()
+void Float::acos(bool pure)
 {
     double a;
 
     a = f_get(this);
-    if (fabs(a) > 1.0) {
+    if (!pure && fabs(a) > 1.0) {
 	f_edom();
     }
-    f_put(this, ::acos(a));
+    f_put(this, ::acos(a), pure);
 }
 
 /*
  * asin(f)
  */
-void Float::asin()
+void Float::asin(bool pure)
 {
     double a;
 
     a = f_get(this);
-    if (fabs(a) > 1.0) {
+    if (!pure && fabs(a) > 1.0) {
 	f_edom();
     }
-    f_put(this, ::asin(a));
+    f_put(this, ::asin(a), pure);
 }
 
 /*
@@ -587,7 +603,7 @@ void Float::asin()
  */
 void Float::atan()
 {
-    f_put(this, ::atan(f_get(this)));
+    Ext::putFloat(this, ::atan(f_get(this)));
 }
 
 /*
@@ -595,23 +611,23 @@ void Float::atan()
  */
 void Float::atan2(Float &f)
 {
-    f_put(this, ::atan2(f_get(this), f_get(&f)));
+    Ext::putFloat(this, ::atan2(f_get(this), f_get(&f)));
 }
 
 /*
  * cosh(f)
  */
-void Float::cosh()
+void Float::cosh(bool pure)
 {
-    f_put(this, ::cosh(f_get(this)));
+    f_put(this, ::cosh(f_get(this)), pure);
 }
 
 /*
  * sinh(f)
  */
-void Float::sinh()
+void Float::sinh(bool pure)
 {
-    f_put(this, ::sinh(f_get(this)));
+    f_put(this, ::sinh(f_get(this)), pure);
 }
 
 /*
@@ -619,7 +635,7 @@ void Float::sinh()
  */
 void Float::tanh()
 {
-    f_put(this, ::tanh(f_get(this)));
+    Ext::putFloat(this, ::tanh(f_get(this)));
 }
 
 /*

@@ -2121,7 +2121,7 @@ void Control::makeVarTypes()
 /*
  * construct and return a control block for the object just compiled
  */
-Control *Control::construct()
+Control *Control::construct(bool pure)
 {
     Control *ctrl;
 
@@ -2134,6 +2134,9 @@ Control *Control::construct()
     makeFunCalls();
     makeSymbols();
     makeVarTypes();
+    if (pure) {
+	ctrl->flags |= CTRL_PUREFLOAT;
+    }
     ctrl->compiled = P_time();
 
     newctrl = (Control *) NULL;
@@ -3037,7 +3040,7 @@ void Control::save()
      */
 
     /* create header */
-    header.flags = flags & CTRL_UNDEFINED;
+    header.flags = flags & (CTRL_UNDEFINED | CTRL_PUREFLOAT);
     header.version = version;
     header.ninherits = ninherits;
     header.imapsz = imapsz;

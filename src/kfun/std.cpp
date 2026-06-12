@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2025 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1083,7 +1083,7 @@ int kf_millitime(Frame *f, int n, KFun *kf)
     a = Array::create(f->data, 2);
     PUT_INTVAL(&a->elts[0], P_mtime(&milli));
     Float::itof(milli, &flt);
-    flt.div(thousand);
+    flt.div(thousand, TRUE);
     PUT_FLTVAL(&a->elts[1], flt);
     PUSH_ARRVAL(f, a);
     return 0;
@@ -1124,7 +1124,7 @@ int kf_call_out(Frame *f, int nargs, KFun *kf)
 	}
 	flt1.modf(&flt2);
 	delay = flt2.ftoi();
-	flt1.mult(thousand);
+	flt1.mult(thousand, TRUE);
 	mdelay = flt1.ftoi();
     } else {
 	return 2;
@@ -1185,7 +1185,7 @@ int kf_call_out_summand(Frame *f, int nargs, KFun *kf)
 	}
 	flt1.modf(&flt2);
 	delay = flt2.ftoi();
-	flt1.mult(thousand);
+	flt1.mult(thousand, TRUE);
 	mdelay = flt1.ftoi();
     } else {
 	return 2;
@@ -1240,8 +1240,8 @@ int kf_remove_call_out(Frame *f, int n, KFun *kf)
     if (mdelay != TIME_INT) {
 	Float::itof(delay, &flt1);
 	Float::itof(mdelay, &flt2);
-	flt2.div(thousand);
-	flt1.add(flt2);
+	flt2.div(thousand, TRUE);
+	flt1.add(flt2, TRUE);
 	PUT_FLTVAL(f->sp, flt1);
     } else {
 	PUT_INT(f->sp, delay);

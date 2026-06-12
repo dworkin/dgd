@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -281,15 +281,15 @@ Uint Optimize::binconst(Node **m)
 	switch (n->type) {
 	case N_ADD:
 	case N_ADD_FLOAT:
-	    f1.add(f2);
+	    f1.add(f2, Compile::pureFloat());
 	    break;
 
 	case N_DIV:
 	case N_DIV_FLOAT:
-	    if (NFLT_ISZERO(n->r.right)) {
+	    if (NFLT_ISZERO(n->r.right) && !Compile::pureFloat()) {
 		return 2;	/* runtime error: division by 0.0 */
 	    }
-	    f1.div(f2);
+	    f1.div(f2, Compile::pureFloat());
 	    break;
 
 	case N_EQ:
@@ -319,7 +319,7 @@ Uint Optimize::binconst(Node **m)
 
 	case N_MULT:
 	case N_MULT_FLOAT:
-	    f1.mult(f2);
+	    f1.mult(f2, Compile::pureFloat());
 	    break;
 
 	case N_NE:
@@ -329,7 +329,7 @@ Uint Optimize::binconst(Node **m)
 
 	case N_SUB:
 	case N_SUB_FLOAT:
-	    f1.sub(f2);
+	    f1.sub(f2, Compile::pureFloat());
 	    break;
 
 	default:
@@ -797,7 +797,7 @@ Uint Optimize::binop(Node **m)
 		case N_SUB_FLOAT:
 		    NFLT_GET(n->l.left->r.right, f1);
 		    NFLT_GET(n->r.right, f2);
-		    f1.add(f2);
+		    f1.add(f2, Compile::pureFloat());
 		    NFLT_PUT(n->l.left->r.right, f1);
 		    *m = n->l.left;
 		    d = d1;
@@ -822,7 +822,7 @@ Uint Optimize::binop(Node **m)
 		case N_MULT_FLOAT:
 		    NFLT_GET(n->l.left->r.right, f1);
 		    NFLT_GET(n->r.right, f2);
-		    f1.mult(f2);
+		    f1.mult(f2, Compile::pureFloat());
 		    NFLT_PUT(n->l.left->r.right, f1);
 		    *m = n->l.left;
 		    d = d1;
@@ -855,7 +855,7 @@ Uint Optimize::binop(Node **m)
 			    /* (c1 - x) + c2 */
 			    NFLT_GET(n->l.left->l.left, f1);
 			    NFLT_GET(n->r.right, f2);
-			    f1.add(f2);
+			    f1.add(f2, Compile::pureFloat());
 			    NFLT_PUT(n->l.left->l.left, f1);
 			    *m = n->l.left;
 			    return d1;
@@ -864,7 +864,7 @@ Uint Optimize::binop(Node **m)
 			    /* (x - c1) + c2 */
 			    NFLT_GET(n->l.left->r.right, f1);
 			    NFLT_GET(n->r.right, f2);
-			    f1.sub(f2);
+			    f1.sub(f2, Compile::pureFloat());
 			    NFLT_PUT(n->l.left->r.right, f1);
 			    *m = n->l.left;
 			    d = d1;
@@ -894,11 +894,11 @@ Uint Optimize::binop(Node **m)
 		case N_DIV_FLOAT:
 		    if (n->l.left->type == N_MULT_FLOAT &&
 			n->l.left->r.right->type == N_FLOAT &&
-			!NFLT_ISZERO(n->r.right)) {
+			(!NFLT_ISZERO(n->r.right) || Compile::pureFloat())) {
 			/* (x * c1) / c2 */
 			NFLT_GET(n->l.left->r.right, f1);
 			NFLT_GET(n->r.right, f2);
-			f1.div(f2);
+			f1.div(f2, Compile::pureFloat());
 			NFLT_PUT(n->l.left->r.right, f1);
 			*m = n->l.left;
 			d = d1;
@@ -911,17 +911,18 @@ Uint Optimize::binop(Node **m)
 			    /* (c1 / x) * c2 */
 			    NFLT_GET(n->l.left->l.left, f1);
 			    NFLT_GET(n->r.right, f2);
-			    f1.mult(f2);
+			    f1.mult(f2, Compile::pureFloat());
 			    NFLT_PUT(n->l.left->l.left, f1);
 			    *m = n->l.left;
 			    return d1;
 			}
 			if (n->l.left->r.right->type == N_FLOAT &&
-			    !NFLT_ISZERO(n->l.left->r.right)) {
+			    (!NFLT_ISZERO(n->l.left->r.right) ||
+			     Compile::pureFloat())) {
 			    /* (x / c1) * c2 */
 			    NFLT_GET(n->r.right, f1);
 			    NFLT_GET(n->l.left->r.right, f2);
-			    f1.div(f2);
+			    f1.div(f2, Compile::pureFloat());
 			    NFLT_PUT(n->r.right, f1);
 			    n->l.left = n->l.left->l.left;
 			    d = d1;
@@ -935,7 +936,7 @@ Uint Optimize::binop(Node **m)
 			/* (x + c1) - c2 */
 			NFLT_GET(n->l.left->r.right, f1);
 			NFLT_GET(n->r.right, f2);
-			f1.sub(f2);
+			f1.sub(f2, Compile::pureFloat());
 			NFLT_PUT(n->l.left->r.right, f1);
 			*m = n->l.left;
 			d = d1;
@@ -962,7 +963,7 @@ Uint Optimize::binop(Node **m)
 			/* c1 - (c2 - x) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->l.left, f2);
-			f1.sub(f2);
+			f1.sub(f2, Compile::pureFloat());
 			n->type = N_ADD;
 			n->l.left = n->r.right->r.right;
 			n->r.right = n->r.right->l.left;
@@ -972,7 +973,7 @@ Uint Optimize::binop(Node **m)
 			/* c1 - (x - c2) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->r.right, f2);
-			f1.add(f2);
+			f1.add(f2, Compile::pureFloat());
 			NFLT_PUT(n->l.left, f1);
 			n->r.right = n->r.right->l.left;
 			return d2 + 1;
@@ -982,7 +983,7 @@ Uint Optimize::binop(Node **m)
 		    /* c1 - (x + c2) */
 		    NFLT_GET(n->l.left, f1);
 		    NFLT_GET(n->r.right->r.right, f2);
-		    f1.sub(f2);
+		    f1.sub(f2, Compile::pureFloat());
 		    NFLT_PUT(n->l.left, f1);
 		    n->r.right = n->r.right->l.left;
 		    return d2 + 1;
@@ -1019,11 +1020,12 @@ Uint Optimize::binop(Node **m)
 	    case N_DIV_FLOAT:
 		if (n->r.right->type == N_DIV_FLOAT) {
 		    if (n->r.right->l.left->type == N_FLOAT &&
-			!NFLT_ISZERO(n->r.right->l.left)) {
+			(!NFLT_ISZERO(n->r.right->l.left) ||
+			 Compile::pureFloat())) {
 			/* c1 / (c2 / x) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->l.left, f2);
-			f1.div(f2);
+			f1.div(f2, Compile::pureFloat());
 			n->type = N_MULT;
 			n->l.left = n->r.right->r.right;
 			n->r.right = n->r.right->l.left;
@@ -1033,18 +1035,19 @@ Uint Optimize::binop(Node **m)
 			/* c1 / (x / c2) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->r.right, f2);
-			f1.mult(f2);
+			f1.mult(f2, Compile::pureFloat());
 			NFLT_PUT(n->l.left, f1);
 			n->r.right = n->r.right->l.left;
 			return d2 + 1;
 		    }
 		} else if (n->r.right->type == N_MULT_FLOAT &&
 			   n->r.right->r.right->type == N_FLOAT &&
-			   !NFLT_ISZERO(n->r.right->r.right)) {
+			   (!NFLT_ISZERO(n->r.right->r.right) ||
+			    Compile::pureFloat())) {
 		    /* c1 / (x * c2) */
 		    NFLT_GET(n->l.left, f1);
 		    NFLT_GET(n->r.right->r.right, f2);
-		    f1.div(f2);
+		    f1.div(f2, Compile::pureFloat());
 		    NFLT_PUT(n->l.left, f1);
 		    n->r.right = n->r.right->l.left;
 		    return d2 + 1;

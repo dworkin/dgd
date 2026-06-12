@@ -1479,7 +1479,7 @@ Node *YYParser::mult(int op, Node *n1, Node *n2, const char *name)
     if (n1->type == N_FLOAT && n2->type == N_FLOAT) {
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	f1.mult(f2);
+	f1.mult(f2, Compile::pureFloat());
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1508,14 +1508,14 @@ Node *YYParser::mdiv(int op, Node *n1, Node *n2, const char *name)
 	return n1;
     } else if (n1->type == N_FLOAT && n2->type == N_FLOAT) {
 	/* f / f */
-	if (NFLT_ISZERO(n2)) {
+	if (NFLT_ISZERO(n2) && !Compile::pureFloat()) {
 	    /* f / 0.0 */
 	    Compile::error("division by zero");
 	    return n1;
 	}
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	f1.div(f2);
+	f1.div(f2, Compile::pureFloat());
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1579,7 +1579,7 @@ Node *YYParser::add(int op, Node *n1, Node *n2, const char *name)
 	/* f + f */
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	f1.add(f2);
+	f1.add(f2, Compile::pureFloat());
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1634,7 +1634,7 @@ Node *YYParser::sub(int op, Node *n1, Node *n2, const char *name)
 	/* f - f */
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	f1.sub(f2);
+	f1.sub(f2, Compile::pureFloat());
 	NFLT_PUT(n1, f1);
 	return n1;
     }

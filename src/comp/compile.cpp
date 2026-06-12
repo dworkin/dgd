@@ -510,6 +510,14 @@ bool Compile::typechecking()
     return ::typechecking;
 }
 
+/*
+ * unconstrained float?
+ */
+bool Compile::pureFloat()
+{
+    return PP->pragmaFloat();
+}
+
 static long ncompiled;		/* # objects compiled */
 
 /*
@@ -737,7 +745,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, int nstr, int iflag)
 	 */
 	Control::create();
     }
-    ctrl = Control::construct();
+    ctrl = Control::construct(pureFloat());
     Control::clear();
     clear();
     current = c.prev;

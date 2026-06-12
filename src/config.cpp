@@ -1891,9 +1891,9 @@ void Config::putval(Value *v, size_t n)
 	PUT_INTVAL(v, n);
     } else {
 	Float::itof(n >> 31, &f1);
-	f1.ldexp(31);
+	f1.ldexp(31, TRUE);
 	Float::itof(n & 0x7fffffffL, &f2);
-	f1.add(f2);
+	f1.add(f2, TRUE);
 	PUT_FLTVAL(v, f1);
     }
 }
