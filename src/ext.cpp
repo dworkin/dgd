@@ -32,7 +32,7 @@
 # include "ext.h"
 
 # define EXTENSION_MAJOR	1
-# define EXTENSION_MINOR	5
+# define EXTENSION_MINOR	6
 
 
 /*
@@ -2039,6 +2039,24 @@ static double ext_vm_tanh(Frame *f, double flt)
 	longjmp(*EC->env, 1);
     }
 }
+
+static Int ext_vm_isinf(Frame *f, double flt)
+{
+    f->addTicks(1);
+    return isinf(flt);
+}
+
+static Int ext_vm_isnan(Frame *f, double flt)
+{
+    f->addTicks(1);
+    return isnan(flt);
+}
+
+static Int ext_vm_isfinite(Frame *f, double flt)
+{
+    f->addTicks(1);
+    return isfinite(flt);
+}
 # endif
 
 
@@ -2066,7 +2084,7 @@ void Ext::cleanup()
 static int (*jit_init)(int, int, size_t, size_t, int, int, int, uint8_t*,
 		       size_t, void**);
 static void (*jit_finish)();
-static void (*jit_compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
+static void (*jit_compile)(uint64_t, uint64_t, int, int, uint8_t*, size_t, int,
 			   uint8_t*, size_t, uint8_t*, size_t);
 static int (*jit_execute)(uint64_t, uint64_t, int, int, void*);
 static void (*jit_release)(uint64_t, uint64_t);
@@ -2077,8 +2095,8 @@ static void (*jit_release)(uint64_t, uint64_t);
 void Ext::jit(int (*init)(int, int, size_t, size_t, int, int, int, uint8_t*,
 			  size_t, void**),
 	      void (*finish)(),
-	      void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t, int,
-			      uint8_t*, size_t, uint8_t*, size_t),
+	      void (*compile)(uint64_t, uint64_t, int, int, uint8_t*, size_t,
+			      int, uint8_t*, size_t, uint8_t*, size_t),
 	      int (*execute)(uint64_t, uint64_t, int, int, void*),
 	      void (*release)(uint64_t, uint64_t),
 	      int (*functions)(uint64_t, uint64_t, int, void*))
@@ -2098,7 +2116,7 @@ void Ext::jit(int (*init)(int, int, size_t, size_t, int, int, int, uint8_t*,
 void Ext::kfuns(char *protos, int size, int nkfun)
 {
     if (jit_compile != NULL) {
-	static voidf *vmtab[116];
+	static voidf *vmtab[119];
 
 	vmtab[ 0] = (voidf *) &ext_vm_int;
 # ifndef NOFLOAT
@@ -2292,6 +2310,9 @@ void Ext::kfuns(char *protos, int size, int nkfun)
 	vmtab[113] = (voidf *) &ext_vm_cosh;
 	vmtab[114] = (voidf *) &ext_vm_sinh;
 	vmtab[115] = (voidf *) &ext_vm_tanh;
+	vmtab[116] = (voidf *) &ext_vm_isinf;
+	vmtab[117] = (voidf *) &ext_vm_isnan;
+	vmtab[118] = (voidf *) &ext_vm_isfinite;
 # else
 	vmtab[96] = (voidf *) NULL;
 	vmtab[97] = (voidf *) NULL;
@@ -2313,6 +2334,9 @@ void Ext::kfuns(char *protos, int size, int nkfun)
 	vmtab[113] = (voidf *) NULL;
 	vmtab[114] = (voidf *) NULL;
 	vmtab[115] = (voidf *) NULL;
+	vmtab[116] = (voidf *) NULL;
+	vmtab[117] = (voidf *) NULL;
+	vmtab[118] = (voidf *) NULL;
 # endif
 
 	if (!(*jit_init)(VERSION_VM_MAJOR, VERSION_VM_MINOR, sizeof(LPCint), 1,
@@ -2371,7 +2395,7 @@ void Ext::compile(const Frame *f, Control *ctrl)
 
     /* start JIT compiler */
     ctrl = f->p_ctrl;
-    (*jit_compile)(ctrl->oindex, ctrl->instance, ctrl->ninherits,
+    (*jit_compile)(ctrl->oindex, ctrl->instance, 0, ctrl->ninherits,
 		   (uint8_t *) ctrl->prog, ctrl->progsize, ctrl->nfuncdefs,
 		   (uint8_t *) ftypes, ctrl->ninherits + nftypes,
 		   (uint8_t *) vtypes, ctrl->ninherits + ctrl->nvariables);

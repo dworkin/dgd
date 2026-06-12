@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -3513,4 +3513,15 @@ int kf_ranget_str(Frame *f, int n, KFun *kf)
 
     return 0;
 }
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("isinf", kf_isinf, alt_isinf, 0)
+FUNCDEF("isnan", kf_isnan, alt_isnan, 0)
+FUNCDEF("isfinite", kf_isfinite, alt_isfinite, 0)
+# else
+char alt_isinf[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
+char alt_isnan[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
+char alt_isfinite[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
 # endif

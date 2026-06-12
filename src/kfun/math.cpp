@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2021 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -569,6 +569,81 @@ int kf_tanh(Frame *f, int n, KFun *kf)
     GET_FLT(f->sp, flt);
     flt.tanh();
     PUT_FLT(f->sp, flt);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("isinf", kf_isinf, pt_isinf, 0)
+# else
+char pt_isinf[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
+
+/*
+ * is infinite?
+ */
+int kf_isinf(Frame *f, int n, KFun *kf)
+{
+    Float flt;
+    int result;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    f->addTicks(1);
+    GET_FLT(f->sp, flt);
+    result = flt.is_inf();
+    PUT_INTVAL(f->sp, result);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("isnan", kf_isnan, pt_isnan, 0)
+# else
+char pt_isnan[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
+
+/*
+ * is NaN?
+ */
+int kf_isnan(Frame *f, int n, KFun *kf)
+{
+    Float flt;
+    int result;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    f->addTicks(1);
+    GET_FLT(f->sp, flt);
+    result = flt.is_nan();
+    PUT_INTVAL(f->sp, result);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("isfinite", kf_isfinite, pt_isfinite, 0)
+# else
+char pt_isfinite[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
+
+/*
+ * is finite?
+ */
+int kf_isfinite(Frame *f, int n, KFun *kf)
+{
+    Float flt;
+    int result;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
+    f->addTicks(1);
+    GET_FLT(f->sp, flt);
+    result = flt.is_finite();
+    PUT_INTVAL(f->sp, result);
     return 0;
 }
 # endif

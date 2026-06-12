@@ -1,6 +1,6 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
- * Copyright (C) 2020-2022 DGD Authors (see the commit log for details)
+ * Copyright (C) 2020-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -41,8 +41,9 @@ private:
     static void jit(int (*init)(int, int, size_t, size_t, int, int, int,
 				uint8_t*, size_t, void**),
 		    void (*finish)(),
-		    void (*compile)(uint64_t, uint64_t, int, uint8_t*, size_t,
-				    int, uint8_t*, size_t, uint8_t*, size_t),
+		    void (*compile)(uint64_t, uint64_t, int, int, uint8_t*,
+				    size_t, int, uint8_t*, size_t, uint8_t*,
+				    size_t),
 		    int (*execute)(uint64_t, uint64_t, int, int, void*),
 		    void (*release)(uint64_t, uint64_t),
 		    int (*functions)(uint64_t, uint64_t, int, void*));

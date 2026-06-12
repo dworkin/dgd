@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -870,27 +870,29 @@ void Codegen::storeargs(Node *n)
 int Codegen::math(const char *name)
 {
     static const char *keyword[] = {
-	"cos", "cosh", "asin", "atan", "fabs", "tanh", "tan", "pow",
-	"log10", "log", "modf", "sinh", "sin", "acos", "ldexp", "frexp",
-	"atan2", "sqrt", "exp", "floor", "fmod", "ceil"
+	"sqrt", "fmod", "atan2", "cos", "asin", "isnan", "tan", "fabs",
+	"isfinite", "modf", "isinf", "cosh", "acos", "atan", "tanh", "sin",
+	"log", "log10", "pow", "frexp", "ldexp", "ceil", "floor", "sinh", "exp"
     };
     static char value[] = {
-	 8,  0, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	12,  0, 13,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-	 0,  0,  0,  0,  4,  0, 13,  0,  3, 10,  9,  1, 10,  0,  0,
-	18, 20,  2,  0, 14, 16,  1,  0,  1,  0,  0,  7,  4,  0,  0
+	 0,  0,  0,  0,  3,  0,  8,  1,  0,  5, 13,  7, 12,  0,  0,
+	17, 21,  0,  0, 14, 12,  0,  0,  9,  0,  0, 15,  7,  0,  0
     };
     static char builtin[] = {
-	KF_COS, KF_COSH, KF_ASIN, KF_ATAN, KF_FABS, KF_TANH, KF_TAN, KF_POW,
-	KF_LOG10, KF_LOG, KF_MODF, KF_SINH, KF_SIN, KF_ACOS, KF_LDEXP,
-	KF_FREXP, KF_ATAN2, KF_SQRT, KF_EXP, KF_FLOOR, KF_FMOD, KF_CEIL
+	KF_SQRT, KF_FMOD, KF_ATAN2, KF_COS, KF_ASIN, KF_ISNAN, KF_TAN, KF_FABS,
+	KF_ISFINITE, KF_MODF, KF_ISINF, KF_COSH, KF_ACOS, KF_ATAN, KF_TANH,
+	KF_SIN, KF_LOG, KF_LOG10, KF_POW, KF_FREXP, KF_LDEXP, KF_CEIL, KF_FLOOR,
+	KF_SINH, KF_EXP
     };
     int n;
 
     n = strlen(name);
     if (n >= 3) {
-	n = (value[name[1] - '0'] + value[name[n - 1] - '0']) % 22;
+	n += (value[name[1] - '0'] + value[name[n - 1] - '0']);
+	n %= 25;
 	if (strcmp(keyword[n], name) == 0) {
 	    return builtin[n];
 	}

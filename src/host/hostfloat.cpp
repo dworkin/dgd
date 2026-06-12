@@ -621,3 +621,27 @@ void Float::tanh()
 {
     f_put(this, ::tanh(f_get(this)));
 }
+
+/*
+ * is_inf(f)
+ */
+int Float::is_inf()
+{
+    return isinf(f_get(this));
+}
+
+/*
+ * is_nan(f)
+ */
+int Float::is_nan()
+{
+    return isnan(f_get(this));
+}
+
+/*
+ * is_finite(f)
+ */
+int Float::is_finite()
+{
+    return isfinite(f_get(this));
+}
