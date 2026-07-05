@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2024 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -151,8 +151,12 @@ static void save_float(savecontext *x, Float *flt)
     char buf[FLOAT_BUFFER];
 # endif
 
-    flt->ftoa(buf);
-    put(x, buf, strlen(buf));
+    if (flt->is_finite()) {
+	flt->ftoa(buf);
+	put(x, buf, strlen(buf));
+    } else {
+	put(x, "0.0", 3);
+    }
 # ifdef LARGENUM
     if (Ext::smallFloat(&fhigh, &flow, flt)) {
 	snprintf(buf, sizeof(buf), "=%04x%08lx", fhigh, (long) flow);
@@ -657,9 +661,6 @@ static char *restore_number(restcontext *x, char *buf, Value *val)
 		    flt.high += toupper(*p) + 10 - 'A';
 		}
 	    }
-	    if ((flt.high & 0x7fff0000L) == 0x7fff0000L) {
-		restore_error(x, "illegal exponent");
-	    }
 	    for (i = 16; i > 0; --i) {
 		if (!isxdigit(*++p)) {
 		    restore_error(x, "hexadecimal digit expected");
@@ -687,9 +688,6 @@ static char *restore_number(restcontext *x, char *buf, Value *val)
 	    } else {
 		flt.high += toupper(*p) + 10 - 'A';
 	    }
-	}
-	if ((flt.high & 0x7ff0) == 0x7ff0) {
-	    restore_error(x, "illegal exponent");
 	}
 	for (i = 8; i > 0; --i) {
 	    if (!isxdigit(*++p)) {
