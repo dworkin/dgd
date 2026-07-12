@@ -31,6 +31,7 @@
 # include "optimize.h"
 # include "codegen.h"
 # include "compile.h"
+# include "parser.h"
 
 # define COND_CHUNK	16
 # define COND_BMAP	BMAP(MAX_LOCALS)
@@ -455,6 +456,7 @@ void Switch::clear()
 struct Context {
     char *file;				/* file to compile */
     Frame *frame;			/* current interpreter stack frame */
+    bool preproc;			/* preprocessing only? */
     Context *prev;			/* previous context */
 };
 
@@ -617,6 +619,9 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, int nstr, int iflag)
 	int n;
 
 	for (cc = current, n = 0; cc != (Context *) NULL; cc = cc->prev, n++) {
+	    if (cc->preproc) {
+		EC->error("Compilation within preprocess");
+	    }
 	    if (strcmp(file, cc->file) == 0) {
 		EC->error("Cycle in inheritance from \"/%s.c\"", current->file);
 	    }
@@ -629,7 +634,11 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, int nstr, int iflag)
 	Control::clear();
 	clear();
     } else if (current != (Context *) NULL) {
-	EC->error("Compilation within compilation");
+	if (current->preproc) {
+	    EC->error("Compilation within preprocess");
+	} else {
+	    EC->error("Compilation within compilation");
+	}
     }
 
     c.file = file;
@@ -642,6 +651,7 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, int nstr, int iflag)
 	strcat(file_c, ".c");
     }
     c.frame = f;
+    c.preproc = FALSE;
     c.prev = current;
     current = &c;
     ncompiled++;
@@ -771,16 +781,253 @@ Object *Compile::compile(Frame *f, char *file, Object *obj, int nstr, int iflag)
     return obj;
 }
 
+class StrList : public ChunkAllocated {
+public:
+    static StrList *create(String *str, StrList *next);
+    static void clear();
+
+    String *str;	/* string in list */
+    StrList *next;	/* next in linked list */
+};
+
+static Chunk<StrList, 8> slchunk;
+
+StrList *StrList::create(String *str, StrList *next)
+{
+    StrList *list;
+
+    list = chunknew (slchunk) StrList;
+    list->str = str;
+    str->ref();
+    list->next = next;
+
+    return list;
+}
+
+void StrList::clear()
+{
+    slchunk.clean();
+}
+
+class Collect {
+public:
+    Collect() {
+	bufsz = 0;
+	listsz = 0;
+	list = (StrList *) NULL;
+    }
+    ~Collect() {
+	clear();
+    }
+
+    void add(const char *text) {
+	int len;
+
+	len = strlen(text);
+	if (bufsz + len > sizeof(buf)) {
+	    flush();
+	}
+	memcpy(buf + bufsz, text, len);
+	bufsz += len;
+    }
+
+    Array *collect(Dataspace *data) {
+	Array *arr;
+	int i;
+
+	if (bufsz != 0) {
+	    flush();
+	}
+
+	arr = Array::create(data, listsz);
+	for (i = listsz; --i >= 0; ) {
+	    PUT_STRVAL_NOREF(&arr->elts[i], list->str);
+	    list = list->next;
+	}
+
+	return arr;
+    }
+
+    void clear() {
+	while (list != (StrList *) NULL) {
+	    list->str->del();
+	    list = list->next;
+	}
+	StrList::clear();
+    }
+
+private:
+    void flush() {
+	list = StrList::create(String::create(buf, bufsz), list);
+	listsz++;
+	bufsz = 0;
+    }
+
+    char buf[UINT16_MAX];	/* buffer */
+    int bufsz;			/* size of buffer */
+    int listsz;			/* # elements in linked list */
+    StrList *list;		/* linked list */
+};
+
+/*
+ * preprocess a file
+ */
+Array *Compile::preproc(Frame *f, char *file, int nstr)
+{
+    char filename[STRINGSZ], tbuf[MAX_LINE_SIZE];
+    Context c;
+    Collect strs;
+    int token, len, line, nline;
+    char *text, *p;
+    bool output;
+    Array *arr;
+
+    if (current != (Context *) NULL) {
+	EC->error("Preprocess within compilation");
+    }
+
+    if (strncmp(file, BIPREFIX, BIPREFIXLEN) == 0 ||
+	strchr(file, '#') != (char *) NULL) {
+	EC->error("Illegal file name \"/%s\"", file);
+    }
+
+    c.frame = f;
+    c.file = file;
+    c.preproc = TRUE;
+    c.prev = NULL;
+    current = &c;
+    arr = (Array *) NULL;
+
+    if (nstr != 0) {
+	int i;
+	Value *v;
+
+	v = f->sp;
+	PP->init(file, paths, v->string->text, v->string->len, 1);
+	for (i = 1; i < nstr; i++) {
+	    v++;
+	    PP->push(v->string->text, v->string->len);
+	}
+    } else if (!PP->init(file, paths, (char *) NULL, 0, 1)) {
+	current = (Context *) NULL;
+	EC->error("Could not preprocess \"/%s\"", file);
+    }
+    if (!PP->include(include, (char *) NULL, 0)) {
+	PP->clear();
+	current = (Context *) NULL;
+	EC->error("Could not include \"/%s\"", include);
+    }
+
+    try {
+	EC->push();
+
+	while ((token=PP->gettok()) != EOF) {
+	    /*
+	     * track filename and line number
+	     */
+	    text = PP->filename();
+	    nline = PP->line();
+	    if (strcmp(filename, text) != 0) {
+		if (output) {
+		    strs.add("\012");					/* LF */
+		}
+		strcpy(filename, text);
+		line = nline;
+		sprintf(tbuf, "#line %d \"%s\"\012", line, filename);	/* LF */
+		strs.add(tbuf);
+		output = FALSE;
+	    } else if (nline != line) {
+		if (nline > line && nline - line <= 10) {
+		    while (line < nline) {
+			strs.add("\012");				/* LF */
+			line++;
+		    }
+		} else {
+		    line = nline;
+		    sprintf(tbuf, "\012#line %d\012", line);		/* LF */
+		    strs.add(tbuf);
+		}
+		output = FALSE;
+	    }
+
+	    text = yytext;
+	    len = yyleng;
+	    if (token == STRING_CONST) {
+		/*
+		 * escape special characters within strings
+		 */
+		for (p = tbuf, *p++ = '"'; len != 0; text++, --len) {
+		    switch(*text) {
+		    case '\0':
+			*p++ = '\\';
+			*p++ = '0';
+			break;
+
+		    case LF:
+			*p++ = '\\';
+			*p++ = 'n';
+			break;
+
+		    case '"':
+			*p++ = '\\';
+			*p++ = '"';
+			break;
+
+		    case '\\':
+			*p++ = '\\';
+			*p++ = '\\';
+			break;
+
+		    default:
+			*p++ = *text;
+			break;
+		    }
+		}
+		*p++ = '"';
+		*p = '\0';
+		text = tbuf;
+		len = p - tbuf;
+	    }
+
+	    if (output) {
+		strs.add(" ");
+	    }
+	    strs.add(text);
+
+	    output = TRUE;
+	}
+
+	if (output) {
+	    strs.add("\012");						/* LF */
+	}
+	arr = strs.collect(f->data);
+
+	EC->pop();
+    } catch (const char*) {
+	strs.clear();
+	PP->clear();
+	current = (Context *) NULL;
+	EC->error((char *) NULL);
+    }
+    strs.clear();
+    PP->clear();
+    current = (Context *) NULL;
+
+    return arr;
+}
+
 /*
  * indicate if the auto object or driver object is being compiled
  */
 int Compile::autodriver()
 {
-    if (strcmp(current->file, auto_object) == 0) {
-	return O_AUTO;
-    }
-    if (strcmp(current->file, driver_object) == 0) {
-	return O_DRIVER;
+    if (!current->preproc) {
+	if (strcmp(current->file, auto_object) == 0) {
+	    return O_AUTO;
+	}
+	if (strcmp(current->file, driver_object) == 0) {
+	    return O_DRIVER;
+	}
     }
     return 0;
 }

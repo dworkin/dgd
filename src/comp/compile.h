@@ -25,6 +25,7 @@ public:
     static bool inherit(char *file, Node *label, int priv);
     static Object *compile(Frame *f, char *file, Object *obj, int nstr,
 			   int iflag);
+    static Array *preproc(Frame *f, char *file, int nstr);
     static int autodriver();
     static String *objecttype(Node *n);
     static void global(unsigned int sclass, Node *type, Node *n);

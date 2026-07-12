@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010-2023 DGD Authors (see the commit log for details)
+# Copyright (C) 2010-2026 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -51,3 +51,4 @@ parser.o control.o optimize.o codegen.o compile.o: control.h
 codegen.o compile.o: codegen.h
 parser.o control.o optimize.o codegen.o compile.o: compile.h
 optimize.o compile.o: optimize.h
+compile.o: parser.h

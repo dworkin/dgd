@@ -24,6 +24,8 @@
 # include "ext.h"
 # include "path.h"
 # include "editor.h"
+# include "node.h"
+# include "compile.h"
 # endif
 
 # ifdef FUNCDEF
@@ -1312,6 +1314,39 @@ int kf_read_file(Frame *f, int nargs, KFun *kf)
     if (buf != (char *) NULL) {
 	FREE(buf);
     }
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("preprocess_file", kf_preprocess_file, pt_preprocess_file, 0)
+# else
+char pt_preprocess_file[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
+			      T_STRING | (1 << REFSHIFT), T_STRING, T_STRING };
+
+/*
+ * preprocess a file
+ */
+int kf_preprocess_file(Frame *f, int nargs, KFun *kf)
+{
+    char file[STRINGSZ];
+    Value *v;
+    Array *arr;
+
+    UNREFERENCED_PARAMETER(kf);
+
+    v = &f->sp[nargs - 1];
+    if (PM->string(file, v->string->text, v->string->len) == (char *) NULL) {
+	return 1;
+    }
+
+    f->addTicks((nargs > 1) ? (nargs - 1) * 3000 : 3000);
+    arr = Compile::preproc(f, file, --nargs);
+    f->pop(nargs);
+    f->sp->string->del();
+    PUT_ARRVAL(f->sp, arr);
 
     return 0;
 }
