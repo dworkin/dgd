@@ -443,7 +443,7 @@ void JmpList::make(char *code)
 	code[j->where + 1] = to;
     }
 
-    jchunk.clean();
+    clear();
 }
 
 /*
