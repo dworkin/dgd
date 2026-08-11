@@ -8,7 +8,7 @@ apk update
 apk upgrade
 
 git -C /container/dgd pull
-make -C /container/dgd/src DEFINES="$DEFINES" DEBUG="$DEBUG" install
+make -C /container/dgd/src DEFINES+="$DEFINES" DEBUG="$DEBUG" install
 git -C /container/lpc-ext pull
 make -C /container/lpc-ext/src DEFINES="$DEFINES" DEBUG="$DEBUG" ZLIB=1.2.12 jit zlib crypto
 EXT=`grep ^EXT /container/lpc-ext/src/Makefile | sed s/EXT=//`
