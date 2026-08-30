@@ -81,6 +81,7 @@ public:
 # define CF_ODONE	0x0080	/* output done */
 # define CF_OPENDING	0x0100	/* waiting for connect() to complete */
 # define CF_STOPPED	0x0200	/* output stopped */
+# define CF_WERROR	0x0400	/* write error */
 
 /* state */
 # define TS_DATA	0
@@ -329,6 +330,7 @@ void User::uflush(Object *obj, Dataspace *data, Array *arr)
 	    } else {
 		/* wait for conn_read() to discover the problem */
 		flags &= ~CF_OUTPUT;
+		flags |= CF_WERROR;
 	    }
 	}
     } else {
@@ -1157,6 +1159,11 @@ void Comm::receive(Frame *f, Uint timeout, unsigned int mtime)
 		 * connects.
 		 */
 		continue;
+	    }
+	    if (usr->flags & CF_WERROR) {
+		usr->del(f, obj, FALSE);
+		DGD::endTask();
+		break;
 	    }
 	    if (usr->flags & CF_OUTPUT) {
 		Dataspace *data;
